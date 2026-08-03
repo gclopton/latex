@@ -1,0 +1,12 @@
+{
+  "cssTheme": "Blue Topaz",
+  "accentColor": "",
+  "baseFontSize": 16,
+  "enabledCssSnippets": [
+    "S - Images Adjustments",
+    "pub-Image Flags",
+    "S - Callouts",
+    "codex-image-align-flags"
+  ],
+  "theme": "obsidian"
+}

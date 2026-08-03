@@ -1,0 +1,109 @@
+.callout-outline-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+.callout-outline-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.callout-outline-label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.callout-outline-file {
+  color: var(--text-normal);
+  font-size: 0.95rem;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.callout-outline-select {
+  width: 100%;
+}
+
+.callout-outline-summary {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.callout-outline-empty {
+  color: var(--text-muted);
+  line-height: 1.5;
+  padding: 0.25rem 0.1rem;
+}
+
+.callout-outline-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.callout-outline-item {
+  align-items: flex-start;
+  appearance: none;
+  background: color-mix(in srgb, var(--background-secondary) 84%, var(--callout-outline-accent) 16%);
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 60%, var(--callout-outline-accent) 40%);
+  border-left: 4px solid var(--callout-outline-accent);
+  border-radius: 10px;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.32rem;
+  min-height: auto;
+  padding: 0.7rem 0.85rem;
+  text-align: left;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+  width: 100%;
+}
+
+.callout-outline-item:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--callout-outline-accent) 70%, white 30%);
+  outline: none;
+}
+
+.callout-outline-item:hover {
+  background: color-mix(in srgb, var(--background-secondary) 72%, var(--callout-outline-accent) 28%);
+  border-color: color-mix(in srgb, var(--background-modifier-border) 30%, var(--callout-outline-accent) 70%);
+  transform: translateX(1px);
+}
+
+.callout-outline-item-title {
+  color: var(--text-normal);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0;
+  width: 100%;
+  word-break: break-word;
+}
+
+.callout-outline-item-meta {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.callout-outline-item-note {
+  color: var(--text-faint);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  margin: 0;
+  width: 100%;
+  word-break: break-word;
+}

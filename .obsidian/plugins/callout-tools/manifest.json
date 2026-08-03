@@ -1,0 +1,9 @@
+{
+  "id": "callout-tools",
+  "name": "Callout Tools",
+  "version": "0.1.0",
+  "minAppVersion": "1.0.0",
+  "description": "Adds safe editor commands for working with Obsidian callouts.",
+  "author": "OpenAI Codex",
+  "isDesktopOnly": false
+}

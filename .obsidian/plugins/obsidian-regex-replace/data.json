@@ -1,0 +1,10 @@
+{
+  "findText": "Table",
+  "replaceText": "<mark style=\"background: #FF7F00;\">Table</mark>",
+  "useRegEx": false,
+  "selOnly": false,
+  "caseInsensitive": false,
+  "processLineBreak": false,
+  "processTab": false,
+  "prefillFind": false
+}

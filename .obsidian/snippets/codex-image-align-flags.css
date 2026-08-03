@@ -1,0 +1,78 @@
+/*
+Supports Markdown image flags such as:
+
+![450|left](...)
+![450|center](...)
+![450|right](...)
+![|left](...)
+![|center|450](...)
+![|right|450](...)
+
+Plain images like ![](...) or ![450](...) keep the theme default.
+*/
+
+.markdown-rendered img[alt$="|left"],
+.markdown-rendered img[alt*="|left|"],
+.markdown-preview-view img[alt$="|left"],
+.markdown-preview-view img[alt*="|left|"],
+.markdown-source-view.mod-cm6.is-live-preview img[alt$="|left"],
+.markdown-source-view.mod-cm6.is-live-preview img[alt*="|left|"] {
+  display: block;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+.markdown-rendered .image-embed:has(img[alt$="|left"]),
+.markdown-rendered .image-embed:has(img[alt*="|left|"]),
+.markdown-preview-view .image-embed:has(img[alt$="|left"]),
+.markdown-preview-view .image-embed:has(img[alt*="|left|"]),
+.markdown-source-view.mod-cm6.is-live-preview .image-embed:has(img[alt$="|left"]),
+.markdown-source-view.mod-cm6.is-live-preview .image-embed:has(img[alt*="|left|"]) {
+  display: table !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+.markdown-rendered img[alt$="|center"],
+.markdown-rendered img[alt*="|center|"],
+.markdown-preview-view img[alt$="|center"],
+.markdown-preview-view img[alt*="|center|"],
+.markdown-source-view.mod-cm6.is-live-preview img[alt$="|center"],
+.markdown-source-view.mod-cm6.is-live-preview img[alt*="|center|"] {
+  display: block;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.markdown-rendered .image-embed:has(img[alt$="|center"]),
+.markdown-rendered .image-embed:has(img[alt*="|center|"]),
+.markdown-preview-view .image-embed:has(img[alt$="|center"]),
+.markdown-preview-view .image-embed:has(img[alt*="|center|"]),
+.markdown-source-view.mod-cm6.is-live-preview .image-embed:has(img[alt$="|center"]),
+.markdown-source-view.mod-cm6.is-live-preview .image-embed:has(img[alt*="|center|"]) {
+  display: table !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.markdown-rendered img[alt$="|right"],
+.markdown-rendered img[alt*="|right|"],
+.markdown-preview-view img[alt$="|right"],
+.markdown-preview-view img[alt*="|right|"],
+.markdown-source-view.mod-cm6.is-live-preview img[alt$="|right"],
+.markdown-source-view.mod-cm6.is-live-preview img[alt*="|right|"] {
+  display: block;
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+
+.markdown-rendered .image-embed:has(img[alt$="|right"]),
+.markdown-rendered .image-embed:has(img[alt*="|right|"]),
+.markdown-preview-view .image-embed:has(img[alt$="|right"]),
+.markdown-preview-view .image-embed:has(img[alt*="|right|"]),
+.markdown-source-view.mod-cm6.is-live-preview .image-embed:has(img[alt$="|right"]),
+.markdown-source-view.mod-cm6.is-live-preview .image-embed:has(img[alt*="|right|"]) {
+  display: table !important;
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}

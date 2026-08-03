@@ -1,0 +1,11 @@
+{
+  "ITS@@titlebar-colors": false,
+  "blue-topaz-theme@@print-h1-color@@dark": "#FF1300",
+  "blue-topaz-theme@@print-h2-color@@dark": "#FF7C00",
+  "blue-topaz-theme@@print-h3-color@@dark": "#FFFA00",
+  "blue-topaz-theme@@print-h4-color@@dark": "#00FF41",
+  "blue-topaz-theme@@print-h5-color@@dark": "#0097FF",
+  "blue-topaz-theme@@print-h6-color@@dark": "#8400FF",
+  "blue-topaz-theme@@accent-strong@@dark": "#0AF4B0",
+  "blue-topaz-theme@@accent-strong@@light": "#0039FF"
+}

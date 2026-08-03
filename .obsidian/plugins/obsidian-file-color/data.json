@@ -1,0 +1,1032 @@
+{
+  "palette": [
+    {
+      "id": "67coXjM6VPpsKekQ1q5Dj",
+      "name": "red",
+      "value": "#ff7a7a"
+    },
+    {
+      "id": "1cZeUkC5_mtml2Wk3paS5",
+      "name": "yellow",
+      "value": "#989e42"
+    },
+    {
+      "id": "QoLYCkF46OG-ZPb-_nVYg",
+      "name": "",
+      "value": "#0091ff"
+    },
+    {
+      "id": "wTnXMCMaGH423M0hdMEHa",
+      "name": "",
+      "value": "#bffdfc"
+    },
+    {
+      "id": "HA7PbhRP_KdTfHBXSBIkk",
+      "name": "",
+      "value": "#ee00ff"
+    },
+    {
+      "id": "2OCGVbfsmgpGtXTThXltR",
+      "name": "",
+      "value": "#37ff00"
+    },
+    {
+      "id": "eyP5VH_9HGECITyDmTyNK",
+      "name": "",
+      "value": "#ffae00"
+    },
+    {
+      "id": "C32aNle2cGkgLcMKhv2K6",
+      "name": "neon yellow",
+      "value": "#eeff00"
+    },
+    {
+      "id": "nxxWQy8wlc_IuuhYwklAV",
+      "name": "Grey",
+      "value": "#b0b0b0"
+    },
+    {
+      "id": "kr3MJ1YutkVMBHK2uQSTg",
+      "name": "Green",
+      "value": "#02971b"
+    }
+  ],
+  "fileColors": [
+    {
+      "path": "Richard and Neil",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/images",
+      "color": "1cZeUkC5_mtml2Wk3paS5"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/Scripts",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/21 Neural Networks for Vision.md",
+      "color": "wTnXMCMaGH423M0hdMEHa"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/26 Graph Neural Networks.md",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/25 Transformers.md",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/19 Regularization.md",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/18 Measuring Performance.md",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/22 Convolutional Neural Networks.md",
+      "color": "wTnXMCMaGH423M0hdMEHa"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/27 Dimensionality Reduction.md",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/9 Shallow Neural Networks Prince-3.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/10 Linear Discriminant Analysis.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/11 Logistic Regression.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/12 Linear Regression.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/13 Generalized Linear Models.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/17 Gradients and Initialization.md",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/16 Fitting Models.md",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/15 Loss Functions.md",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/14 Deep Neural Networks.md",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/8 Optimization.md",
+      "color": "HA7PbhRP_KdTfHBXSBIkk"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/7 Linear Algebra.md",
+      "color": "HA7PbhRP_KdTfHBXSBIkk"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/6 information theory.md",
+      "color": "HA7PbhRP_KdTfHBXSBIkk"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/5 decision theory.md",
+      "color": "HA7PbhRP_KdTfHBXSBIkk"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/4 Statistics.md",
+      "color": "HA7PbhRP_KdTfHBXSBIkk"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/2-2-probability-multivariate-models-aae470b4-02f2-45ff-9fea-9dd32b5b817e.md",
+      "color": "HA7PbhRP_KdTfHBXSBIkk"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/2-1-probability-univariate-models-a8ed34f6-e72d-4490-a166-591743771dd4.md",
+      "color": "HA7PbhRP_KdTfHBXSBIkk"
+    },
+    {
+      "path": "Richard and Neil/Deep Learning/prince/26 Graph Embeddings.md",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "0/Python/Chapters/6 The Dynamic Typing Interlude.md",
+      "color": "wTnXMCMaGH423M0hdMEHa"
+    },
+    {
+      "path": "0/Python/Chapters/13 While and For Loops.md",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "0/Python/Chapters/14 Iterations and Comprehensions.md",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "0/Python/Chapters/15 The Documentation Interlude.md",
+      "color": "wTnXMCMaGH423M0hdMEHa"
+    },
+    {
+      "path": "0/Python/Chapters/16 Function Basics.md",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "0/Python/Chapters/7 String Fundamentals.md",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "0/Python/Chapters/8 Lists and Dictionaries.md",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "0/Python/Chapters/9 Tuples, Files, and Everything Else.md",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "0/Python/Chapters/10 Introducing Python Statements.md",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "0/Python/Chapters/4 Introducing Python Object Types.md",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "0/Python/Chapters/5 Numeric Types.md",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "0/Python/Chapters/11 Assignments, Expressions, and Prints.md",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "0/Python/Chapters/12 if Tests and Syntax Rules.md",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "0/Python/Chapters/17 Scopes.md",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "0/Python/Chapters/18 Arguments.md",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "0/Python/Chapters/19 Advanced Function Topics.md",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "0/Python/Chapters/20 Comprehensions and Generations.md",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "0/Python/Chapters/21 The Benchmarking Interlude.md",
+      "color": "wTnXMCMaGH423M0hdMEHa"
+    },
+    {
+      "path": "1_version_control/git/images",
+      "color": "1cZeUkC5_mtml2Wk3paS5"
+    },
+    {
+      "path": "6_react",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "5_fast_api_and_django",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "7_data_analytics",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "14_machine_learning/1_basics/ch02_python_language_basics",
+      "color": "HA7PbhRP_KdTfHBXSBIkk"
+    },
+    {
+      "path": "14_machine_learning/1_basics/ch03_built_in_data_structures",
+      "color": "HA7PbhRP_KdTfHBXSBIkk"
+    },
+    {
+      "path": "14_machine_learning/1_basics/ch05_getting_started_with_pandas",
+      "color": "HA7PbhRP_KdTfHBXSBIkk"
+    },
+    {
+      "path": "0_python/18_pandas",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "0_python/18_pandas/18_12_handling_missing_data",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "shell_scripts",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Agenda",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "0_python/18_pandas/18_3_data_frame_creation/18_pandas_attributes_and_methods_part_3_BASICS.md",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "0_python/18_pandas/18_5_indexing_and_iteration/18_5_pandas_practice/18_5_indexing_and_iteration_part_1_questions.md",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "0_python/18_pandas/18_9_min_max_and_binary_operators",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "0_python/18_pandas/18_11_function_application_and_aggregation",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "0_python/18_pandas/18_6_pandas_grouping_and_filtering_dataframes",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "0_python/18_pandas/18_1_introduction_to_construction_of_dataframes",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "0_python/18_pandas/18_2_converting_data_structures_and_various_file_types_to_and_from_dataframes",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "0_python/18_pandas/18_3_data_frame_creation",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "0_python/18_pandas/18_4_axes",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "0_python/18_pandas/18_5_indexing_and_iteration",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "0_python/18_pandas/18_8_dtype_conversion_copy_and_abs",
+      "color": "wTnXMCMaGH423M0hdMEHa"
+    },
+    {
+      "path": "0_python/18_pandas/18_10_combining_dataframes",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "0_python/18_pandas/18_13_comparing_and_modifying_dataframes",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "0_python/18_pandas/18_7_reshaping_sorting_and_transposing_dataframes",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "0_python/18_pandas/18_14_reindexing_and_adding_and_removing_columns",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "0_python/18_pandas/18_15_statistical_methods",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "0_python/18_pandas/18_6_pandas_grouping_and_filtering_dataframes/18_6_pandas_practice/18_6_grouping_and_filtering_dataframes_practice.md",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "0_python/18_pandas/18_10_combining_dataframes/18_10_pandas_practice",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "0_python/18_pandas/18_14_reindexing_and_adding_and_removing_columns/18_14_pandas_practice/18_14_summary.md",
+      "color": "HA7PbhRP_KdTfHBXSBIkk"
+    },
+    {
+      "path": "0_python/18_pandas/18_5_indexing_and_iteration/18_5_pandas_practice/18_5_summary.md",
+      "color": "HA7PbhRP_KdTfHBXSBIkk"
+    },
+    {
+      "path": "0_python/26_object_oriented_programming",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "0_python/22_functional_programming",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "13_database_systems/4_entity_relationship_modeling/models/annotations/parsing_algorithms/parse_mc_questions/v4/markdown_files/test_filter_sections_test1_v1.md",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "13_database_systems",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "13_database_systems/4_entity_relationship_modeling",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "13_database_systems/4_entity_relationship_modeling/models",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "13_database_systems/4_entity_relationship_modeling/models/annotations",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "13_database_systems/4_entity_relationship_modeling/models/annotations/parsing_algorithms",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "13_database_systems/4_entity_relationship_modeling/models/annotations/parsing_algorithms/parse_mc_questions",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "13_database_systems/4_entity_relationship_modeling/models/annotations/parsing_algorithms/parse_mc_questions/v5",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "0_app_2",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "18_protein_crystallography/Protein Crystallization Induced by a Localized Voltage.md",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/1 Protein Crystallography Methods and Protocols (2017), Alexander Wlodawer, Zbigniew Dauter, Mariusz Jaskolski",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Structure of Materials; An Introduction to Crystallography, Diffraction, and Symmetry; Marc De Graef and Michael E. McHenry (2007)_Part6",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Crystals, X-rays and Proteins; Comprehensive Protein Crystallography; Dennis Sherwood, Jon Cooper 2010",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/1 Protein Crystallography Methods and Protocols (2017), Alexander Wlodawer, Zbigniew Dauter, Mariusz Jaskolski/13 Processing of XFEL Data",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/1 Protein Crystallography Methods and Protocols (2017), Alexander Wlodawer, Zbigniew Dauter, Mariusz Jaskolski/13 Processing of XFEL Data/Original",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/1 Protein Crystallography Methods and Protocols (2017), Alexander Wlodawer, Zbigniew Dauter, Mariusz Jaskolski/13 Processing of XFEL Data/Outline",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/1 Protein Crystallography Methods and Protocols (2017), Alexander Wlodawer, Zbigniew Dauter, Mariusz Jaskolski/13 Processing of XFEL Data/Papers",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/1 Protein Crystallography Methods and Protocols (2017), Alexander Wlodawer, Zbigniew Dauter, Mariusz Jaskolski/images",
+      "color": "1cZeUkC5_mtml2Wk3paS5"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/1 Protein Crystallography Methods and Protocols (2017), Alexander Wlodawer, Zbigniew Dauter, Mariusz Jaskolski/13 Processing of XFEL Data/Papers/1. Processing serial crystallography data withCrystFEL; a step-by-step guide (2018) Thomas A. White*, Acta Cryst. D75/images",
+      "color": "1cZeUkC5_mtml2Wk3paS5"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Canvases/images",
+      "color": "C32aNle2cGkgLcMKhv2K6"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/1 Protein Crystallography Methods and Protocols (2017), Alexander Wlodawer, Zbigniew Dauter, Mariusz Jaskolski/13 Processing of XFEL Data/Papers/1. Processing serial crystallography data withCrystFEL; a step-by-step guide (2018) Thomas A. White*, Acta Cryst. D75",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/1 Protein Crystallography Methods and Protocols (2017), Alexander Wlodawer, Zbigniew Dauter, Mariusz Jaskolski/13 Processing of XFEL Data/Papers/1. Processing serial crystallography data withCrystFEL; a step-by-step guide (2018) Thomas A. White*, Acta Cryst. D75/1. Outline",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/1 Protein Crystallography Methods and Protocols (2017), Alexander Wlodawer, Zbigniew Dauter, Mariusz Jaskolski/13 Processing of XFEL Data/Papers/1. Processing serial crystallography data withCrystFEL; a step-by-step guide (2018) Thomas A. White*, Acta Cryst. D75/2. Summary",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/2 X-ray Free Electron Lasers",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Structure of Materials; An Introduction to Crystallography, Diffraction, and Symmetry; Marc De Graef and Michael E. McHenry (2007)_Part6/Original/1 Materials and Materials Properties/Outline/1.1 Materials and structure.md",
+      "color": "wTnXMCMaGH423M0hdMEHa"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Structure of Materials; An Introduction to Crystallography, Diffraction, and Symmetry; Marc De Graef and Michael E. McHenry (2007)_Part6/Original/1 Materials and Materials Properties/Outline/1.3 About length scales.md",
+      "color": "wTnXMCMaGH423M0hdMEHa"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Structure of Materials; An Introduction to Crystallography, Diffraction, and Symmetry; Marc De Graef and Michael E. McHenry (2007)_Part6/Original/1 Materials and Materials Properties/Outline/1.2 Organization of the book.md",
+      "color": "wTnXMCMaGH423M0hdMEHa"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Vol F; International Tables for Crystallography/11.1 Automatic Indexing of Oscillation Images",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Vol F; International Tables for Crystallography/11.2. Integration of macromolecular diffraction data",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Vol F; International Tables for Crystallography/11.3. Integration, scaling, space-group assignment and post reﬁnement",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Vol F; International Tables for Crystallography/11.4. DENZO and SCALEPACK",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Vol F; International Tables for Crystallography",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Vol F; International Tables for Crystallography/11.2. Integration of macromolecular diffraction data/outline",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Vol F; International Tables for Crystallography/11.2. Integration of macromolecular diffraction data/summary",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Vol F; International Tables for Crystallography/11.2. Integration of macromolecular diffraction data/drawings",
+      "color": "C32aNle2cGkgLcMKhv2K6"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Vol F; International Tables for Crystallography/11.2. Integration of macromolecular diffraction data/presentations",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Vol F; International Tables for Crystallography/11.3. Integration, scaling, space-group assignment and post reﬁnement/images",
+      "color": "C32aNle2cGkgLcMKhv2K6"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Vol F; International Tables for Crystallography/11.3. Integration, scaling, space-group assignment and post reﬁnement/outline",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Vol D; International Tables for Crystallography",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Vol D; International Tables for Crystallography/2.2. Electrons",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Vol D; International Tables for Crystallography/2.2. Electrons/images",
+      "color": "C32aNle2cGkgLcMKhv2K6"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Vol F; International Tables for Crystallography/11.3. Integration, scaling, space-group assignment and post reﬁnement/summary",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/X-Ray Free Electron Lasers Sebastian",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Canvases",
+      "color": "C32aNle2cGkgLcMKhv2K6"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Elements of Modern X-Ray Physics Als-Nielsen (2011)",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Two-Dimensional X-Ray Diffraction, He (2018)",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Vol F; International Tables for Crystallography/11.4. DENZO and SCALEPACK/Outline",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Macromolecular Crystallography Protocols",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "Quantum Mechanics",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "Solid State Physics",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Vol F; International Tables for Crystallography/2.1. Introduction to basic crystallography/images",
+      "color": "C32aNle2cGkgLcMKhv2K6"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Vol F; International Tables for Crystallography/2.1. Introduction to basic crystallography",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Vol F; International Tables for Crystallography/2.2. Quality indicators in macromolecular crystallography; definitions and applications",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Vol A; Space Group Symmetry",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "Solid State Physics/Crystallography/Books/Vol A; Space Group Symmetry/1.1. A General Introduction to Groups",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "Quantum Mechanics/3 Postulates of Quantum Mechanics",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "Semiconductor Physics",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "Quantum Mechanics/2 Mathematical Tools of Quantum Mechanics/Outline/2.2.1 The Linear Vector Space.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Quantum Mechanics/2 Mathematical Tools of Quantum Mechanics/Summary/2.2.1 The Linear Vector Space.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Quantum Mechanics/2 Mathematical Tools of Quantum Mechanics/Summary/2.4 Operators.md",
+      "color": "nxxWQy8wlc_IuuhYwklAV"
+    },
+    {
+      "path": "Quantum Mechanics/2 Mathematical Tools of Quantum Mechanics/Summary/2.2.2 The Hilbert Space.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Quantum Mechanics/2 Mathematical Tools of Quantum Mechanics/Outline/2.2.2 The Hilbert Space.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Quantum Mechanics/2 Mathematical Tools of Quantum Mechanics/Outline/2.2.3 Dimension and Basis of a Vector Space.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Quantum Mechanics/2 Mathematical Tools of Quantum Mechanics/Summary/2.2.3 Dimension and Basis of a Vector Space.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Quantum Mechanics/2 Mathematical Tools of Quantum Mechanics/Summary/2.2.4 Square-Integrable Functions; Wave Functions.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Quantum Mechanics/2 Mathematical Tools of Quantum Mechanics/Summary/2.3.1 Properties of kets, bras, and bra-kets.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Quantum Mechanics/2 Mathematical Tools of Quantum Mechanics/Summary/2.3.2.1 Schwarz Inequality.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Quantum Mechanics/2 Mathematical Tools of Quantum Mechanics/Summary/2.3.2.2 Triangle inequality.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Quantum Mechanics/2 Mathematical Tools of Quantum Mechanics/Summary/2.3.2.3 Orthogonal states.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Quantum Mechanics/2 Mathematical Tools of Quantum Mechanics/Summary/2.3.2.4 Orthonormal states.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Quantum Mechanics/2 Mathematical Tools of Quantum Mechanics/Summary/2.3.2.5 Forbidden quantities.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Outline/2.2.1 The Linear Vector Space.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.2.1 The Linear Vector Space.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.2 The Hilbert Space and Wave Functions.md",
+      "color": "nxxWQy8wlc_IuuhYwklAV"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.2.2 The Hilbert Space.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.2.3 Dimension and Basis of a Vector Space.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.2.4 Square-Integrable Functions; Wave Functions.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.3 Dirac Notation.md",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.3.1 Properties of kets, bras, and bra-kets.md",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.3.2 Properties of the scalar product.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.3.2.1 Schwarz Inequality.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.3.2.2 Triangle inequality.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.3.2.3 Orthogonal states.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.3.2.4 Orthonormal states.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.3.2.5 Forbidden quantities.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.3.3 Problems on Dirac Notation.md",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.4 Operators.md",
+      "color": "nxxWQy8wlc_IuuhYwklAV"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.4.1 General Definitions.md",
+      "color": "wTnXMCMaGH423M0hdMEHa"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.4.2 Hermitian Adjoint.md",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.4.3 Projection Operators.md",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.4.4 Commutator Algebra.md",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.4.5 Uncertainty Relation between Two Operators.md",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.4.6 Functions of Operators.md",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.4.7 Inverse and Unitary Operators.md",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.4.8 Eigenvalues and Eigenvectors of an Operator.md",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.4.9 Infinitesimal and Finite Unitary Transformations.md",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.5 Representation in Discrete Bases.md",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.5.1 Matrix Representation of Kets, Bras, and Operators.md",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.5.1.1 Matrix Representation of Kets and Bras.md",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "2 Mathematical Tools of Quantum Mechanics/Summary/2.5.1.2 Matrix Representation of Operators.md",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "book",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "admin/confirmations",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "admin/documents",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "notes",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "admin",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "notes/Week 1/images",
+      "color": "1cZeUkC5_mtml2Wk3paS5"
+    },
+    {
+      "path": "book/moin_fundamentals_of_engineering_numerical_analysis",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "book/moin_fundamentals_of_engineering_numerical_analysis/1 Interpolation",
+      "color": "1cZeUkC5_mtml2Wk3paS5"
+    },
+    {
+      "path": "book/moin_fundamentals_of_engineering_numerical_analysis/1 Interpolation/1.1.2 Langrange Polynomial Interpolation.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "book/moin_fundamentals_of_engineering_numerical_analysis/1 Interpolation/1.1.1 Direct Polynomial Fitting.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "book/moin_fundamentals_of_engineering_numerical_analysis/1 Interpolation/Questions",
+      "color": "kr3MJ1YutkVMBHK2uQSTg"
+    },
+    {
+      "path": "book/moin_fundamentals_of_engineering_numerical_analysis/2 Numerical Differentiation; Finite Differences",
+      "color": "1cZeUkC5_mtml2Wk3paS5"
+    },
+    {
+      "path": "book/moin_fundamentals_of_engineering_numerical_analysis/1 Interpolation/1.2 Cubic Spline Interpolation.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "homework",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "notes/Week 1",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "notes/Week 2",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "notes/Week 2/images",
+      "color": "1cZeUkC5_mtml2Wk3paS5"
+    },
+    {
+      "path": "PDFs",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "notes/Week 3",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "notes/Week 4",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Notes/2024/NOV/2024-11-09.md",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "Papers/1. Atomistic Simulation of Point Defects Behavior in Ceria/Images",
+      "color": "1cZeUkC5_mtml2Wk3paS5"
+    },
+    {
+      "path": "Papers",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "Papers/1. Atomistic Simulation of Point Defects Behavior in Ceria",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Papers/2. Defect Equilibria for Extended Point Defects, with Application to Nonstoichometric Ceria",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Papers/2. Defect Equilibria for Extended Point Defects, with Application to Nonstoichometric Ceria/3. Analysis of Data.md",
+      "color": "nxxWQy8wlc_IuuhYwklAV"
+    },
+    {
+      "path": "Papers/2. Defect Equilibria for Extended Point Defects, with Application to Nonstoichometric Ceria/4. Discussion.md",
+      "color": "nxxWQy8wlc_IuuhYwklAV"
+    },
+    {
+      "path": "Papers/3. The role of point defects in the physical properties of nonstoichiometric ceria/images",
+      "color": "1cZeUkC5_mtml2Wk3paS5"
+    },
+    {
+      "path": "Papers/3. The role of point defects in the physical properties of nonstoichiometric ceria",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Papers/4. Molecular Dynamics Simulation of Fission Fragment Damage in Nuclear Fuel and Surrogate Material",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Papers/4. Molecular Dynamics Simulation of Fission Fragment Damage in Nuclear Fuel and Surrogate Material/images",
+      "color": "1cZeUkC5_mtml2Wk3paS5"
+    },
+    {
+      "path": "Papers/5. A Spectroscopic Characterization of the Reduction of Ceria from Electronic Transitions/images",
+      "color": "1cZeUkC5_mtml2Wk3paS5"
+    },
+    {
+      "path": "Papers/5. A Spectroscopic Characterization of the Reduction of Ceria from Electronic Transitions",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Papers/7. Nanoscale Phase Transitions Under Extreme Conditions within an Ion Track",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Papers/7. Nanoscale Phase Transitions Under Extreme Conditions within an Ion Track/images",
+      "color": "1cZeUkC5_mtml2Wk3paS5"
+    },
+    {
+      "path": "Papers/10. Chemical Strain and Point Defect Configurations in Reduced Ceria/images",
+      "color": "1cZeUkC5_mtml2Wk3paS5"
+    },
+    {
+      "path": "Papers/10. Chemical Strain and Point Defect Configurations in Reduced Ceria",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Papers/8. Ab Initio Analysis of the Defect Structure of Ceria",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Papers/8. Ab Initio Analysis of the Defect Structure of Ceria/images",
+      "color": "1cZeUkC5_mtml2Wk3paS5"
+    },
+    {
+      "path": "Papers/9. Energetics of Defect Production in Fluorite-Structured CeO2 Induced by Highly Ionizing Radiation",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Papers/9. Energetics of Defect Production in Fluorite-Structured CeO2 Induced by Highly Ionizing Radiation/images",
+      "color": "1cZeUkC5_mtml2Wk3paS5"
+    },
+    {
+      "path": "Notes",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "Notes/2024",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Notes/2025",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Notes/2024/NOV",
+      "color": "C32aNle2cGkgLcMKhv2K6"
+    },
+    {
+      "path": "Notes/2025/FEB",
+      "color": "C32aNle2cGkgLcMKhv2K6"
+    },
+    {
+      "path": "Projects/VASP Bootcamp",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Admin",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "Projects",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "Projects/Ceria",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Projects/VASP Bootcamp/1. file structure",
+      "color": "C32aNle2cGkgLcMKhv2K6"
+    },
+    {
+      "path": "Projects/VASP Bootcamp/2. Grid Engine (GE)",
+      "color": "C32aNle2cGkgLcMKhv2K6"
+    },
+    {
+      "path": "Projects/VASP Bootcamp/3. convergence calculations",
+      "color": "C32aNle2cGkgLcMKhv2K6"
+    },
+    {
+      "path": "Projects/VASP Bootcamp/3. convergence calculations/0. Introduction",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Projects/VASP Bootcamp/3. convergence calculations/1. Energy Convergence",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Projects/VASP Bootcamp/3. convergence calculations/2. Kpoint Convergence",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Projects/VASP Bootcamp/3. convergence calculations/3. Lattice Constant Prediction",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Projects/Ceria/1. Working with the Materials Project API",
+      "color": "C32aNle2cGkgLcMKhv2K6"
+    },
+    {
+      "path": "Projects/Ceria/1. Working with the Materials Project API/supplementary",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Admin/pss",
+      "color": "eyP5VH_9HGECITyDmTyNK"
+    },
+    {
+      "path": "Notes/2025/FEB/2025-02-14.md",
+      "color": "2OCGVbfsmgpGtXTThXltR"
+    },
+    {
+      "path": "Notes/2025/FEB/2025-02-15.md",
+      "color": "QoLYCkF46OG-ZPb-_nVYg"
+    },
+    {
+      "path": "Scratch",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "Scripts",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "VASP Documentation",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    },
+    {
+      "path": "VASP Documentation/2 Getting VASP Input Files",
+      "color": "67coXjM6VPpsKekQ1q5Dj"
+    }
+  ]
+}

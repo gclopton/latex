@@ -1,0 +1,78 @@
+/********  View Hovered  *********/
+
+.pasteFromHistoryViewHoveredRecord {
+	display: flex;
+}
+
+.pasteFromHistoryViewHoveredRecordLabel {
+	opacity: 70%;
+	position: relative;
+	left: -0.45em;
+}
+
+.pasteFromHistoryViewHoveredRecordText {
+	display: inline-block;
+	max-width: calc(max(min(50vw, 80ch), 30vw));
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/********  View Docked  *********/
+
+.pasteFromHistoryViewDocked {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	display: flex;
+	flex-direction: column;
+	background-color: var(--background-secondary);
+	border-top: 1px solid var(--background-modifier-border);
+	padding: 0 0.5rem;
+}
+
+.pasteFromHistoryViewDockedHeading {
+	display: flex;
+	justify-content: center;
+	font-size: xx-small;
+	letter-spacing: 0.1em;
+}
+
+.pasteFromHistoryViewDockedRecords {
+	display: flex;
+	flex-direction: column;
+	padding-bottom: 0.5rem;
+}
+
+.pasteFromHistoryViewDockedRecord {
+	display: flex;
+	gap: 1em;
+	padding: 0.1em 0.5em;
+	border-radius: 0.25rem;
+	align-items: baseline;
+	font-size: small;
+}
+
+.pasteFromHistoryViewDockedRecord.selected {
+	background-color: var(--background-modifier-hover);
+}
+
+.pasteFromHistoryViewDockedRecordLabel {
+	opacity: 70%;
+}
+
+.pasteFromHistoryViewDockedRecordText {
+	display: inline-block;
+	text-wrap: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.pasteFromHistoryViewDockedPreview {
+	font-size: x-small;
+}
+
+.pasteFromHistoryViewDockedPreview > textarea {
+	width: 100%;
+	resize: none;
+}

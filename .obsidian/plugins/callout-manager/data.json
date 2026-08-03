@@ -1,0 +1,436 @@
+{
+  "callouts": {
+    "custom": [
+      "expansion",
+      "definition",
+      "question",
+      "solution",
+      "problem",
+      "equation",
+      "example",
+      "exercise",
+      "algorithm",
+      "important",
+      "key-point",
+      "end_output",
+      "output",
+      "input",
+      "S",
+      "fig_caption",
+      "comparison",
+      "figure",
+      "fig_table",
+      "list",
+      "blank",
+      "mc",
+      "tf",
+      "more-info",
+      "fill-blank",
+      "fb",
+      "ms",
+      "pr",
+      "code",
+      "review",
+      "property",
+      "theorem",
+      "identity",
+      "proposition",
+      "corollary",
+      "aside",
+      "lemma",
+      "verbalization",
+      "sketch"
+    ],
+    "settings": {
+      "expansion": [
+        {
+          "changes": {
+            "icon": "lucide-pencil"
+          }
+        },
+        {
+          "condition": {
+            "colorScheme": "light"
+          },
+          "changes": {}
+        },
+        {
+          "condition": {
+            "colorScheme": "dark"
+          },
+          "changes": {
+            "color": "115, 255, 0"
+          }
+        }
+      ],
+      "definition": [
+        {
+          "changes": {
+            "icon": "lucide-book",
+            "color": "238, 255, 0"
+          }
+        }
+      ],
+      "question": [
+        {
+          "changes": {
+            "color": "255, 0, 247"
+          }
+        }
+      ],
+      "solution": [
+        {
+          "changes": {
+            "icon": "lucide-lightbulb",
+            "color": "66, 255, 98"
+          }
+        }
+      ],
+      "problem": [
+        {
+          "changes": {
+            "icon": "lucide-zap",
+            "color": "255, 0, 0"
+          }
+        }
+      ],
+      "example": [
+        {
+          "changes": {
+            "color": "128, 255, 223"
+          }
+        }
+      ],
+      "exercise": [
+        {
+          "changes": {
+            "color": "0, 255, 204"
+          }
+        }
+      ],
+      "algorithm": [
+        {
+          "changes": {
+            "icon": "lucide-binary"
+          }
+        },
+        {
+          "condition": {
+            "colorScheme": "light"
+          },
+          "changes": {}
+        },
+        {
+          "condition": {
+            "colorScheme": "dark"
+          },
+          "changes": {
+            "color": "91, 219, 251"
+          }
+        }
+      ],
+      "important": [
+        {
+          "changes": {
+            "icon": "lucide-alert-triangle",
+            "color": "255, 210, 87"
+          }
+        }
+      ],
+      "key-point": [
+        {
+          "changes": {
+            "icon": "lucide-info",
+            "color": "255, 163, 247"
+          }
+        }
+      ],
+      "Output": [
+        {
+          "changes": {
+            "icon": "lucide-bot",
+            "color": "255, 121, 198"
+          }
+        }
+      ],
+      "end_output": [
+        {
+          "changes": {
+            "color": "255, 121, 198"
+          }
+        }
+      ],
+      "output": [
+        {
+          "changes": {
+            "icon": "lucide-bot",
+            "color": "255, 121, 198"
+          }
+        }
+      ],
+      "input": [
+        {
+          "changes": {
+            "icon": "lucide-bot",
+            "color": "255, 121, 198"
+          }
+        }
+      ],
+      "S": [
+        {
+          "changes": {
+            "icon": "lucide-bot",
+            "color": "12, 221, 8"
+          }
+        }
+      ],
+      "caption": [
+        {
+          "changes": {
+            "icon": "lucide-graduation-cap"
+          }
+        },
+        {
+          "condition": {
+            "colorScheme": "light"
+          },
+          "changes": {}
+        },
+        {
+          "condition": {
+            "colorScheme": "dark"
+          },
+          "changes": {
+            "color": "153, 0, 255"
+          }
+        }
+      ],
+      "fig_caption": [
+        {
+          "changes": {
+            "icon": "lucide-graduation-cap",
+            "color": "128, 0, 255"
+          }
+        }
+      ],
+      "comparison": [
+        {
+          "changes": {
+            "icon": "lucide-scale",
+            "color": "0, 251, 255"
+          }
+        }
+      ],
+      "figure": [
+        {
+          "changes": {
+            "icon": "image",
+            "color": "255, 184, 108"
+          }
+        }
+      ],
+      "table": [
+        {
+          "changes": {
+            "icon": "lucide-table",
+            "color": "255, 184, 108"
+          }
+        }
+      ],
+      "fig_table": [
+        {
+          "changes": {
+            "icon": "lucide-table",
+            "color": "255, 184, 108"
+          }
+        }
+      ],
+      "list": [
+        {
+          "changes": {
+            "icon": "lucide-clipboard-list",
+            "color": "0, 213, 255"
+          }
+        }
+      ],
+      "blank": [
+        {
+          "changes": {
+            "icon": "line-horizontal",
+            "color": "249, 123, 215"
+          }
+        }
+      ],
+      "mc": [
+        {
+          "changes": {
+            "icon": "lucide-circle",
+            "color": "238, 0, 255"
+          }
+        }
+      ],
+      "tf": [
+        {
+          "changes": {
+            "icon": "lucide-scale",
+            "color": "255, 0, 221"
+          }
+        }
+      ],
+      "more-info": [
+        {
+          "changes": {
+            "icon": "lucide-shield-question"
+          }
+        },
+        {
+          "condition": {
+            "colorScheme": "light"
+          },
+          "changes": {}
+        },
+        {
+          "condition": {
+            "colorScheme": "dark"
+          },
+          "changes": {
+            "color": "174, 255, 0"
+          }
+        }
+      ],
+      "fill-blank": [
+        {
+          "changes": {
+            "icon": "line-horizontal",
+            "color": "255, 112, 250"
+          }
+        }
+      ],
+      "fb": [
+        {
+          "changes": {
+            "icon": "line-horizontal",
+            "color": "246, 122, 255"
+          }
+        }
+      ],
+      "ms": [
+        {
+          "changes": {
+            "icon": "lucide-square"
+          }
+        },
+        {
+          "condition": {
+            "colorScheme": "light"
+          },
+          "changes": {
+            "color": "255, 0, 234"
+          }
+        },
+        {
+          "condition": {
+            "colorScheme": "dark"
+          },
+          "changes": {
+            "color": "255, 0, 234"
+          }
+        }
+      ],
+      "pr": [
+        {
+          "changes": {
+            "icon": "lucide-cog",
+            "color": "0, 255, 238"
+          }
+        }
+      ],
+      "code": [
+        {
+          "changes": {
+            "icon": "codeBlock",
+            "color": "0, 255, 4"
+          }
+        }
+      ],
+      "review": [
+        {
+          "changes": {
+            "icon": "lucide-book",
+            "color": "255, 0, 174"
+          }
+        }
+      ],
+      "property": [
+        {
+          "changes": {
+            "icon": "lucide-divide",
+            "color": "251, 255, 0"
+          }
+        }
+      ],
+      "theorem": [
+        {
+          "changes": {
+            "color": "0, 255, 17"
+          }
+        }
+      ],
+      "identity": [
+        {
+          "changes": {
+            "color": "55, 255, 0"
+          }
+        }
+      ],
+      "proposition": [
+        {
+          "changes": {
+            "color": "30, 255, 0"
+          }
+        }
+      ],
+      "corollary": [
+        {
+          "changes": {
+            "color": "55, 255, 0"
+          }
+        }
+      ],
+      "aside": [
+        {
+          "changes": {
+            "color": "194, 194, 194"
+          }
+        }
+      ],
+      "lemma": [
+        {
+          "changes": {
+            "color": "43, 255, 0"
+          }
+        }
+      ],
+      "verbalization": [
+        {
+          "changes": {
+            "color": "128, 128, 128"
+          }
+        }
+      ],
+      "sketch": [
+        {
+          "changes": {
+            "color": "165, 8, 221"
+          }
+        }
+      ]
+    }
+  },
+  "calloutDetection": {
+    "obsidianFallbackForced": false,
+    "obsidian": true,
+    "theme": true,
+    "snippet": true
+  }
+}

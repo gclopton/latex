@@ -1,0 +1,366 @@
+.markdown-rendered hr.colored-horizontal-rule,
+.markdown-preview-view hr.colored-horizontal-rule {
+  border: 0;
+  border-top: 2px solid var(--background-modifier-border);
+  height: 0;
+  box-shadow: none;
+}
+
+.markdown-rendered hr.colored-horizontal-rule.colored-horizontal-rule-4,
+.markdown-preview-view hr.colored-horizontal-rule.colored-horizontal-rule-4 {
+  border-top-color: var(--colored-horizontal-rule-4, #ffd60a);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-4, #ffd60a);
+}
+
+.markdown-rendered hr.colored-horizontal-rule.colored-horizontal-rule-5,
+.markdown-preview-view hr.colored-horizontal-rule.colored-horizontal-rule-5 {
+  border-top-color: var(--colored-horizontal-rule-5, #ff9f0a);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-5, #ff9f0a);
+}
+
+.markdown-rendered hr.colored-horizontal-rule.colored-horizontal-rule-6,
+.markdown-preview-view hr.colored-horizontal-rule.colored-horizontal-rule-6 {
+  border-top-color: var(--colored-horizontal-rule-6, #ff453a);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-6, #ff453a);
+}
+
+.markdown-rendered hr.colored-horizontal-rule.colored-horizontal-rule-7,
+.markdown-preview-view hr.colored-horizontal-rule.colored-horizontal-rule-7 {
+  border-top-color: var(--colored-horizontal-rule-7, #32d74b);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-7, #32d74b);
+}
+
+.markdown-rendered hr.colored-horizontal-rule.colored-horizontal-rule-8,
+.markdown-preview-view hr.colored-horizontal-rule.colored-horizontal-rule-8 {
+  border-top-color: var(--colored-horizontal-rule-8, #64d2ff);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-8, #64d2ff);
+}
+
+.markdown-rendered .colored-horizontal-rule-block,
+.markdown-preview-view .colored-horizontal-rule-block {
+  position: relative;
+  height: 1.4em;
+  width: 100%;
+}
+
+.markdown-rendered .colored-horizontal-rule-block::after,
+.markdown-preview-view .colored-horizontal-rule-block::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 2px solid var(--background-modifier-border);
+  transform: translateY(-50%);
+}
+
+.markdown-rendered .colored-horizontal-rule-block.colored-horizontal-rule-3::after,
+.markdown-preview-view .colored-horizontal-rule-block.colored-horizontal-rule-3::after {
+  border-top-color: var(--colored-horizontal-rule-3, #f4f7fb);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-3, #f4f7fb);
+}
+
+.markdown-rendered .colored-horizontal-rule-block.colored-horizontal-rule-4::after,
+.markdown-preview-view .colored-horizontal-rule-block.colored-horizontal-rule-4::after {
+  border-top-color: var(--colored-horizontal-rule-4, #ffd60a);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-4, #ffd60a);
+}
+
+.markdown-rendered .colored-horizontal-rule-block.colored-horizontal-rule-5::after,
+.markdown-preview-view .colored-horizontal-rule-block.colored-horizontal-rule-5::after {
+  border-top-color: var(--colored-horizontal-rule-5, #ff9f0a);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-5, #ff9f0a);
+}
+
+.markdown-rendered .colored-horizontal-rule-block.colored-horizontal-rule-6::after,
+.markdown-preview-view .colored-horizontal-rule-block.colored-horizontal-rule-6::after {
+  border-top-color: var(--colored-horizontal-rule-6, #ff453a);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-6, #ff453a);
+}
+
+.markdown-rendered .colored-horizontal-rule-block.colored-horizontal-rule-7::after,
+.markdown-preview-view .colored-horizontal-rule-block.colored-horizontal-rule-7::after {
+  border-top-color: var(--colored-horizontal-rule-7, #32d74b);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-7, #32d74b);
+}
+
+.markdown-rendered .colored-horizontal-rule-block.colored-horizontal-rule-8::after,
+.markdown-preview-view .colored-horizontal-rule-block.colored-horizontal-rule-8::after {
+  border-top-color: var(--colored-horizontal-rule-8, #64d2ff);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-8, #64d2ff);
+}
+
+.markdown-source-view.mod-cm6 .colored-horizontal-rule-widget {
+  position: relative;
+  height: 1.4em;
+  width: 100%;
+}
+
+.markdown-source-view.mod-cm6 .colored-horizontal-rule-widget::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 2px solid var(--background-modifier-border);
+  transform: translateY(-50%);
+  box-shadow: none;
+}
+
+.markdown-source-view.mod-cm6 .colored-horizontal-rule-widget-3::after {
+  border-top-color: var(--colored-horizontal-rule-3, #f4f7fb);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-3, #f4f7fb);
+}
+
+.markdown-source-view.mod-cm6 .colored-horizontal-rule-widget-4::after {
+  border-top-color: var(--colored-horizontal-rule-4, #ffd60a);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-4, #ffd60a);
+}
+
+.markdown-source-view.mod-cm6 .colored-horizontal-rule-widget-5::after {
+  border-top-color: var(--colored-horizontal-rule-5, #ff9f0a);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-5, #ff9f0a);
+}
+
+.markdown-source-view.mod-cm6 .colored-horizontal-rule-widget-6::after {
+  border-top-color: var(--colored-horizontal-rule-6, #ff453a);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-6, #ff453a);
+}
+
+.markdown-source-view.mod-cm6 .colored-horizontal-rule-widget-7::after {
+  border-top-color: var(--colored-horizontal-rule-7, #32d74b);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-7, #32d74b);
+}
+
+.markdown-source-view.mod-cm6 .colored-horizontal-rule-widget-8::after {
+  border-top-color: var(--colored-horizontal-rule-8, #64d2ff);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-8, #64d2ff);
+}
+
+.markdown-source-view.mod-cm6 .cm-line.colored-horizontal-rule-source {
+  position: relative;
+  min-height: 1.4em;
+  isolation: isolate;
+}
+
+.markdown-source-view.mod-cm6 .cm-line.hr.colored-horizontal-rule-source:not(.cm-active) {
+  border-top-width: 2px;
+  border-top-style: solid;
+  border-top-color: var(--background-modifier-border);
+  --hr: var(--background-modifier-border);
+  --hr-icon-color: var(--background-modifier-border);
+}
+
+.markdown-source-view.mod-cm6 .cm-line.colored-horizontal-rule-source::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 2px solid var(--background-modifier-border);
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.markdown-source-view.mod-cm6 .cm-line.colored-horizontal-rule-source .colored-horizontal-rule-source-text {
+  opacity: 0;
+}
+
+.markdown-source-view.mod-cm6 .cm-line.colored-horizontal-rule-source.cm-active .colored-horizontal-rule-source-text {
+  opacity: 0.2;
+}
+
+.markdown-source-view.mod-cm6 .cm-line.colored-horizontal-rule-source-plus.cm-active {
+  caret-color: var(--text-normal);
+}
+
+.markdown-source-view.mod-cm6 .cm-line.colored-horizontal-rule-source-plus.cm-active::after {
+  opacity: 0;
+}
+
+.markdown-source-view.mod-cm6 .cm-line.colored-horizontal-rule-source-plus.cm-active .colored-horizontal-rule-source-text,
+.markdown-source-view.mod-cm6 .cm-line.colored-horizontal-rule-source-plus.cm-active .colored-horizontal-rule-source-token {
+  opacity: 0.75;
+}
+
+.markdown-source-view.mod-cm6 .cm-line.colored-horizontal-rule-source-plus.cm-active .colored-horizontal-rule-source-token::after {
+  opacity: 0;
+}
+
+.markdown-source-view.mod-cm6 .cm-line .colored-horizontal-rule-source-token {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.markdown-source-view.mod-cm6 .cm-line.colored-horizontal-rule-source:not(.cm-active) .cm-hr {
+  color: transparent !important;
+  opacity: 0 !important;
+}
+
+.markdown-source-view.mod-cm6 .cm-line .colored-horizontal-rule-source-token::after,
+.markdown-source-view.mod-cm6 .cm-line.colored-horizontal-rule-source:not(.cm-active) .cm-hr::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 2px;
+  background: var(--background-modifier-border) !important;
+  transform: translateY(-50%);
+  box-shadow: none;
+}
+
+.markdown-source-view.mod-cm6 .cm-line.colored-horizontal-rule-source-3::after {
+  border-top-color: var(--colored-horizontal-rule-3, #f4f7fb);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-3, #f4f7fb);
+}
+
+.markdown-source-view.mod-cm6 .cm-line .colored-horizontal-rule-source-token-3::after,
+.markdown-source-view.mod-cm6 .cm-line.colored-horizontal-rule-source-3:not(.cm-active) .cm-hr::after {
+  background: var(--colored-horizontal-rule-3, #f4f7fb) !important;
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-3, #f4f7fb);
+}
+
+.markdown-source-view.mod-cm6 .cm-line.hr.colored-horizontal-rule-source-4:not(.cm-active) {
+  border-top-color: var(--colored-horizontal-rule-4, #ffd60a);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-4, #ffd60a);
+  --hr: var(--colored-horizontal-rule-4, #ffd60a);
+  --hr-icon-color: var(--colored-horizontal-rule-4, #ffd60a);
+}
+
+.markdown-source-view.mod-cm6 .cm-line.colored-horizontal-rule-source-4::after {
+  border-top-color: var(--colored-horizontal-rule-4, #ffd60a);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-4, #ffd60a);
+}
+
+.markdown-source-view.mod-cm6 .cm-line .colored-horizontal-rule-source-token-4::after,
+.markdown-source-view.mod-cm6 .cm-line.colored-horizontal-rule-source-4:not(.cm-active) .cm-hr::after {
+  background: var(--colored-horizontal-rule-4, #ffd60a) !important;
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-4, #ffd60a);
+}
+
+.markdown-source-view.mod-cm6 .cm-line.hr.colored-horizontal-rule-source-5:not(.cm-active) {
+  border-top-color: var(--colored-horizontal-rule-5, #ff9f0a);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-5, #ff9f0a);
+  --hr: var(--colored-horizontal-rule-5, #ff9f0a);
+  --hr-icon-color: var(--colored-horizontal-rule-5, #ff9f0a);
+}
+
+.markdown-source-view.mod-cm6 .cm-line.colored-horizontal-rule-source-5::after {
+  border-top-color: var(--colored-horizontal-rule-5, #ff9f0a);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-5, #ff9f0a);
+}
+
+.markdown-source-view.mod-cm6 .cm-line .colored-horizontal-rule-source-token-5::after,
+.markdown-source-view.mod-cm6 .cm-line.colored-horizontal-rule-source-5:not(.cm-active) .cm-hr::after {
+  background: var(--colored-horizontal-rule-5, #ff9f0a) !important;
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-5, #ff9f0a);
+}
+
+.markdown-source-view.mod-cm6 .cm-line.hr.colored-horizontal-rule-source-6:not(.cm-active) {
+  border-top-color: var(--colored-horizontal-rule-6, #ff453a);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-6, #ff453a);
+  --hr: var(--colored-horizontal-rule-6, #ff453a);
+  --hr-icon-color: var(--colored-horizontal-rule-6, #ff453a);
+}
+
+.markdown-source-view.mod-cm6 .cm-line.colored-horizontal-rule-source-6::after {
+  border-top-color: var(--colored-horizontal-rule-6, #ff453a);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-6, #ff453a);
+}
+
+.markdown-source-view.mod-cm6 .cm-line .colored-horizontal-rule-source-token-6::after,
+.markdown-source-view.mod-cm6 .cm-line.colored-horizontal-rule-source-6:not(.cm-active) .cm-hr::after {
+  background: var(--colored-horizontal-rule-6, #ff453a) !important;
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-6, #ff453a);
+}
+
+.markdown-source-view.mod-cm6 .cm-line.hr.colored-horizontal-rule-source-7:not(.cm-active) {
+  border-top-color: var(--colored-horizontal-rule-7, #32d74b);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-7, #32d74b);
+  --hr: var(--colored-horizontal-rule-7, #32d74b);
+  --hr-icon-color: var(--colored-horizontal-rule-7, #32d74b);
+}
+
+.markdown-source-view.mod-cm6 .cm-line.colored-horizontal-rule-source-7::after {
+  border-top-color: var(--colored-horizontal-rule-7, #32d74b);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-7, #32d74b);
+}
+
+.markdown-source-view.mod-cm6 .cm-line .colored-horizontal-rule-source-token-7::after,
+.markdown-source-view.mod-cm6 .cm-line.colored-horizontal-rule-source-7:not(.cm-active) .cm-hr::after {
+  background: var(--colored-horizontal-rule-7, #32d74b) !important;
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-7, #32d74b);
+}
+
+.markdown-source-view.mod-cm6 .cm-line.hr.colored-horizontal-rule-source-8:not(.cm-active) {
+  border-top-color: var(--colored-horizontal-rule-8, #64d2ff);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-8, #64d2ff);
+  --hr: var(--colored-horizontal-rule-8, #64d2ff);
+  --hr-icon-color: var(--colored-horizontal-rule-8, #64d2ff);
+}
+
+.markdown-source-view.mod-cm6 .cm-line.colored-horizontal-rule-source-8::after {
+  border-top-color: var(--colored-horizontal-rule-8, #64d2ff);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-8, #64d2ff);
+}
+
+.markdown-source-view.mod-cm6 .cm-line .colored-horizontal-rule-source-token-8::after,
+.markdown-source-view.mod-cm6 .cm-line.colored-horizontal-rule-source-8:not(.cm-active) .cm-hr::after {
+  background: var(--colored-horizontal-rule-8, #64d2ff) !important;
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-8, #64d2ff);
+}
+
+.markdown-rendered hr.colored-horizontal-rule-3,
+.markdown-preview-view hr.colored-horizontal-rule-3,
+.markdown-rendered hr.colored-horizontal-rule-4,
+.markdown-preview-view hr.colored-horizontal-rule-4,
+.markdown-rendered hr.colored-horizontal-rule-5,
+.markdown-preview-view hr.colored-horizontal-rule-5,
+.markdown-rendered hr.colored-horizontal-rule-6,
+.markdown-preview-view hr.colored-horizontal-rule-6,
+.markdown-rendered hr.colored-horizontal-rule-7,
+.markdown-preview-view hr.colored-horizontal-rule-7,
+.markdown-rendered hr.colored-horizontal-rule-8,
+.markdown-preview-view hr.colored-horizontal-rule-8 {
+  border-top-width: 2px;
+  border-top-style: solid;
+}
+
+.markdown-rendered hr.colored-horizontal-rule-3,
+.markdown-preview-view hr.colored-horizontal-rule-3 {
+  border-top-color: var(--colored-horizontal-rule-3, #f4f7fb);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-3, #f4f7fb);
+}
+
+.markdown-rendered hr.colored-horizontal-rule-4,
+.markdown-preview-view hr.colored-horizontal-rule-4 {
+  border-top-color: var(--colored-horizontal-rule-4, #ffd60a);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-4, #ffd60a);
+}
+
+.markdown-rendered hr.colored-horizontal-rule-5,
+.markdown-preview-view hr.colored-horizontal-rule-5 {
+  border-top-color: var(--colored-horizontal-rule-5, #ff9f0a);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-5, #ff9f0a);
+}
+
+.markdown-rendered hr.colored-horizontal-rule-6,
+.markdown-preview-view hr.colored-horizontal-rule-6 {
+  border-top-color: var(--colored-horizontal-rule-6, #ff453a);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-6, #ff453a);
+}
+
+.markdown-rendered hr.colored-horizontal-rule-7,
+.markdown-preview-view hr.colored-horizontal-rule-7 {
+  border-top-color: var(--colored-horizontal-rule-7, #32d74b);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-7, #32d74b);
+}
+
+.markdown-rendered hr.colored-horizontal-rule-8,
+.markdown-preview-view hr.colored-horizontal-rule-8 {
+  border-top-color: var(--colored-horizontal-rule-8, #64d2ff);
+  box-shadow: 0 0 0.45rem var(--colored-horizontal-rule-8, #64d2ff);
+}

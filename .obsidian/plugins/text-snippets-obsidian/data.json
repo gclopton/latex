@@ -1,0 +1,24 @@
+{
+  "snippets_file": "snippets : It is an obsidian plugin, that replaces your selected text.\nmc : <mark style=\"background: #ffffff;\">type: , q_mode: , c_mode: , choice_number: </mark> \nmcd : <mark style=\"background: #ffffff;\">type: mc, q_mode: defined, c_mode: defined, choice_number: 4</mark> \nfbd : <mark style=\"background: #ffffff;\">type: fb, ordered: False, ai_assist: False</mark>\n\nred : color:#ff0000\npink : #ff00d0\nblue : #00b0f0\n\nfb : ##### [fb]  [--end]\n\nmc : ##### [mc]  [--end] \n\nalt : {[alt]  [--alt]}\n\nbl : [bl]  [--bl] ",
+  "snippets": [
+    "snippets : It is an obsidian plugin, that replaces your selected text.",
+    "mc : <mark style=\"background: #ffffff;\">type: , q_mode: , c_mode: , choice_number: </mark> ",
+    "mcd : <mark style=\"background: #ffffff;\">type: mc, q_mode: defined, c_mode: defined, choice_number: 4</mark> ",
+    "fbd : <mark style=\"background: #ffffff;\">type: fb, ordered: False, ai_assist: False</mark>",
+    "red : color:#ff0000",
+    "pink : #ff00d0",
+    "blue : #00b0f0",
+    "fb : ##### [fb]  [--end]",
+    "mc : ##### [mc]  [--end] ",
+    "alt : {[alt]  [--alt]}",
+    "bl : [bl]  [--bl] "
+  ],
+  "endSymbol": "$end$",
+  "newlineSymbol": "$nl$",
+  "stopSymbol": "$tb$",
+  "pasteSymbol": "$pst$",
+  "useTab": true,
+  "useSpace": true,
+  "wordDelimiters": "$()[]{}<>,.!?;:'\"\\/",
+  "isWYSIWYG": true
+}

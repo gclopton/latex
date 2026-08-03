@@ -1,0 +1,10 @@
+.DS_Store
+
+# Keep local-only Obsidian plugin state and credentials out of Git.
+.obsidian/plugins/smart-connections/
+.obsidian/plugins/smart-connections-*/
+.obsidian/plugins/*smart*connections*/
+.smart-connections/
+
+# Local REST API generates vault-local keys/certificates.
+.obsidian/plugins/obsidian-local-rest-api/data.json

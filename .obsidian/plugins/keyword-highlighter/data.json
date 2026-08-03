@@ -1,0 +1,180 @@
+{
+  "keywords": [
+    {
+      "keyword": "[qblock]",
+      "color": "#ffffff",
+      "backgroundColor": "#f56b6b",
+      "fontModifiers": []
+    },
+    {
+      "keyword": "[--qblock]",
+      "color": "#ffffff",
+      "backgroundColor": "#ff7070",
+      "fontModifiers": []
+    },
+    {
+      "keyword": "[qgroup]",
+      "color": "#000",
+      "backgroundColor": "#fbff00",
+      "fontModifiers": []
+    },
+    {
+      "keyword": "[--qgroup]",
+      "color": "#e8f532",
+      "backgroundColor": "#000000",
+      "fontModifiers": []
+    },
+    {
+      "keyword": "[--end]",
+      "color": "#ffffff",
+      "backgroundColor": "#f0b000",
+      "fontModifiers": []
+    },
+    {
+      "keyword": "[qtable]",
+      "color": "#1e1e1e",
+      "backgroundColor": "#44ff00",
+      "fontModifiers": []
+    },
+    {
+      "keyword": "[--qtable]",
+      "color": "#1e1e1e",
+      "backgroundColor": "#6aff00",
+      "fontModifiers": []
+    },
+    {
+      "keyword": "[mc]",
+      "color": "#1e1e1e",
+      "backgroundColor": "#00d5ff",
+      "fontModifiers": []
+    },
+    {
+      "keyword": "[fb]",
+      "color": "#0008ff",
+      "backgroundColor": "#fafafa",
+      "fontModifiers": []
+    },
+    {
+      "keyword": "[sa]",
+      "color": "#ffffff",
+      "backgroundColor": "#545454",
+      "fontModifiers": []
+    },
+    {
+      "keyword": "[bl]",
+      "color": "#ffffff",
+      "backgroundColor": "#0400ff",
+      "fontModifiers": []
+    },
+    {
+      "keyword": "[--bl]",
+      "color": "#ffffff",
+      "backgroundColor": "#7a00b3",
+      "fontModifiers": []
+    },
+    {
+      "keyword": "[alt]",
+      "color": "#ffffff",
+      "backgroundColor": "#058f07",
+      "fontModifiers": []
+    },
+    {
+      "keyword": "[--alt]",
+      "color": "#1e1e1e",
+      "backgroundColor": "#ffffff",
+      "fontModifiers": []
+    },
+    {
+      "keyword": "[feedback]",
+      "color": "#ffffff",
+      "backgroundColor": "#0000ff",
+      "fontModifiers": [
+        "bold",
+        "underline"
+      ]
+    },
+    {
+      "keyword": "[--feedback]",
+      "color": "#ffffff",
+      "backgroundColor": "#7a00b3",
+      "fontModifiers": [
+        "bold",
+        "underline"
+      ]
+    },
+    {
+      "keyword": "[answ]",
+      "color": "#ffffff",
+      "backgroundColor": "#0000ff",
+      "fontModifiers": []
+    },
+    {
+      "keyword": "[--answ]",
+      "color": "#ffffff",
+      "backgroundColor": "#7a00b3",
+      "fontModifiers": []
+    },
+    {
+      "keyword": "[gr]",
+      "color": "#1e1e1e",
+      "backgroundColor": "#e9caa5",
+      "fontModifiers": [
+        "lineThrough"
+      ]
+    },
+    {
+      "keyword": "[ta]",
+      "color": "#1e1e1e",
+      "backgroundColor": "#ededb6",
+      "fontModifiers": []
+    },
+    {
+      "keyword": "[blca]",
+      "color": "#1e1e1e",
+      "backgroundColor": "#0400ff",
+      "fontModifiers": []
+    },
+    {
+      "keyword": "[--blca]",
+      "color": "#1e1e1e",
+      "backgroundColor": "#7a00b3",
+      "fontModifiers": []
+    },
+    {
+      "keyword": "[altca]",
+      "color": "#1e1e1e",
+      "backgroundColor": "#058f07",
+      "fontModifiers": []
+    },
+    {
+      "keyword": "[--altca]",
+      "color": "#1e1e1e",
+      "backgroundColor": "#ffffff",
+      "fontModifiers": []
+    },
+    {
+      "keyword": "e42b2274258c4280b410d09d25e7a82c",
+      "color": "#fff700",
+      "backgroundColor": "#e9a0bc",
+      "fontModifiers": []
+    },
+    {
+      "keyword": "question_order",
+      "color": "#1e1e1e",
+      "backgroundColor": "#c3a8eb",
+      "fontModifiers": []
+    },
+    {
+      "keyword": "c6a2013c-5517-4799-89d8-0438ee3275d7",
+      "color": "#1e1e1e",
+      "backgroundColor": "#b1eea5",
+      "fontModifiers": []
+    },
+    {
+      "keyword": ".png",
+      "color": "#1e1e1e",
+      "backgroundColor": "#c99eea",
+      "fontModifiers": []
+    }
+  ]
+}

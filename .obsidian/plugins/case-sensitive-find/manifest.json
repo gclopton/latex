@@ -1,0 +1,9 @@
+{
+  "id": "case-sensitive-find",
+  "name": "Case Sensitive Find",
+  "version": "0.1.0",
+  "minAppVersion": "1.0.0",
+  "description": "Replaces in-note Ctrl+F with a Markdown find bar that supports match case.",
+  "author": "OpenAI Codex",
+  "isDesktopOnly": false
+}

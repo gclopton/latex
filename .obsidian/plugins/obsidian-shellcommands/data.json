@@ -1,0 +1,331 @@
+{
+  "settings_version": "0.18.0",
+  "debug": false,
+  "obsidian_command_palette_prefix": "Execute: ",
+  "preview_variables_in_command_palette": true,
+  "show_autocomplete_menu": true,
+  "working_directory": "",
+  "default_shells": {},
+  "environment_variable_path_augmentations": {},
+  "error_message_duration": 20,
+  "notification_message_duration": 10,
+  "execution_notification_mode": "disabled",
+  "output_channel_clipboard_also_outputs_to_notification": true,
+  "enable_events": true,
+  "approve_modals_by_pressing_enter_key": true,
+  "max_visible_lines_in_shell_command_fields": false,
+  "shell_commands": [
+    {
+      "id": "8hjrf9jtfk",
+      "platform_specific_commands": {
+        "default": "source ~/.zshrc\nPycharm /Users/gradyclopton/PycharmProjects/SemiconductorPhysics\nopen -a Obsidian \"/Users/gradyclopton/PycharmProjects/SemiconductorPhysics/SemiconductorPhysics\""
+      },
+      "shells": {},
+      "alias": "start semiconductor physics",
+      "icon": null,
+      "confirm_execution": false,
+      "ignore_error_codes": [],
+      "input_contents": {
+        "stdin": null
+      },
+      "output_channels": {
+        "stdout": "ignore",
+        "stderr": "notification"
+      },
+      "output_wrappers": {
+        "stdout": null,
+        "stderr": null
+      },
+      "output_channel_order": "stdout-first",
+      "output_handling_mode": "buffered",
+      "events": {},
+      "command_palette_availability": "enabled",
+      "preactions": [],
+      "variable_default_values": {}
+    },
+    {
+      "id": "oz9tdvk09l",
+      "platform_specific_commands": {
+        "default": "source ~/.zshrc\nopen -a Obsidian \"/Users/gradyclopton/PycharmProjects/journal/journal\"\nopen -a \"Google Chrome\" https://github.com/gclopton/journal\nPycharm /Users/gradyclopton/PycharmProjects/journal"
+      },
+      "shells": {},
+      "alias": "start journal",
+      "icon": "book",
+      "confirm_execution": false,
+      "ignore_error_codes": [],
+      "input_contents": {
+        "stdin": null
+      },
+      "output_channels": {
+        "stdout": "ignore",
+        "stderr": "notification"
+      },
+      "output_wrappers": {
+        "stdout": null,
+        "stderr": null
+      },
+      "output_channel_order": "stdout-first",
+      "output_handling_mode": "buffered",
+      "events": {},
+      "command_palette_availability": "enabled",
+      "preactions": [],
+      "variable_default_values": {}
+    },
+    {
+      "id": "hau7us322a",
+      "platform_specific_commands": {
+        "default": "source ~/.zshrc\nopen -a Obsidian \"/Users/gradyclopton/PycharmProjects/Mathematics/Mathematics\"\nopen -a \"Google Chrome\" https://github.com/gclopton/Mathematics\nPycharm /Users/gradyclopton/PycharmProjects/Mathematics"
+      },
+      "shells": {},
+      "alias": "start mathematics",
+      "icon": "grid",
+      "confirm_execution": false,
+      "ignore_error_codes": [],
+      "input_contents": {
+        "stdin": null
+      },
+      "output_channels": {
+        "stdout": "ignore",
+        "stderr": "notification"
+      },
+      "output_wrappers": {
+        "stdout": null,
+        "stderr": null
+      },
+      "output_channel_order": "stdout-first",
+      "output_handling_mode": "buffered",
+      "events": {},
+      "command_palette_availability": "enabled",
+      "preactions": [],
+      "variable_default_values": {}
+    },
+    {
+      "id": "e26cniu9ls",
+      "platform_specific_commands": {
+        "default": "source ~/.zshrc\nopen -a \"Google Chrome\" https://github.com/gclopton/DataScience\nPycharm /Users/gradyclopton/PycharmProjects/DataScience"
+      },
+      "shells": {},
+      "alias": "start data science pycharm",
+      "icon": null,
+      "confirm_execution": false,
+      "ignore_error_codes": [],
+      "input_contents": {
+        "stdin": null
+      },
+      "output_channels": {
+        "stdout": "ignore",
+        "stderr": "notification"
+      },
+      "output_wrappers": {
+        "stdout": null,
+        "stderr": null
+      },
+      "output_channel_order": "stdout-first",
+      "output_handling_mode": "buffered",
+      "events": {},
+      "command_palette_availability": "enabled",
+      "preactions": [],
+      "variable_default_values": {}
+    },
+    {
+      "id": "qowisyi879",
+      "platform_specific_commands": {
+        "default": "open -a Obsidian \"/Users/gradyclopton/PycharmProjects/Mathematics/Mathematics\""
+      },
+      "shells": {},
+      "alias": "obsidian m",
+      "icon": null,
+      "confirm_execution": false,
+      "ignore_error_codes": [],
+      "input_contents": {
+        "stdin": null
+      },
+      "output_channels": {
+        "stdout": "ignore",
+        "stderr": "notification"
+      },
+      "output_wrappers": {
+        "stdout": null,
+        "stderr": null
+      },
+      "output_channel_order": "stdout-first",
+      "output_handling_mode": "buffered",
+      "events": {},
+      "command_palette_availability": "enabled",
+      "preactions": [],
+      "variable_default_values": {}
+    },
+    {
+      "id": "6vusjwwqsr",
+      "platform_specific_commands": {
+        "default": "open -a Obsidian \"/Users/gradyclopton/PycharmProjects/journal/journal\""
+      },
+      "shells": {},
+      "alias": "obsidian j",
+      "icon": null,
+      "confirm_execution": false,
+      "ignore_error_codes": [],
+      "input_contents": {
+        "stdin": null
+      },
+      "output_channels": {
+        "stdout": "ignore",
+        "stderr": "notification"
+      },
+      "output_wrappers": {
+        "stdout": null,
+        "stderr": null
+      },
+      "output_channel_order": "stdout-first",
+      "output_handling_mode": "buffered",
+      "events": {},
+      "command_palette_availability": "enabled",
+      "preactions": [],
+      "variable_default_values": {}
+    },
+    {
+      "id": "yxgd99q1t8",
+      "platform_specific_commands": {
+        "default": "open -a Obsidian \"/Users/gradyclopton/PycharmProjects/SemiconductorPhysics/SemiconductorPhysics\""
+      },
+      "shells": {},
+      "alias": "obsidian s",
+      "icon": null,
+      "confirm_execution": false,
+      "ignore_error_codes": [],
+      "input_contents": {
+        "stdin": null
+      },
+      "output_channels": {
+        "stdout": "ignore",
+        "stderr": "notification"
+      },
+      "output_wrappers": {
+        "stdout": null,
+        "stderr": null
+      },
+      "output_channel_order": "stdout-first",
+      "output_handling_mode": "buffered",
+      "events": {},
+      "command_palette_availability": "enabled",
+      "preactions": [],
+      "variable_default_values": {}
+    },
+    {
+      "id": "h9tc86pweh",
+      "platform_specific_commands": {
+        "default": "open -a Obsidian \"/Users/gradyclopton/PycharmProjects/PolymerPhysics/PolymerPhysics\""
+      },
+      "shells": {},
+      "alias": "obsidian p",
+      "icon": null,
+      "confirm_execution": false,
+      "ignore_error_codes": [],
+      "input_contents": {
+        "stdin": null
+      },
+      "output_channels": {
+        "stdout": "ignore",
+        "stderr": "notification"
+      },
+      "output_wrappers": {
+        "stdout": null,
+        "stderr": null
+      },
+      "output_channel_order": "stdout-first",
+      "output_handling_mode": "buffered",
+      "events": {},
+      "command_palette_availability": "enabled",
+      "preactions": [],
+      "variable_default_values": {}
+    },
+    {
+      "id": "hprztsh9iy",
+      "platform_specific_commands": {
+        "default": "open -a Obsidian \"/Users/gradyclopton/PycharmProjects/fall2023\""
+      },
+      "shells": {},
+      "alias": "obsidian c",
+      "icon": null,
+      "confirm_execution": false,
+      "ignore_error_codes": [],
+      "input_contents": {
+        "stdin": null
+      },
+      "output_channels": {
+        "stdout": "ignore",
+        "stderr": "notification"
+      },
+      "output_wrappers": {
+        "stdout": null,
+        "stderr": null
+      },
+      "output_channel_order": "stdout-first",
+      "output_handling_mode": "buffered",
+      "events": {},
+      "command_palette_availability": "enabled",
+      "preactions": [],
+      "variable_default_values": {}
+    },
+    {
+      "id": "5tnh8pm3kb",
+      "platform_specific_commands": {
+        "default": "open -a Obsidian \"/Users/gradyclopton/PycharmProjects/NuclearEngineering/NuclearEngineering\""
+      },
+      "shells": {},
+      "alias": "obsidian n",
+      "icon": null,
+      "confirm_execution": false,
+      "ignore_error_codes": [],
+      "input_contents": {
+        "stdin": null
+      },
+      "output_channels": {
+        "stdout": "ignore",
+        "stderr": "notification"
+      },
+      "output_wrappers": {
+        "stdout": null,
+        "stderr": null
+      },
+      "output_channel_order": "stdout-first",
+      "output_handling_mode": "buffered",
+      "events": {},
+      "command_palette_availability": "enabled",
+      "preactions": [],
+      "variable_default_values": {}
+    },
+    {
+      "id": "waceaiplv5",
+      "platform_specific_commands": {
+        "default": ""
+      },
+      "shells": {},
+      "alias": "",
+      "icon": null,
+      "confirm_execution": false,
+      "ignore_error_codes": [],
+      "input_contents": {
+        "stdin": null
+      },
+      "output_channels": {
+        "stdout": "ignore",
+        "stderr": "notification"
+      },
+      "output_wrappers": {
+        "stdout": null,
+        "stderr": null
+      },
+      "output_channel_order": "stdout-first",
+      "output_handling_mode": "buffered",
+      "events": {},
+      "command_palette_availability": "enabled",
+      "preactions": [],
+      "variable_default_values": {}
+    }
+  ],
+  "prompts": [],
+  "builtin_variables": {},
+  "custom_variables": [],
+  "output_wrappers": []
+}

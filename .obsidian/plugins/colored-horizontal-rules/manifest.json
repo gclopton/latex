@@ -1,0 +1,9 @@
+{
+  "id": "colored-horizontal-rules",
+  "name": "Colored Horizontal Rules",
+  "version": "0.1.0",
+  "minAppVersion": "1.0.0",
+  "description": "Colors rendered horizontal rules based on dash count in Markdown source.",
+  "author": "OpenAI Codex",
+  "isDesktopOnly": false
+}

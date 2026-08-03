@@ -1,0 +1,24 @@
+{
+  "highlighterStyle": "none",
+  "highlighterMethods": "inline-styles",
+  "highlighters": {
+    "white": "#ffffff",
+    "red": "#FF073A",
+    "orange": "#FF7F00",
+    "yellow": "#FFFC00",
+    "green": "#00FF11",
+    "blue": "#00C0FF",
+    "indigo": "#8800FF",
+    "violet": "#CC00FF"
+  },
+  "highlighterOrder": [
+    "white",
+    "red",
+    "orange",
+    "yellow",
+    "green",
+    "blue",
+    "indigo",
+    "violet"
+  ]
+}

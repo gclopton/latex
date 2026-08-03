@@ -1,0 +1,7 @@
+{
+  "inheritCalloutManagerColors": true,
+  "colorOverrides": {
+    "equation": "#4947e1"
+  },
+  "decorateRenderedCallouts": true
+}

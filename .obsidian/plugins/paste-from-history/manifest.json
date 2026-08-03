@@ -1,0 +1,11 @@
+{
+	"id": "paste-from-history",
+	"name": "Paste From History",
+	"version": "1.1.0",
+	"minAppVersion": "0.15.0",
+	"description": "Paste from the editor's recent clipboard history.",
+	"author": "Daniel Karakka",
+	"authorUrl": "https://github.com/Karakaz",
+	"fundingUrl": "https://github.com/sponsors/Karakaz",
+	"isDesktopOnly": false
+}
