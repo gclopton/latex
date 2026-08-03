@@ -2,6 +2,10 @@ System design: layers, the engine interface, CodeMirror integration, and the syn
 
 Part of [[00 Overview and Doc Map]].
 
+# Engine decision
+
+Phase 0 Spike A passed on 2026-08-03 using `mathlive@0.110.0`: 36/36 counted battery items round-tripped byte-identically, both multiline must-pass items (`aligned` #22 and `cases` #25) passed, and the seven sampled natural-edit probes passed. Use `MathLiveEngine` for v1. Spike B is not warranted unless a later immutable regression invalidates this decision.
+
 # Layers
 
 ```
