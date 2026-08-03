@@ -37,7 +37,7 @@ A custom engine (if Spike B wins) maps the same records to AST constructors; the
 
 ## Interaction (contract in [[01 Behavioral Specification]])
 
-`\` opens it anchored at the caret; typing filters; Enter inserts; Escape closes cleanly; arrow keys navigate; the query text never leaks into the equation. In text mode it offers the text-mode entries (inline math, math container, align, gather); in math mode, the template catalog.
+`\` opens it anchored at the caret; typing filters live after every character; Enter inserts; Escape closes cleanly; arrow keys navigate; the query text never leaks into the equation. In text mode it offers the text-mode entries (inline math, math container, align, gather); in math mode, the template catalog. With an empty query, recently used templates populate the top of the list first.
 
 The palette is allowed to float, like Mathcha's menu, but it is not the editor. Template insertion always targets the active in-document mathfield or the text cursor's document position (D26). Closing the palette leaves the user editing the same note location.
 
@@ -74,16 +74,16 @@ Bottom tabs: **All** (everything), **Composite** (templates with slots only), **
 
 ## Search and ranking
 
-Fuzzy match over `id`, `title`, `aliases` (exact id/alias prefix beats fuzzy title). Use this deterministic scoring formula in v1:
+Fuzzy match over `id`, `title`, `aliases`, and LaTeX command. The list recomputes after each typed character, so `\s`, `\si`, and `\sin` visibly narrow the candidates. Exact id/alias/command prefix beats fuzzy title. Use this deterministic scoring formula in v1:
 
 ```
 score = textMatch + recency + frequency + favorite
 
 textMatch:
-  exact id or exact alias:          1000
-  id or alias starts with query:     800
+  exact id, alias, or command:      1000
+  id, alias, or command starts:      800
   title starts with query:           600
-  id/alias/title contains query:     400
+  id/alias/command/title contains:   400
   fuzzy subsequence match:           200 - editDistancePenalty
 
 recency:
@@ -101,6 +101,8 @@ favorite:
 Context boosts (w5) are a v2 refinement — ship without them, log usage data from day one so the boost rules are informed by real behavior, not guesses.
 
 Sort by score descending, then exact alphabetical `title`, then `id`. This makes ranking tests stable. Favorites do not override a materially worse text match; they only float within plausible matches.
+
+Empty-query ordering is special: show the 12 most recent templates first, newest to oldest; then favorites; then frequent items; then the default catalog order. Once the query is non-empty, use the scoring formula above, with recency/frequency/favorites as boosts rather than separate sections.
 
 ## State
 

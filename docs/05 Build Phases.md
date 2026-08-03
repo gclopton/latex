@@ -29,10 +29,10 @@ Run [[04 Spikes and Risks]] Spike A (and B if warranted). **Exit:** engine decis
 
 # Phase 3 — Palette integration (≈1 week)
 
-- `\` inside an active field opens the palette at the caret; insertion respects selection-wrap and placeholder focus; recents/frequency persist; text-mode palette entries (inline, container, align, gather).
+- `\` inside an active field opens the palette at the caret; empty query shows recent templates first; each typed character live-filters the list (`\s` → `\si` → `\sin`); insertion respects selection-wrap and placeholder focus; recents/frequency persist; text-mode palette entries (inline, container, align, gather).
 - `^`, `_` shortcuts; curated inline shortcuts.
 
-**Acceptance:** the Mathcha loop works end to end in the note body — `\int` Enter, fill bounds via Tab, `\` `matrix` Enter inside the integrand, fill cells — no mouse, no raw LaTeX visible, no detached equation editor. Evidence follows D24.
+**Acceptance:** the Mathcha loop works end to end in the note body — `\int` Enter, fill bounds via Tab, `\` `matrix` Enter inside the integrand, fill cells; open an empty-query palette and see recents first; type `\sin` and watch the candidate list narrow after each character — no mouse, no raw LaTeX visible, no detached equation editor. Evidence follows D24.
 
 # Phase 4 — Structures and clipboard (≈1 week)
 

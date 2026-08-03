@@ -17,10 +17,10 @@ Part of [[00 Overview and Doc Map]].
 # The suggestion box
 
 - **BS-08** `\` opens the palette anchored at the caret: in math mode the template catalog; in text mode the text-mode entries (inline math, math container, align, gather) (D11).
-- **BS-09** Typing filters by id, title, alias with fuzzy matching; exact id/alias prefix matches rank above fuzzy title matches.
+- **BS-09** Typing filters live after every character by id, title, alias, and LaTeX command with fuzzy matching; exact id/alias/command prefix matches rank above fuzzy title matches. Example: `\` opens the palette, then `s`, `i`, `n` progressively narrows toward `\sin`.
 - **BS-10** Ranking: text match > recency > frequency > favorite (weights in [[03 Template System and Suggestion Box]]).
 - **BS-11** Arrow keys navigate; Enter inserts; Escape closes with zero residue — the typed query never appears in the equation or the note.
-- **BS-12** Recents (12, D13) and frequency (monthly decay, D13) persist across sessions.
+- **BS-12** With an empty query, the palette shows recently used templates first, then frequent/favorite/default entries. Recents (12, D13) and frequency (monthly decay, D13) persist across sessions.
 - **BS-13** Entries with shortcuts display the hint beside the title.
 
 # Templates and slots
