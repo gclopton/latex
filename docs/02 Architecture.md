@@ -4,7 +4,7 @@ Part of [[00 Overview and Doc Map]].
 
 # Engine decision
 
-Phase 0 Spike A passed on 2026-08-03 using `mathlive@0.110.0`: 36/36 counted battery items round-tripped byte-identically, both multiline must-pass items (`aligned` #22 and `cases` #25) passed, and the seven sampled natural-edit probes passed. Use `MathLiveEngine` for v1. Spike B is not warranted unless a later immutable regression invalidates this decision.
+Phase 0 Spike A passed on 2026-08-03 using `mathlive@0.110.0` **under ratified D28**, not under original strict D16. True serialization via `getValue("latex-expanded")` produced 23/36 strict counted passes and 13 strict counted failures; under D28's edited-equation normalization policy it produced 36/36 counted passes, with both multiline must-pass items (`aligned` #22 and `cases` #25) passing. Items 30 and 33 require the `middle-delimiter-brace` fixup (`\middle{|}` -> `\middle|`) before any commit to a note. The seven sampled natural-edit probes passed under the D28-amended criterion. Use `MathLiveEngine` for v1. Spike B is not warranted unless a later immutable regression invalidates this decision.
 
 # Layers
 
@@ -38,7 +38,7 @@ Verified API mapping:
 - Shortcuts: `inlineShortcuts` (with `after` context constraints and `inlineShortcutTimeout`), `keybindings` array (spread existing + append). The `\` palette hook: intercept the backslash key ahead of MathLive's own command mode (the studied `mathlive-in-editor-mode` has a `setupBackslashCommandInput` precedent).
 - Caret depth for boundary rules: `mf.getElementInfo(mf.position).depth` (pattern lifted from studied source).
 - Menu: MathLive ships a context menu; suppress or curate it so it never competes with our palette.
-- Raw preservation: LaTeX MathLive parses losslessly round-trips through `getValue()`; anything it mangles is the Spike A fail condition — see [[04 Spikes and Risks]].
+- Raw preservation and normalization: MathLive's cached `getValue("latex")` returns activation-time input byte-identically until an edit occurs; use that behavior plus an explicit dirty flag to back BS-37 for activated-but-unedited equations. Once the user structurally edits an equation, serialize from the engine, apply required fixups such as `middle-delimiter-brace`, and accept D28-normalized LaTeX for that edited equation only.
 
 # CodeMirror integration
 
