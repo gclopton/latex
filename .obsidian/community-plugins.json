@@ -1,5 +1,4 @@
 [
-  "highlightr-plugin",
   "case-sensitive-find",
   "callout-tools",
   "callout-manager",
@@ -27,7 +26,6 @@
   "obsidian-style-settings",
   "chem",
   "copy-inline-code",
-  "cloze",
   "obsidian-wrap-with-shortcuts",
   "text-snippets-obsidian",
   "dbfolder",
@@ -54,6 +52,5 @@
   "study-studio",
   "slide-studio",
   "code-links",
-  "research-outline",
-  "research-colors"
+  "research-outline"
 ]

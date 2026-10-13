@@ -87,44 +87,12 @@
       "key": "U"
     }
   ],
-  "highlightr-plugin:yellow": [
-    {
-      "modifiers": [
-        "Alt"
-      ],
-      "key": "3"
-    }
-  ],
-  "highlightr-plugin:orange": [
-    {
-      "modifiers": [
-        "Alt"
-      ],
-      "key": "4"
-    }
-  ],
   "text-snippets-obsidian:text-snippets": [
     {
       "modifiers": [
         "Ctrl"
       ],
       "key": "F"
-    }
-  ],
-  "highlightr-plugin:blue": [
-    {
-      "modifiers": [
-        "Alt"
-      ],
-      "key": "W"
-    }
-  ],
-  "highlightr-plugin:green": [
-    {
-      "modifiers": [
-        "Alt"
-      ],
-      "key": "G"
     }
   ],
   "canvas-presentation:mark-slide-number": [
@@ -205,22 +173,6 @@
         "Ctrl"
       ],
       "key": "I"
-    }
-  ],
-  "research-colors:color-text": [
-    {
-      "modifiers": [
-        "Alt"
-      ],
-      "key": "J"
-    }
-  ],
-  "research-colors:move-color-cell-backwards": [
-    {
-      "modifiers": [
-        "Alt"
-      ],
-      "key": "K"
     }
   ],
   "switcher:open": [],
