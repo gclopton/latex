@@ -1,0 +1,86 @@
+.ink-studio-host {
+  margin: 12px 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--background-primary);
+}
+.ink-studio-frame {
+  display: block !important;
+  border: 0 !important;
+  width: 100% !important;
+  height: 640px !important;
+  min-height: 420px;
+  max-width: none !important;
+}
+.ink-studio-preview {
+  cursor: pointer;
+}
+.ink-studio-host .ink-loading {
+  padding: 18px;
+}
+@media print {
+  .ink-studio-host {
+    display: none !important;
+  }
+}
+/* Unaligned note images default to center; explicit flags below win. */
+:is(.markdown-source-view, .markdown-preview-view) img {
+  display: block;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+:is(.markdown-source-view, .markdown-preview-view) .image-embed {
+  display: table;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+/* Explicit alignment belongs to each embed, not to the underlying asset. */
+:is(.markdown-source-view, .markdown-preview-view)
+  :is(img, .image-embed):is([alt="left"], [alt$="|left"], [alt*="|left|"]) {
+  display: block !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+  float: none !important;
+}
+:is(.markdown-source-view, .markdown-preview-view)
+  :is(img, .image-embed):is(
+    [alt="center"],
+    [alt$="|center"],
+    [alt*="|center|"]
+  ) {
+  display: block !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  float: none !important;
+}
+:is(.markdown-source-view, .markdown-preview-view)
+  :is(img, .image-embed):is([alt="right"], [alt$="|right"], [alt*="|right|"]) {
+  display: block !important;
+  margin-left: auto !important;
+  margin-right: 0 !important;
+  float: none !important;
+}
+:is(.markdown-source-view, .markdown-preview-view)
+  .image-embed:has(img:is([alt="left"], [alt$="|left"], [alt*="|left|"])) {
+  display: table !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+  float: none !important;
+}
+:is(.markdown-source-view, .markdown-preview-view)
+  .image-embed:has(
+    img:is([alt="center"], [alt$="|center"], [alt*="|center|"])
+  ) {
+  display: table !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  float: none !important;
+}
+:is(.markdown-source-view, .markdown-preview-view)
+  .image-embed:has(img:is([alt="right"], [alt$="|right"], [alt*="|right|"])) {
+  display: table !important;
+  margin-left: auto !important;
+  margin-right: 0 !important;
+  float: none !important;
+}

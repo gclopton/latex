@@ -1,0 +1,10 @@
+{
+  "id": "research-colors",
+  "name": "Research Colors",
+  "version": "0.1.0",
+  "minAppVersion": "0.15.0",
+  "description": "Private Colored Text fork preserving bold colored selections.",
+  "author": "Grady Clopton; based on Colored Text by Erinc Ayaz",
+  "authorUrl": "https://github.com/erincayaz",
+  "isDesktopOnly": false
+}

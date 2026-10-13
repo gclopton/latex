@@ -1,0 +1,37 @@
+.code-links-target { color: var(--link-color); text-decoration: underline; cursor: pointer; }
+.code-links-suggestion-path { color: var(--text-muted); font-size: .8em; }
+.code-links-panel { display:block; max-width:100%; margin: .7em 0; border:1px solid var(--background-modifier-border); border-radius:8px; overflow:hidden; background:var(--background-secondary); }
+.code-links-header { display:flex; flex-wrap:wrap; gap:.5em 1em; align-items:center; padding:.45em .7em; font-size:.85em; border-bottom:1px solid var(--background-modifier-border); }
+.code-links-status { color:var(--text-muted); font-size:.85em; margin-left:auto; }
+.code-links-code { width:100%; overflow:hidden; }
+.code-links-code .cm-editor { outline:none !important; }
+.code-links-code .cm-content { padding:0; }
+
+.code-links-code .cm-scroller, .code-links-code .cm-line { font-family: var(--font-monospace) !important; font-size: var(--code-links-font-size, 13px) !important; }
+.code-links-code .cm-line { line-height: 1.5em !important; }
+.code-links-panel { font-size: 13px; }
+.code-links-stale { color: var(--text-error); border-color: var(--text-error); }
+.code-links-stale .code-links-status { color: var(--text-error); }
+
+.code-links-keyword { color: var(--code-keyword, #c792ea); }
+.code-links-number { color: var(--code-value, #d19a66); }
+
+/* Nested editors must own their surface; the parent Markdown theme can be transparent. */
+.code-links-code, .code-links-code .cm-editor, .code-links-code .cm-scroller {
+  background: var(--code-background, #161616) !important;
+}
+.code-links-code { border: 1px solid var(--background-modifier-border); border-radius: 0 0 7px 7px; }
+.code-links-header { background: var(--code-background, #161616); border: 1px solid var(--background-modifier-border); border-radius: 7px 7px 0 0; }
+.code-links-code .cm-gutters { background: color-mix(in srgb, var(--code-background, #161616) 85%, black) !important; }
+
+/* Semantic links: separate light and dark palettes, including light slides. */
+body { --cl-code:#7650ad; --cl-dir:#a94b00; --cl-group:#b32632; --cl-missing:#846000; }
+body.theme-dark { --cl-code:#c4a2f2; --cl-dir:#ffb066; --cl-group:#ff8b96; --cl-missing:#f4d35e; }
+.ss-stage.ss-mode-light, .ss-light, [data-theme="light"], .theme-light { --cl-code:#7650ad; --cl-dir:#a94b00; --cl-group:#b32632; --cl-missing:#846000; }
+a.code-links-code-link { color:var(--cl-code) !important; }
+a.code-links-directory { color:var(--cl-dir) !important; }
+a.code-links-group, a.code-links-data { color:var(--cl-group) !important; }
+a.code-links-missing { color:var(--cl-missing) !important; text-decoration-style:dashed; }
+a.code-links-invalid { text-decoration-style:wavy; }
+.code-links-reference-row { padding:.65em 0; border-bottom:1px solid var(--background-modifier-border); overflow-wrap:anywhere; }
+.copy-to-clipboard-icon { display:none !important; }

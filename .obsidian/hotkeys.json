@@ -63,44 +63,12 @@
       "key": "B"
     }
   ],
-  "obsidian-quiet-outline:quiet-outline": [
-    {
-      "modifiers": [
-        "Ctrl"
-      ],
-      "key": "Q"
-    }
-  ],
-  "obsidian-quiet-outline:quiet-outline-focus-input": [
-    {
-      "modifiers": [
-        "Ctrl"
-      ],
-      "key": "I"
-    }
-  ],
   "file-explorer:reveal-active-file": [
     {
       "modifiers": [
         "Alt"
       ],
       "key": "R"
-    }
-  ],
-  "colored-text:color-text": [
-    {
-      "modifiers": [
-        "Alt"
-      ],
-      "key": "J"
-    }
-  ],
-  "colored-text:move-color-cell-backwards": [
-    {
-      "modifiers": [
-        "Alt"
-      ],
-      "key": "K"
     }
   ],
   "obsidian-hover-editor:open-link-in-new-popover": [
@@ -221,6 +189,47 @@
         "Alt"
       ],
       "key": "F"
+    }
+  ],
+  "research-outline:quiet-outline": [
+    {
+      "modifiers": [
+        "Ctrl"
+      ],
+      "key": "Q"
+    }
+  ],
+  "research-outline:quiet-outline-focus-input": [
+    {
+      "modifiers": [
+        "Ctrl"
+      ],
+      "key": "I"
+    }
+  ],
+  "research-colors:color-text": [
+    {
+      "modifiers": [
+        "Alt"
+      ],
+      "key": "J"
+    }
+  ],
+  "research-colors:move-color-cell-backwards": [
+    {
+      "modifiers": [
+        "Alt"
+      ],
+      "key": "K"
+    }
+  ],
+  "switcher:open": [],
+  "image-gallery:open-file-gallery": [
+    {
+      "modifiers": [
+        "Mod"
+      ],
+      "key": "O"
     }
   ]
 }

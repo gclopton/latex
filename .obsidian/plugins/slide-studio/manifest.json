@@ -1,0 +1,9 @@
+{
+  "id": "slide-studio",
+  "name": "Slide Studio",
+  "version": "0.3.32",
+  "minAppVersion": "1.8.0",
+  "description": "Compose reusable Markdown slides, link them from your notes, and present themed decks inside Obsidian.",
+  "author": "Grady Clopton",
+  "isDesktopOnly": true
+}

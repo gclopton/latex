@@ -1,0 +1,11 @@
+{
+  "id": "research-outline",
+  "name": "Research Outline",
+  "version": "0.1.0",
+  "minAppVersion": "0.15.6",
+  "description": "Private Quiet Outline fork for notes and Slide Studio presentations.",
+  "author": "Grady Clopton; based on Quiet Outline by the_tree",
+  "authorUrl": "",
+  "fundingUrl": "https://www.buymeacoffee.com/thtree",
+  "isDesktopOnly": false
+}

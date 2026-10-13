@@ -1,0 +1,9 @@
+{
+  "id": "math-studio",
+  "name": "Math Studio",
+  "version": "0.1.1",
+  "minAppVersion": "1.8.0",
+  "description": "Edit typeset equations in place with a visual palette, matrices and ordinary LaTeX storage.",
+  "author": "Grady Clopton",
+  "isDesktopOnly": true
+}

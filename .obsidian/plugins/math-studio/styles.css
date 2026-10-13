@@ -1,0 +1,28 @@
+.math-studio-host{display:block;position:relative;width:100%;min-width:0;border:1px solid var(--interactive-accent);border-radius:8px;background:var(--background-primary);margin:10px 0;box-shadow:0 4px 18px #0002;overflow:hidden;}
+.math-studio-frame{display:block;width:100%;height:300px;border:0;}
+button.math-studio-edit{font-size:12px!important;line-height:1!important;padding:3px 5px!important;margin-left:6px!important;min-height:20px;vertical-align:middle;color:var(--text-muted);background:var(--background-secondary);box-shadow:none;opacity:.65;border:1px solid var(--background-modifier-border)}
+button.math-studio-edit:hover{color:var(--text-normal);opacity:1;border-color:var(--interactive-accent)}
+@media print{.math-studio-edit,.math-studio-host{display:none!important}}
+.math-studio-special{color:var(--text-normal);cursor:text;position:relative;}.math-studio-display{display:block;text-align:center;padding:20px 32px;overflow:auto;}.math-studio-tag{position:absolute;right:0;top:50%;transform:translateY(-50%);font-family:var(--font-text);}
+
+/* Themes may paint mjx-math directly; emphasis should supply its base color.
+   Explicit LaTeX colors live on descendant math nodes and remain untouched. */
+:is(strong,b,em,i,.cm-strong,.cm-em) :is(.math,.math-studio-special),
+:is(strong,b,em,i,.cm-strong,.cm-em) mjx-math {
+  color: inherit !important;
+}
+
+/* Live Preview math widgets sit beside, rather than inside, emphasis tokens. */
+.math-studio-strong { color: var(--accent-strong, var(--bold-color, inherit)) !important; }
+.math-studio-em:not(.math-studio-strong) { color: var(--accent-em, var(--italic-color, inherit)) !important; }
+.math-studio-strong.math-studio-em { color: var(--strong-em-color-1, var(--accent-strong, var(--bold-color, inherit))) !important; }
+:is(.math-studio-strong,.math-studio-em) mjx-math { color: inherit !important; }
+/* Text-gradient emphasis cannot clip nested MathJax glyphs. Use its theme's
+   leading color for math and let explicitly colored TeX descendants win. */
+:is(strong em,em strong) :is(.math,mjx-container,.math-studio-special) {
+  color: var(--strong-em-color-1, var(--accent-strong, inherit)) !important;
+}
+:is(strong em,em strong) :is(.math,mjx-container,.math-studio-special),
+:is(strong em,em strong) :is(.math,mjx-container,.math-studio-special) * {
+  -webkit-text-fill-color: currentColor;
+}
