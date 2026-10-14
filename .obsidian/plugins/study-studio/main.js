@@ -27655,7 +27655,8 @@ var MarginView = class extends import_obsidian5.ItemView {
       card.el.style.setProperty("--margin-color", safeColor(c.color));
       card.el.style.setProperty("--margin-dark", darkCommentColor(c));
       card.el.dataset.markStyle = c.kind === "sticky" ? "sticky" : c.markStyle ?? "highlight";
-      card.el.querySelector(".study-margin-hidden-status").textContent = c.kind === "sticky" && this.sourcePath === path && !this.sourceText.replace(/\r\n/g, "\n").includes("```study-sticky\n" + c.id + "\n```") ? "Placement not found in note" : c.kind !== "sticky" && this.sourcePath === path && excerpts(c).length > 0 && !Number.isFinite(this.position(c)) ? "Passage changed \xB7 saved excerpt retained" : this.notes.store.isAnnotationVisible(c) ? "" : "Hidden in main note";
+      const excerpt = excerpts(c).find((a2) => a2.path === path), offset = this.position(c), updated = excerpt?.kind === "math" && Number.isFinite(offset) && this.sourceText.slice(offset, offset + excerpt.quote.length) !== excerpt.quote;
+      card.el.querySelector(".study-margin-hidden-status").textContent = c.kind === "sticky" && this.sourcePath === path && !this.sourceText.replace(/\r\n/g, "\n").includes("```study-sticky\n" + c.id + "\n```") ? "Placement not found in note" : c.kind !== "sticky" && this.sourcePath === path && excerpts(c).length > 0 && !Number.isFinite(this.position(c)) ? "Passage changed \xB7 saved excerpt retained" : this.notes.store.isAnnotationVisible(c) ? updated ? "Passage updated \xB7 saved excerpt shown" : "" : "Hidden in main note";
       const visible = (this.showResolved || !c.resolved) && (!this.filter.value || typeKey(styleOf(c), c.intent) === this.filter.value) && (!query || [c.comment, c.intent, ...excerpts(c).map((a2) => a2.renderedQuote ?? a2.quote)].join(" ").toLocaleLowerCase().includes(query));
       card.el.hidden = !visible;
       if (visible) shown++;
@@ -37082,6 +37083,7 @@ var ReviewStore = class {
     return value;
   }
   notify(change) {
+    this.closeHoverPreviews();
     setTimeout(() => {
       for (const fn of [...this.listeners]) {
         try {
@@ -37163,6 +37165,7 @@ var ReviewStore = class {
   }
   hover(node, c) {
     if (!c.comment.trim() || this.hoverNodes.has(node)) return;
+    this.closeHoverPreviews();
     this.hoverNodes.add(node);
     const popup = node.ownerDocument.createElement("div");
     popup.className = "study-comment-popover";
@@ -37187,7 +37190,14 @@ var ReviewStore = class {
       this.hoverClosers.delete(close);
       node.removeEventListener("mouseleave", close);
       node.removeEventListener("click", close);
+      node.ownerDocument.removeEventListener("scroll", onScroll, true);
+      node.ownerDocument.defaultView?.removeEventListener("resize", close);
     };
+    const onScroll = (event) => {
+      if (!popup.contains(event.target)) close();
+    };
+    node.ownerDocument.addEventListener("scroll", onScroll, true);
+    node.ownerDocument.defaultView?.addEventListener("resize", close);
     this.hoverClosers.add(close);
     node.addEventListener("mouseleave", close, { once: true });
     node.addEventListener("click", close, { once: true });
@@ -37986,6 +37996,12 @@ function registerMathAnnotations(plugin, store) {
     }
   }));
   const attach = (doc2) => {
+    plugin.registerDomEvent(doc2, "mouseover", (event) => {
+      const node = event.target.closest("[data-study-math-ids]");
+      if (!node || node.closest(".study-margin-pane,.modal,.evidence-reader,.evidence-paper")) return;
+      const ids = (node.dataset.studyMathIds ?? "").split(" "), cs = store.data.comments.filter((c) => ids.includes(c.id) && !c.resolved);
+      if (cs.length === 1) store.hover(node, cs[0]);
+    });
     plugin.registerDomEvent(doc2, "contextmenu", (event) => {
       const target = event.target, root = target.closest(".math");
       if (!root || root.closest(".study-margin-pane,.evidence-reader,.evidence-paper,.modal")) return;
