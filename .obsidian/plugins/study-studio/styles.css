@@ -203,7 +203,8 @@
 .study-response-field>button.study-response-preview{min-width:min(156px,100%);white-space:normal;height:auto!important;max-height:none;line-height:normal}
 .study-response-preview mjx-container{max-height:none}
 .study-review-status{font-size:.8em;color:var(--text-muted);margin-left:.5em}
-.study-critique{background:color-mix(in srgb,var(--critique-display,var(--critique-color,#55aa77)) 12%,transparent);border:0;border-radius:0;cursor:pointer}
+:root{--study-highlight-strength:40%}.theme-dark{--study-highlight-strength:34%}
+.study-critique{background:color-mix(in srgb,var(--critique-display,var(--critique-color,#55aa77)) var(--study-highlight-strength,40%),transparent);border:0;border-radius:0;cursor:pointer}
 .study-anchor-chip{font-size:.72em;color:var(--text-faint);user-select:none;border:1px solid var(--background-modifier-border);border-radius:3px;padding:0 .2em}
 .study-comment-editor textarea{width:100%;min-height:7em;resize:vertical}
 .study-comment-editor blockquote{max-height:8em;overflow:auto;font-size:.9em}
@@ -559,8 +560,8 @@ a.internal-link[data-href$=".py"],a.internal-link[data-href$=".ts"],a.internal-l
 
 .study-critique.study-underline{text-decoration-skip-ink:none}
 .study-margin-source:focus-visible,.study-margin-more:focus-visible{outline:1px solid var(--interactive-accent);outline-offset:2px}
-.study-margin-note[data-mark-style="highlight"] .study-margin-source{background:color-mix(in srgb,var(--margin-color) 14%,transparent);border-radius:2px;flex:0 1 auto}
-.theme-dark .study-margin-note[data-mark-style="highlight"] .study-margin-source{background:color-mix(in srgb,var(--margin-dark) 14%,transparent)}
+.study-margin-note[data-mark-style="highlight"] .study-margin-source{background:color-mix(in srgb,var(--margin-color) var(--study-highlight-strength,40%),transparent);border-radius:2px;flex:0 1 auto}
+.theme-dark .study-margin-note[data-mark-style="highlight"] .study-margin-source{background:color-mix(in srgb,var(--margin-dark) var(--study-highlight-strength,40%),transparent)}
 .study-margin-note[data-mark-style="underline"] .study-margin-source{box-shadow:inset 0 -2px var(--margin-color);flex:0 1 auto}
 .theme-dark .study-margin-note[data-mark-style="underline"] .study-margin-source{box-shadow:inset 0 -2px var(--margin-dark)}
 .study-margin-postit{width:12px;height:14px;display:inline-block;background:var(--margin-color);clip-path:polygon(0 0,70% 0,100% 28%,100% 100%,0 100%);position:relative}

@@ -1693,10 +1693,10 @@ var TreeCursor = class {
   get node() {
     if (!this.buffer)
       return this._tree;
-    let cache3 = this.bufferNode, result = null, depth = 0;
-    if (cache3 && cache3.context == this.buffer) {
+    let cache4 = this.bufferNode, result = null, depth = 0;
+    if (cache4 && cache4.context == this.buffer) {
       scan: for (let index2 = this.index, d = this.stack.length; d >= 0; ) {
-        for (let c = cache3; c; c = c._parent)
+        for (let c = cache4; c; c = c._parent)
           if (c.index == index2) {
             if (index2 == this.index)
               return c;
@@ -19086,12 +19086,12 @@ var CachedOrder = class _CachedOrder {
     this.fresh = fresh;
     this.order = order2;
   }
-  static update(cache3, changes) {
-    if (changes.empty && !cache3.some((c) => c.fresh))
-      return cache3;
-    let result = [], lastDir = cache3.length ? cache3[cache3.length - 1].dir : Direction.LTR;
-    for (let i = Math.max(0, cache3.length - 10); i < cache3.length; i++) {
-      let entry = cache3[i];
+  static update(cache4, changes) {
+    if (changes.empty && !cache4.some((c) => c.fresh))
+      return cache4;
+    let result = [], lastDir = cache4.length ? cache4[cache4.length - 1].dir : Direction.LTR;
+    for (let i = Math.max(0, cache4.length - 10); i < cache4.length; i++) {
+      let entry = cache4[i];
       if (entry.dir == lastDir && !changes.touchesRange(entry.from, entry.to))
         result.push(new _CachedOrder(changes.mapPos(entry.from, 1), changes.mapPos(entry.to, -1), entry.dir, entry.isolates, false, entry.order));
     }
@@ -27198,6 +27198,106 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
   } };
 }
 
+// src/sticky-placement.ts
+var CONTEXT = 48;
+var TAIL = 160;
+var EXTEND = 640;
+function validPlacement(p) {
+  return !!p && typeof p === "object" && typeof p.quote === "string" && p.quote.trim().length > 0 && typeof p.before === "string" && typeof p.after === "string" && (p.renderedQuote === void 0 || typeof p.renderedQuote === "string");
+}
+function placementOf(c) {
+  const p = c?.placement;
+  return c?.kind === "sticky" && validPlacement(p) ? p : void 0;
+}
+function sourceBlocks(text2) {
+  const blocks = [];
+  let offset = 0, fence = "", math = false, start = -1, end = 0, lineNo = 0, front = false;
+  const lines = text2.split("\n");
+  for (const line of lines) {
+    const from = offset, to = offset + line.length;
+    offset = to + 1;
+    if (lineNo++ === 0 && line.trim() === "---") {
+      front = true;
+      continue;
+    }
+    if (front) {
+      if (line.trim() === "---" || line.trim() === "...") front = false;
+      continue;
+    }
+    const f = /^\s*(`{3,}|~{3,})/.exec(line);
+    if (f && !math) {
+      if (!fence) fence = f[1][0];
+      else if (f[1][0] === fence) fence = "";
+    } else if (!fence) {
+      const marks2 = (line.match(/\$\$/g) ?? []).length;
+      if (marks2 % 2 === 1) math = !math;
+    }
+    const blank = !line.trim() && !fence && !math;
+    if (blank) {
+      if (start >= 0) {
+        blocks.push({ from: start, to: end });
+        start = -1;
+      }
+      continue;
+    }
+    if (start < 0) start = from;
+    end = to;
+  }
+  if (start >= 0) blocks.push({ from: start, to: end });
+  return blocks;
+}
+function nearestBlock(text2, offset) {
+  const blocks = sourceBlocks(text2);
+  return blocks.find((b) => offset >= b.from && offset <= b.to) ?? [...blocks].reverse().find((b) => b.to <= offset) ?? blocks.find((b) => b.from >= offset);
+}
+function uniqueAt(text2, p, start) {
+  const hit = locateQuote(text2, p);
+  return !!hit && hit.from === start;
+}
+function tailPlacement(text2, from, to) {
+  for (let length = Math.min(TAIL, to - from); ; length = Math.min(to - from + EXTEND, length * 2)) {
+    const start = Math.max(0, to - length), p = { quote: text2.slice(start, to), before: text2.slice(Math.max(0, start - CONTEXT), start), after: text2.slice(to, to + CONTEXT) };
+    if (p.quote.trim() && uniqueAt(text2, p, start)) return p;
+    if (start === 0 || length >= to - from + EXTEND) return;
+  }
+}
+function placementFor(text2, from, to) {
+  let s = Math.max(0, Math.min(from, to)), e = Math.min(text2.length, Math.max(from, to));
+  while (s < e && /\s/.test(text2[s])) s++;
+  while (e > s && /\s/.test(text2[e - 1])) e--;
+  if (e > s) return tailPlacement(text2, s, e);
+  const block = nearestBlock(text2, s);
+  return block ? tailPlacement(text2, block.from, block.to) : void 0;
+}
+function placementFromAnchors(text2, anchors) {
+  const a2 = [...anchors ?? []].reverse().find((a3) => a3.kind !== "math" && !a3.sectionSource && a3.quote.trim());
+  if (!a2) return;
+  const hit = locateQuote(text2, a2);
+  if (!hit) return;
+  const p = { quote: a2.quote, before: a2.before, after: a2.after };
+  if (a2.renderedQuote && a2.renderedQuote !== a2.quote) p.renderedQuote = a2.renderedQuote;
+  return p;
+}
+function locatePlacement(text2, p) {
+  return locateQuote(text2, p)?.to;
+}
+function endInRange(end, from, to) {
+  return end > from && end <= to;
+}
+var cache3 = /* @__PURE__ */ new Map();
+function cachedPlacementEnd(path, text2, p) {
+  let entry = cache3.get(path);
+  if (entry?.text !== text2) {
+    entry = { text: text2, hits: /* @__PURE__ */ new Map() };
+    cache3.delete(path);
+    cache3.set(path, entry);
+    if (cache3.size > 6) cache3.delete(cache3.keys().next().value);
+  }
+  const key = JSON.stringify([p.quote, p.before, p.after]);
+  if (!entry.hits.has(key)) entry.hits.set(key, locatePlacement(text2, p));
+  return entry.hits.get(key);
+}
+
 // src/margin-view.ts
 var VIEW = "study-margin-notes";
 function recentMarkdownPath(app) {
@@ -27290,6 +27390,28 @@ var MarginNotes = class {
     if (JSON.stringify(this.drafts.get(d.id)) === snapshot) this.drafts.delete(d.id);
     this.persist();
   }
+  /** Sidecar post-its open at their placement without selecting or editing source text. */
+  async jumpPlacement(path, p) {
+    const app = this.plugin.app, file = app.vault.getAbstractFileByPath(path);
+    if (!(file instanceof import_obsidian5.TFile)) {
+      new import_obsidian5.Notice("The source note is unavailable.");
+      return;
+    }
+    const existing = app.workspace.getLeavesOfType("markdown").find((l) => l.view.file?.path === path), opened = existing?.view;
+    const raw = opened?.getMode() === "source" ? opened.editor.getValue() : await app.vault.cachedRead(file), end = locatePlacement(raw, p);
+    if (end === void 0) {
+      new import_obsidian5.Notice("The post-it placement has changed or is ambiguous. The note remains in the margin.");
+      return;
+    }
+    const leaf = existing ?? app.workspace.getLeaf("tab");
+    await leaf.openFile(file, { active: true });
+    const view = leaf.view;
+    if (view.getMode() === "source") {
+      const at = view.editor.offsetToPos(end);
+      view.editor.setCursor(at);
+      view.editor.scrollIntoView({ from: at, to: at }, true);
+    } else view.setEphemeralState({ line: raw.slice(0, end).split("\n").length - 1 });
+  }
   async jump(a2) {
     const app = this.plugin.app, file = app.vault.getAbstractFileByPath(a2.path);
     if (!(file instanceof import_obsidian5.TFile)) {
@@ -27354,6 +27476,15 @@ var MarginView = class extends import_obsidian5.ItemView {
     }
   }
   position(c) {
+    const placement = placementOf(c);
+    if (placement && !excerpts(c).length) {
+      if (c.path !== this.notes.file || this.sourcePath !== this.notes.file) return Infinity;
+      const key2 = JSON.stringify(placement), old2 = this.positions.get(c.id);
+      if (old2?.key === key2) return old2.offset;
+      const end = locatePlacement(this.sourceText, placement), offset2 = end === void 0 ? Infinity : end - placement.quote.length;
+      this.positions.set(c.id, { key: key2, offset: offset2 });
+      return offset2;
+    }
     const a2 = excerpts(c).find((a3) => a3.path === this.notes.file);
     if (!a2 || this.sourcePath !== this.notes.file) return Infinity;
     const key = JSON.stringify(a2), old = this.positions.get(c.id);
@@ -27561,6 +27692,8 @@ var MarginView = class extends import_obsidian5.ItemView {
     const menu = new import_obsidian5.Menu();
     this.notes.store.addVisibilityMenu(menu, { x: e.clientX, y: e.clientY });
     for (const a2 of excerpts(c)) menu.addItem((i) => i.setTitle("Go to: " + (a2.renderedQuote ?? a2.quote).slice(0, 55)).setIcon("arrow-up-right").onClick(() => void this.notes.jump(a2)));
+    const placement = placementOf(c);
+    if (placement) menu.addItem((i) => i.setTitle("Go to post-it").setIcon("arrow-up-right").onClick(() => void this.notes.jumpPlacement(c.path, placement)));
     const meaning = menuGroup(menu, "meaning", "Meaning", "palette");
     paletteItems(meaning, styleOf(c), this.notes.store.paletteFor(styleOf(c)), (p) => {
       const d = this.draft(id3);
@@ -27656,7 +27789,7 @@ var MarginView = class extends import_obsidian5.ItemView {
       card.el.style.setProperty("--margin-dark", darkCommentColor(c));
       card.el.dataset.markStyle = c.kind === "sticky" ? "sticky" : c.markStyle ?? "highlight";
       const excerpt = excerpts(c).find((a2) => a2.path === path), offset = this.position(c), updated = excerpt?.kind === "math" && Number.isFinite(offset) && this.sourceText.slice(offset, offset + excerpt.quote.length) !== excerpt.quote;
-      card.el.querySelector(".study-margin-hidden-status").textContent = c.kind === "sticky" && this.sourcePath === path && !this.sourceText.replace(/\r\n/g, "\n").includes("```study-sticky\n" + c.id + "\n```") ? "Placement not found in note" : c.kind !== "sticky" && this.sourcePath === path && excerpts(c).length > 0 && !Number.isFinite(this.position(c)) ? "Passage changed \xB7 saved excerpt retained" : this.notes.store.isAnnotationVisible(c) ? updated ? "Passage updated \xB7 saved excerpt shown" : "" : "Hidden in main note";
+      card.el.querySelector(".study-margin-hidden-status").textContent = c.kind === "sticky" && this.sourcePath === path && (placementOf(c) ? !Number.isFinite(this.position(c)) : !this.sourceText.replace(/\r\n/g, "\n").includes("```study-sticky\n" + c.id + "\n```")) ? "Placement not found in note" : c.kind !== "sticky" && this.sourcePath === path && excerpts(c).length > 0 && !Number.isFinite(this.position(c)) ? "Passage changed \xB7 saved excerpt retained" : this.notes.store.isAnnotationVisible(c) ? updated ? "Passage updated \xB7 saved excerpt shown" : "" : "Hidden in main note";
       const visible = (this.showResolved || !c.resolved) && (!this.filter.value || typeKey(styleOf(c), c.intent) === this.filter.value) && (!query || [c.comment, c.intent, ...excerpts(c).map((a2) => a2.renderedQuote ?? a2.quote)].join(" ").toLocaleLowerCase().includes(query));
       card.el.hidden = !visible;
       if (visible) shown++;
@@ -27756,6 +27889,18 @@ var MarginView = class extends import_obsidian5.ItemView {
         if (e.key === "Enter") void this.notes.jump(a2);
       };
     }
+    const placed = !a2 ? placementOf(c) : void 0;
+    if (placed) {
+      const tail = (placed.renderedQuote ?? placed.quote).replace(/\s+/g, " ").trim(), source = top2.createSpan({ cls: "study-margin-source", text: "After: " + (tail.length > 70 ? "\u2026" + tail.slice(-70) : tail) });
+      source.title = "Post-it placed after: " + (placed.renderedQuote ?? placed.quote);
+      source.tabIndex = 0;
+      source.setAttribute("role", "button");
+      source.setAttribute("aria-description", "Go to post-it placement");
+      source.onclick = () => void this.notes.jumpPlacement(c.path, placed);
+      source.onkeydown = (e) => {
+        if (e.key === "Enter") void this.notes.jumpPlacement(c.path, placed);
+      };
+    }
     if (excerpts(c).length > 1) {
       const more = top2.createSpan({ cls: "study-margin-more", text: `+${excerpts(c).length - 1}` });
       more.tabIndex = 0;
@@ -27849,6 +27994,12 @@ function vaultWindowTitle(vault, title) {
 // src/vault-window-identity.ts
 function registerVaultWindowIdentity(plugin) {
   if (!import_obsidian6.Platform.isDesktopApp) return;
+  const identity = plugin.addStatusBarItem();
+  identity.addClass("study-vault-identity");
+  identity.setText(plugin.app.vault.getName());
+  identity.setAttribute("aria-label", "Vault: " + plugin.app.vault.getName());
+  identity.style.fontWeight = "600";
+  identity.style.color = "var(--text-accent)";
   const attached = /* @__PURE__ */ new Map();
   let alive = true;
   const attach = (win) => {
@@ -37784,7 +37935,7 @@ function renderedQuote(text2, a2) {
 function markAttributes(comments) {
   const first = comments[0], texts = comments.filter((c) => c.markStyle === "text"), highlights = comments.filter((c) => !c.markStyle || c.markStyle === "highlight"), underlines = comments.filter((c) => c.markStyle === "underline");
   const shadows = (dark) => underlines.length ? underlines.map((c, i) => `0 ${2 + 3 * i}px ${dark ? darkCommentColor(c) : safeColor(c.color)}`).join(",") : "none";
-  const bands = (dark) => highlights.length ? `linear-gradient(to bottom,${highlights.map((c, i) => `color-mix(in srgb,${dark ? darkCommentColor(c) : safeColor(c.color)} 28%,transparent) ${i * 100 / highlights.length}% ${(i + 1) * 100 / highlights.length}%`).join(",")})` : "none";
+  const bands = (dark) => highlights.length ? `linear-gradient(to bottom,${highlights.map((c, i) => `color-mix(in srgb,${dark ? darkCommentColor(c) : safeColor(c.color)} var(--study-highlight-strength,40%),transparent) ${i * 100 / highlights.length}% ${(i + 1) * 100 / highlights.length}%`).join(",")})` : "none";
   return { "data-critique-id": first.id, "data-study-comment-ids": comments.map((c) => c.id).join(" "), style: `--critique-text:${texts.length ? safeColor(texts[0].color) : "inherit"};--critique-text-dark:${texts.length ? darkCommentColor(texts[0]) : "inherit"};--critique-lines:${shadows(false)};--critique-lines-dark:${shadows(true)};--critique-color:${safeColor(first.color)};--critique-dark:${darkCommentColor(first)};--critique-overlap:${bands(false)};--critique-overlap-dark:${bands(true)}` };
 }
 function markClass(comments) {
@@ -37831,7 +37982,7 @@ function paintMathMarks(root, comments) {
     }
     const cs = explicit ? original.map((c) => c.markStyle === "text" ? { ...c, markStyle: "underline" } : c) : original;
     const attrs = markAttributes(cs), style = root.ownerDocument.createElement("span").style;
-    style.cssText = attrs.style.replace(/ 28%/g, node === math ? comments.some((c) => c.excerpt?.part) ? " 12%" : " 28%" : " 40%");
+    style.cssText = attrs.style.replace(/var\(--study-highlight-strength,40%\)/g, node === math && comments.some((c) => c.excerpt?.part) ? "24%" : "var(--study-highlight-strength,40%)");
     const localLines = cs.filter((c) => c.markStyle === "underline" && !lineGroups.some((g) => g.comment.id === c.id));
     const localStyle = root.ownerDocument.createElement("span").style;
     localStyle.cssText = markAttributes(localLines.length ? localLines : [{ ...cs[0], markStyle: "highlight" }]).style;
@@ -38272,8 +38423,8 @@ var approvedRemoval = import_state9.Annotation.define();
 function incoming(plugin, target, ids) {
   const wanted = new Set(ids), found = [];
   for (const file of plugin.app.vault.getMarkdownFiles()) {
-    const cache3 = plugin.app.metadataCache.getFileCache(file);
-    for (const ref of [...cache3?.links ?? [], ...cache3?.embeds ?? []]) {
+    const cache4 = plugin.app.metadataCache.getFileCache(file);
+    for (const ref of [...cache4?.links ?? [], ...cache4?.embeds ?? []]) {
       const at = ref.link.indexOf("#^");
       if (at < 0) continue;
       const id3 = ref.link.slice(at + 1);
@@ -38374,6 +38525,15 @@ function registerAnchorProtection(plugin) {
   } });
 }
 
+// src/paper-protection.ts
+function isProtectedPaper(app, path) {
+  try {
+    return app?.plugins?.getPlugin?.("image-gallery")?.api?.library?.isProtected?.(path) === true;
+  } catch {
+    return false;
+  }
+}
+
 // src/annotations.ts
 var refreshAnnotations = import_state10.StateEffect.define();
 var AnchorChip = class extends import_view9.WidgetType {
@@ -38399,12 +38559,78 @@ var AnchorChip = class extends import_view9.WidgetType {
     return span;
   }
 };
+function stickyButton(container, c, store) {
+  const button = container.createEl("button", { cls: "study-sticky-note", attr: { "aria-label": c.resolved ? "Open resolved sticky note" : "Open sticky note" } });
+  (0, import_obsidian22.setIcon)(button, "sticky-note");
+  button.title = c.resolved ? "Resolved sticky note" : "Sticky note";
+  button.classList.toggle("is-resolved", c.resolved);
+  button.style.setProperty("--critique-color", safeColor(c.color));
+  button.style.setProperty("--critique-dark", darkCommentColor(c));
+  button.onclick = () => store.edit(c);
+  button.onmouseenter = () => store.hover(button, c);
+  button.onfocus = () => store.hover(button, c);
+  button.addEventListener("blur", () => button.dispatchEvent(new Event("mouseleave")));
+  return button;
+}
+function stickyMarker(doc2, c, store) {
+  const span = doc2.createElement("span");
+  span.className = "study-sticky-placement study-sticky-anchor";
+  span.dataset.studyStickyId = c.id;
+  span.style.margin = "0 0 0 .35em";
+  span.style.display = "inline-block";
+  span.style.verticalAlign = "middle";
+  stickyButton(span, c, store);
+  return span;
+}
+var StickyWidget = class extends import_view9.WidgetType {
+  constructor(c, store) {
+    super();
+    this.c = c;
+    this.store = store;
+  }
+  eq(other) {
+    return other.c.id === this.c.id && other.c.color === this.c.color && other.c.darkColor === this.c.darkColor && other.c.resolved === this.c.resolved && other.c.updated === this.c.updated;
+  }
+  toDOM(view) {
+    return stickyMarker(view.dom.ownerDocument, this.c, this.store);
+  }
+  ignoreEvent() {
+    return true;
+  }
+};
 function registerAnnotations(plugin, store) {
   const ownReading = readingChildren(plugin);
   registerMathAnnotations(plugin, store);
   registerAnchorProtection(plugin);
   plugin.addSettingTab(new CommentSettings(plugin.app, plugin, store));
-  const addSticky = async (editor, path, p = store.paletteFor("sticky")[0]) => {
+  const addPlacedSticky = async (path, placement, p = store.paletteFor("sticky")[0]) => {
+    if (!placement) {
+      new import_obsidian22.Notice("Could not find a distinctive passage for this post-it. Select a passage and try again.");
+      return;
+    }
+    const id3 = crypto.randomUUID(), c = { id: id3, kind: "sticky", path, quote: "", before: "", after: "", comment: "", intent: p?.meaning ?? "", color: p?.color ?? "#e2b714", darkColor: p?.darkColor, updated: (/* @__PURE__ */ new Date()).toISOString(), resolved: false, placement };
+    let saved = false;
+    try {
+      store.data.comments.push(c);
+      await store.save({ paths: /* @__PURE__ */ new Set([path]), commentIds: /* @__PURE__ */ new Set([id3]), annotations: true });
+      saved = true;
+      store.warnHidden(c);
+      await store.openMargin?.(c, true);
+    } catch (error) {
+      if (!saved) {
+        const i = store.data.comments.indexOf(c);
+        if (i >= 0) store.data.comments.splice(i, 1);
+      }
+      new import_obsidian22.Notice((saved ? "Post-it saved, but its margin could not open: " : "Could not save post-it: ") + String(error));
+    }
+  };
+  const protectedPath = (path) => isProtectedPaper(plugin.app, path);
+  const addSticky = async (editor, path, p = store.paletteFor("sticky")[0], anchors) => {
+    if (protectedPath(path)) {
+      const raw = editor.getValue(), from = editor.posToOffset(editor.getCursor("from")), to = editor.posToOffset(editor.getCursor("to"));
+      await addPlacedSticky(path, placementFromAnchors(raw, anchors) ?? placementFor(raw, from, to), p);
+      return;
+    }
     let placed = false;
     const cursor = editor.getCursor(), id3 = crypto.randomUUID(), c = { id: id3, kind: "sticky", path, quote: "", before: "", after: "", comment: "", intent: p?.meaning ?? "", color: p?.color ?? "#e2b714", darkColor: p?.darkColor, updated: (/* @__PURE__ */ new Date()).toISOString(), resolved: false };
     try {
@@ -38426,7 +38652,12 @@ function registerAnnotations(plugin, store) {
       new import_obsidian22.Notice((placed ? "Post-it saved, but its margin could not open: " : "Could not place post-it: ") + String(error));
     }
   };
-  const addStickyReading = async (path, snapshot, p = store.paletteFor("sticky")[0]) => {
+  const addStickyReading = async (path, snapshot, p = store.paletteFor("sticky")[0], anchors) => {
+    if (protectedPath(path)) {
+      const at = Math.max(0, snapshot.offset - 1);
+      await addPlacedSticky(path, placementFromAnchors(snapshot.text, anchors) ?? placementFor(snapshot.text, at, at), p);
+      return;
+    }
     const file = plugin.app.vault.getAbstractFileByPath(path);
     if (!(file instanceof import_obsidian22.TFile)) return;
     const id3 = crypto.randomUUID(), c = { id: id3, kind: "sticky", path, quote: "", before: "", after: "", comment: "", intent: p?.meaning ?? "", color: p?.color ?? "#e2b714", darkColor: p?.darkColor, updated: (/* @__PURE__ */ new Date()).toISOString(), resolved: false };
@@ -38474,16 +38705,7 @@ function registerAnnotations(plugin, store) {
           el.createSpan({ text: "Sticky note unavailable", cls: "study-sticky-missing" });
           return;
         }
-        const button = el.createEl("button", { cls: "study-sticky-note", attr: { "aria-label": c.resolved ? "Open resolved sticky note" : "Open sticky note" } });
-        (0, import_obsidian22.setIcon)(button, "sticky-note");
-        button.title = c.resolved ? "Resolved sticky note" : "Sticky note";
-        button.classList.toggle("is-resolved", c.resolved);
-        button.style.setProperty("--critique-color", safeColor(c.color));
-        button.style.setProperty("--critique-dark", darkCommentColor(c));
-        button.onclick = () => store.edit(c);
-        button.onmouseenter = () => store.hover(button, c);
-        button.onfocus = () => store.hover(button, c);
-        button.addEventListener("blur", () => button.dispatchEvent(new Event("mouseleave")));
+        stickyButton(el, c, store);
       };
     }
     ctx.addChild(ownReading(new Sticky(el)));
@@ -38537,6 +38759,11 @@ function registerAnnotations(plugin, store) {
     if (!c || c.view.file?.path !== c.path) throw Error("Select a passage or placement first.");
     if (c.view.editor.getValue() !== c.raw) throw Error("The passage changed. Select it again.");
     if (style === "sticky") {
+      if (protectedPath(c.path)) {
+        const at = c.view.editor.posToOffset(c.cursor);
+        await addPlacedSticky(c.path, placementFromAnchors(c.raw, c.anchor?.anchors) ?? (c.view.getMode() !== "source" && c.at ? placementFor(c.at.text, Math.max(0, c.at.offset - 1), Math.max(0, c.at.offset - 1)) : placementFor(c.raw, at, at)), p);
+        return;
+      }
       if (c.view.getMode() === "source") {
         c.view.editor.setCursor(c.cursor);
         await addSticky(c.view.editor, c.path, p);
@@ -38612,6 +38839,14 @@ function registerAnnotations(plugin, store) {
         ranges.push(mark);
         anchors.push(mark);
       }
+      const path = info?.file?.path;
+      if (path) for (const c of store.data.comments) {
+        if (c.kind !== "sticky" || c.deletedAt || c.path !== path || !store.isAnnotationVisible(c)) continue;
+        const p = placementOf(c);
+        if (!p) continue;
+        const end = cachedPlacementEnd(path, raw, p);
+        if (end !== void 0) ranges.push(import_view9.Decoration.widget({ widget: new StickyWidget(c, store), side: 1 }).range(end));
+      }
       this.decorations = import_view9.Decoration.set(ranges, true);
       this.atomic = import_view9.Decoration.set(anchors, true);
     }
@@ -38657,8 +38892,8 @@ function registerAnnotations(plugin, store) {
         shared.studyPaletteMenu = true;
         const info = ctx.getSectionInfo(el);
         if (info) {
-          const offset = info.text.split("\n").slice(0, info.lineEnd + 1).join("\n").length;
-          paletteItems(menuGroup(menu, "mark-sticky", "Post-it", "sticky-note"), "sticky", store.paletteFor("sticky"), (p) => void addStickyReading(sectionPath, { text: info.text, offset }, p));
+          const offset = info.text.split("\n").slice(0, info.lineEnd + 1).join("\n").length, path = sectionPath, picked = selection && !selection.isCollapsed && selection.toString().trim() && protectedPath(path) ? readingExcerpts(selection, path) : void 0;
+          paletteItems(menuGroup(menu, "mark-sticky", "Post-it", "sticky-note"), "sticky", store.paletteFor("sticky"), (p) => void addStickyReading(path, { text: info.text, offset }, p, picked));
         }
         menu.addItem((i) => i.setSection("selection").setTitle("Annotation palette\u2026").setIcon("palette").onClick(() => palette.open()));
       }
@@ -38717,6 +38952,48 @@ function registerAnnotations(plugin, store) {
       };
     }
     ctx.addChild(ownReading(new ReadingAnnotations(el)));
+    class ReadingStickies extends import_obsidian22.MarkdownRenderChild {
+      onload() {
+        store.listeners.add(this.paint);
+        this.register(() => store.listeners.delete(this.paint));
+        this.paint();
+      }
+      onunload() {
+        this.clear();
+      }
+      clear() {
+        el.querySelectorAll(".study-sticky-anchor").forEach((n) => n.remove());
+      }
+      paint = (change) => {
+        if (change && (!change.annotations || !change.paths.has(sectionPath))) return;
+        const placed = store.data.comments.filter((c) => c.kind === "sticky" && !c.deletedAt && c.path === sectionPath && placementOf(c));
+        if (!placed.length && !el.querySelector(".study-sticky-anchor")) return;
+        this.clear();
+        const info = ctx.getSectionInfo(el);
+        if (!info) return;
+        let from = 0;
+        for (let i = 0, at = 0; i < info.lineStart && at >= 0; i++) {
+          at = info.text.indexOf("\n", at);
+          if (at < 0) break;
+          at++;
+          from = at;
+        }
+        let to = from;
+        for (let i = info.lineStart; i <= info.lineEnd; i++) {
+          const next = info.text.indexOf("\n", to);
+          to = next < 0 ? info.text.length : next + (i < info.lineEnd ? 1 : 0);
+        }
+        for (const c of placed) {
+          if (!store.isAnnotationVisible(c)) continue;
+          const end = cachedPlacementEnd(sectionPath, info.text, placementOf(c));
+          if (end === void 0 || !endInRange(end, from, to)) continue;
+          let target = el;
+          while (target.lastElementChild instanceof HTMLElement && /^(P|UL|OL|LI|BLOCKQUOTE|DIV|TABLE|TBODY|TR|TD|TH|H[1-6]|CALLOUT)$/i.test(target.lastElementChild.tagName) && !target.lastElementChild.matches(".study-sticky-anchor,.math,.MathJax,mjx-container,pre,.callout-title")) target = target.lastElementChild;
+          target.append(stickyMarker(el.ownerDocument, c, store));
+        }
+      };
+    }
+    ctx.addChild(ownReading(new ReadingStickies(el)));
   });
   plugin.registerEvent(plugin.app.vault.on("rename", (file, old) => {
     let changed = false;
@@ -38734,6 +39011,12 @@ function registerAnnotations(plugin, store) {
     }
     if (changed) void store.save({ paths: /* @__PURE__ */ new Set(), commentIds: /* @__PURE__ */ new Set(), annotations: false });
   }));
+}
+
+// src/paper-source-path.ts
+function paperSourcePath(app, path) {
+  if (app.vault.getAbstractFileByPath(path)) return path;
+  return app.plugins?.plugins?.["image-gallery"]?.api?.library?.resolve(path) ?? path;
 }
 
 // src/citation-anchor.ts
@@ -38977,7 +39260,7 @@ function registerEvidenceLinks(plugin) {
   const decorate = (view) => {
     const ranges = [];
     const renderer = plugin.app.plugins?.plugins?.["obsidian-pandoc-reference-list"], file = view.state.field(import_obsidian23.editorInfoField, false)?.file;
-    const cache3 = file ? renderer?.bibManager?.getCacheForPath(file.path) : null;
+    const cache4 = file ? renderer?.bibManager?.getCacheForPath(file.path) : null;
     const from = view.state.doc.lineAt(view.viewport.from).from, to = view.state.doc.lineAt(view.viewport.to).to, text2 = view.state.doc.sliceString(from, to);
     const linked = renderer?.settings.renderCitations && view.state.field(import_obsidian23.editorLivePreviewField, false) ? linkedEvidence(text2) : [];
     const replaced = [];
@@ -38992,7 +39275,7 @@ function registerEvidenceLinks(plugin) {
       }
       if (inCode) continue;
       if (view.state.selection.ranges.some((r) => r.from <= end && r.to >= start)) continue;
-      const citation = cache3?.citations?.find((c) => c.from === from + f.citeFrom && c.to === from + f.citeTo && sameKeys(c.citations.map((p) => p.id), f.keys));
+      const citation = cache4?.citations?.find((c) => c.from === from + f.citeFrom && c.to === from + f.citeTo && sameKeys(c.citations.map((p) => p.id), f.keys));
       if (!citation?.val) continue;
       ranges.push(import_view10.Decoration.replace({ widget: new CitationWidget(citation.val, f.href) }).range(start, end));
       replaced.push({ from: start, to: end });
@@ -39120,7 +39403,7 @@ function reviewMarkdown(report, jsonName) {
 var import_obsidian24 = require("obsidian");
 var READER = "study-evidence-reader";
 function imageFile(app, source, path) {
-  const direct = app.metadataCache.getFirstLinkpathDest(path, source);
+  const direct = app.metadataCache.getFirstLinkpathDest(paperSourcePath(app, path), paperSourcePath(app, source));
   if (direct) return direct;
   return app.vault.getFiles().find((f) => app.vault.getResourcePath(f).split("?")[0] === path.split("?")[0]) || null;
 }
@@ -39181,7 +39464,7 @@ var EvidenceReader = class extends import_obsidian24.ItemView {
     const identity = this.identity?.(), paper = this.paper, generation = this.generation, source = this.source;
     if (!this.reviewReady) throw Error("Wait for the source to finish loading with highlights shown before exporting a review.");
     if (!identity || !paper) throw Error("Open a citation record before exporting a review.");
-    const currentSource = await this.app.vault.adapter.read(paper.path);
+    const currentSource = await this.app.vault.adapter.read(paperSourcePath(this.app, paper.path));
     if (currentSource !== source) throw Error("Source changed during review. Wait for the viewer to refresh, then export again.");
     const currentRecord = await this.app.vault.adapter.read(identity.file);
     const report = { schema: "citation-source-review/v1", generatedAt: (/* @__PURE__ */ new Date()).toISOString(), coverage: "current source paper only", identity: { recordPath: identity.file, claimId: identity.id, citekey: paper.citekey, sourcePath: paper.path }, recordSha256: await digest(identity.raw), sourceSha256: await digest(source), recordChangedSinceOpen: currentRecord !== identity.raw, totalSelections: paper.selections.length, tableInventory: await Promise.all(sourceTableLocations(source, tableSources(source)).map(async ({ raw, ...location }) => ({ ...location, sha256: await digest(raw) }))), figureInventory: await Promise.all(paper.selections.filter((s) => s.image).map(async (s) => {
@@ -39272,8 +39555,8 @@ var EvidenceReader = class extends import_obsidian24.ItemView {
       review.value = "";
     };
     toolbar.createEl("button", { text: mark ? "Clear highlights" : "Show highlights" }).onclick = () => void this.show(claim, paper, !mark);
-    toolbar.createEl("button", { text: "Open original" }).onclick = () => void this.app.workspace.openLinkText(paper.path, "", "tab");
-    const file = this.app.vault.getAbstractFileByPath(paper.path);
+    toolbar.createEl("button", { text: "Open original" }).onclick = () => void this.app.workspace.openLinkText(paperSourcePath(this.app, paper.path), "", "tab");
+    const file = this.app.vault.getAbstractFileByPath(paperSourcePath(this.app, paper.path));
     if (!(file instanceof import_obsidian24.TFile)) {
       this.contentEl.createEl("p", { text: `Unavailable paper: ${paper.path}`, cls: "evidence-error" });
       return;
@@ -39282,7 +39565,7 @@ var EvidenceReader = class extends import_obsidian24.ItemView {
     if (generation !== this.generation) return;
     this.source = source;
     const body = this.contentEl.createDiv("markdown-rendered evidence-paper");
-    await import_obsidian24.MarkdownRenderer.render(this.app, renderablePaper(this.source), body, paper.path, this.component);
+    await import_obsidian24.MarkdownRenderer.render(this.app, renderablePaper(this.source), body, paperSourcePath(this.app, paper.path), this.component);
     if (generation !== this.generation) return;
     body.addEventListener("mouseup", () => {
       if (!this.editing) return;
@@ -39487,7 +39770,7 @@ function registerEvidenceWorkflow(plugin) {
     const m = new import_obsidian25.Modal(app);
     m.titleEl.setText(claim.label);
     for (const paper of claim.papers) {
-      const available = app.vault.getAbstractFileByPath(paper.path) instanceof import_obsidian25.TFile;
+      const available = app.vault.getAbstractFileByPath(paperSourcePath(app, paper.path)) instanceof import_obsidian25.TFile;
       const b = m.contentEl.createEl("button", { text: `${paper.label} [${paper.citekey}]${available ? "" : " \u2014 file missing"}`, cls: "evidence-paper-choice" });
       b.onclick = () => {
         m.close();
@@ -39922,6 +40205,7 @@ function registerEvidence(plugin) {
     }
     try {
       const target = parseEvidence(params.target || "");
+      target.path = paperSourcePath(plugin.app, target.path);
       const file = plugin.app.vault.getAbstractFileByPath(target.path);
       if (!(file instanceof import_obsidian26.TFile)) throw Error("Source paper is not present in this vault");
       const leaf = plugin.app.workspace.getLeaf(target.window ? "window" : "tab");
@@ -41061,9 +41345,9 @@ async function organizeCourseLab(app) {
 
 // src/practice-location.ts
 var within = (path, root) => path === root || path.startsWith(root + "/");
-function moveCacheContext(cache3, from, to) {
+function moveCacheContext(cache4, from, to) {
   const moves = [];
-  for (const [key, value] of Object.entries(cache3)) {
+  for (const [key, value] of Object.entries(cache4)) {
     let parts;
     try {
       parts = JSON.parse(key);
@@ -41072,13 +41356,13 @@ function moveCacheContext(cache3, from, to) {
     }
     if (Array.isArray(parts) && parts.length === 2 && parts[0] === from && typeof parts[1] === "string") {
       const next = draftKey(to, parts[1]);
-      if (Object.hasOwn(cache3, next) && JSON.stringify(cache3[next]) !== JSON.stringify(value)) throw Error("Conflicting practice state at the destination; nothing was replaced.");
+      if (Object.hasOwn(cache4, next) && JSON.stringify(cache4[next]) !== JSON.stringify(value)) throw Error("Conflicting practice state at the destination; nothing was replaced.");
       moves.push([key, next, value]);
     }
   }
   for (const [old, next, value] of moves) {
-    cache3[next] = value;
-    delete cache3[old];
+    cache4[next] = value;
+    delete cache4[old];
   }
 }
 function moveNoteLocations(locations, from, to) {
@@ -41093,7 +41377,7 @@ function moveNoteLocations(locations, from, to) {
 }
 function legacyNotePaths(...caches) {
   const paths = /* @__PURE__ */ new Set();
-  for (const cache3 of caches) for (const key of Object.keys(cache3)) {
+  for (const cache4 of caches) for (const key of Object.keys(cache4)) {
     try {
       const [path] = JSON.parse(key);
       if (typeof path === "string" && path.endsWith(".md")) paths.add(path);
