@@ -47,6 +47,138 @@ function menuGroup(menu, key, title, icon, section = key === "insert" ? "insert"
   return child;
 }
 
+// src/math-model.ts
+var escaped = (s, i) => {
+  let n = 0;
+  while (i > 0 && s[--i] === "\\") n++;
+  return n % 2 === 1;
+};
+function equations(s) {
+  const out = [];
+  let i = 0;
+  let fence = "";
+  let fenceLength = 0;
+  if (s.startsWith("---\n") || s.startsWith("---\r\n")) {
+    const m = /\r?\n(?:---|\.\.\.)\s*(?:\r?\n|$)/g;
+    m.lastIndex = 3;
+    const end = m.exec(s);
+    if (end) i = end.index + end[0].length;
+  }
+  while (i < s.length) {
+    if (i === 0 || s[i - 1] === "\n") {
+      const line = s.slice(i, s.indexOf("\n", i) < 0 ? s.length : s.indexOf("\n", i));
+      const f = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+      if (f) {
+        if (!fence) {
+          fence = f[1][0];
+          fenceLength = f[1].length;
+        } else if (f[1][0] === fence && f[1].length >= fenceLength) fence = "";
+        i += line.length + 1;
+        continue;
+      }
+      if (fence || /^ {4}|^\t/.test(line)) {
+        i += line.length + 1;
+        continue;
+      }
+    }
+    if (s[i] === "`" && !escaped(s, i)) {
+      let n = 1;
+      while (s[i + n] === "`") n++;
+      const end2 = s.indexOf("`".repeat(n), i + n);
+      i = end2 < 0 ? i + n : end2 + n;
+      continue;
+    }
+    if (s[i] !== "$" || escaped(s, i)) {
+      i++;
+      continue;
+    }
+    const display = s[i + 1] === "$";
+    const size = display ? 2 : 1;
+    const start = i;
+    let j = i + size;
+    if (!display && /\s/.test(s[j] ?? "")) {
+      i++;
+      continue;
+    }
+    let end = -1;
+    while (j < s.length) {
+      if (!display && s[j] === "\n") break;
+      if (display && s[j] === "\n" && /^[ \t]*\r?\n/.test(s.slice(j + 1))) break;
+      if (display && s[j] === "\n" && /^ {0,3}(?:`{3,}|~{3,})/.test(s.slice(j + 1))) break;
+      if (s[j] === "$" && !escaped(s, j)) {
+        if (!display && s[j + 1] === "$") break;
+        if (display && s[j + 1] !== "$") break;
+        end = j;
+        break;
+      }
+      j++;
+    }
+    if (end < 0) {
+      i += size;
+      continue;
+    }
+    if (!display && (/\s/.test(s[end - 1] ?? "") || /\d/.test(s[end + 1] ?? ""))) {
+      i = end + size;
+      continue;
+    }
+    const to = end + size;
+    out.push({ from: start, to, bodyFrom: start + size, bodyTo: end, body: s.slice(start + size, end), display, raw: s.slice(start, to) });
+    i = to;
+  }
+  return out;
+}
+function splitTag(body) {
+  const auto = /% math-studio:auto:([a-zA-Z0-9-]+)/.exec(body);
+  const tags3 = [...body.matchAll(/\\tag\{([^{}]*)\}/g)];
+  const tag = tags3.length === 1 ? tags3[0] : void 0;
+  return { latex: body.replace(/% math-studio:auto:[a-zA-Z0-9-]+\s*/g, "").replace(/\\tag\{[^{}]*\}/g, "").trim(), tag: auto ? { kind: "auto", label: tag?.[1] ?? "", id: auto[1] } : tag ? { kind: "manual", label: tag[1] } : { kind: "none", label: "" } };
+}
+function unsupported(body) {
+  if (/\\(?:newcommand|renewcommand|def|gdef|require|html\w*|href|includegraphics|class|style)\b/.test(body)) return "This equation uses a macro definition or an external/HTML command. Keep editing it in native LaTeX.";
+  const stripped = body.replace(/% math-studio:auto:[a-zA-Z0-9-]+/g, "");
+  if (/(^|[^\\])%/.test(stripped)) return "This equation contains LaTeX comments. Native editing preserves them exactly.";
+  if ((body.match(/\\tag\b/g) || []).length > 1 || /\\tag\*/.test(body) || /\\label\b|\\ref\b|\\eqref\b/.test(body)) return "This equation uses labels, references or multiple tags. Use native editing to preserve them.";
+  if (/\\tag\{[^}]*\{/.test(body)) return "Nested equation tags are supported in native editing only.";
+  return null;
+}
+function compose(original, latex, tag) {
+  const label = tag.label.trim();
+  if (/[{}\\\n\r]/.test(label)) throw Error("Use a plain equation label without braces, backslashes or line breaks.");
+  let body = latex.trim();
+  if (tag.kind !== "none" && original.display) body += `\\tag{${label || "1"}}`;
+  if (tag.kind === "auto" && original.display) body += `
+% math-studio:auto:${tag.id || crypto.randomUUID()}`;
+  if (original.display) return `$$
+${body}
+$$`;
+  return `$${body}$`;
+}
+function safeReplacement(doc2, q, replacement) {
+  if (doc2.slice(q.from, q.to) !== q.raw) throw Error("The equation changed outside this visual editor. Your draft is kept open; cancel and reopen the current equation.");
+  return { from: q.from, to: q.to, insert: replacement };
+}
+function fieldEquations(value, answers) {
+  if (!answers) return equations(value);
+  const result = [];
+  let offset = 0;
+  for (const line of value.split("\n")) {
+    const start = line.search(/\S/);
+    if (start >= 0) {
+      const body = line.trim(), from = offset + start;
+      const parsed = equations(body);
+      result.push(parsed.length === 1 && parsed[0].raw === body ? { ...parsed[0], from, to: from + body.length, bodyFrom: from + (parsed[0].display ? 2 : 1), bodyTo: from + body.length - (parsed[0].display ? 2 : 1) } : { from, to: from + body.length, bodyFrom: from, bodyTo: from + body.length, raw: body, body, display: false });
+    }
+    offset += line.length + 1;
+  }
+  return result;
+}
+function replaceFieldMath(source, q, latex, tag) {
+  const replacement = q.bodyFrom === q.from ? latex.trim() : compose(q, latex, tag);
+  if (q.bodyFrom === q.from && /[\r\n]/.test(replacement)) throw Error("Keep each accepted answer on one line.");
+  safeReplacement(source, q, replacement);
+  return source.slice(0, q.from) + replacement + source.slice(q.to);
+}
+
 // src/review-model.ts
 function locateQuote(text2, a2) {
   if (!a2.quote) return;
@@ -131,6 +263,29 @@ function stylePalettes(raw, legacy) {
   return Object.fromEntries(annotationStyles.map((style) => [style, Array.isArray(p?.[style]) ? commentPalette(p[style]) : style === "highlight" ? commentPalette(legacy) : defaultStylePalette(style)]));
 }
 
+// src/math-anchor-location.ts
+var equationCache = /* @__PURE__ */ new Map();
+function indexedEquations(text2) {
+  let qs = equationCache.get(text2);
+  if (!qs) {
+    qs = equations(text2);
+    equationCache.set(text2, qs);
+    if (equationCache.size > 2) equationCache.delete(equationCache.keys().next().value);
+  }
+  return qs;
+}
+function locateMarginAnchor(text2, a2) {
+  const exact = locateQuote(text2, a2);
+  if (exact || a2.kind !== "math") return exact;
+  const before = a2.before.trimEnd(), after = a2.after.trimStart();
+  if (!before && !after) return;
+  const candidates = indexedEquations(text2).filter((q) => {
+    const left = text2.slice(0, q.from).trimEnd(), right = text2.slice(q.to).trimStart();
+    return (before ? left.endsWith(before) : left === "") && (after ? right.startsWith(after) : right === "");
+  });
+  if (candidates.length === 1) return { from: candidates[0].from, to: candidates[0].to };
+}
+
 // src/annotation-menu.ts
 function swatchTitle(style, p, label = p.meaning) {
   const f = document.createDocumentFragment(), s = document.createElement("span");
@@ -153,9 +308,54 @@ function paletteItems(menu, style, palette, pick, current) {
 // src/margin-view.ts
 var import_obsidian5 = require("obsidian");
 
+// src/math-semantic.ts
+function signatureItems(node) {
+  const tag = node.tagName.toLowerCase();
+  if (tag === "mjx-break") return [];
+  if (["mjx-math", "mjx-mrow", "mjx-mstyle", "mjx-texatom", "mjx-script"].includes(tag)) return Array.from(node.children).flatMap(signatureItems);
+  if (["mjx-mi", "mjx-mn", "mjx-mo", "mjx-mtext"].includes(tag)) return [[tag, node.textContent]];
+  return [[tag, Array.from(node.children).map(signatureItems)]];
+}
+function mathSignature(node) {
+  return JSON.stringify(signatureItems(node));
+}
+function mathParentSignature(node) {
+  const own = mathSignature(node);
+  let parent = node.parentElement;
+  while (parent && parent.tagName.toLowerCase().startsWith("mjx-")) {
+    const key = mathSignature(parent);
+    if (key !== own) return key;
+    parent = parent.parentElement;
+  }
+  return "";
+}
+function semanticMatches(math, key, parent) {
+  const all = Array.from(math.querySelectorAll("[data-latex]"));
+  return all.filter((n) => mathSignature(n) === key && mathParentSignature(n) === parent).filter((n) => !all.some((p) => p !== n && p.contains(n) && mathSignature(p) === key && mathParentSignature(p) === parent));
+}
+var renderedKeys = /* @__PURE__ */ new Map();
+function latexSignature(latex, doc2) {
+  if (renderedKeys.has(latex)) return renderedKeys.get(latex);
+  const mj = doc2.defaultView?.MathJax;
+  if (!mj?.tex2chtml) return;
+  let key;
+  try {
+    const rendered = mj.tex2chtml(latex, { display: false });
+    const math = rendered.querySelector("mjx-math");
+    if (math && !math.querySelector("mjx-merror")) key = mathSignature(math);
+  } catch {
+  }
+  renderedKeys.set(latex, key);
+  if (renderedKeys.size > 64) renderedKeys.delete(renderedKeys.keys().next().value);
+  return key;
+}
+
 // src/math-parts.ts
+function validSemantic(s) {
+  return s === void 0 || !!s && typeof s.key === "string" && typeof s.parent === "string" && Number.isSafeInteger(s.occurrence) && Number.isSafeInteger(s.count) && s.occurrence >= 0 && s.count > s.occurrence;
+}
 function validMathPart(p) {
-  return !!p && Array.isArray(p.nodes) && p.nodes.length > 0 && p.nodes.length <= 128 && p.nodes.every((n) => n && typeof n.latex === "string" && typeof n.parentLatex === "string" && Number.isSafeInteger(n.occurrence) && n.occurrence >= 0);
+  return !!p && Array.isArray(p.nodes) && p.nodes.length > 0 && p.nodes.length <= 128 && p.nodes.every((n) => n && typeof n.latex === "string" && typeof n.parentLatex === "string" && Number.isSafeInteger(n.occurrence) && n.occurrence >= 0 && validSemantic(n.semantic));
 }
 function semanticNodes(math) {
   return Array.from(math.querySelectorAll("[data-latex]"));
@@ -166,14 +366,24 @@ function parentLatex(node) {
 function describePart(math, nodes) {
   const all = semanticNodes(math);
   return { nodes: nodes.map((n) => {
-    const latex = n.getAttribute("data-latex").trim(), parent = parentLatex(n);
-    return { latex, parentLatex: parent, occurrence: all.filter((x) => x.getAttribute("data-latex")?.trim() === latex && parentLatex(x) === parent).indexOf(n) };
+    const latex = n.getAttribute("data-latex").trim(), parent = parentLatex(n), key = mathSignature(n), parentKey = mathParentSignature(n), matches = semanticMatches(math, key, parentKey), ordinal = matches.findIndex((x) => x === n || x.contains(n));
+    return { latex, parentLatex: parent, occurrence: all.filter((x) => x.getAttribute("data-latex")?.trim() === latex && parentLatex(x) === parent).indexOf(n), ...ordinal >= 0 ? { semantic: { key, parent: parentKey, occurrence: ordinal, count: matches.length } } : {} };
   }) };
 }
 function resolvePart(math, part) {
   const all = semanticNodes(math);
-  const found = part.nodes.map((n) => all.filter((x) => x.getAttribute("data-latex")?.trim() === n.latex.trim() && parentLatex(x) === n.parentLatex.trim())[n.occurrence]);
-  return found.every(Boolean) ? found : [];
+  const found = part.nodes.map((n) => {
+    const exact = all.filter((x) => x.getAttribute("data-latex")?.trim() === n.latex.trim() && parentLatex(x) === n.parentLatex.trim())[n.occurrence];
+    if (exact) return exact;
+    const key = n.semantic?.key ?? latexSignature(n.latex, math.ownerDocument), parent = n.semantic?.parent ?? latexSignature(n.parentLatex, math.ownerDocument);
+    if (!key || parent === void 0) return;
+    const matches = semanticMatches(math, key, parent);
+    if (n.semantic) return matches.length === n.semantic.count ? matches[n.semantic.occurrence] : void 0;
+    return matches.length === 1 && n.occurrence === 0 ? matches[0] : void 0;
+  });
+  if (!found.every(Boolean)) return [];
+  const nodes = found;
+  return nodes.every((n, i) => !i || !!(nodes[i - 1].compareDocumentPosition(n) & 4)) ? nodes : [];
 }
 function selectedGlyphs(math, range) {
   return Array.from(math.querySelectorAll("mjx-c")).filter((n) => {
@@ -5292,138 +5502,6 @@ async function importPromptImage(app, sourcePath, file) {
   const name2 = "image-" + crypto.randomUUID() + "." + ext;
   const saved = await app.vault.createBinary(folder + "/" + name2, await file.arrayBuffer());
   return `![[${saved.path}]]`;
-}
-
-// src/math-model.ts
-var escaped = (s, i) => {
-  let n = 0;
-  while (i > 0 && s[--i] === "\\") n++;
-  return n % 2 === 1;
-};
-function equations(s) {
-  const out = [];
-  let i = 0;
-  let fence = "";
-  let fenceLength = 0;
-  if (s.startsWith("---\n") || s.startsWith("---\r\n")) {
-    const m = /\r?\n(?:---|\.\.\.)\s*(?:\r?\n|$)/g;
-    m.lastIndex = 3;
-    const end = m.exec(s);
-    if (end) i = end.index + end[0].length;
-  }
-  while (i < s.length) {
-    if (i === 0 || s[i - 1] === "\n") {
-      const line = s.slice(i, s.indexOf("\n", i) < 0 ? s.length : s.indexOf("\n", i));
-      const f = /^ {0,3}(`{3,}|~{3,})/.exec(line);
-      if (f) {
-        if (!fence) {
-          fence = f[1][0];
-          fenceLength = f[1].length;
-        } else if (f[1][0] === fence && f[1].length >= fenceLength) fence = "";
-        i += line.length + 1;
-        continue;
-      }
-      if (fence || /^ {4}|^\t/.test(line)) {
-        i += line.length + 1;
-        continue;
-      }
-    }
-    if (s[i] === "`" && !escaped(s, i)) {
-      let n = 1;
-      while (s[i + n] === "`") n++;
-      const end2 = s.indexOf("`".repeat(n), i + n);
-      i = end2 < 0 ? i + n : end2 + n;
-      continue;
-    }
-    if (s[i] !== "$" || escaped(s, i)) {
-      i++;
-      continue;
-    }
-    const display = s[i + 1] === "$";
-    const size = display ? 2 : 1;
-    const start = i;
-    let j = i + size;
-    if (!display && /\s/.test(s[j] ?? "")) {
-      i++;
-      continue;
-    }
-    let end = -1;
-    while (j < s.length) {
-      if (!display && s[j] === "\n") break;
-      if (display && s[j] === "\n" && /^[ \t]*\r?\n/.test(s.slice(j + 1))) break;
-      if (display && s[j] === "\n" && /^ {0,3}(?:`{3,}|~{3,})/.test(s.slice(j + 1))) break;
-      if (s[j] === "$" && !escaped(s, j)) {
-        if (!display && s[j + 1] === "$") break;
-        if (display && s[j + 1] !== "$") break;
-        end = j;
-        break;
-      }
-      j++;
-    }
-    if (end < 0) {
-      i += size;
-      continue;
-    }
-    if (!display && (/\s/.test(s[end - 1] ?? "") || /\d/.test(s[end + 1] ?? ""))) {
-      i = end + size;
-      continue;
-    }
-    const to = end + size;
-    out.push({ from: start, to, bodyFrom: start + size, bodyTo: end, body: s.slice(start + size, end), display, raw: s.slice(start, to) });
-    i = to;
-  }
-  return out;
-}
-function splitTag(body) {
-  const auto = /% math-studio:auto:([a-zA-Z0-9-]+)/.exec(body);
-  const tags3 = [...body.matchAll(/\\tag\{([^{}]*)\}/g)];
-  const tag = tags3.length === 1 ? tags3[0] : void 0;
-  return { latex: body.replace(/% math-studio:auto:[a-zA-Z0-9-]+\s*/g, "").replace(/\\tag\{[^{}]*\}/g, "").trim(), tag: auto ? { kind: "auto", label: tag?.[1] ?? "", id: auto[1] } : tag ? { kind: "manual", label: tag[1] } : { kind: "none", label: "" } };
-}
-function unsupported(body) {
-  if (/\\(?:newcommand|renewcommand|def|gdef|require|html\w*|href|includegraphics|class|style)\b/.test(body)) return "This equation uses a macro definition or an external/HTML command. Keep editing it in native LaTeX.";
-  const stripped = body.replace(/% math-studio:auto:[a-zA-Z0-9-]+/g, "");
-  if (/(^|[^\\])%/.test(stripped)) return "This equation contains LaTeX comments. Native editing preserves them exactly.";
-  if ((body.match(/\\tag\b/g) || []).length > 1 || /\\tag\*/.test(body) || /\\label\b|\\ref\b|\\eqref\b/.test(body)) return "This equation uses labels, references or multiple tags. Use native editing to preserve them.";
-  if (/\\tag\{[^}]*\{/.test(body)) return "Nested equation tags are supported in native editing only.";
-  return null;
-}
-function compose(original, latex, tag) {
-  const label = tag.label.trim();
-  if (/[{}\\\n\r]/.test(label)) throw Error("Use a plain equation label without braces, backslashes or line breaks.");
-  let body = latex.trim();
-  if (tag.kind !== "none" && original.display) body += `\\tag{${label || "1"}}`;
-  if (tag.kind === "auto" && original.display) body += `
-% math-studio:auto:${tag.id || crypto.randomUUID()}`;
-  if (original.display) return `$$
-${body}
-$$`;
-  return `$${body}$`;
-}
-function safeReplacement(doc2, q, replacement) {
-  if (doc2.slice(q.from, q.to) !== q.raw) throw Error("The equation changed outside this visual editor. Your draft is kept open; cancel and reopen the current equation.");
-  return { from: q.from, to: q.to, insert: replacement };
-}
-function fieldEquations(value, answers) {
-  if (!answers) return equations(value);
-  const result = [];
-  let offset = 0;
-  for (const line of value.split("\n")) {
-    const start = line.search(/\S/);
-    if (start >= 0) {
-      const body = line.trim(), from = offset + start;
-      const parsed = equations(body);
-      result.push(parsed.length === 1 && parsed[0].raw === body ? { ...parsed[0], from, to: from + body.length, bodyFrom: from + (parsed[0].display ? 2 : 1), bodyTo: from + body.length - (parsed[0].display ? 2 : 1) } : { from, to: from + body.length, bodyFrom: from, bodyTo: from + body.length, raw: body, body, display: false });
-    }
-    offset += line.length + 1;
-  }
-  return result;
-}
-function replaceFieldMath(source, q, latex, tag) {
-  const replacement = q.bodyFrom === q.from ? latex.trim() : compose(q, latex, tag);
-  if (q.bodyFrom === q.from && /[\r\n]/.test(replacement)) throw Error("Keep each accepted answer on one line.");
-  safeReplacement(source, q, replacement);
-  return source.slice(0, q.from) + replacement + source.slice(q.to);
 }
 
 // src/blank-authoring.ts
@@ -27219,7 +27297,7 @@ var MarginNotes = class {
       return;
     }
     const opened = app.workspace.getLeavesOfType("markdown").find((l) => l.view.file?.path === a2.path)?.view;
-    const raw = opened?.getMode() === "source" ? opened.editor.getValue() : await app.vault.cachedRead(file), at = locateQuote(raw, a2);
+    const raw = opened?.getMode() === "source" ? opened.editor.getValue() : await app.vault.cachedRead(file), at = locateMarginAnchor(raw, a2);
     if (!at) {
       new import_obsidian5.Notice("The excerpt has changed or is ambiguous. Its saved quotation remains in the margin note.");
       return;
@@ -27280,7 +27358,7 @@ var MarginView = class extends import_obsidian5.ItemView {
     if (!a2 || this.sourcePath !== this.notes.file) return Infinity;
     const key = JSON.stringify(a2), old = this.positions.get(c.id);
     if (old?.key === key) return old.offset;
-    const at = a2.sectionSource ? this.sourceText.indexOf(a2.sectionSource) : locateQuote(this.sourceText, a2)?.from;
+    const at = a2.sectionSource ? this.sourceText.indexOf(a2.sectionSource) : locateMarginAnchor(this.sourceText, a2)?.from;
     const offset = at === void 0 || at < 0 ? Infinity : at;
     this.positions.set(c.id, { key, offset });
     return offset;
@@ -27370,7 +27448,7 @@ var MarginView = class extends import_obsidian5.ItemView {
     this.notes.selected = id3;
     for (const [key, c] of this.cards) c.el.classList.toggle("is-selected", key === id3);
     const escaped2 = CSS.escape(id3);
-    if (this.style) this.style.textContent = escaped2 ? `[data-study-comment-ids~="${escaped2}"],[data-study-reading-comment="${escaped2}"],[data-critique-id="${escaped2}"]{outline:1px solid var(--interactive-accent);outline-offset:2px;}` : "";
+    if (this.style) this.style.textContent = escaped2 ? `[data-study-comment-ids~="${escaped2}"],[data-study-reading-comment="${escaped2}"],[data-critique-id="${escaped2}"],[data-study-math-ids~="${escaped2}"]{outline:1px solid var(--interactive-accent);outline-offset:2px;}` : "";
   }
   current(id3) {
     return this.notes.drafts.get(id3) ?? this.notes.store.data.comments.find((c) => c.id === id3);
@@ -27577,7 +27655,7 @@ var MarginView = class extends import_obsidian5.ItemView {
       card.el.style.setProperty("--margin-color", safeColor(c.color));
       card.el.style.setProperty("--margin-dark", darkCommentColor(c));
       card.el.dataset.markStyle = c.kind === "sticky" ? "sticky" : c.markStyle ?? "highlight";
-      card.el.querySelector(".study-margin-hidden-status").textContent = c.kind === "sticky" && this.sourcePath === path && !this.sourceText.replace(/\r\n/g, "\n").includes("```study-sticky\n" + c.id + "\n```") ? "Placement not found in note" : this.notes.store.isAnnotationVisible(c) ? "" : "Hidden in main note";
+      card.el.querySelector(".study-margin-hidden-status").textContent = c.kind === "sticky" && this.sourcePath === path && !this.sourceText.replace(/\r\n/g, "\n").includes("```study-sticky\n" + c.id + "\n```") ? "Placement not found in note" : c.kind !== "sticky" && this.sourcePath === path && excerpts(c).length > 0 && !Number.isFinite(this.position(c)) ? "Passage changed \xB7 saved excerpt retained" : this.notes.store.isAnnotationVisible(c) ? "" : "Hidden in main note";
       const visible = (this.showResolved || !c.resolved) && (!this.filter.value || typeKey(styleOf(c), c.intent) === this.filter.value) && (!query || [c.comment, c.intent, ...excerpts(c).map((a2) => a2.renderedQuote ?? a2.quote)].join(" ").toLocaleLowerCase().includes(query));
       card.el.hidden = !visible;
       if (visible) shown++;
@@ -27591,6 +27669,11 @@ var MarginView = class extends import_obsidian5.ItemView {
   focusSelected() {
     const card = this.cards.get(this.notes.selected);
     if (!card) return;
+    if (card.el.hidden) {
+      this.query.value = "";
+      this.filter.value = "";
+      this.update();
+    }
     card.el.scrollIntoView({ block: "nearest" });
     if (this.notes.drafts.has(this.notes.selected)) this.beginEditor(this.notes.selected, true);
   }
@@ -37081,17 +37164,22 @@ var ReviewStore = class {
   hover(node, c) {
     if (!c.comment.trim() || this.hoverNodes.has(node)) return;
     this.hoverNodes.add(node);
-    const popup = node.ownerDocument.createElement("span");
-    popup.className = "study-comment-popover markdown-rendered";
+    const popup = node.ownerDocument.createElement("div");
+    popup.className = "study-comment-popover";
     popup.setAttribute("role", "tooltip");
+    popup.style.setProperty("--critique-color", safeColor(c.color));
+    popup.style.setProperty("--critique-dark", darkCommentColor(c));
+    const content2 = node.ownerDocument.createElement("div");
+    content2.className = "markdown-rendered";
+    popup.append(content2);
     const owner = new import_obsidian15.Component();
     owner.load();
     const rect = node.getBoundingClientRect();
     popup.style.position = "fixed";
     popup.style.left = `${Math.max(8, Math.min(rect.left, (node.ownerDocument.defaultView?.innerWidth ?? 800) - 440))}px`;
-    popup.style.top = `${Math.min(rect.bottom + 4, (node.ownerDocument.defaultView?.innerHeight ?? 600) - 300)}px`;
+    popup.style.top = `${Math.max(8, Math.min(rect.bottom + 4, (node.ownerDocument.defaultView?.innerHeight ?? 600) - 300))}px`;
     node.ownerDocument.body.append(popup);
-    void RichMarkdown.render(this.app, c.comment, popup, c.path, owner);
+    void RichMarkdown.render(this.app, c.comment, content2, c.path, owner);
     const close = () => {
       popup.remove();
       owner.unload();
@@ -37245,6 +37333,12 @@ var ReviewStore = class {
   }
 };
 
+// src/palette-position.ts
+function palettePosition(x, y, width, height, viewportWidth, viewportHeight, headerBottom = 40) {
+  const right = Math.max(8, viewportWidth - width - 8), bottom = Math.max(8, viewportHeight - height - 8), top2 = Math.min(bottom, Math.max(40, Math.min(80, headerBottom)) + 8);
+  return { x: Math.max(8, Math.min(x, right)), y: Math.max(top2, Math.min(y, bottom)) };
+}
+
 // src/floating-palette.ts
 var import_obsidian16 = require("obsidian");
 var FloatingPalette = class {
@@ -37379,8 +37473,10 @@ var FloatingPalette = class {
     el.createDiv("study-palette-meaning").setAttribute("aria-live", "polite");
     let drag;
     const clamp = () => {
-      this.x = Math.max(8, Math.min(this.x, win.innerWidth - el.offsetWidth - 8));
-      this.y = Math.max(8, Math.min(this.y, win.innerHeight - el.offsetHeight - 8));
+      const header = doc2.querySelector(".workspace-tab-header-container")?.getBoundingClientRect().bottom ?? 40;
+      const at = palettePosition(this.x, this.y, el.offsetWidth, el.offsetHeight, win.innerWidth, win.innerHeight, header);
+      this.x = at.x;
+      this.y = at.y;
       el.style.left = this.x + "px";
       el.style.top = this.y + "px";
     };
@@ -37524,7 +37620,7 @@ function readingAnchorApplies(root, a2) {
   const entry = index(context.path(), info.text), from = entry.lines[info.lineStart] ?? 0, to = entry.lines[info.lineEnd + 1] ?? info.text.length;
   if (a2.sectionSource) return info.text.slice(from, to).trimEnd() === a2.sectionSource.trimEnd() && (!a2.renderedRoot || a2.renderedRoot === ownedText(root));
   const key = JSON.stringify([a2.quote, a2.before, a2.after]);
-  if (!entry.hits.has(key)) entry.hits.set(key, locateQuote(info.text, a2));
+  if (!entry.hits.has(key)) entry.hits.set(key, locateMarginAnchor(info.text, a2));
   const hit = entry.hits.get(key);
   return !!hit && hit.from >= from && hit.to <= to;
 }
@@ -37623,8 +37719,8 @@ function readingMathTargets(root, a2) {
   if (!info) return [];
   const entry = index(a2.path, info.text), offset = entry.lines[info.lineStart] ?? 0, qs = equations(info.text.slice(offset, entry.lines[info.lineEnd + 1] ?? info.text.length));
   const elements = Array.from(root.querySelectorAll(".math")).filter((el) => el.closest("[data-study-comment-section]") === root);
-  const hit = locateQuote(info.text, a2);
-  return qs.flatMap((q, i) => hit && offset + q.from === hit.from && q.raw === a2.quote && elements[i] ? [elements[i]] : []);
+  const hit = locateMarginAnchor(info.text, a2);
+  return qs.flatMap((q, i) => hit && offset + q.from === hit.from && elements[i] ? [elements[i]] : []);
 }
 function readingEquationAnchor(math, path) {
   const root = math.closest("[data-study-comment-section]");
@@ -37875,7 +37971,7 @@ function registerMathAnnotations(plugin, store) {
         this.raw = this.view.state.doc.toString();
         this.qs = equations(this.raw);
       }
-      const hits = cs.map((c) => ({ c, hit: locateQuote(this.raw, c.excerpt) }));
+      const hits = cs.map((c) => ({ c, hit: locateMarginAnchor(this.raw, c.excerpt) }));
       for (const root of this.view.contentDOM.querySelectorAll(".math")) {
         const q = liveEquation(this.view, root, this.qs);
         paintMathMarks(root, q ? hits.filter((x) => x.hit?.from === q.from).map((x) => x.c) : []);
@@ -37914,7 +38010,7 @@ function registerMathAnnotations(plugin, store) {
       event.preventDefault();
       const menu = import_obsidian18.Menu.forEvent(event), open = (a2) => store.edit({ path: a2.path, quote: a2.quote, before: a2.before, after: a2.after, anchors: [a2] });
       store.addMarkMenu(menu, { path: chosen.path, quote: chosen.quote, before: chosen.before, after: chosen.after, anchors: [chosen] });
-      for (const c of store.data.comments.filter((c2) => noteIds.has(c2.id) && !c2.resolved)) menu.addItem((i) => i.setSection("study-margin").setTitle("Open note: " + (c.comment || c.intent).slice(0, 55)).onClick(() => store.edit(c)));
+      for (const c of store.data.comments.filter((c2) => noteIds.has(c2.id) && !c2.resolved)) menu.addItem((i) => i.setSection("study-margin").setTitle("Open margin note: " + (c.comment || c.intent).slice(0, 55)).onClick(() => store.edit(c)));
       menu.addItem((i) => i.setSection("study-margin").setTitle(noteIds.size ? selected ? "Add another comment on selection\u2026" : part ? "Add another comment on this symbol\u2026" : "Add another comment on this equation\u2026" : selected ? "Comment on selection\u2026" : part ? "Comment on this symbol\u2026" : "Comment on this equation\u2026").onClick(() => open(chosen)));
       menu.addItem((i) => i.setSection("study-margin").setTitle("Add selection to selected margin note").onClick(() => store.addToMargin?.([chosen])));
       if (part) menu.addItem((i) => i.setSection("study-margin").setTitle("Comment on whole equation\u2026").onClick(() => open(anchor)));
@@ -38508,18 +38604,12 @@ function registerAnnotations(plugin, store) {
     const c = store.data.comments.find((c2) => c2.id === node?.dataset.critiqueId);
     if (node && c) store.hover(node, c);
     return false;
-  }, click(event) {
+  }, contextmenu(event) {
     const node = event.target.closest("[data-critique-id]");
     const ids = (node?.dataset.studyCommentIds ?? node?.dataset.critiqueId ?? "").split(" "), comments = store.data.comments.filter((c) => ids.includes(c.id));
     if (comments.length) {
-      event.preventDefault();
-      if (comments.length === 1) store.edit(comments[0]);
-      else {
-        const menu = new import_obsidian22.Menu();
-        for (const c of comments) menu.addItem((i) => i.setTitle((c.intent || "Note") + ": " + (c.comment || c.quote).slice(0, 70)).onClick(() => store.edit(c)));
-        menu.showAtPosition({ x: event.clientX, y: event.clientY });
-      }
-      return true;
+      const menu = import_obsidian22.Menu.forEvent(event);
+      for (const c of comments) menu.addItem((i) => i.setSection("selection").setTitle("Open margin note: " + (c.comment || c.intent || c.quote).slice(0, 60)).setIcon("notebook-pen").onClick(() => store.edit(c)));
     }
     return false;
   } } }));

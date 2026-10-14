@@ -609,3 +609,12 @@ a.internal-link[data-href$=".py"],a.internal-link[data-href$=".ts"],a.internal-l
 
 .study-palette-swatch[data-style="text"]::before {content:'A'}
 .study-palette-swatch[data-style="underline"]::before {content:'Aa'}
+
+/* Keep the preview shell outside theme rules that make rendered Markdown transparent. */
+body .study-comment-popover{background:rgb(from var(--background-secondary,#f3f3f3) r g b / 1)!important;isolation:isolate;border-left:3px solid var(--critique-color);box-shadow:var(--shadow-l);font-size:var(--font-ui-medium);line-height:1.45;box-sizing:border-box;max-width:calc(100vw - 16px)}
+body.theme-dark .study-comment-popover{border-left-color:var(--critique-dark)}
+.study-comment-popover>.markdown-rendered{font-size:inherit;line-height:inherit}
+.study-comment-popover>.markdown-rendered>:first-child{margin-top:0}
+.study-comment-popover>.markdown-rendered>:last-child{margin-bottom:0}
+
+.study-margin-note.is-selected{background:color-mix(in srgb,var(--interactive-accent) 9%,transparent)}
