@@ -24,8 +24,31 @@ __export(main_exports, {
 });
 module.exports = __toCommonJS(main_exports);
 
-// src/annotation.ts
+// src/menu-groups.ts
 var import_obsidian = require("obsidian");
+function menuGroup(menu, key, title, icon, section = key === "insert" ? "insert" : key === "annotation-visibility" ? "view" : key.startsWith("mark-") ? "selection" : "action") {
+  menu.setUseNativeMenu(false);
+  const symbol = Symbol.for("research-studio.menu." + key), host = menu;
+  if (host[symbol]) return host[symbol];
+  let child;
+  menu.addItem((item) => {
+    item.setTitle(title).setIcon(icon).setSection(section);
+    const native = item;
+    if (typeof native.setSubmenu === "function") child = native.setSubmenu();
+    else {
+      child = new import_obsidian.Menu();
+      item.onClick((event) => {
+        const target = event.target, box = target?.getBoundingClientRect();
+        child.showAtPosition({ x: box?.right ?? 100, y: box?.top ?? 100 });
+      });
+    }
+  });
+  host[symbol] = child;
+  return child;
+}
+
+// src/annotation.ts
+var import_obsidian2 = require("obsidian");
 
 // node_modules/html-to-image/es/util.js
 function resolveUrl(url, baseUrl) {
@@ -824,7 +847,7 @@ async function toPng(node, options = {}) {
 
 // src/annotation.ts
 async function capturePassage(app, doc, path, excerpt) {
-  const owner = new import_obsidian.Component();
+  const owner = new import_obsidian2.Component();
   owner.load();
   const shell = doc.createElement("div");
   shell.style.cssText = "position:fixed;left:-20000px;top:0;width:900px;pointer-events:none;";
@@ -836,8 +859,8 @@ async function capturePassage(app, doc, path, excerpt) {
   try {
     const background = doc.defaultView.getComputedStyle(doc.body).getPropertyValue("--background-primary").trim() || "#fff";
     box.style.background = background;
-    await import_obsidian.MarkdownRenderer.render(app, excerpt, box, path, owner);
-    await (0, import_obsidian.finishRenderMath)();
+    await import_obsidian2.MarkdownRenderer.render(app, excerpt, box, path, owner);
+    await (0, import_obsidian2.finishRenderMath)();
     await doc.fonts.ready;
     if (box.querySelector("iframe,video,canvas"))
       throw new Error(
@@ -900,7 +923,7 @@ function alignImage(source, alignment) {
 }
 
 // src/main.ts
-var import_obsidian2 = require("obsidian");
+var import_obsidian3 = require("obsidian");
 var import_state = require("@codemirror/state");
 var import_view = require("@codemirror/view");
 
@@ -1012,7 +1035,7 @@ var field = import_state.StateField.define({
     ]) : import_view.Decoration.none
   )
 });
-var InkStudio = class extends import_obsidian2.Plugin {
+var InkStudio = class extends import_obsidian3.Plugin {
   code = "";
   css = "";
   locks = /* @__PURE__ */ new Set();
@@ -1084,24 +1107,25 @@ var InkStudio = class extends import_obsidian2.Plugin {
           match[1],
           context.file.path
         ) : null;
-        if (file instanceof import_obsidian2.TFile) void this.open(cm, file, line.to);
+        if (file instanceof import_obsidian3.TFile) void this.open(cm, file, line.to);
         else
-          new import_obsidian2.Notice(
+          new import_obsidian3.Notice(
             "Place the cursor on an Ink Studio image embed, or double-click its preview."
           );
       }
     });
     this.registerEvent(
-      this.app.workspace.on("editor-menu", (menu, editor, context) => {
+      this.app.workspace.on("editor-menu", (rootMenu, editor, context) => {
+        const menu = menuGroup(rootMenu, "insert", "Embed or link", "plus");
         if (editor.getSelection().trim())
           menu.addItem(
-            (i) => i.setTitle("Annotate selected passage").setIcon("pen-tool").onClick(() => {
+            (i) => i.setTitle("Drawing on selection\u2026").setIcon("pen-tool").onClick(() => {
               if (context.file)
                 void this.annotate(editor.cm, context.file);
             })
           );
         menu.addItem(
-          (i) => i.setTitle("Insert Ink Studio drawing").setIcon("pencil").onClick(() => {
+          (i) => i.setTitle("Drawing\u2026").setIcon("pencil").onClick(() => {
             const cm = editor.cm;
             if (cm && context.file) void this.insert(cm, context.file);
           })
@@ -1110,7 +1134,7 @@ var InkStudio = class extends import_obsidian2.Plugin {
     );
     this.registerEvent(
       this.app.vault.on("modify", (file) => {
-        if (file instanceof import_obsidian2.TFile && file.path.endsWith(".ink.svg")) {
+        if (file instanceof import_obsidian3.TFile && file.path.endsWith(".ink.svg")) {
           for (const doc of this.readingDocs) this.refreshPreviews(doc);
         }
       })
@@ -1171,7 +1195,7 @@ var InkStudio = class extends import_obsidian2.Plugin {
         e.preventDefault();
         e.stopImmediatePropagation();
         if (e.type === "dblclick") {
-          const view = this.app.workspace.getActiveViewOfType(import_obsidian2.MarkdownView);
+          const view = this.app.workspace.getActiveViewOfType(import_obsidian3.MarkdownView);
           if (!view?.file) return;
           const path = view.file.path;
           void view.leaf.setViewState({
@@ -1195,7 +1219,7 @@ var InkStudio = class extends import_obsidian2.Plugin {
     if (!image || image.closest(".ink-studio-host,.markdown-embed")) return;
     let view;
     this.app.workspace.iterateAllLeaves((leaf) => {
-      if (leaf.view instanceof import_obsidian2.MarkdownView && leaf.view.containerEl.contains(image))
+      if (leaf.view instanceof import_obsidian3.MarkdownView && leaf.view.containerEl.contains(image))
         view = leaf.view;
     });
     if (!view?.file) return;
@@ -1247,7 +1271,7 @@ var InkStudio = class extends import_obsidian2.Plugin {
     }
     event.preventDefault();
     event.stopImmediatePropagation();
-    const menu = new import_obsidian2.Menu();
+    const menu = new import_obsidian3.Menu();
     for (const [label, alignment, icon] of [
       ["Align image left", "left", "align-left"],
       ["Center image", "center", "align-center"],
@@ -1277,7 +1301,7 @@ var InkStudio = class extends import_obsidian2.Plugin {
                 return current.slice(0, selected.position.start.offset) + replacement + current.slice(selected.position.end.offset);
               });
           } catch (e) {
-            new import_obsidian2.Notice(String(e));
+            new import_obsidian3.Notice(String(e));
           }
         })
       );
@@ -1293,17 +1317,17 @@ var InkStudio = class extends import_obsidian2.Plugin {
   }
   async annotate(view, note) {
     if (view.state.field(field, false)) {
-      new import_obsidian2.Notice("Finish the current drawing first.");
+      new import_obsidian3.Notice("Finish the current drawing first.");
       return;
     }
     const original = view.state.doc.toString();
     const { from, to } = view.state.selection.main;
     const excerpt = original.slice(from, to);
     if (!excerpt.trim()) {
-      new import_obsidian2.Notice("Select the passage to annotate first.");
+      new import_obsidian3.Notice("Select the passage to annotate first.");
       return;
     }
-    new import_obsidian2.Notice("Capturing passage\u2026");
+    new import_obsidian3.Notice("Capturing passage\u2026");
     try {
       const captured = await capturePassage(
         this.app,
@@ -1365,12 +1389,12 @@ var InkStudio = class extends import_obsidian2.Plugin {
       });
       await this.open(view, preview, at + text.length - 1);
     } catch (e) {
-      new import_obsidian2.Notice(`Annotation capture failed: ${String(e)}`);
+      new import_obsidian3.Notice(`Annotation capture failed: ${String(e)}`);
     }
   }
   async insert(view, note) {
     if (view.state.field(field, false)) {
-      new import_obsidian2.Notice("Finish the current drawing first.");
+      new import_obsidian3.Notice("Finish the current drawing first.");
       return;
     }
     const original = view.state.doc.toString();
@@ -1387,8 +1411,8 @@ var InkStudio = class extends import_obsidian2.Plugin {
         scenePath(path),
         JSON.stringify(data)
       );
-      if (view.state.doc.toString() !== original || view.state.field(import_obsidian2.editorInfoField, false)?.file?.path !== note.path) {
-        new import_obsidian2.Notice(
+      if (view.state.doc.toString() !== original || view.state.field(import_obsidian3.editorInfoField, false)?.file?.path !== note.path) {
+        new import_obsidian3.Notice(
           "The note changed during creation. Drawing files are saved in the attachment folder; insert their link when ready."
         );
         return;
@@ -1404,7 +1428,7 @@ var InkStudio = class extends import_obsidian2.Plugin {
       });
       await this.open(view, preview, at + text.length - 1);
     } catch (e) {
-      new import_obsidian2.Notice(`Could not insert drawing: ${String(e)}`);
+      new import_obsidian3.Notice(`Could not insert drawing: ${String(e)}`);
     }
   }
   async session(preview, pos, note) {
@@ -1413,7 +1437,7 @@ var InkStudio = class extends import_obsidian2.Plugin {
         "This drawing is already being edited. Finish that editor first."
       );
     const scene = this.app.vault.getAbstractFileByPath(scenePath(preview.path));
-    if (!(scene instanceof import_obsidian2.TFile))
+    if (!(scene instanceof import_obsidian3.TFile))
       throw new Error(
         "Editable .ink.json is missing. Keep it beside the .ink.svg preview; the preview is preserved."
       );
@@ -1431,11 +1455,11 @@ var InkStudio = class extends import_obsidian2.Plugin {
   }
   async open(view, preview, pos) {
     if (view.state.field(field, false)) {
-      new import_obsidian2.Notice("Finish the current drawing first.");
+      new import_obsidian3.Notice("Finish the current drawing first.");
       return;
     }
     try {
-      const note = view.state.field(import_obsidian2.editorInfoField, false)?.file?.path ?? "";
+      const note = view.state.field(import_obsidian3.editorInfoField, false)?.file?.path ?? "";
       const document2 = view.state.doc;
       const candidates = Array.from(
         { length: document2.lines },
@@ -1455,14 +1479,14 @@ var InkStudio = class extends import_obsidian2.Plugin {
       }
       const s = await this.session(preview, document2.line(last).to, note);
       s.from = document2.line(first).from;
-      if (view.state.field(import_obsidian2.editorInfoField, false)?.file?.path !== note || view.state.field(field, false))
+      if (view.state.field(import_obsidian3.editorInfoField, false)?.file?.path !== note || view.state.field(field, false))
         return;
       view.dispatch({
         effects: active.of(s),
         selection: import_state.EditorSelection.cursor(s.from)
       });
     } catch (e) {
-      new import_obsidian2.Notice(String(e));
+      new import_obsidian3.Notice(String(e));
     }
   }
   mount(s, doc, close, measure = () => {
@@ -1484,13 +1508,13 @@ var InkStudio = class extends import_obsidian2.Plugin {
       link.onclick = async (e) => {
         e.preventDefault();
         const file2 = this.app.vault.getAbstractFileByPath(source.path);
-        if (!(file2 instanceof import_obsidian2.TFile)) {
-          new import_obsidian2.Notice("Source note is missing.");
+        if (!(file2 instanceof import_obsidian3.TFile)) {
+          new import_obsidian3.Notice("Source note is missing.");
           return;
         }
         const leaf = this.app.workspace.getLeaf("tab");
         await leaf.openFile(file2, { state: { mode: "source" } });
-        if (leaf.view instanceof import_obsidian2.MarkdownView) {
+        if (leaf.view instanceof import_obsidian3.MarkdownView) {
           const editor = leaf.view.editor;
           const text = editor.getValue();
           const exact = text.slice(source.from, source.to) === source.excerpt;
@@ -1506,13 +1530,13 @@ var InkStudio = class extends import_obsidian2.Plugin {
               true
             );
           } else
-            new import_obsidian2.Notice(
+            new import_obsidian3.Notice(
               "The source changed; the frozen passage is retained in the annotation."
             );
         }
       };
       const file = this.app.vault.getAbstractFileByPath(source.path);
-      const read = file instanceof import_obsidian2.TFile ? this.app.vault.read(file) : Promise.resolve(null);
+      const read = file instanceof import_obsidian3.TFile ? this.app.vault.read(file) : Promise.resolve(null);
       void read.then((text) => {
         state.textContent = " \xB7 " + sourceStatus(text, source) + " \xB7 Frozen " + source.captured.slice(0, 10);
       });
@@ -1546,7 +1570,7 @@ var InkStudio = class extends import_obsidian2.Plugin {
         return;
       }
       if (d.type === "preview-error") {
-        new import_obsidian2.Notice(
+        new import_obsidian3.Notice(
           "Drawing strokes are saved, but its image preview could not be updated."
         );
         return;
@@ -1556,7 +1580,7 @@ var InkStudio = class extends import_obsidian2.Plugin {
           `Recovered-${s.data.id}.ink.json`,
           s.note
         ).then((p) => this.app.vault.create(p, JSON.stringify(d.scene))).then(
-          () => new import_obsidian2.Notice("Draft recovered as a separate .ink.json attachment.")
+          () => new import_obsidian3.Notice("Draft recovered as a separate .ink.json attachment.")
         ).catch((e) => reply("error", { message: String(e) }));
         return;
       }
@@ -1584,7 +1608,7 @@ var InkStudio = class extends import_obsidian2.Plugin {
         reply("error", { message: String(e) });
         if (!warned) {
           warned = true;
-          new import_obsidian2.Notice(`Ink Studio: ${String(e)}`);
+          new import_obsidian3.Notice(`Ink Studio: ${String(e)}`);
         }
       });
     };
