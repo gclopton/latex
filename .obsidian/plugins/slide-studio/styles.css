@@ -1303,3 +1303,9 @@ button.ss-document-card {height:328px;min-width:0;display:flex;flex-direction:co
 .ss-present.ss-with-notes .ss-present-mount { right:min(400px,35vw); }
 .ss-present .ss-present-notes { width:min(400px,35vw); box-sizing:border-box; }
 .ss-present.ss-with-notes .ss-present-controls { right:calc(min(400px,35vw) + 12px); }
+
+.ss-figure-preview { width:min(94vw,1400px); max-width:94vw; }
+.ss-figure-preview .ss-preview-image { position:relative; overflow:hidden; margin-top:12px; }
+.ss-figure-preview .ss-preview-image img { display:block; width:100%; height:auto; }
+.ss-scientific .ss-figure-image[role="button"] { cursor:zoom-in; }
+.ss-scientific .ss-figure-image[role="button"]:focus-visible { outline:2px solid var(--interactive-accent); outline-offset:3px; }

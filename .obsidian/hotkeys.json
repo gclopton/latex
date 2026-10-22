@@ -1,187 +1,196 @@
 {
-  "editor:insert-callout": [
+  "bookmarks:open": [
     {
+      "key": "B",
       "modifiers": [
-        "Mod",
-        "Shift"
-      ],
-      "key": "1"
-    }
-  ],
-  "workspace:edit-file-title": [
-    {
-      "modifiers": [],
-      "key": "F2"
-    },
-    {
-      "modifiers": [
-        "Alt"
-      ],
-      "key": "X"
+        "Ctrl"
+      ]
     }
   ],
   "editor:fold-less": [
     {
+      "key": "L",
       "modifiers": [
         "Alt"
-      ],
-      "key": "L"
+      ]
     }
   ],
-  "workspace:split-horizontal": [
+  "editor:insert-callout": [
     {
+      "key": "1",
       "modifiers": [
-        "Ctrl",
-        "Mod"
-      ],
-      "key": "ArrowDown"
+        "Mod",
+        "Shift"
+      ]
     }
   ],
-  "workspace:split-vertical": [
+  "editor:insert-link": [
     {
+      "key": "K",
       "modifiers": [
-        "Ctrl",
-        "Mod"
-      ],
-      "key": "ArrowRight"
-    }
-  ],
-  "workspace:move-to-new-window": [
-    {
-      "modifiers": [
-        "Ctrl",
-        "Mod"
-      ],
-      "key": "4"
-    }
-  ],
-  "bookmarks:open": [
-    {
-      "modifiers": [
-        "Ctrl"
-      ],
-      "key": "B"
+        "Mod",
+        "Shift"
+      ]
     }
   ],
   "file-explorer:reveal-active-file": [
     {
+      "key": "R",
       "modifiers": [
         "Alt"
-      ],
-      "key": "R"
+      ]
+    }
+  ],
+  "image-gallery:open-file-gallery": [
+    {
+      "key": "O",
+      "modifiers": [
+        "Mod"
+      ]
+    }
+  ],
+  "knowledge-library:browse-window": [
+    {
+      "key": "K",
+      "modifiers": [
+        "Mod"
+      ]
     }
   ],
   "obsidian-hover-editor:open-link-in-new-popover": [
     {
+      "key": "H",
       "modifiers": [
         "Alt"
-      ],
-      "key": "H"
+      ]
     }
   ],
   "obsidian-wrap-with-shortcuts:wrap-with-shortcut-underline": [
     {
+      "key": "U",
       "modifiers": [
         "Ctrl"
-      ],
-      "key": "U"
-    }
-  ],
-  "text-snippets-obsidian:text-snippets": [
-    {
-      "modifiers": [
-        "Ctrl"
-      ],
-      "key": "F"
-    }
-  ],
-  "canvas-presentation:mark-slide-number": [
-    {
-      "modifiers": [
-        "Ctrl"
-      ],
-      "key": "M"
-    }
-  ],
-  "terminal:open-terminal.integrated.current": [
-    {
-      "modifiers": [
-        "Alt"
-      ],
-      "key": "T"
-    }
-  ],
-  "terminal:open-terminal.integrated.root": [
-    {
-      "modifiers": [
-        "Alt"
-      ],
-      "key": "R"
-    }
-  ],
-  "quick-explorer:go-next": [
-    {
-      "modifiers": [
-        "Alt"
-      ],
-      "key": "ArrowRight"
-    }
-  ],
-  "quick-explorer:go-prev": [
-    {
-      "modifiers": [
-        "Alt"
-      ],
-      "key": "ArrowLeft"
+      ]
     }
   ],
   "oin-gotoheading:gotoheading-next": [
     {
+      "key": "ArrowDown",
       "modifiers": [
         "Alt"
-      ],
-      "key": "ArrowDown"
+      ]
     }
   ],
   "oin-gotoheading:gotoheading-previous": [
     {
+      "key": "ArrowUp",
       "modifiers": [
         "Alt"
-      ],
-      "key": "ArrowUp"
+      ]
     }
   ],
   "quick-explorer:go-first": [
     {
+      "key": "F",
       "modifiers": [
         "Alt"
-      ],
-      "key": "F"
+      ]
+    }
+  ],
+  "quick-explorer:go-next": [
+    {
+      "key": "ArrowRight",
+      "modifiers": [
+        "Alt"
+      ]
+    }
+  ],
+  "quick-explorer:go-prev": [
+    {
+      "key": "ArrowLeft",
+      "modifiers": [
+        "Alt"
+      ]
     }
   ],
   "research-outline:quiet-outline": [
     {
+      "key": "Q",
       "modifiers": [
         "Ctrl"
-      ],
-      "key": "Q"
+      ]
     }
   ],
   "research-outline:quiet-outline-focus-input": [
     {
+      "key": "I",
       "modifiers": [
         "Ctrl"
-      ],
-      "key": "I"
+      ]
     }
   ],
   "switcher:open": [],
-  "image-gallery:open-file-gallery": [
+  "terminal:open-terminal.integrated.current": [
     {
+      "key": "T",
       "modifiers": [
+        "Alt"
+      ]
+    }
+  ],
+  "terminal:open-terminal.integrated.root": [
+    {
+      "key": "R",
+      "modifiers": [
+        "Alt"
+      ]
+    }
+  ],
+  "text-snippets-obsidian:text-snippets": [
+    {
+      "key": "F",
+      "modifiers": [
+        "Ctrl"
+      ]
+    }
+  ],
+  "workspace:edit-file-title": [
+    {
+      "key": "F2",
+      "modifiers": []
+    },
+    {
+      "key": "X",
+      "modifiers": [
+        "Alt"
+      ]
+    }
+  ],
+  "workspace:move-to-new-window": [
+    {
+      "key": "4",
+      "modifiers": [
+        "Ctrl",
         "Mod"
-      ],
-      "key": "O"
+      ]
+    }
+  ],
+  "workspace:split-horizontal": [
+    {
+      "key": "ArrowDown",
+      "modifiers": [
+        "Ctrl",
+        "Mod"
+      ]
+    }
+  ],
+  "workspace:split-vertical": [
+    {
+      "key": "ArrowRight",
+      "modifiers": [
+        "Ctrl",
+        "Mod"
+      ]
     }
   ]
 }

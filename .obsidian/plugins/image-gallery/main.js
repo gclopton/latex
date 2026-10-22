@@ -2193,6 +2193,7 @@ function menuGroup(menu, key3, title, icon, section = key3 === "insert" ? "inser
 // src/paper-protection.ts
 var import_obsidian2 = require("obsidian");
 var import_state = require("@codemirror/state");
+var import_view = require("@codemirror/view");
 
 // src/library-model.ts
 var CATALOG_PATH = ".paper-library/catalog.json";
@@ -2413,8 +2414,8 @@ function sameContent(a, b) {
   return x.length === y.length && x.every((v, i) => v === y[i]);
 }
 function workingCopyName(sourceName, description) {
-  const descriptor = description.trim();
-  if (!descriptor || /^(?:\d+|copy|backup|old version)$/i.test(descriptor) || /[\\/:*?"<>|\[\]#\x00-\x1f]/.test(descriptor)) throw Error("Choose a descriptive suffix, such as Outline, Summary, or Worked examples.");
+  const requested = description.trim(), descriptor = /^\d+$/.test(requested) ? `Working copy ${requested}` : requested;
+  if (!descriptor || /^(?:copy|backup|old version)$/i.test(descriptor) || /[\\/:*?"<>|\[\]#\x00-\x1f]/.test(descriptor)) throw Error("Choose a descriptive suffix, such as Outline, Summary, or Worked examples.");
   return `${stem(sourceName)} \u2014 ${descriptor}.md`;
 }
 
@@ -2477,8 +2478,9 @@ function installPaperProtection(plugin, owner) {
   let index = new PaperProtectionIndex(owner.catalog), lastNotice = 0, active = true;
   const moved = /* @__PURE__ */ new Map(), relocated = /* @__PURE__ */ new Map();
   const readonlySlot = new import_state.Compartment();
-  const readonlyExtension = () => import_state.EditorState.readOnly.compute([import_obsidian2.editorInfoField], (state) => locked(state.field(import_obsidian2.editorInfoField, false)?.file?.path ?? ""));
+  const readonlyExtension = () => import_state.EditorState.readOnly.compute([import_obsidian2.editorInfoField], (state) => editorLocked(state.field(import_obsidian2.editorInfoField, false)?.file?.path ?? ""));
   const locked = (path2) => index.isProtected(path2) || moved.has(path2);
+  const editorLocked = (path2) => locked(path2) || /\.md$/i.test(path2) && index.canonicalPaths.has(path2);
   const harmlessRelocation = (path2, before, after) => (relocated.get(path2) ?? 0) > Date.now() && equivalentLocalLinks(before, after, (link2) => app.metadataCache.getFirstLinkpathDest(link2, path2)?.path);
   const notify = (error) => {
     if (Date.now() - lastNotice > 2e3) {
@@ -2553,9 +2555,22 @@ function installPaperProtection(plugin, owner) {
     }));
   });
   plugin.registerEditorExtension(readonlySlot.of(readonlyExtension()));
+  plugin.registerEditorExtension(import_view.showPanel.compute([import_obsidian2.editorInfoField], (state) => {
+    const path2 = state.field(import_obsidian2.editorInfoField, false)?.file?.path;
+    if (!path2 || !editorLocked(path2)) return null;
+    return (view) => {
+      const dom = view.dom.ownerDocument.createElement("div");
+      dom.className = "image-gallery-source-warning";
+      dom.setAttribute("role", "note");
+      const message = dom.createEl("span", { text: "Naughty boy \u2014 this is an original source. Duplicate it before making edits. Annotations are still available." });
+      const copy = dom.createEl("button", { text: "Duplicate before editing" });
+      copy.onclick = () => owner.createWorkingCopy(path2);
+      return { dom, top: true };
+    };
+  }));
   plugin.registerEditorExtension(import_state.EditorState.transactionFilter.of((tr) => {
     const path2 = tr.startState.field(import_obsidian2.editorInfoField, false)?.file?.path;
-    if (path2 && locked(path2) && tr.docChanged && !!tr.annotation(import_state.Transaction.userEvent)) {
+    if (path2 && editorLocked(path2) && tr.docChanged && !!tr.annotation(import_state.Transaction.userEvent)) {
       notify(refusal());
       return [];
     }
@@ -3289,7 +3304,9 @@ var PaperLibraries = class {
     }
     const from = this.app.vault.getAbstractFileByPath(source.conversion.path);
     if (!(from instanceof import_obsidian4.TFile)) return;
-    new NameDialog(this.app, "Working copy \u2014 add a description", "Outline", (description) => void (async () => {
+    let number = 1;
+    while (this.app.vault.getAbstractFileByPath("Paper notes/" + workingCopyName(from.name, `Working copy ${number}`))) number++;
+    new NameDialog(this.app, "Duplicate before editing \u2014 choose a distinct title suffix", `Working copy ${number}`, (description) => void (async () => {
       const filename = workingCopyName(from.name, description), folder = "Paper notes", dest = folder + "/" + filename;
       new PaperProtectionIndex(this.catalog).assertDestination(dest);
       if (this.app.vault.getAbstractFileByPath(dest)) throw Error("That working copy already exists. Choose another description.");
@@ -4594,7 +4611,7 @@ var FolderBrowser = class extends import_obsidian6.Modal {
 
 // src/main.ts
 var import_obsidian10 = require("obsidian");
-var import_view = require("@codemirror/view");
+var import_view2 = require("@codemirror/view");
 
 // src/embeds.ts
 var escaped = (s, i) => {
@@ -5843,7 +5860,7 @@ var ImageGallery = class extends import_obsidian10.Plugin {
         "contextmenu",
         (event) => {
           const target = event.target;
-          if (target.closest(".ss-stage, .ig-modal")) return;
+          if (target.closest("[data-image-owner], .cm-preview-code-block, .study-card, .ss-stage, .ss-scientific, .ss-scientific-editor, .ss-figure-preview, .study-figure-modal, .ig-modal")) return;
           const held = pressed;
           pressed = void 0;
           const img = imageAt(target) ?? (held && Date.now() - held.time < 1500 && Math.abs(held.x - event.clientX) < 3 && Math.abs(held.y - event.clientY) < 3 ? held.img : null);
@@ -5851,7 +5868,7 @@ var ImageGallery = class extends import_obsidian10.Plugin {
           let found = this.targets.get(img);
           const cm = img.closest(".cm-editor");
           if (cm) {
-            const view = import_view.EditorView.findFromDOM(cm);
+            const view = import_view2.EditorView.findFromDOM(cm);
             if (!view) return;
             const file = view.state.field(import_obsidian10.editorInfoField, false)?.file;
             if (!file) return;
@@ -5977,7 +5994,7 @@ var ImageGallery = class extends import_obsidian10.Plugin {
     }
   }
   async bindReading(el, ctx) {
-    if (el.closest(".ss-stage, .ig-modal")) return;
+    if (el.closest("[data-image-owner], .cm-preview-code-block, .study-card, .ss-stage, .ss-scientific, .ss-scientific-editor, .ss-figure-preview, .study-figure-modal, .ig-modal")) return;
     const file = this.app.vault.getAbstractFileByPath(ctx.sourcePath);
     if (!(file instanceof import_obsidian10.TFile) || file.extension !== "md") return;
     const section = ctx.getSectionInfo(el);

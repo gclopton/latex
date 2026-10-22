@@ -433,3 +433,5 @@ button.ig-library-tile:hover {transform:translateY(-2px);box-shadow:0 6px 18px #
 .theme-dark .ig-library-sidebar summary .ig-library-sidebar-label,.theme-dark .ig-library-sidebar .is-root,.theme-dark .ig-library-sidebar .ig-library-sidebar-label.is-current,.theme-dark .ig-library-sidebar .ig-library-sidebar-label.is-ancestor,.theme-dark .ig-library-tile-body strong {color:color-mix(in srgb,var(--library-color) 68%,white)!important;}
 
 .ig-library-cleanup { margin-inline-start: auto; flex: 0 0 auto; font-size: 1.2em; line-height: 1; cursor: help; }
+
+.image-gallery-source-warning{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--background-secondary);border-bottom:1px solid var(--background-modifier-border);color:var(--text-muted);font-size:var(--font-ui-small);flex-wrap:wrap}.image-gallery-source-warning span{flex:1;min-width:180px}.image-gallery-source-warning button{white-space:nowrap}
