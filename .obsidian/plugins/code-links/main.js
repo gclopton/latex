@@ -4702,6 +4702,8 @@ function live(plugin) {
 var CodeLinks = class extends import_obsidian3.Plugin {
   constructor() {
     super(...arguments);
+    this.ready = false;
+    this.annotationEmbedsVersion = 2;
     this.codeAnnotationsVersion = 1;
     this.codeReaders = /* @__PURE__ */ new Set();
     this.links = new LinkSupport(this);
@@ -4932,6 +4934,8 @@ var CodeLinks = class extends import_obsidian3.Plugin {
       }
     } });
     this.app.workspace.onLayoutReady(() => void this.refresh().catch((e) => new import_obsidian3.Notice(String(e))));
+    this.ready = true;
+    this.app.workspace.trigger("code-links-ready");
   }
   combineLinks(ed) {
     const text = ed.getSelection();
@@ -4953,6 +4957,8 @@ var CodeLinks = class extends import_obsidian3.Plugin {
     menu.showAtMouseEvent(e);
   }
   onunload() {
+    this.ready = false;
+    this.app.workspace.trigger("code-links-ready");
     this.links.dispose();
     for (const child of this.jobs) child.kill();
     this.jobs.clear();

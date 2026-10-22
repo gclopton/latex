@@ -993,3 +993,20 @@ caption.study-table-practice-footer {
 .study-code-field-status{display:inline-block;font-family:var(--font-interface);font-size:.65em;line-height:1;margin-left:3px;color:var(--text-muted);vertical-align:middle;cursor:help}
 .study-code-slot[data-field-check=pass]>.study-code-field-status{color:var(--color-green)}
 .study-code-slot[data-field-check=fail]>.study-code-field-status{color:var(--color-red)}
+
+/* Generated practice actions belong to their source surfaces, not editable prose. */
+.study-callout-practice-footer{padding:8px 12px;border-top:1px solid var(--background-modifier-border);font-size:var(--font-ui-small)}
+.study-callout-practice-footer a{color:var(--text-accent);text-decoration:none;cursor:pointer}
+.study-callout-practice-footer a:hover,.study-callout-practice-footer a:focus-visible{text-decoration:underline}
+.study-margin-ordinary-toggle{align-self:flex-end;font-size:var(--font-ui-smaller);margin:-4px 0 10px;color:var(--text-muted);cursor:pointer;text-decoration:none}
+.study-margin-ordinary-toggle:hover,.study-margin-ordinary-toggle:focus-visible{color:var(--text-accent);text-decoration:underline}
+.study-margin-ordinary-toggle[hidden]{display:none!important}
+.study-practice-number[role=link]{cursor:pointer}
+.study-practice-number[role=link]:focus-visible{outline:2px solid var(--interactive-accent);outline-offset:3px}
+.study-practice-section-source{color:inherit;text-decoration:none;cursor:pointer}
+.study-practice-section-source:hover,.study-practice-section-source:focus-visible{text-decoration:underline}
+.study-practice-entry-body>a{color:var(--text-accent)}
+
+.study-practice-variant{display:flex;align-items:baseline;gap:7px}
+.study-practice-variant a{min-width:0}
+.study-practice-rank{flex:none;display:inline-flex;align-items:center;justify-content:center;min-width:2.1em;height:1.45em;padding:0 4px;box-sizing:border-box;border:1px solid color-mix(in srgb,var(--practice-color) 65%,transparent);border-radius:4px;background:color-mix(in srgb,var(--practice-color) 14%,transparent);color:color-mix(in srgb,var(--practice-color) 60%,var(--text-normal));font-size:var(--font-ui-smaller);font-weight:var(--font-semibold);font-variant-numeric:tabular-nums;line-height:1}
