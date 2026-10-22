@@ -1,0 +1,3 @@
+# Personal status assignments and conflict recovery copies stay local.
+data.json
+data.*.json

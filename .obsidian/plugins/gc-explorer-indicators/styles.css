@@ -1,0 +1,10 @@
+.nav-files-container .gc-explorer-indicators {
+ display:inline-flex; align-items:center; gap:4px; margin:0 7px 0 1px;
+ vertical-align:middle; pointer-events:none; user-select:none; line-height:1;
+}
+.nav-files-container .gc-explorer-indicator {
+ display:inline-block; width:7px; height:7px; min-width:7px; border-radius:50%;
+ box-shadow:0 0 0 1px var(--background-primary),0 0 0 2px rgba(128,128,128,.18);
+}
+.nav-files-container [contenteditable="true"] > .gc-explorer-indicators {display:none;}
+.gc-explorer-tooltip {z-index:99999;pointer-events:none;max-width:320px;padding:7px 10px;border-radius:5px;background:var(--background-secondary);color:var(--text-normal);border:1px solid var(--background-modifier-border);box-shadow:0 2px 8px #0005;font-size:12px;line-height:1.4;}

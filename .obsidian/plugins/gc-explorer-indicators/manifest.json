@@ -1,0 +1,9 @@
+{
+  "id": "gc-explorer-indicators",
+  "name": "Explorer Indicators",
+  "version": "0.1.0",
+  "minAppVersion": "1.14.4",
+  "description": "Independent manual OCR indicators and automatic local Git indicators in the file explorer.",
+  "author": "Grady Clopton",
+  "isDesktopOnly": true
+}
