@@ -1,0 +1,10 @@
+{
+  "id": "structured-math",
+  "name": "Structured Math",
+  "version": "0.0.0",
+  "minAppVersion": "1.5.0",
+  "description": "Structured, in-document math editing for Obsidian.",
+  "author": "Grady Clopton",
+  "authorUrl": "https://github.com/gclopton",
+  "isDesktopOnly": true
+}

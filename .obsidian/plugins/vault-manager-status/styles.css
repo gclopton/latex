@@ -1,0 +1,6 @@
+.vault-manager-status { padding: 0 6px; cursor: pointer; order: -5; display: flex; align-items: center; gap: 6px; }
+.vault-manager-status-activity { display: inline-flex; gap: 3px; color: var(--text-muted); }
+.vault-manager-status-activity svg { width: 12px; height: 12px; }
+.vault-manager-status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+/* Retire only the legacy Research Colors status controls; existing note formatting stays intact. */
+.status-bar-item.plugin-research-colors { display: none !important; }

@@ -1,0 +1,93 @@
+.structured-math-active {
+  display: inline-flex;
+  vertical-align: baseline;
+  max-width: 100%;
+}
+
+.structured-math-active-widget {
+  display: inline-flex;
+  align-items: baseline;
+  max-width: 100%;
+  vertical-align: baseline;
+}
+
+.structured-math-active-widget[data-display="true"] {
+  display: block;
+  margin: 0.6em 0;
+}
+
+.structured-math-active-widget math-field {
+  max-width: 100%;
+  min-width: 1.5em;
+  border: 1px solid var(--interactive-accent, #2563eb);
+  border-radius: 2px;
+  background: var(--background-primary, #ffffff);
+  color: var(--text-normal, #111827);
+  font-size: var(--font-text-size, 16px);
+}
+
+.structured-math-active-widget math-field::part(virtual-keyboard-toggle),
+.structured-math-active-widget math-field::part(menu-toggle) {
+  display: none;
+}
+
+.structured-math-active-widget[data-display="true"] math-field {
+  display: block;
+  width: 100%;
+  min-height: 2.25em;
+}
+
+.structured-math-active[data-display="true"] {
+  display: block;
+  margin: 0.75em 0;
+}
+
+.structured-math-palette {
+  width: min(520px, 100%);
+  border: 1px solid var(--background-modifier-border, #d1d5db);
+  background: var(--background-primary, #ffffff);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+  font-size: 14px;
+}
+
+.structured-math-palette-input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--background-modifier-border, #d1d5db);
+}
+
+.structured-math-palette-list {
+  max-height: 280px;
+  margin: 0;
+  padding: 4px;
+  overflow: auto;
+  list-style: none;
+}
+
+.structured-math-palette-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(160px, 1.4fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 32px;
+  padding: 4px 8px;
+}
+
+.structured-math-palette-row[aria-selected="true"] {
+  background: var(--background-modifier-hover, #dbeafe);
+}
+
+.structured-math-palette-preview {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.structured-math-palette-footer {
+  min-height: 24px;
+  padding: 4px 8px;
+  border-top: 1px solid var(--background-modifier-border, #d1d5db);
+  color: var(--text-muted, #64748b);
+}
