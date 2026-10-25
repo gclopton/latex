@@ -5213,6 +5213,49 @@ var ExcerptDialog = class extends import_obsidian4.Modal {
   }
 };
 
+// output-appearance.ts
+var terminalColors = { outputForeground: "#8fe388", outputBackground: "#08110b" };
+function outputColor(value, fallback2) {
+  return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : fallback2;
+}
+var OutputAppearance = class {
+  constructor(workspace, colors) {
+    this.workspace = workspace;
+    this.colors = colors;
+    this.disposed = false;
+    this.documents = /* @__PURE__ */ new Map();
+  }
+  apply(doc) {
+    if (this.disposed || !doc.body) return;
+    let entry = this.documents.get(doc);
+    if (!entry) {
+      const style = doc.body.style;
+      entry = { style, previous: ["--code-links-output-fg", "--code-links-output-bg"].map((name) => ({ name, value: style.getPropertyValue(name), priority: style.getPropertyPriority(name) })) };
+      this.documents.set(doc, entry);
+    }
+    const colors = this.colors();
+    entry.style.setProperty("--code-links-output-fg", colors.outputForeground);
+    entry.style.setProperty("--code-links-output-bg", colors.outputBackground);
+  }
+  refresh() {
+    this.apply(document);
+    this.workspace.iterateAllLeaves((leaf) => this.apply(leaf.view.containerEl.ownerDocument));
+  }
+  release(doc) {
+    const entry = this.documents.get(doc);
+    if (!entry) return;
+    for (const p of entry.previous) {
+      if (p.value) entry.style.setProperty(p.name, p.value, p.priority);
+      else entry.style.removeProperty(p.name);
+    }
+    this.documents.delete(doc);
+  }
+  dispose() {
+    this.disposed = true;
+    for (const doc of this.documents.keys()) this.release(doc);
+  }
+};
+
 // main.ts
 var wolframLanguage = import_language5.StreamLanguage.define(mathematica);
 var wolframClasses = { keyword: "keyword", string: "string", number: "number", comment: "comment", operator: "operator", atom: "special", meta: "special", character: "string", "string.special": "string", "variableName.special": "special", "variableName.constant": "special" };
@@ -5606,7 +5649,8 @@ var CodeLinks = class extends import_obsidian5.Plugin {
     this.codeAnnotationsVersion = 1;
     this.codeReaders = /* @__PURE__ */ new Set();
     this.links = new LinkSupport(this);
-    this.settings = { python: "/opt/homebrew/bin/python3", core: (0, import_path2.join)((0, import_os2.homedir)(), "Projects/code-links/core/code_links.py") };
+    this.settings = { python: "/opt/homebrew/bin/python3", core: (0, import_path2.join)((0, import_os2.homedir)(), "Projects/code-links/core/code_links.py"), ...terminalColors };
+    this.settingsWrites = Promise.resolve();
     this.renameQueue = Promise.resolve();
     this.files = [];
     this.lastIndex = 0;
@@ -5627,6 +5671,30 @@ var CodeLinks = class extends import_obsidian5.Plugin {
   }
   revealCode(path, id2, raw) {
     return revealCode(this, path, id2, raw);
+  }
+  saveSettings() {
+    const data = { ...this.settings };
+    this.settingsWrites = this.settingsWrites.then(() => this.saveData(data)).catch((e) => {
+      new import_obsidian5.Notice("Could not save Code Links settings: " + String(e));
+    });
+    return this.settingsWrites;
+  }
+  setOutputColors(colors) {
+    for (const key of ["outputForeground", "outputBackground"]) if (key in colors) this.settings[key] = outputColor(colors[key], terminalColors[key]);
+    this.appearance.refresh();
+    clearTimeout(this.appearanceTimer);
+    this.appearanceTimer = setTimeout(() => {
+      this.appearanceTimer = void 0;
+      void this.saveSettings();
+    }, 200);
+  }
+  flushAppearance() {
+    if (this.appearanceTimer !== void 0) {
+      clearTimeout(this.appearanceTimer);
+      this.appearanceTimer = void 0;
+      return this.saveSettings();
+    }
+    return this.settingsWrites;
   }
   root() {
     const a2 = this.app.vault.adapter;
@@ -5762,6 +5830,12 @@ var CodeLinks = class extends import_obsidian5.Plugin {
   }
   async onload() {
     this.settings = { ...this.settings, ...await this.loadData() };
+    for (const key of ["outputForeground", "outputBackground"]) this.settings[key] = outputColor(this.settings[key], terminalColors[key]);
+    this.appearance = new OutputAppearance(this.app.workspace, () => this.settings);
+    this.appearance.refresh();
+    this.registerEvent(this.app.workspace.on("window-open", (_workspace, win) => this.appearance.apply(win.document)));
+    this.registerEvent(this.app.workspace.on("window-close", (_workspace, win) => this.appearance.release(win.document)));
+    this.app.workspace.onLayoutReady(() => this.appearance.refresh());
     this.addSettingTab(new Settings(this));
     this.outputs = new RunOutputs(this);
     await this.outputs.initialize();
@@ -5881,6 +5955,8 @@ var CodeLinks = class extends import_obsidian5.Plugin {
     menu.showAtMouseEvent(e);
   }
   onunload() {
+    void this.flushAppearance();
+    this.appearance?.dispose();
     void this.outputs?.dispose();
     this.ready = false;
     this.app.workspace.trigger("code-links-ready");
@@ -6039,17 +6115,51 @@ var Settings = class extends import_obsidian5.PluginSettingTab {
     super(plugin.app, plugin);
     this.plugin = plugin;
   }
+  hide() {
+    super.hide();
+    void this.plugin.flushAppearance();
+  }
   display() {
     this.containerEl.empty();
     this.containerEl.createEl("h2", { text: "Code Links" });
+    new import_obsidian5.Setting(this.containerEl).setName("Output appearance").setHeading();
+    this.containerEl.createEl("p", { cls: "setting-item-description", text: "Colors for program output in this vault. Changes appear immediately in every open note." });
+    const preview = this.containerEl.createEl("pre", { cls: "code-links-output-appearance-preview", text: "Energy (J)    Speed (m/s)\n     1.250       1.58114\n     2.500       2.23607" });
+    const paint = () => {
+      preview.style.color = this.plugin.settings.outputForeground;
+      preview.style.backgroundColor = this.plugin.settings.outputBackground;
+    };
+    paint();
+    let foreground, background;
+    new import_obsidian5.Setting(this.containerEl).setName("Text color").addColorPicker((p) => {
+      foreground = p;
+      p.setValue(this.plugin.settings.outputForeground).onChange((v) => {
+        this.plugin.setOutputColors({ outputForeground: v });
+        paint();
+      });
+    });
+    new import_obsidian5.Setting(this.containerEl).setName("Background color").addColorPicker((p) => {
+      background = p;
+      p.setValue(this.plugin.settings.outputBackground).onChange((v) => {
+        this.plugin.setOutputColors({ outputBackground: v });
+        paint();
+      });
+    });
+    new import_obsidian5.Setting(this.containerEl).setName("Terminal defaults").setDesc("Soft green text on a near-black background.").addButton((b) => b.setButtonText("Restore terminal colors").onClick(() => {
+      this.plugin.setOutputColors(terminalColors);
+      foreground.setValue(this.plugin.settings.outputForeground);
+      background.setValue(this.plugin.settings.outputBackground);
+      paint();
+    }));
+    new import_obsidian5.Setting(this.containerEl).setName("Source tools").setHeading();
     new import_obsidian5.Setting(this.containerEl).setName("Linked folders").setDesc("Manage shared nav aliases for every vault and terminal client.").addButton((b) => b.setButtonText("Manage linked folders").onClick(() => new FolderManager(this.plugin).open()));
     new import_obsidian5.Setting(this.containerEl).setName("Python executable").setDesc("Host-local path; no shell commands.").addText((t) => t.setValue(this.plugin.settings.python).onChange(async (v) => {
       this.plugin.settings.python = v;
-      await this.plugin.saveData(this.plugin.settings);
+      await this.plugin.saveSettings();
     }));
     new import_obsidian5.Setting(this.containerEl).setName("Shared core script").addText((t) => t.setValue(this.plugin.settings.core).onChange(async (v) => {
       this.plugin.settings.core = v;
-      await this.plugin.saveData(this.plugin.settings);
+      await this.plugin.saveSettings();
     }));
   }
 };
