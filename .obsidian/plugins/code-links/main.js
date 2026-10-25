@@ -4480,9 +4480,27 @@ var Reader = class extends import_obsidian3.MarkdownRenderChild {
       };
       (0, import_fs.watchFile)(r.path, { interval: 2e3, persistent: false }, this.watcher);
       const body = this.containerEl.createDiv("code-links-code");
-      body.style.height = `calc(${r.link.height} * var(--code-links-line-height, 19.5px) + 6px)`;
+      const visibleLines = Math.min(r.link.height, Math.max(1, r.lines.length));
+      body.style.height = `calc(${visibleLines} * var(--code-links-line-height, 19.5px) + 10px)`;
+      body.style.maxHeight = `calc(${r.link.height} * var(--code-links-line-height, 19.5px) + 10px)`;
       this.view = new import_view4.EditorView({ parent: body, root: body.ownerDocument, state: import_state4.EditorState.create({ doc: r.lines.join("\n"), extensions: [codeMarks, import_state4.EditorState.readOnly.of(true), import_view4.EditorView.editable.of(false), import_view4.EditorView.contentAttributes.of({ tabindex: "0" }), (0, import_view4.lineNumbers)({ formatNumber: (n) => r.line_numbers[n - 1] == null ? "\xB7" : String(r.line_numbers[n - 1]) }), (0, import_language5.syntaxHighlighting)(excerptHighlight), language(r.path), import_view4.EditorView.theme({ "&": { height: "100%", fontSize: "var(--code-links-font-size, 13px)" }, ".cm-scroller": { overflow: "auto", fontFamily: "var(--font-monospace)" }, ".cm-line": { lineHeight: "1.5em" }, ".cm-gutters": { backgroundColor: "var(--background-secondary)", color: "var(--text-muted)" } })] }) });
       this.annotations = new CodeAnnotations(this.plugin, this.source, this.raw, r, this.view, this.containerEl, header);
+      const copy = header.createEl("button", { cls: "code-links-copy clickable-icon", attr: { type: "button", title: "Copy code", "aria-label": "Copy code" } });
+      (0, import_obsidian3.setIcon)(copy, "copy");
+      copy.onclick = async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!this.active || !this.view || copy.disabled) return;
+        copy.disabled = true;
+        try {
+          await copy.ownerDocument.defaultView.navigator.clipboard.writeText(this.view.state.doc.toString());
+          if (this.active && copy.isConnected) new import_obsidian3.Notice("Code copied");
+        } catch (error) {
+          if (this.active && copy.isConnected) new import_obsidian3.Notice("Could not copy code: " + String(error));
+        } finally {
+          copy.disabled = false;
+        }
+      };
       this.containerEl.oncontextmenu = (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -4498,7 +4516,7 @@ var Reader = class extends import_obsidian3.MarkdownRenderChild {
         menu.addItem((i) => i.setTitle("Refresh and verify source").onClick(() => {
           void this.load();
         }));
-        if (this.replaceLink) menu.addItem((i) => i.setTitle("Set visible height\u2026").onClick(() => new InputModal(this.plugin, "Visible lines (3\u201340)", String(r.link.height), async (v) => {
+        if (this.replaceLink) menu.addItem((i) => i.setTitle("Set maximum visible height\u2026").onClick(() => new InputModal(this.plugin, "Maximum visible lines (3\u201340)", String(r.link.height), async (v) => {
           const n = Number(v);
           if (!Number.isInteger(n) || n < 3 || n > 40) throw Error("Enter 3\u201340");
           await this.replaceLink(this.raw, withHeight(this.raw, n));

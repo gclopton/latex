@@ -3,6 +3,8 @@
 .code-links-panel { display:block; max-width:100%; margin: .7em 0; border:1px solid var(--background-modifier-border); border-radius:8px; overflow:hidden; background:var(--background-secondary); }
 .code-links-header { display:flex; flex-wrap:wrap; gap:.5em 1em; align-items:center; padding:.45em .7em; font-size:.85em; border-bottom:1px solid var(--background-modifier-border); }
 .code-links-status { color:var(--text-muted); font-size:.85em; margin-left:auto; }
+.code-links-header .code-links-copy { width:24px; height:24px; padding:3px; flex-shrink:0; color:var(--text-muted); }
+.code-links-copy svg { width:16px; height:16px; }
 .code-links-code { width:100%; overflow:hidden; }
 .code-links-code .cm-editor { outline:none !important; }
 .code-links-code .cm-content { padding:0; }
