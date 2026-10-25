@@ -12767,8 +12767,31 @@ function projectReadingAnchor(a2, source) {
     }
     return text2 + source.slice(at, to);
   };
+  const before = (end) => {
+    let text2 = "";
+    for (let i = qs.length - 1; i >= 0; i--) {
+      const q = qs[i];
+      if (q.from >= end) continue;
+      const start = Math.min(end, q.to);
+      text2 = source.slice(Math.max(start, end - (48 - text2.length)), end) + text2;
+      if (text2.length === 48) return text2;
+      end = Math.min(end, q.from);
+    }
+    return source.slice(Math.max(0, end - (48 - text2.length)), end) + text2;
+  };
+  const after = (start) => {
+    let text2 = "";
+    for (const q of qs) {
+      if (q.to <= start) continue;
+      const end = Math.max(start, q.from);
+      text2 += source.slice(start, Math.min(end, start + 48 - text2.length));
+      if (text2.length === 48) return text2;
+      start = Math.max(start, q.to);
+    }
+    return text2 + source.slice(start, start + 48 - text2.length);
+  };
   const renderedQuote2 = prose(hit.from, hit.to);
-  const result = renderedQuote2.trim() ? [{ ...a2, renderedQuote: renderedQuote2, renderedBefore: prose(0, hit.from).slice(-48), renderedAfter: prose(hit.to, source.length).slice(0, 48) }] : [];
+  const result = renderedQuote2.trim() ? [{ ...a2, renderedQuote: renderedQuote2, renderedBefore: before(hit.from), renderedAfter: after(hit.to) }] : [];
   for (const q of qs) if (q.from >= hit.from && q.to <= hit.to) result.push({ ...a2, kind: "math", quote: q.raw, before: source.slice(Math.max(0, q.from - 48), q.from), after: source.slice(q.to, q.to + 48) });
   return result;
 }
@@ -13058,12 +13081,192 @@ function marginSortOffset(text2, a2) {
   return Infinity;
 }
 
+// src/resize-projection.ts
+function resizeProjection(source) {
+  let text2 = "", at = 0;
+  const boundaries = [0];
+  for (const q of equations(source)) {
+    for (; at < q.from; at++) {
+      text2 += source[at];
+      boundaries.push(at + 1);
+    }
+    text2 += "\uFFFC";
+    boundaries.push(q.to);
+    at = q.to;
+  }
+  for (; at < source.length; at++) {
+    text2 += source[at];
+    boundaries.push(at + 1);
+  }
+  return { text: text2, boundaries };
+}
+var inlineParser = parser.configure([Strikethrough, Table, TaskList, Autolink]);
+var inlineCache = /* @__PURE__ */ new Map();
+var cacheSize = 0;
+var inlineAtoms = { math: "\uFFFC", link: "\uFFF9", code: "\uFFFA", image: "\uFFFB" };
+function inlineProjection(source) {
+  const old = inlineCache.get(source);
+  if (old) {
+    inlineCache.delete(source);
+    inlineCache.set(source, old);
+    return old;
+  }
+  const hidden = new Uint8Array(source.length), atoms = /* @__PURE__ */ new Map(), blocked = [], prefixes = [];
+  const hide = (from, to) => hidden.fill(1, from, to);
+  const atom = (from, to, kind) => {
+    hide(from, to);
+    atoms.set(from, { to, kind });
+    blocked.push({ from, to, reason: kind });
+  };
+  const block = (from, to, reason) => {
+    hide(from, to);
+    for (const [at] of atoms) if (at >= from && at < to) atoms.delete(at);
+    blocked.push({ from, to, reason });
+  };
+  const tree = inlineParser.parse(source);
+  tree.iterate({ enter(n) {
+    if (["FencedCode", "CodeBlock", "HTMLBlock", "LinkReference", "HorizontalRule"].includes(n.name)) {
+      block(n.from, n.to, "code or unsupported block");
+      return false;
+    }
+    if (n.name === "Table") {
+      block(n.from, n.to, "table");
+      return false;
+    }
+    if (n.name === "HeaderMark" && source.slice(source.lastIndexOf("\n", n.from - 1) + 1, n.from).trim()) {
+      block(n.from, n.to, "formatting delimiter");
+      return false;
+    }
+    if (n.name === "InlineCode") {
+      atom(n.from, n.to, "code");
+      return false;
+    }
+    if (n.name === "Image") {
+      atom(n.from, n.to, "image");
+      return false;
+    }
+    if (n.name === "Link" || n.name === "Autolink" || n.name === "URL") {
+      atom(n.from, n.to, "link");
+      return false;
+    }
+    if (["HeaderMark", "QuoteMark", "ListMark", "TaskMarker"].includes(n.name)) {
+      let to = n.to;
+      while (to < source.length && /[ \t]/.test(source[to])) to++;
+      const line = source.lastIndexOf("\n", n.from - 1) + 1, from = source.slice(line, n.from).trim() ? n.from : line;
+      hide(from, to);
+      prefixes.push({ from, to });
+      return false;
+    }
+    if (n.name === "HardBreak") {
+      block(n.from, n.to, "hard break");
+      return false;
+    }
+    if (["EmphasisMark", "StrikethroughMark", "CodeMark", "TableMark", "TableDelimiter"].includes(n.name)) {
+      block(n.from, n.to, "formatting delimiter");
+      return false;
+    }
+    if (n.name === "Escape") {
+      block(n.from, n.from + 1, "escape");
+      return false;
+    }
+    if (n.name === "HTMLTag" || n.name === "Comment" || n.name === "CommentBlock") {
+      block(n.from, n.to, "HTML");
+      return false;
+    }
+  } });
+  const front = /^---\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)(?:\r?\n|$)/.exec(source);
+  if (front) block(0, front[0].length, "frontmatter");
+  for (const m of source.matchAll(/!?\[\[[^\]\n]+\]\]/g)) {
+    if (blocked.some((b) => b.from <= m.index && b.to >= m.index + m[0].length)) continue;
+    for (const [at] of atoms) if (at >= m.index && at < m.index + m[0].length) atoms.delete(at);
+    atom(m.index, m.index + m[0].length, m[0][0] === "!" ? "image" : "link");
+  }
+  for (const q of equations(source)) {
+    if (blocked.some((b) => b.from <= q.from && b.to >= q.to)) continue;
+    for (const [at] of atoms) if (at >= q.from && at < q.to) atoms.delete(at);
+    atom(q.from, q.to, "math");
+  }
+  for (const m of source.matchAll(/%%[\s\S]*?%%/g)) if (!blocked.some((b) => b.from <= m.index && b.to >= m.index + m[0].length)) block(m.index, m.index + m[0].length, "comment");
+  for (const m of source.matchAll(/^[ \t]*(?:>[ \t]*)+\[![^\]\n]+\][+-]?[^\n]*/gm)) block(m.index, m.index + m[0].length, "callout title");
+  for (const m of source.matchAll(/(?:^|[ \t])\^[A-Za-z0-9-]+[ \t]*(?=\r?$)/gm)) block(m.index, m.index + m[0].length, "block identifier");
+  for (const m of source.matchAll(/==(?=\S)([^\n]*?\S)==/g)) {
+    if (!hidden[m.index]) {
+      block(m.index, m.index + 2, "formatting delimiter");
+      block(m.index + m[0].length - 2, m.index + m[0].length, "formatting delimiter");
+    }
+  }
+  for (const m of source.matchAll(/(?<![\w])#[\p{L}_][\p{L}\p{N}_\/-]*/gu)) if (!hidden[m.index]) atom(m.index, m.index + m[0].length, "link");
+  const units = [];
+  for (let i = 0; i < source.length; ) {
+    const a2 = atoms.get(i);
+    if (a2) {
+      units.push({ char: inlineAtoms[a2.kind], from: i, to: a2.to, atom: a2.kind });
+      i = a2.to;
+    } else if (hidden[i]) i++;
+    else {
+      units.push({ char: source[i], from: i, to: i + 1 });
+      i++;
+    }
+  }
+  const result = { text: units.map((u2) => u2.char).join(""), units, blocked, prefixes };
+  if (source.length <= 25e4) {
+    inlineCache.set(source, result);
+    cacheSize += source.length;
+    while (inlineCache.size > 64 || cacheSize > 5e5) {
+      const key2 = inlineCache.keys().next().value;
+      cacheSize -= key2.length;
+      inlineCache.delete(key2);
+    }
+  }
+  return result;
+}
+function alignInline(source, rendered) {
+  const su = source.units.filter((u2) => !/\s/.test(u2.char));
+  const di = [];
+  let compact = "";
+  for (let i = 0; i < rendered.length; i++) if (!/\s/.test(rendered[i])) {
+    compact += rendered[i];
+    di.push(i);
+  }
+  if (su.map((u2) => u2.char).join("") !== compact) return;
+  const lower = (value, values2) => {
+    let lo = 0, hi = values2.length;
+    while (lo < hi) {
+      const mid = lo + hi >>> 1;
+      if (values2[mid] < value) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo;
+  };
+  const ends = su.map((u2) => u2.to), starts = source.units.map((u2) => u2.from);
+  return {
+    toDOM(offset) {
+      const i = lower(offset, ends), left = su[i];
+      if (left && offset > left.from && offset < left.to) return;
+      if (left && offset === left.to) return di[i] + 1;
+      if (left && offset === left.from) return di[i];
+      if (i === 0) return di[0];
+      if (i >= su.length) return di.at(-1) === void 0 ? void 0 : di.at(-1) + 1;
+      const nextUnit = source.units[lower(su[i - 1].to, starts)];
+      return !nextUnit || offset <= nextUnit.from ? di[i - 1] + 1 : di[i];
+    },
+    toSource(offset) {
+      const i = lower(offset, di);
+      if (i < di.length && di[i] === offset) return su[i].from;
+      if (i === 0) return su[0]?.from;
+      if (offset === di[i - 1] + 1) {
+        const next = source.units[lower(su[i - 1].to, starts)];
+        return next?.from ?? su[i - 1].to;
+      }
+      return su[i]?.from ?? su.at(-1)?.to;
+    }
+  };
+}
+
 // src/sticky-placement.ts
 var CONTEXT = 48;
-var TAIL = 160;
-var EXTEND = 640;
 function validPlacement(p) {
-  return !!p && typeof p === "object" && typeof p.quote === "string" && p.quote.trim().length > 0 && typeof p.before === "string" && typeof p.after === "string" && (p.renderedQuote === void 0 || typeof p.renderedQuote === "string");
+  return !!p && typeof p === "object" && typeof p.quote === "string" && p.quote.trim().length > 0 && typeof p.before === "string" && typeof p.after === "string" && (p.edge === void 0 || p.edge === "start" || p.edge === "end") && (p.renderedQuote === void 0 || typeof p.renderedQuote === "string");
 }
 function placementOf(c) {
   const p = c?.placement;
@@ -13117,48 +13320,82 @@ function sourceBlocks(text2) {
   blockCache.set(text2, blocks);
   return blocks;
 }
-function nearestBlock(text2, offset) {
-  const blocks = sourceBlocks(text2);
-  return blocks.find((b) => offset >= b.from && offset <= b.to) ?? [...blocks].reverse().find((b) => b.to <= offset) ?? blocks.find((b) => b.from >= offset);
-}
-function headingPlacementFor(text2, offset) {
-  const block = nearestBlock(text2, offset);
-  if (!block || offset < block.from || offset > block.to || !/^ {0,3}#{1,6}\s[^\n]+$/.test(text2.slice(block.from, block.to))) return;
-  return tailPlacement(text2, block.from, block.to);
-}
-function uniqueAt(text2, p, start) {
-  const hit = locateQuote(text2, p);
-  return !!hit && hit.from === start;
-}
-function tailPlacement(text2, from, to) {
-  for (let length = Math.min(TAIL, to - from); ; length = Math.min(to - from + EXTEND, length * 2)) {
-    const start = Math.max(0, to - length), p = { quote: text2.slice(start, to), before: text2.slice(Math.max(0, start - CONTEXT), start), after: text2.slice(to, to + CONTEXT) };
-    if (p.quote.trim() && uniqueAt(text2, p, start)) return p;
-    if (start === 0 || length >= to - from + EXTEND) return;
-  }
+function selectionEndsOnLineBreak(text2, from, to) {
+  return from < to && text2[to - 1] === "\n";
 }
 function placementFor(text2, from, to) {
-  let s = Math.max(0, Math.min(from, to)), e = Math.min(text2.length, Math.max(from, to));
-  while (s < e && /\s/.test(text2[s])) s++;
-  while (e > s && /\s/.test(text2[e - 1])) e--;
-  if (e > s) return tailPlacement(text2, s, e);
-  const block = nearestBlock(text2, s);
-  return block ? tailPlacement(text2, block.from, block.to) : void 0;
+  return placementAt(text2, Math.max(from, to));
 }
-function placementFromAnchors(text2, anchors) {
-  const a2 = [...anchors ?? []].reverse().find((a3) => a3.kind !== "math" && !a3.sectionSource && a3.quote.trim());
-  if (!a2) return;
-  const hit = locateQuote(text2, a2);
-  if (!hit) return;
-  const p = { quote: a2.quote, before: a2.before, after: a2.after };
-  if (a2.renderedQuote && a2.renderedQuote !== a2.quote) p.renderedQuote = a2.renderedQuote;
-  return p;
+var mathCache = /* @__PURE__ */ new Map();
+function stickyBoundary(text2, offset) {
+  if (!Number.isInteger(offset) || offset < 0 || offset > text2.length) return { offset, reason: "Invalid text position." };
+  if (offset > 0 && offset < text2.length && /[\uD800-\uDBFF]/.test(text2[offset - 1]) && /[\uDC00-\uDFFF]/.test(text2[offset])) return { offset, reason: "Place the Post-it beside the complete character." };
+  const context = markdownContext(text2), excluded = context.excluded.find((b) => offset > b.from && offset < b.to);
+  if (excluded) return { offset, reason: "Place the Post-it outside code or frontmatter." };
+  let qs = mathCache.get(text2);
+  if (!qs) {
+    qs = equations(text2);
+    mathCache.set(text2, qs);
+    if (mathCache.size > 4) mathCache.delete(mathCache.keys().next().value);
+  }
+  if (qs.some((q) => offset > q.from && offset < q.to)) return { offset, reason: "Place the Post-it before or after the equation." };
+  const block = placementContext(text2, offset), p = block.projection;
+  let at = offset - block.from;
+  if (block.table) return { offset, reason: "Post-its inside table cells are not supported yet." };
+  for (const prefix of p.prefixes) if (at >= prefix.from && at <= prefix.to) at = prefix.to;
+  for (const hidden of p.blocked) if (hidden.reason === "hard break" && at > hidden.from && at < hidden.to || hidden.reason === "block identifier" && at >= hidden.from && at <= hidden.to) at = hidden.from;
+  const bad = p.blocked.find((b) => at > b.from && at < b.to || b.reason === "callout title" && at >= b.from && at <= b.to);
+  if (bad) return { offset, reason: "Place the Post-it outside " + bad.reason + "." };
+  if (!p.units.some((u2) => u2.from === at || u2.to === at)) {
+    const left = [...p.units].reverse().find((u2) => u2.to <= at), right = p.units.find((u2) => u2.from >= at);
+    if (!p.blocked.some((b) => ["formatting delimiter", "escape", "block identifier", "hard break"].includes(b.reason) && (b.from === at || b.to === at))) return { offset, reason: "Place the Post-it at a visible text boundary." };
+    at = right?.from ?? left?.to ?? at;
+  }
+  const point = block.from + at, lineStart = text2.lastIndexOf("\n", Math.max(0, point - 1)) + 1, lineEnd2 = text2.indexOf("\n", point);
+  if (!text2.slice(lineStart, lineEnd2 < 0 ? text2.length : lineEnd2).trim() || !p.units.some((u2) => u2.from === at || u2.to === at)) return { offset, reason: "Place the Post-it at a visible text boundary." };
+  return { offset: point };
+}
+function placementContext(text2, offset) {
+  const context = markdownContext(text2);
+  let node = context.tree.topNode.firstChild;
+  while (node && node.to < offset) node = node.nextSibling;
+  const from = node && node.from <= offset ? node.from : offset, to = node && node.from <= offset ? node.to : offset;
+  const source = text2.slice(from, to), projection = inlineProjection(source);
+  const table = projection.blocked.some((b) => b.reason === "table" && offset - from >= b.from && offset - from <= b.to);
+  return { from, to, projection, table };
+}
+function pointQuote(text2, p) {
+  const hits = [], matches = [];
+  let at = -1;
+  while ((at = text2.indexOf(p.quote, at + 1)) >= 0) {
+    hits.push(at);
+    if ((!p.before || text2.slice(Math.max(0, at - p.before.length), at) === p.before) && (!p.after || text2.slice(at + p.quote.length, at + p.quote.length + p.after.length) === p.after)) matches.push(at);
+  }
+  const candidates = matches.length ? matches : hits;
+  return candidates.length === 1 ? { from: candidates[0], to: candidates[0] + p.quote.length } : void 0;
+}
+function placementAt(text2, offset) {
+  const checked = stickyBoundary(text2, offset);
+  if (checked.reason) return;
+  offset = checked.offset;
+  const lineStart = text2.lastIndexOf("\n", Math.max(0, offset - 1)) + 1, lineEnd2 = text2.indexOf("\n", offset), end = lineEnd2 < 0 ? text2.length : lineEnd2;
+  const block = placementContext(text2, offset), visible = block.projection.units.filter((u2) => u2.char.trim() && block.from + u2.from >= lineStart);
+  const startEdge = !visible.some((u2) => block.from + u2.to <= offset), edge2 = startEdge ? "start" : "end";
+  const available = startEdge ? end - offset : offset - lineStart;
+  if (available < 1) return;
+  for (let n = Math.min(160, available); ; n = Math.min(available, n * 2)) {
+    const from = startEdge ? offset : offset - n, to = startEdge ? offset + n : offset;
+    const p = { quote: text2.slice(from, to), before: text2.slice(Math.max(0, from - CONTEXT), from), after: text2.slice(to, to + CONTEXT), edge: edge2 };
+    if (p.quote.trim() && pointQuote(text2, p)?.from === from) return p;
+    if (n === available) return;
+  }
 }
 function locatePlacement(text2, p) {
-  return locateQuote(text2, p)?.to;
+  const hit = p.edge ? pointQuote(text2, p) : locateQuote(text2, p);
+  return p.edge === "start" ? hit?.from : hit?.to;
 }
-function endInRange(end, from, to) {
-  return end > from && end <= to;
+function endInRange(end, from, to, edge2) {
+  return edge2 === "start" ? end >= from && end < to : end > from && end <= to;
 }
 var cache2 = /* @__PURE__ */ new Map();
 function cachedPlacementEnd(path, text2, p) {
@@ -13169,9 +13406,80 @@ function cachedPlacementEnd(path, text2, p) {
     cache2.set(path, entry);
     if (cache2.size > 6) cache2.delete(cache2.keys().next().value);
   }
-  const key2 = JSON.stringify([p.quote, p.before, p.after]);
+  const key2 = JSON.stringify([p.quote, p.before, p.after, p.edge]);
   if (!entry.hits.has(key2)) entry.hits.set(key2, locatePlacement(text2, p));
   return entry.hits.get(key2);
+}
+function placementMatcher(placements) {
+  const groups = /* @__PURE__ */ new Map(), lengths = /* @__PURE__ */ new Set();
+  placements.forEach((p, i) => {
+    const prefix = p.quote.slice(0, 8);
+    if (!prefix) return;
+    const ids = groups.get(prefix) ?? [];
+    ids.push(i);
+    groups.set(prefix, ids);
+    lengths.add(prefix.length);
+  });
+  const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = groups.size ? new RegExp([...groups.keys()].map(escape).join("|"), "g") : void 0;
+  return (text2) => {
+    const counts = new Uint32Array(placements.length), contexts2 = new Uint32Array(placements.length), hits = new Float64Array(placements.length), matches = new Float64Array(placements.length);
+    if (regex) {
+      regex.lastIndex = 0;
+      let m;
+      while (m = regex.exec(text2)) {
+        const at = m.index;
+        regex.lastIndex = at + 1;
+        for (const length of lengths) for (const i of groups.get(text2.slice(at, at + length)) ?? []) {
+          const p = placements[i];
+          if (!text2.startsWith(p.quote, at)) continue;
+          counts[i]++;
+          hits[i] = at;
+          if ((!p.before || text2.slice(Math.max(0, at - p.before.length), at) === p.before) && (!p.after || text2.slice(at + p.quote.length, at + p.quote.length + p.after.length) === p.after)) {
+            contexts2[i]++;
+            matches[i] = at;
+          }
+        }
+      }
+    }
+    return placements.map((p, i) => {
+      const count2 = contexts2[i] || counts[i], at = contexts2[i] ? matches[i] : hits[i];
+      return count2 === 1 ? at + (p.edge === "start" ? 0 : p.quote.length) : void 0;
+    });
+  };
+}
+var matchers = /* @__PURE__ */ new Map();
+function primePlacements(path, text2, placements) {
+  let entry = cache2.get(path);
+  if (entry?.text !== text2) {
+    entry = { text: text2, hits: /* @__PURE__ */ new Map() };
+    cache2.delete(path);
+    cache2.set(path, entry);
+    if (cache2.size > 6) cache2.delete(cache2.keys().next().value);
+  }
+  const fresh = placements.filter((p) => p.edge && !entry.hits.has(JSON.stringify([p.quote, p.before, p.after, p.edge])));
+  if (!fresh.length) return;
+  const key2 = JSON.stringify(fresh);
+  let matcher = matchers.get(path);
+  if (matcher?.key !== key2) {
+    matcher = { key: key2, run: placementMatcher(fresh) };
+    matchers.delete(path);
+    matchers.set(path, matcher);
+    if (matchers.size > 6) matchers.delete(matchers.keys().next().value);
+  }
+  matcher.run(text2).forEach((end, i) => {
+    const p = fresh[i];
+    entry.hits.set(JSON.stringify([p.quote, p.before, p.after, p.edge]), end);
+  });
+}
+function placementLookup(path, text2, placements) {
+  primePlacements(path, text2, placements);
+  const entry = cache2.get(path);
+  return (p) => {
+    const key2 = JSON.stringify([p.quote, p.before, p.after, p.edge]);
+    if (!entry.hits.has(key2)) entry.hits.set(key2, locatePlacement(text2, p));
+    return entry.hits.get(key2);
+  };
 }
 function embeddedStickyStarts(text2, id3) {
   const hits = [];
@@ -13203,19 +13511,23 @@ function embeddedStickyStarts(text2, id3) {
 }
 
 // src/annotation-numbers.ts
-function annotationStarts(source, path, c) {
+function annotationStarts(source, path, c, lookup) {
   if (!commentPaths(c).has(path)) return [];
   const starts = excerpts(c).filter((a2) => a2.path === path).map((a2) => marginSortOffset(source, a2));
   const placement = placementOf(c);
   if (!starts.length && c.path === path && placement) {
-    const end = locatePlacement(source, placement);
-    if (end !== void 0) starts.push(end - placement.quote.length);
+    const end = lookup ? lookup(placement) : cachedPlacementEnd(path, source, placement);
+    if (end !== void 0) starts.push(placement.edge ? end : end - placement.quote.length);
   }
   if (!starts.length && c.path === path && c.kind === "sticky" && !placement) starts.push(...embeddedStickyStarts(source, c.id));
   return [...new Set(starts.filter(Number.isFinite))].sort((a2, b) => a2 - b);
 }
 function annotationNumbers(source, path, comments) {
-  const located = comments.filter((c) => !c.deletedAt && !c.resolved && !c.questionId && !c.study).map((c) => ({ id: c.id, starts: annotationStarts(source, path, c) })).filter((c) => c.starts.length);
+  const lookup = placementLookup(path, source, comments.filter((c) => c.path === path).flatMap((c) => {
+    const p = placementOf(c);
+    return p ? [p] : [];
+  }));
+  const located = comments.filter((c) => !c.deletedAt && !c.resolved && !c.questionId && !c.study).map((c) => ({ id: c.id, starts: annotationStarts(source, path, c, lookup) })).filter((c) => c.starts.length);
   located.sort((a2, b) => a2.starts[0] - b.starts[0] || (a2.id < b.id ? -1 : a2.id > b.id ? 1 : 0));
   return new Map(located.map((c, i) => [c.id, { n: i + 1, starts: c.starts }]));
 }
@@ -14642,8 +14954,8 @@ var FigureStudyApi = class {
       if (image.file.path !== f.imagePath || image.hash !== f.imageHash || image.width !== f.naturalWidth || image.height !== f.naturalHeight) throw Error("Figure image changed. Review and redraw its study regions.");
       return JSON.stringify([r, image.hash]);
     }, variant: (v, records) => this.validateVariant(v, records) };
-    const invalidate = () => {
-      this.practiceCache = void 0;
+    const invalidate = (change) => {
+      if (!change?.visibility) this.practiceCache = void 0;
     };
     api.store.listeners.add(invalidate);
     plugin.register(() => {
@@ -14806,13 +15118,14 @@ var FigureStudyApi = class {
     if (!same(d.covers, expected.covers) || !same(d.labels, expected.labels) || !same(d.crop, expected.crop) || v.target !== figureKey(f)) throw Error("Question geometry must match the drawn blanks and arrows exactly.");
   }
   mount(owner, frame, request) {
-    let disposed = false, generation = 0, imagePath = "";
+    let disposed = false, generation = 0, imagePath = "", numbersShown = this.api.store.visibility.annotationNumbers !== false;
     const references = frame.parentElement.createDiv("study-figure-references");
     frame.before(references);
     const overlay = frame.createDiv("study-figure-overlay"), link = frame.parentElement.createEl("button", { text: "Test Yourself!", cls: "study-figure-practice" });
     link.hidden = true;
     const render = async () => {
       const seq2 = ++generation;
+      numbersShown = this.api.store.visibility.annotationNumbers !== false;
       try {
         const note = this.plugin.app.vault.getAbstractFileByPath(request.path);
         if (!(note instanceof import_obsidian6.TFile)) return;
@@ -14822,7 +15135,7 @@ var FigureStudyApi = class {
         overlay.empty();
         references.empty();
         const numbers = studyAnnotationNumbers(source, request.path, this.api.store.data.comments, (c) => this.resolve(source, { path: request.path, ...c.study.figure }).from);
-        for (const c of this.api.store.data.comments.filter((c2) => c2.path === request.path && c2.study?.figure && figureKey(c2.study.figure) === key2 && !c2.deletedAt && !c2.resolved)) {
+        for (const c of this.api.store.data.comments.filter((c2) => c2.path === request.path && c2.study?.figure && figureKey(c2.study.figure) === key2 && !c2.deletedAt && !c2.resolved && this.api.store.isAnnotationVisible(c2))) {
           const f = c.study.figure;
           if (f.imageHash !== image.hash) continue;
           const number2 = numbers.get(c.id)?.n;
@@ -14873,6 +15186,10 @@ var FigureStudyApi = class {
       }, 100);
     };
     const changed = (change) => {
+      if (change?.visibility) {
+        if (numbersShown !== (this.api.store.visibility.annotationNumbers !== false) || this.api.store.data.comments.some((c) => change.commentIds.has(c.id) && c.path === request.path && c.study?.figure && figureKey(c.study.figure) === figureKey(request))) schedule();
+        return;
+      }
       if (!change?.paths || change.paths.has(request.path)) schedule();
     };
     this.api.store.listeners.add(changed);
@@ -38907,8 +39224,112 @@ var StudyDirectiveApi = class {
   }
 };
 
-// src/study-palette.ts
+// src/visibility-controls.ts
 var import_obsidian16 = require("obsidian");
+
+// src/annotation-visibility.ts
+function readVisibility(raw) {
+  const value = raw;
+  const types2 = Array.isArray(value?.hiddenTypes) ? value.hiddenTypes.filter((x) => typeof x === "string") : [];
+  return { version: 2, ...Array.isArray(value?.shownTypes) ? { shownTypes: [...new Set(value.shownTypes.filter((x) => typeof x === "string"))] } : {}, ...typeof value?.hideOrdinary === "boolean" ? { hideOrdinary: value.hideOrdinary } : {}, ...typeof value?.sourceLines === "boolean" ? { sourceLines: value.sourceLines } : {}, ...typeof value?.annotationNumbers === "boolean" ? { annotationNumbers: value.annotationNumbers } : {}, enabled: value?.enabled !== false, hiddenTypes: [...new Set(value?.version === 2 ? types2 : types2.flatMap((t2) => {
+    try {
+      const parsed = JSON.parse(t2);
+      if (Array.isArray(parsed) && parsed.length === 2 && annotationStyles.includes(parsed[0]) && typeof parsed[1] === "string") return [t2];
+    } catch {
+    }
+    return annotationStyles.map((s) => typeKey(s, t2));
+  }))] };
+}
+function annotationVisible(c, v) {
+  const value = v.version === 2 ? v : readVisibility(v), key2 = typeKey(styleOf(c), c.intent);
+  return !c.deletedAt && value.enabled && (!value.hideOrdinary || isStudyMark(c)) && (value.shownTypes ? value.shownTypes.includes(key2) : !value.hiddenTypes.includes(key2));
+}
+function visibilityAll(v, show) {
+  const { shownTypes: _, ...value } = readVisibility(v);
+  return { ...value, enabled: true, hideOrdinary: false, hiddenTypes: [], ...show ? {} : { shownTypes: [] } };
+}
+function visibilityToggle(c, v, catalog) {
+  const value = readVisibility(v), key2 = typeKey(styleOf(c), c.intent);
+  if (!annotationVisible(c, value)) return visibilityShowing(c, value, catalog);
+  return value.shownTypes ? { ...value, shownTypes: value.shownTypes.filter((t2) => t2 !== key2) } : { ...value, hiddenTypes: [.../* @__PURE__ */ new Set([...value.hiddenTypes, key2])] };
+}
+function visibilityDifference(comments, before, after) {
+  return comments.filter((c) => annotationVisible(c, before) !== annotationVisible(c, after));
+}
+function visibilityShowing(c, v, catalog = []) {
+  const value = readVisibility(v), key2 = typeKey(styleOf(c), c.intent);
+  if (!value.enabled) return { ...value, enabled: true, hideOrdinary: false, shownTypes: [key2] };
+  if (!isStudyMark(c) && value.hideOrdinary) {
+    const visible = catalog.filter((x) => annotationVisible(x, value)).map((x) => typeKey(styleOf(x), x.intent));
+    return { ...value, hideOrdinary: false, shownTypes: [.../* @__PURE__ */ new Set([...visible, key2])] };
+  }
+  return { ...value, enabled: true, ...value.shownTypes ? { shownTypes: [.../* @__PURE__ */ new Set([...value.shownTypes, key2])] } : {}, hiddenTypes: value.hiddenTypes.filter((t2) => t2 !== key2) };
+}
+
+// src/visibility-controls.ts
+var VisibilityControls = class {
+  constructor(host, store) {
+    this.store = store;
+    this.el = host.createEl("details", { cls: "study-visibility-controls" });
+    this.el.createEl("summary", { text: "Visibility", attr: { "aria-label": "Annotation visibility" } });
+    const actions = this.el.createDiv("study-visibility-actions");
+    for (const [label, show] of [["Hide all", false], ["Show all", true]]) {
+      const b = actions.createEl("button", { text: label, attr: { type: "button" } });
+      b.onclick = () => void store.showAllAnnotations(show).catch((e) => new import_obsidian16.Notice(String(e)));
+    }
+    this.rows = this.el.createDiv("study-visibility-types");
+    this.rows.setAttribute("role", "group");
+    this.rows.setAttribute("aria-label", "Visible annotation types");
+    this.status = this.el.createDiv({ cls: "study-visibility-status", attr: { "aria-live": "polite" } });
+    this.el.addEventListener("mousedown", (e) => e.preventDefault());
+    store.listeners.add(this.refresh);
+    this.render();
+  }
+  el;
+  rows;
+  status;
+  signature = "";
+  buttons = /* @__PURE__ */ new Map();
+  refresh = () => this.render();
+  destroy() {
+    this.store.listeners.delete(this.refresh);
+    this.el.remove();
+  }
+  render() {
+    const entries = this.store.visibilityCatalog(), signature2 = JSON.stringify(entries.map((e) => [e.key, e.meaning, e.style, e.study]));
+    if (signature2 !== this.signature) {
+      this.signature = signature2;
+      const focused = this.el.ownerDocument.activeElement, key2 = focused?.dataset.visibilityKey;
+      this.rows.empty();
+      this.buttons.clear();
+      let group = "";
+      for (const entry of [...entries].sort((a2, b) => (a2.study ? annotationStyles.length : annotationStyles.indexOf(a2.style)) - (b.study ? annotationStyles.length : annotationStyles.indexOf(b.style)))) {
+        const label = entry.study ? "Study annotations" : styleNames[entry.style];
+        if (label !== group) {
+          group = label;
+          this.rows.createDiv({ cls: "study-visibility-heading", text: label });
+        }
+        const b = this.rows.createEl("button", { text: entry.meaning || "Uncategorized", cls: "study-visibility-type", attr: { type: "button", "aria-label": `Show ${label}: ${entry.meaning || "Uncategorized"}` } });
+        b.dataset.visibilityKey = entry.key;
+        b.onclick = () => void this.store.toggleVisibleType(entry.key).catch((e) => new import_obsidian16.Notice(String(e)));
+        this.buttons.set(entry.key, b);
+      }
+      if (key2) this.buttons.get(key2)?.focus({ preventScroll: true });
+    }
+    let shown = 0;
+    for (const e of entries) {
+      const visible = annotationVisible(e.mark, this.store.visibility);
+      if (visible) shown++;
+      const b = this.buttons.get(e.key);
+      if (b.getAttribute("aria-pressed") !== String(visible)) b.setAttribute("aria-pressed", String(visible));
+    }
+    const text2 = shown ? `${shown} of ${entries.length} types shown` : "All annotations hidden";
+    if (this.status.textContent !== text2) this.status.setText(text2);
+  }
+};
+
+// src/study-palette.ts
+var import_obsidian17 = require("obsidian");
 
 // src/palette-position.ts
 function palettePosition(x, y, width, height, viewportWidth, viewportHeight, headerBottom = 40) {
@@ -38918,10 +39339,12 @@ function palettePosition(x, y, width, height, viewportWidth, viewportHeight, hea
 
 // src/study-palette.ts
 var StudyPalette = class {
-  constructor(plugin, capture) {
+  constructor(plugin, capture, store) {
     this.plugin = plugin;
     this.capture = capture;
+    this.store = store;
   }
+  visibility;
   returnFocus;
   fixed;
   el;
@@ -38938,6 +39361,8 @@ var StudyPalette = class {
     return !!this.el?.isConnected && this.el.ownerDocument === doc2;
   }
   close(restore = false) {
+    this.visibility?.destroy();
+    this.visibility = void 0;
     this.serial++;
     if (this.selectionTimer) clearTimeout(this.selectionTimer);
     this.resize?.();
@@ -38957,7 +39382,7 @@ var StudyPalette = class {
       if (context) this.index = Math.max(0, context.choices.findIndex((c) => c.type === context.selected));
       this.render();
     } catch (e) {
-      if (serial === this.serial && !quiet) new import_obsidian16.Notice(String(e));
+      if (serial === this.serial && !quiet) new import_obsidian17.Notice(String(e));
     }
   }
   open(doc2, fixed) {
@@ -38975,10 +39400,11 @@ var StudyPalette = class {
       head.tabIndex = 0;
       head.setAttribute("aria-label", "Move study palette");
       const close = head.createEl("button", { cls: "clickable-icon", attr: { "aria-label": "Close study annotation palette" } });
-      (0, import_obsidian16.setIcon)(close, "x");
+      (0, import_obsidian17.setIcon)(close, "x");
       close.onclick = () => this.close(true);
       el.createDiv("study-type-swatches");
       el.createDiv({ cls: "study-palette-meaning", text: "Select text or code, then choose a study type." }).setAttribute("aria-live", "polite");
+      if (this.store) this.visibility = new VisibilityControls(el, this.store);
       el.addEventListener("mousedown", (e) => {
         if (e.target.closest(".study-type-choice")) {
           e.preventDefault();
@@ -38986,6 +39412,7 @@ var StudyPalette = class {
         }
       });
       el.addEventListener("keydown", (e) => {
+        if (e.key !== "Escape" && e.target.closest(".study-visibility-controls")) return;
         if (e.target === head) return;
         if (e.key === "Escape") {
           e.preventDefault();
@@ -39123,7 +39550,7 @@ var StudyPalette = class {
       this.context = void 0;
       this.el?.querySelector(".study-palette-meaning")?.setText("Saved. Select the next passage.");
     } catch (e) {
-      new import_obsidian16.Notice(String(e));
+      new import_obsidian17.Notice(String(e));
     } finally {
       this.busy = false;
       this.render();
@@ -39132,7 +39559,7 @@ var StudyPalette = class {
 };
 
 // src/regular-selection.ts
-var import_obsidian17 = require("obsidian");
+var import_obsidian18 = require("obsidian");
 function regularMark(c) {
   return !c.study && !c.code && !c.questionId && c.kind !== "sticky" && !c.deletedAt && !c.resolved && !c.conflictOf;
 }
@@ -39158,11 +39585,11 @@ var RegularSelectionApi = class {
   }
   async source(path) {
     const file = this.store.app.vault.getAbstractFileByPath(path);
-    if (!(file instanceof import_obsidian17.TFile)) throw Error("Source note missing.");
+    if (!(file instanceof import_obsidian18.TFile)) throw Error("Source note missing.");
     const text2 = await this.store.app.vault.read(file);
     for (const l of this.store.app.workspace.getLeavesOfType("markdown")) {
       const v = l.view;
-      if (v instanceof import_obsidian17.MarkdownView && v.file?.path === path && v.getMode() === "source" && v.editor.getValue() !== text2) throw Error("Wait for the note to finish saving.");
+      if (v instanceof import_obsidian18.MarkdownView && v.file?.path === path && v.getMode() === "source" && v.editor.getValue() !== text2) throw Error("Wait for the note to finish saving.");
     }
     return text2;
   }
@@ -39216,7 +39643,7 @@ function selectionChoice(value) {
 }
 
 // src/menu-groups.ts
-var import_obsidian18 = require("obsidian");
+var import_obsidian19 = require("obsidian");
 function menuGroup(menu, key2, title, icon, section = key2 === "insert" ? "insert" : key2 === "annotation-visibility" ? "view" : key2.startsWith("mark-") ? "selection" : "action") {
   menu.setUseNativeMenu(false);
   const symbol = Symbol.for("research-studio.menu." + key2), host = menu;
@@ -39227,7 +39654,7 @@ function menuGroup(menu, key2, title, icon, section = key2 === "insert" ? "inser
     const native = item;
     if (typeof native.setSubmenu === "function") child = native.setSubmenu();
     else {
-      child = new import_obsidian18.Menu();
+      child = new import_obsidian19.Menu();
       item.onClick((event) => {
         const target = event.target, box = target?.getBoundingClientRect();
         child.showAtPosition({ x: box?.right ?? 100, y: box?.top ?? 100 });
@@ -39267,7 +39694,7 @@ function appearanceItems(menu, c, palette, change) {
 }
 
 // src/study-type-menu.ts
-var import_obsidian19 = require("obsidian");
+var import_obsidian20 = require("obsidian");
 function studyTypeItems(menu, c, change, app, doc2) {
   const choices = studyTypeChoices(c);
   if (!choices.length) return;
@@ -39275,17 +39702,84 @@ function studyTypeItems(menu, c, change, app, doc2) {
   if (palette) menu.addItem((i) => i.setTitle("Study annotation palette\u2026").setIcon("palette").onClick(() => palette.open(doc2 ?? app.workspace.activeLeaf?.view.containerEl.ownerDocument ?? document, { path: c.path, description: "Change this study annotation", selected: currentStudyType(c), choices: choices.map((x) => ({ ...x, ...x.type === "question" || x.type === "table" || x.type === "text" ? studyPalette[x.type] : x.type === "form" ? { color: "#d94444", darkColor: "#ff6868" } : { color: "#e2b714", darkColor: "#ffe066" } })), apply: change })));
   const sub = menuGroup(menu, "study-type-" + c.id, "Change study type", "highlighter");
   for (const { type, label } of choices) sub.addItem((i) => i.setTitle(label).setChecked(type === currentStudyType(c)).onClick(() => {
-    void Promise.resolve().then(() => change(type)).catch((e) => new import_obsidian19.Notice(String(e)));
+    void Promise.resolve().then(() => change(type)).catch((e) => new import_obsidian20.Notice(String(e)));
   }));
 }
 
 // src/study-selection.ts
-var import_obsidian22 = require("obsidian");
+var import_obsidian23 = require("obsidian");
 
 // src/margin-anchors.ts
 var import_view11 = require("@codemirror/view");
-var import_obsidian20 = require("obsidian");
 var import_obsidian21 = require("obsidian");
+var import_obsidian22 = require("obsidian");
+
+// src/resize-dom.ts
+function resizeDOM(p, postit = false) {
+  const points = [], aliases = /* @__PURE__ */ new Map(), mathOffsets = /* @__PURE__ */ new Map(), formulas = [];
+  let text2 = "", afterBreak = false;
+  const alias = (node, offset) => {
+    let map2 = aliases.get(node);
+    if (!map2) aliases.set(node, map2 = /* @__PURE__ */ new Map());
+    map2.set(offset, text2.length);
+  };
+  const point = (node, offset) => {
+    alias(node, offset);
+    points[text2.length] = { node, offset };
+  };
+  const walk = (node) => {
+    if (node.nodeType === 1) {
+      const el = node;
+      if (el.matches(".study-math-lines,.study-sticky-anchor")) return;
+      if (postit && el.matches(".study-reference-gutter,.collapse-indicator,.callout-title,button,input,textarea,script,style,pre,.code-links-panel,.study-practice-link")) return;
+      if (postit && el.matches("a,code,img,.internal-embed")) {
+        const parent = node.parentNode, index2 = [...parent.childNodes].indexOf(node);
+        point(parent, index2);
+        text2 += el.matches("a") ? "\uFFF9" : el.matches("code") ? "\uFFFA" : "\uFFFB";
+        point(parent, index2 + 1);
+        return;
+      }
+      if (el.matches("br,.math")) {
+        alias(el, 0);
+        const parent = node.parentNode, index2 = [...parent.childNodes].indexOf(node);
+        point(parent, index2);
+        if (el.matches(".math")) {
+          afterBreak = false;
+          mathOffsets.set(el, text2.length);
+          formulas.push(el.querySelector("mjx-math")?.getAttribute("data-latex") ?? el.textContent ?? "");
+          text2 += "\uFFFC";
+        } else {
+          text2 += "\n";
+          afterBreak = true;
+        }
+        point(parent, index2 + 1);
+        return;
+      }
+    }
+    if (node.nodeType === 3) {
+      const t2 = node, skip = afterBreak && t2.data.startsWith("\n") ? 1 : 0;
+      alias(t2, 0);
+      if (t2.length) afterBreak = false;
+      for (let i = 0; i < skip; i++) alias(t2, i + 1);
+      for (let i = skip; i < t2.length; i++) {
+        point(t2, i);
+        text2 += t2.data[i];
+      }
+      point(t2, t2.length);
+      return;
+    }
+    const children = [...node.childNodes];
+    alias(node, 0);
+    for (let i = 0; i < children.length; i++) {
+      walk(children[i]);
+      alias(node, i + 1);
+    }
+  };
+  walk(p);
+  return { text: text2, points, mathOffsets, fingerprint: JSON.stringify(formulas), offset: (node, offset) => aliases.get(node)?.get(offset) };
+}
+
+// src/margin-anchors.ts
 var contexts = /* @__PURE__ */ new WeakMap();
 var sourceIndexes = /* @__PURE__ */ new Map();
 function index(path, text2) {
@@ -39303,7 +39797,7 @@ function index(path, text2) {
 function liveCalloutContext(root) {
   const widget = root.closest(".cm-callout"), editor = widget?.closest(".cm-editor");
   if (!widget || !editor || root.closest('.markdown-embed,.canvas-node,.study-card,.study-margin-pane,[data-code-links-host]:not([data-code-links-host="protected"])')) return;
-  const view = import_view11.EditorView.findFromDOM(editor), path = view?.state.field(import_obsidian20.editorInfoField, false)?.file?.path;
+  const view = import_view11.EditorView.findFromDOM(editor), path = view?.state.field(import_obsidian21.editorInfoField, false)?.file?.path;
   if (!view || !path) return;
   const info = calloutSection(view, widget);
   if (info) return { path, info };
@@ -39331,8 +39825,8 @@ function ownedText(root) {
   while (n = walker.nextNode()) if (n.parentElement?.closest("[data-study-comment-section]") === root && !n.parentElement.closest('.code-links-panel,[data-code-links-host]:not([data-code-links-host="protected"]),code,pre,mjx-container,.math,.study-reference-gutter,button,input,textarea')) text2 += n.textContent ?? "";
   return text2;
 }
-function readingAnchorApplies(root, a2) {
-  const found = sectionContext(root);
+function readingAnchorApplies(root, a2, knownInfo) {
+  const registered = contexts.get(root), found = knownInfo && registered ? { context: registered, info: knownInfo, el: root } : sectionContext(root);
   if (!found) return false;
   const { context, info, el } = found;
   if (el !== root && !a2.sectionSource) return false;
@@ -39354,7 +39848,7 @@ function editorExcerpts(raw, from, to, path) {
       if (part) return [{ id: crypto.randomUUID(), path, quote: inside2.raw, before: raw.slice(Math.max(0, inside2.from - 48), inside2.from), after: raw.slice(inside2.to, inside2.to + 48), kind: "math", part, renderedQuote: "$" + part.nodes.map((n) => n.latex).join(" ") + "$" }];
     } catch {
     }
-    new import_obsidian21.Notice("Select this part in rendered math, then right-click to add a note.");
+    new import_obsidian22.Notice("Select this part in rendered math, then right-click to add a note.");
     return [];
   }
   const result = [];
@@ -39471,15 +39965,6 @@ function readingEquationAnchor(math, path) {
   const from = offset + q.from, to = offset + q.to;
   return { id: crypto.randomUUID(), path, quote: q.raw, before: info.text.slice(Math.max(0, from - 48), from), after: info.text.slice(to, to + 48), kind: "math" };
 }
-function readingInsertion(selection, path) {
-  if (!selection.rangeCount) return;
-  const range = selection.getRangeAt(0), root = range.endContainer.parentElement?.closest("[data-study-comment-section]");
-  if (!root) return;
-  const found = sectionContext(root);
-  if (!found || found.context.path() !== path) return;
-  const { info } = found, entry = index(path, info.text);
-  return { text: info.text, offset: entry.lines[info.lineEnd + 1] ?? info.text.length };
-}
 function readingTableExcerpts(range, path) {
   const doc2 = range.startContainer.ownerDocument, result = [];
   for (const table of Array.from(doc2.querySelectorAll(".markdown-preview-view table,.cm-embed-block table"))) {
@@ -39511,6 +39996,61 @@ function readingTableExcerpts(range, path) {
     }
   }
   return result;
+}
+function readingSectionBounds(info, path) {
+  const entry = index(path, info.text);
+  return { from: entry.lines[info.lineStart] ?? 0, to: entry.lines[info.lineEnd + 1] === void 0 ? info.text.length : entry.lines[info.lineEnd + 1] - 1 };
+}
+function readingStickyMap(root, info, path) {
+  const { from, to } = readingSectionBounds(info, path);
+  const projection = inlineProjection(info.text.slice(from, to)), dom = resizeDOM(root, true), alignment = alignInline(projection, dom.text);
+  if (!alignment) return;
+  return { from, to, dom, point(offset) {
+    const at = alignment.toDOM(offset - from);
+    return at === void 0 ? void 0 : dom.points[at];
+  }, source(node, offset) {
+    const at = dom.offset(node, offset);
+    if (at === void 0) return;
+    const local = alignment.toSource(at);
+    return local === void 0 ? void 0 : from + local;
+  } };
+}
+function readingStickyInsertion(selection, path, pointer) {
+  const doc2 = pointer ? pointer.target.ownerDocument : selection?.anchorNode?.ownerDocument;
+  if (!doc2) return;
+  let range, selectedRange;
+  if (pointer) {
+    const d = doc2;
+    const caret = d.caretPositionFromPoint?.(pointer.clientX, pointer.clientY);
+    if (caret) {
+      range = doc2.createRange();
+      range.setStart(caret.offsetNode, caret.offset);
+      range.collapse(true);
+    } else range = d.caretRangeFromPoint?.(pointer.clientX, pointer.clientY) ?? void 0;
+    if (range && selection?.rangeCount && !selection.isCollapsed) {
+      const selected = selection.getRangeAt(0);
+      if (selected.isPointInRange(range.startContainer, range.startOffset)) {
+        selectedRange = selected.cloneRange();
+        range = selected.cloneRange();
+        range.collapse(false);
+      }
+    }
+  } else if (selection?.rangeCount) {
+    selectedRange = selection.getRangeAt(0).cloneRange();
+    range = selectedRange.cloneRange();
+    range.collapse(false);
+  }
+  if (!range) return;
+  const node = range.startContainer, parent = node.nodeType === 1 ? node : node.parentElement;
+  if (parent?.closest("a,code,pre,.math,.internal-embed,.study-sticky-anchor,.study-reference-gutter,button,input,textarea")) return;
+  const root = parent?.closest("[data-study-comment-section]");
+  if (!root) return;
+  const found = sectionContext(root);
+  if (!found || found.context.path() !== path) return;
+  const mapping = readingStickyMap(found.el, found.info, path), offset = mapping?.source(node, range.startOffset);
+  if (offset === void 0) return;
+  if (selectedRange && !selectedRange.collapsed && (!found.el.contains(selectedRange.startContainer) || found.info.text[offset - 1] === "\n")) return;
+  return { text: found.info.text, offset };
 }
 
 // src/study-selection.ts
@@ -39559,7 +40099,7 @@ function contextActions(state) {
   if (state.pending) actions.push("make", "clear");
   return actions;
 }
-function registerStudySelections(plugin, api) {
+function registerStudySelections(plugin, api, onStudyContextMenu) {
   const pending = /* @__PURE__ */ new Map();
   const handlers2 = /* @__PURE__ */ new Map();
   const captures = /* @__PURE__ */ new Map();
@@ -39570,7 +40110,7 @@ function registerStudySelections(plugin, api) {
       if (context) return context;
     }
     return captures.get(doc2)?.();
-  });
+  }, api.store);
   plugin.studyPalette = palette;
   plugin.register(() => {
     palette.close();
@@ -39601,7 +40141,7 @@ function registerStudySelections(plugin, api) {
       await plugin.app.vault.adapter.write(settings, JSON.stringify(last));
       await plugin.app.vault.adapter.write(studySettings, JSON.stringify(lastStudy));
     });
-    void preferenceWrite.catch(() => new import_obsidian22.Notice("Annotation saved; last choice could not be remembered."));
+    void preferenceWrite.catch(() => new import_obsidian23.Notice("Annotation saved; last choice could not be remembered."));
   };
   store.regularMarkCreated = (path, style, palette2) => {
     if (style !== "sticky") remember(path, { kind: "regular", style, palette: palette2 });
@@ -39619,7 +40159,7 @@ function registerStudySelections(plugin, api) {
     store.pendingAnnotationSelection = void 0;
     store.createPendingMark = void 0;
   });
-  const run = (fn) => void fn().catch((e) => new import_obsidian22.Notice(String(e)));
+  const run = (fn) => void fn().catch((e) => new import_obsidian23.Notice(String(e)));
   const attach = (doc2) => {
     if (docs.has(doc2)) return;
     docs.add(doc2);
@@ -39627,7 +40167,7 @@ function registerStudySelections(plugin, api) {
     const session = new StudySelectionSession(), groups = /* @__PURE__ */ new Set();
     let ranges = [], down;
     let cancelled = 0, queue = Promise.resolve(), observer, timer, shiftToggle = false;
-    const views = () => plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view).filter((v) => v instanceof import_obsidian22.MarkdownView && v.containerEl.ownerDocument === doc2);
+    const views = () => plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view).filter((v) => v instanceof import_obsidian23.MarkdownView && v.containerEl.ownerDocument === doc2);
     const viewAt = (node) => views().find((v) => !!node && v.containerEl.contains(node));
     const sourceView = () => views().find((v) => v.file?.path === session.path);
     const cmOf = (view) => view.editor?.cm;
@@ -39804,7 +40344,7 @@ function registerStudySelections(plugin, api) {
       for (const p of parts) anchors.push(...anchorsFor2(view, p.range, p.editor));
       const captured = parts.flatMap((p) => p.range ? [p.range] : []);
       if (!anchors.length) {
-        if (!silent) new import_obsidian22.Notice("That selection cannot be anchored. Select note text, a whole equation part, or table cells.");
+        if (!silent) new import_obsidian23.Notice("That selection cannot be anchored. Select note text, a whole equation part, or table cells.");
         return;
       }
       queue = queue.then(async () => {
@@ -39814,14 +40354,14 @@ function registerStudySelections(plugin, api) {
         try {
           session.add(path, raw, anchors);
         } catch (e) {
-          new import_obsidian22.Notice(String(e));
+          new import_obsidian23.Notice(String(e));
           return;
         }
         if (!wasActive) stopObserving();
         ranges = wasActive ? [...ranges, ...captured] : captured;
         paint2();
         observe();
-      }).catch((e) => new import_obsidian22.Notice(String(e)));
+      }).catch((e) => new import_obsidian23.Notice(String(e)));
     };
     const cleanFragments = () => session.fragments.map((a2) => {
       const copy = { ...a2 };
@@ -39838,7 +40378,7 @@ function registerStudySelections(plugin, api) {
       }
       remember(path, choice);
       if (session.generation === generation) {
-        const view = plugin.app.workspace.getActiveViewOfType(import_obsidian22.MarkdownView);
+        const view = plugin.app.workspace.getActiveViewOfType(import_obsidian23.MarkdownView);
         if (view?.getMode() === "source" && view.file?.path === path) view.editor.setCursor(view.editor.getCursor("to"));
         clear();
         doc2.getSelection()?.removeAllRanges();
@@ -39851,7 +40391,7 @@ function registerStudySelections(plugin, api) {
     };
     const picker = (x, y) => {
       if (!session.active) return;
-      const choice = selectionChoice(last[session.path]), menu = new import_obsidian22.Menu();
+      const choice = selectionChoice(last[session.path]), menu = new import_obsidian23.Menu();
       const studyLabel = (rule) => rule === "text" ? "Text / math blank \xB7 cyan pattern" : rule === "table" ? "Table blank \xB7 orange pattern" : "General question \xB7 magenta pattern";
       const label = choice.kind === "study" ? studyLabel(choice.rule) : styleNames[choice.style] + " \xB7 " + choice.palette.meaning;
       menu.addItem((i) => i.setSection("selection").setTitle(label + " \xB7 last used").setIcon("highlighter").onClick(() => run(() => choose(choice))));
@@ -39915,7 +40455,7 @@ function registerStudySelections(plugin, api) {
         const readers = plugin.app.plugins.plugins["code-links"]?.codeReaders ?? [];
         if ([...readers].some((reader) => reader.host?.contains(range.startContainer) && reader.host.contains(range.endContainer))) return;
         if (excluded(range.startContainer, view) || excluded(range.endContainer, view) || crossesExcluded(range, view)) {
-          new import_obsidian22.Notice("Selections cannot include code excerpts or embedded editors. Select the text on each side separately.");
+          new import_obsidian23.Notice("Selections cannot include code excerpts or embedded editors. Select the text on each side separately.");
           return;
         }
         const parts = [];
@@ -39946,14 +40486,15 @@ function registerStudySelections(plugin, api) {
       const target = e.target instanceof win.Element ? e.target : null;
       if (!target || target.closest(".study-margin-pane,.study-margin-note,.code-links-panel,.code-links-code,[data-image-owner],.ss-scientific")) return;
       if (viewAt(target) && !target.closest("img,a")) {
-        const m = import_obsidian22.Menu.forEvent(e);
+        const m = import_obsidian23.Menu.forEvent(e);
+        onStudyContextMenu?.(m, e);
         m.__studyPalette = true;
         m.addItem((i) => i.setSection("selection").setTitle("Study annotation palette\u2026").setIcon("palette").onClick(() => palette.open(doc2)));
       }
       const undo2 = idsAt(target).filter((id3) => store.data.comments.some((n) => n.combinedInto === id3)), actions = contextActions({ pending: viewAt(target)?.file?.path === session.path ? session.fragments.length : 0, groups: groups.size, undo: undo2 });
       const ids = idsAt(target);
       if (!actions.length && !ids.length) return;
-      const menu = import_obsidian22.Menu.forEvent(e);
+      const menu = import_obsidian23.Menu.forEvent(e);
       for (const id3 of ids) {
         const c = store.data.comments.find((c2) => c2.id === id3);
         if (c) studyTypeItems(menu, c, (type) => run(() => store.changeStudyType(id3, type)));
@@ -39983,7 +40524,7 @@ function registerStudySelections(plugin, api) {
     const openPicker = (checking) => {
       const target = doc2.activeElement;
       if (target && (target.closest(EXCLUDED) || target.closest(".cm-editor") && !views().some((v) => cmOf(v)?.dom === target.closest(".cm-editor")))) return false;
-      const active = plugin.app.workspace.getActiveViewOfType(import_obsidian22.MarkdownView);
+      const active = plugin.app.workspace.getActiveViewOfType(import_obsidian23.MarkdownView);
       const sel = doc2.getSelection(), range = sel?.rangeCount && !sel.isCollapsed ? sel.getRangeAt(0) : void 0;
       const view = range ? viewAt(range.startContainer) : active;
       if (!view?.file || view.containerEl.ownerDocument !== doc2) return false;
@@ -40004,7 +40545,7 @@ function registerStudySelections(plugin, api) {
     captures.set(doc2, async () => {
       await queue;
       const sel = doc2.getSelection(), range = sel?.rangeCount && !sel.isCollapsed ? sel.getRangeAt(0) : void 0;
-      const view = range ? viewAt(range.startContainer) : plugin.app.workspace.getActiveViewOfType(import_obsidian22.MarkdownView);
+      const view = range ? viewAt(range.startContainer) : plugin.app.workspace.getActiveViewOfType(import_obsidian23.MarkdownView);
       if (!view?.file || view.containerEl.ownerDocument !== doc2) return;
       const editor = view.getMode() === "source" && (!range || editorMode(view, range)) ? editorRanges(view) : void 0;
       if (range && (!view.containerEl.contains(range.endContainer) || excluded(range.startContainer, view) || excluded(range.endContainer, view) || crossesExcluded(range, view))) return;
@@ -40191,7 +40732,7 @@ function codeAnswerEditor(host, language2, value, label, owner, changed, context
 }
 
 // src/test-yourself.ts
-var import_obsidian23 = require("obsidian");
+var import_obsidian24 = require("obsidian");
 
 // src/test-yourself-model.ts
 var RecallQueue = class {
@@ -40309,7 +40850,7 @@ function testYourself(app, questions, title, card, random = Math.random) {
     if (retired) return;
     const turn = ++generation;
     if (owner) panel.removeChild(owner);
-    owner = panel.addChild(new import_obsidian23.Component());
+    owner = panel.addChild(new import_obsidian24.Component());
     body.empty();
     actions.empty();
     panel.modalEl.closest(".study-workspace-view")?.scrollTo({ top: 0 });
@@ -40487,7 +41028,7 @@ function validCodeGrade(q, response, g) {
 }
 
 // src/code-annotation-api.ts
-var import_obsidian24 = require("obsidian");
+var import_obsidian25 = require("obsidian");
 var clone4 = (x) => JSON.parse(JSON.stringify(x));
 var snapshotKey = (s) => JSON.stringify([s.path, s.link.target, s.lines, s.line_numbers, s.signature]);
 var CodeAnnotationApi = class {
@@ -40518,11 +41059,11 @@ var CodeAnnotationApi = class {
   }
   async note(path) {
     const f = this.store.app.vault.getAbstractFileByPath(path);
-    if (!(f instanceof import_obsidian24.TFile) || f.extension !== "md") throw Error("Source note not found.");
+    if (!(f instanceof import_obsidian25.TFile) || f.extension !== "md") throw Error("Source note not found.");
     const text2 = await this.store.app.vault.read(f);
     for (const l of this.store.app.workspace.getLeavesOfType("markdown")) {
       const v = l.view;
-      if (v instanceof import_obsidian24.MarkdownView && v.file?.path === path && v.getMode() === "source" && v.editor.getValue() !== text2) throw Error("Wait for the note to finish saving.");
+      if (v instanceof import_obsidian25.MarkdownView && v.file?.path === path && v.getMode() === "source" && v.editor.getValue() !== text2) throw Error("Wait for the note to finish saving.");
     }
     return { f, text: text2 };
   }
@@ -40541,13 +41082,21 @@ var CodeAnnotationApi = class {
   }
   onChange(fn) {
     this.check();
-    this.store.listeners.add(fn);
-    return () => this.store.listeners.delete(fn);
+    const changed = (change) => {
+      if (change?.visibility && !this.store.data.comments.some((c) => c.code && change.commentIds.has(c.id))) return;
+      fn();
+    };
+    this.store.listeners.add(changed);
+    return () => this.store.listeners.delete(changed);
   }
   async resolve(path, s, raw) {
     this.check();
+    if (!this.store.data.comments.some((c) => c.path === path && c.code)) {
+      this.noteEmbeds.delete(path);
+      return { marks: [], questionIds: [] };
+    }
     const file = this.store.app.vault.getAbstractFileByPath(path);
-    if (file instanceof import_obsidian24.TFile) {
+    if (file instanceof import_obsidian25.TFile) {
       try {
         this.noteEmbeds.set(path, await readCodeEmbeds(this.bridge(), await this.store.app.vault.cachedRead(file)));
         if (this.noteEmbeds.size > 8) this.noteEmbeds.delete(this.noteEmbeds.keys().next().value);
@@ -40577,7 +41126,7 @@ var CodeAnnotationApi = class {
     const saved = records.filter((c) => !raw || c.code?.raw === raw).flatMap((c) => c.code?.consumed ? (c.code.consumed.questionIds ?? [c.code.consumed.questionId]).map((questionId) => ({ ...c.code.consumed, questionId })) : []);
     const questionIds = [...new Set((await Promise.all(saved.map(async (c) => {
       try {
-        return this.findQuestion ? await this.findQuestion(c.questionId) ? c.questionId : void 0 : this.store.app.vault.getAbstractFileByPath(c.questionPath) instanceof import_obsidian24.TFile ? c.questionId : void 0;
+        return this.findQuestion ? await this.findQuestion(c.questionId) ? c.questionId : void 0 : this.store.app.vault.getAbstractFileByPath(c.questionPath) instanceof import_obsidian25.TFile ? c.questionId : void 0;
       } catch {
         return void 0;
       }
@@ -40700,11 +41249,11 @@ var CodeAnnotationApi = class {
     try {
       await this.bridge().revealCode(c.path, c.id, c.code?.raw);
     } catch (e) {
-      new import_obsidian24.Notice(String(e));
+      new import_obsidian25.Notice(String(e));
     }
   }
   addMenu(menu, scope, s, selection, ids, stale) {
-    const run = (fn) => void fn().catch((e) => new import_obsidian24.Notice(String(e)));
+    const run = (fn) => void fn().catch((e) => new import_obsidian25.Notice(String(e)));
     if (selection && selection.to > selection.from) {
       const create = async (purpose, appearance, editing = false) => {
         const c = await this.create(scope, s, selection.from, selection.to, purpose, appearance);
@@ -40731,7 +41280,7 @@ var CodeAnnotationApi = class {
         try {
           const p = await this.previewQuestion(scope);
           await this.applyQuestion(p.token);
-          new import_obsidian24.Notice("Practice question saved. Only its study marks were consumed.");
+          new import_obsidian25.Notice("Practice question saved. Only its study marks were consumed.");
         } catch (e) {
           if (e?.related) throw Error("This block has other study instructions. Include them when authoring its questions, or explicitly defer them. All marks were kept.");
           throw e;
@@ -40793,7 +41342,7 @@ var CodeAnnotationApi = class {
     let outputWarning;
     let question3 = parseQuestion(raw, `${destination.folder}/Question-${id3}.md`);
     const existing = this.store.app.vault.getAbstractFileByPath(question3.path);
-    if (existing instanceof import_obsidian24.TFile) {
+    if (existing instanceof import_obsidian25.TFile) {
       const saved = parseQuestion(await this.store.app.vault.read(existing), question3.path);
       const expected = question3.definition;
       if (saved.definition.id !== id3 || saved.definition.type !== "code" || expected.type !== "code" || JSON.stringify(saved.definition.code) !== JSON.stringify(expected.code) || JSON.stringify(saved.definition.answers) !== JSON.stringify(expected.answers)) throw Error("Existing question has different code or answers: " + question3.path);
@@ -40831,7 +41380,7 @@ var CodeAnnotationApi = class {
     const receipt = () => ({ questionId: p.question.definition.id, path: p.question.path, consumedIds: p.before.map((c) => c.id), instructionIds: p.instructionIds, deferredIds: p.deferredIds });
     const verifyFile = async () => {
       const file2 = v.getAbstractFileByPath(p.question.path);
-      if (!(file2 instanceof import_obsidian24.TFile)) throw Error("Question file is missing; marks were preserved.");
+      if (!(file2 instanceof import_obsidian25.TFile)) throw Error("Question file is missing; marks were preserved.");
       const raw = await v.read(file2);
       parseQuestion(raw, p.question.path);
       if (raw !== p.question.raw) throw Error("An existing question differs from this plan: " + p.question.path + ". Reuse or repair it; marks were preserved.");
@@ -40925,7 +41474,7 @@ var CodeAnnotationApi = class {
 };
 
 // src/annotation-api.ts
-var import_obsidian25 = require("obsidian");
+var import_obsidian26 = require("obsidian");
 
 // src/annotation-edit.ts
 function validateAnnotationPatch(p) {
@@ -40979,11 +41528,11 @@ var AnnotationApi = class {
   async source(path) {
     this.check();
     const f = this.store.app.vault.getAbstractFileByPath(path);
-    if (!(f instanceof import_obsidian25.TFile) || f.extension !== "md") throw Error("Markdown paper not found: " + path);
+    if (!(f instanceof import_obsidian26.TFile) || f.extension !== "md") throw Error("Markdown paper not found: " + path);
     const source = await this.store.app.vault.read(f);
     for (const leaf of this.store.app.workspace.getLeavesOfType("markdown")) {
       const view = leaf.view;
-      if (view instanceof import_obsidian25.MarkdownView && view.file?.path === path && view.getMode() === "source" && view.editor.getValue() !== source) throw Error("Paper has unsaved editor changes; wait for save and retry.");
+      if (view instanceof import_obsidian26.MarkdownView && view.file?.path === path && view.getMode() === "source" && view.editor.getValue() !== source) throw Error("Paper has unsaved editor changes; wait for save and retry.");
     }
     return source;
   }
@@ -41037,7 +41586,7 @@ var AnnotationApi = class {
       const source = sources.get(ref.path);
       const ranges = patch.selections.map((t2) => exactSelection(source, t2));
       for (let i = 0; i < ranges.length; i++) for (let j = 0; j < i; j++) if (ranges[i].from < ranges[j].to && ranges[j].from < ranges[i].to) throw Error("Selections overlap.");
-      await (0, import_obsidian25.loadMathJax)();
+      await (0, import_obsidian26.loadMathJax)();
       const anchors = ranges.flatMap((r) => {
         const a2 = editorExcerpts(source, r.from, r.to, ref.path);
         if (!a2.length) throw Error("Selection cannot be represented safely.");
@@ -41081,7 +41630,7 @@ function clonePlan(p) {
 }
 
 // src/reference-gutters.ts
-var import_obsidian26 = require("obsidian");
+var import_obsidian27 = require("obsidian");
 
 // src/reading-readiness.ts
 var cachedText = "";
@@ -41123,7 +41672,7 @@ function registerReferenceGutters(plugin, store) {
   });
   plugin.registerEvent(plugin.app.vault.on("modify", (file) => schedule(file.path)));
   const previews = /* @__PURE__ */ new Map();
-  class Section extends import_obsidian26.MarkdownRenderChild {
+  class Section extends import_obsidian27.MarkdownRenderChild {
     constructor(el, ctx) {
       super(el);
       this.ctx = ctx;
@@ -41217,6 +41766,86 @@ function registerReferenceGutters(plugin, store) {
     ctx.addChild(own(new Section(el, ctx)));
   });
 }
+
+// src/margin-viewport.ts
+var MarginViewport = class {
+  constructor(root) {
+    this.root = root;
+    this.win = root.ownerDocument.defaultView;
+    this.observer = new IntersectionObserver((changes) => {
+      for (const change of changes) {
+        const e = this.entries.get(change.target);
+        if (e) e.near = change.isIntersecting;
+      }
+      this.schedule();
+    }, { root, rootMargin: "300px 0px" });
+  }
+  entries = /* @__PURE__ */ new Map();
+  observer;
+  frame = 0;
+  win;
+  track(el, pinned) {
+    if (this.entries.has(el)) return;
+    this.entries.set(el, { el, pinned, near: true, regions: [] });
+    this.observer.observe(el);
+  }
+  untrack(el) {
+    this.observer.unobserve(el);
+    this.entries.delete(el);
+  }
+  restore(el) {
+    const e = this.entries.get(el);
+    if (!e?.regions.length) return false;
+    for (const r of e.regions) {
+      r.el.replaceChildren(r.fragment);
+      r.el.style.cssText = r.style;
+      r.el.classList.remove("study-margin-deferred");
+    }
+    e.regions = [];
+    return true;
+  }
+  schedule() {
+    if (!this.frame) this.frame = this.win.requestAnimationFrame(() => {
+      this.frame = 0;
+      this.update();
+    });
+  }
+  update() {
+    const selection = this.root.ownerDocument.getSelection(), active = this.root.ownerDocument.activeElement;
+    const plans = [];
+    for (const e of this.entries.values()) {
+      const selected = !!selection?.rangeCount && !selection.isCollapsed && selection.getRangeAt(0).intersectsNode(e.el);
+      if (e.near || e.pinned() || e.el.contains(active) || selected) {
+        this.restore(e.el);
+        continue;
+      }
+      if (e.regions.length || e.el.hidden || !e.el.isConnected || e.el.querySelector("iframe,video,audio,object,embed,.cm-editor")) continue;
+      const regions = [...e.el.querySelectorAll(".study-margin-body,.study-margin-note-source > .study-margin-source")].filter((el) => el.childElementCount > 0).map((el) => {
+        const r = el.getBoundingClientRect();
+        return { el, height: r.height, width: r.width };
+      }).filter((r) => r.height > 0 && r.width > 0);
+      if (regions.length) plans.push({ e, regions });
+    }
+    for (const { e, regions } of plans) for (const { el, height } of regions) {
+      const fragment = el.ownerDocument.createDocumentFragment(), text2 = el.textContent ?? "", style = el.style.cssText;
+      while (el.firstChild) fragment.append(el.firstChild);
+      el.textContent = text2;
+      el.classList.add("study-margin-deferred");
+      el.style.height = height + "px";
+      el.style.minHeight = height + "px";
+      el.style.maxHeight = height + "px";
+      el.style.overflow = "hidden";
+      el.style.boxSizing = "border-box";
+      e.regions.push({ el, fragment, style });
+    }
+  }
+  destroy() {
+    if (this.frame) this.win.cancelAnimationFrame(this.frame);
+    this.observer.disconnect();
+    for (const e of this.entries.values()) this.restore(e.el);
+    this.entries.clear();
+  }
+};
 
 // src/annotation-search.ts
 function orderedScripts(text2) {
@@ -41359,11 +41988,11 @@ function extendAnnotation(source, existing, selection) {
 }
 
 // src/margin-view.ts
-var import_obsidian27 = require("obsidian");
+var import_obsidian28 = require("obsidian");
 var VIEW3 = "study-margin-notes";
 function recentMarkdownPath(app) {
-  const active = app.workspace.getActiveViewOfType(import_obsidian27.MarkdownView), recent = app.workspace.getMostRecentLeaf()?.view, file = app.workspace.getActiveFile();
-  return active?.file?.path ?? (recent instanceof import_obsidian27.MarkdownView ? recent.file?.path : void 0) ?? (file?.extension === "md" ? file.path : void 0) ?? app.workspace.getLeavesOfType("markdown").find((l) => l.view instanceof import_obsidian27.MarkdownView && l.view.file)?.view?.file?.path;
+  const active = app.workspace.getActiveViewOfType(import_obsidian28.MarkdownView), recent = app.workspace.getMostRecentLeaf()?.view, file = app.workspace.getActiveFile();
+  return active?.file?.path ?? (recent instanceof import_obsidian28.MarkdownView ? recent.file?.path : void 0) ?? (file?.extension === "md" ? file.path : void 0) ?? app.workspace.getLeavesOfType("markdown").find((l) => l.view instanceof import_obsidian28.MarkdownView && l.view.file)?.view?.file?.path;
 }
 var MarginNotes = class {
   constructor(plugin, store) {
@@ -41392,7 +42021,7 @@ var MarginNotes = class {
         for (const d of raw.drafts ?? []) if (validComment(d)) this.drafts.set(d.id, d);
       } catch {
         this.draftStorageBlocked = true;
-        new import_obsidian27.Notice("Margin drafts could not be read. The original draft file was preserved.");
+        new import_obsidian28.Notice("Margin drafts could not be read. The original draft file was preserved.");
       }
     }
   }
@@ -41408,7 +42037,7 @@ var MarginNotes = class {
     const raw = JSON.stringify({ version: 1, drafts: [...this.drafts.values()] }, null, 2);
     this.pending = this.pending.catch(() => {
     }).then(() => this.plugin.app.vault.adapter.write(this.draftPath, raw));
-    void this.pending.catch((e) => new import_obsidian27.Notice("Margin draft could not be saved: " + String(e)));
+    void this.pending.catch((e) => new import_obsidian28.Notice("Margin draft could not be saved: " + String(e)));
   }
   async open(anchor, editing = false, flash = false) {
     const app = this.plugin.app;
@@ -41435,12 +42064,12 @@ var MarginNotes = class {
   add(anchors) {
     const c = this.drafts.get(this.selected) ?? this.store.data.comments.find((c2) => c2.id === this.selected);
     if (!c) {
-      new import_obsidian27.Notice("Select a margin note before adding another excerpt.");
+      new import_obsidian28.Notice("Select a margin note before adding another excerpt.");
       void this.open();
       return;
     }
     if (c.code || c.study) {
-      new import_obsidian27.Notice("Code annotations accept code selections only.");
+      new import_obsidian28.Notice("Code annotations accept code selections only.");
       return;
     }
     const next = excerpts(c).map((a2) => ({ ...a2 }));
@@ -41454,7 +42083,7 @@ var MarginNotes = class {
       const c = this.store.data.comments.find((c2) => c2.id === id3);
       if (!c || c.code || c.study || JSON.stringify(c) !== snapshot || this.drafts.has(id3)) throw Error("The annotation changed or has an unsaved draft. Finish that edit before resizing.");
       const file = this.plugin.app.vault.getAbstractFileByPath(excerpts(c)[0]?.path ?? c.path);
-      if (!(file instanceof import_obsidian27.TFile) || await this.plugin.app.vault.read(file) !== source) throw Error("The paper changed while dragging. Select the annotation again.");
+      if (!(file instanceof import_obsidian28.TFile) || await this.plugin.app.vault.read(file) !== source) throw Error("The paper changed while dragging. Select the annotation again.");
       if (JSON.stringify(this.store.data.comments.find((c2) => c2.id === id3)) !== snapshot || this.drafts.has(id3)) throw Error("The annotation changed while dragging.");
       const next = withExcerpts({ ...c }, resizePlainAnnotation(source, excerpts(c), from, to));
       const saved = { ...next, updated: (/* @__PURE__ */ new Date()).toISOString() }, index2 = this.store.data.comments.findIndex((c2) => c2.id === id3);
@@ -41469,24 +42098,24 @@ var MarginNotes = class {
         }
         throw error;
       }
-      new import_obsidian27.Notice("Annotation resized.");
+      new import_obsidian28.Notice("Annotation resized.");
     } catch (e) {
-      new import_obsidian27.Notice(String(e));
+      new import_obsidian28.Notice(String(e));
     }
   }
   async extend(anchors) {
     const c = this.drafts.get(this.selected) ?? this.store.data.comments.find((c2) => c2.id === this.selected);
     if (!c || c.code || c.study || c.kind === "sticky" || c.deletedAt || c.resolved) {
-      new import_obsidian27.Notice("Select an active highlight, underline or text-color annotation in the margin first.");
+      new import_obsidian28.Notice("Select an active highlight, underline or text-color annotation in the margin first.");
       return;
     }
     try {
       const path = anchors[0]?.path, file = this.plugin.app.vault.getAbstractFileByPath(path ?? "");
-      if (!(file instanceof import_obsidian27.TFile)) throw Error("The selected source is unavailable.");
+      if (!(file instanceof import_obsidian28.TFile)) throw Error("The selected source is unavailable.");
       const snapshot = JSON.stringify(c), source = await this.plugin.app.vault.read(file);
       const current = this.drafts.get(c.id) ?? this.store.data.comments.find((x) => x.id === c.id);
       if (JSON.stringify(current) !== snapshot) throw Error("The annotation changed while extending it. Please select the passage again.");
-      const opened = this.plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view).filter((v) => v instanceof import_obsidian27.MarkdownView && v.file?.path === path);
+      const opened = this.plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view).filter((v) => v instanceof import_obsidian28.MarkdownView && v.file?.path === path);
       if (opened.some((v) => v.getMode() === "source" && v.editor.getValue() !== source)) throw Error("Wait for the source note to save before extending its annotation.");
       const next = extendAnnotation(source, excerpts(c), anchors);
       const draft = withExcerpts({ ...c }, next);
@@ -41494,9 +42123,9 @@ var MarginNotes = class {
       this.persist();
       await this.save(draft);
       await this.open(draft);
-      new import_obsidian27.Notice("Annotation extended.");
+      new import_obsidian28.Notice("Annotation extended.");
     } catch (e) {
-      new import_obsidian27.Notice(String(e));
+      new import_obsidian28.Notice(String(e));
     }
   }
   async save(d) {
@@ -41533,14 +42162,14 @@ var MarginNotes = class {
       return;
     }
     const app = this.plugin.app, file = app.vault.getAbstractFileByPath(c.path);
-    if (!(file instanceof import_obsidian27.TFile)) {
-      new import_obsidian27.Notice("The source note is unavailable.");
+    if (!(file instanceof import_obsidian28.TFile)) {
+      new import_obsidian28.Notice("The source note is unavailable.");
       return;
     }
     const existing = marginSourceLeaf(app.workspace, c.path), opened = existing?.view;
     const raw = opened?.getMode() === "source" ? opened.editor.getValue() : await app.vault.cachedRead(file), hits = embeddedStickyStarts(raw, c.id);
     if (hits.length !== 1) {
-      new import_obsidian27.Notice(hits.length ? "This post-it appears more than once in the source note." : "The post-it placement is no longer in the source note.");
+      new import_obsidian28.Notice(hits.length ? "This post-it appears more than once in the source note." : "The post-it placement is no longer in the source note.");
       return;
     }
     await this.revealer.reveal(c.path, raw, hits[0], hits[0], true);
@@ -41548,38 +42177,40 @@ var MarginNotes = class {
   /** Sidecar post-its open at their placement without selecting or editing source text. */
   async jumpPlacement(path, p) {
     const app = this.plugin.app, file = app.vault.getAbstractFileByPath(path);
-    if (!(file instanceof import_obsidian27.TFile)) {
-      new import_obsidian27.Notice("The source note is unavailable.");
+    if (!(file instanceof import_obsidian28.TFile)) {
+      new import_obsidian28.Notice("The source note is unavailable.");
       return;
     }
     const existing = marginSourceLeaf(app.workspace, path), opened = existing?.view;
     const raw = opened?.getMode() === "source" ? opened.editor.getValue() : await app.vault.cachedRead(file), end = locatePlacement(raw, p);
     if (end === void 0) {
-      new import_obsidian27.Notice("The post-it placement has changed or is ambiguous. The note remains in the margin.");
+      new import_obsidian28.Notice("The post-it placement has changed or is ambiguous. The note remains in the margin.");
       return;
     }
     await this.revealer.reveal(path, raw, end, end, true);
   }
   async jump(a2) {
     const app = this.plugin.app, file = app.vault.getAbstractFileByPath(a2.path);
-    if (!(file instanceof import_obsidian27.TFile)) {
-      new import_obsidian27.Notice("The source note is unavailable.");
+    if (!(file instanceof import_obsidian28.TFile)) {
+      new import_obsidian28.Notice("The source note is unavailable.");
       return;
     }
     const opened = marginSourceLeaf(app.workspace, a2.path)?.view;
     const raw = opened?.getMode() === "source" ? opened.editor.getValue() : await app.vault.cachedRead(file), at = marginLocation(raw, a2);
     if (!at) {
-      new import_obsidian27.Notice("The excerpt has changed or is ambiguous. Its saved quotation remains in the margin note.");
+      new import_obsidian28.Notice("The excerpt has changed or is ambiguous. Its saved quotation remains in the margin note.");
       return;
     }
     await this.revealer.reveal(a2.path, raw, at.from, at.to, true);
   }
 };
-var MarginView = class extends import_obsidian27.ItemView {
+var MarginView = class extends import_obsidian28.ItemView {
   constructor(leaf, notes) {
     super(leaf);
     this.notes = notes;
   }
+  viewport;
+  selectedStyle;
   list;
   filter;
   query;
@@ -41617,7 +42248,7 @@ var MarginView = class extends import_obsidian27.ItemView {
       while (this.sourceAgain && !this.closed) {
         this.sourceAgain = false;
         const path = this.notes.file, file = this.app.vault.getAbstractFileByPath(path);
-        if (!(file instanceof import_obsidian27.TFile)) continue;
+        if (!(file instanceof import_obsidian28.TFile)) continue;
         const opened = marginSourceLeaf(this.app.workspace, path)?.view, text2 = opened?.getMode() === "source" ? opened.editor.getValue() : await this.app.vault.cachedRead(file);
         const bridge = this.app.plugins.plugins["code-links"], epoch = this.bridgeEpoch, same2 = path === this.sourcePath && text2 === this.sourceText;
         if (path !== this.notes.file || same2 && bridge === this.sourceBridge && this.embedsComplete) continue;
@@ -41658,7 +42289,7 @@ var MarginView = class extends import_obsidian27.ItemView {
     const card = this.cards.get(id3);
     return this.saveTimers.has(id3) || this.saving.has(id3) || this.busyEditors.has(id3) || !!(card?.editor && !card.editor.previewing);
   }
-  position(c) {
+  position(c, lookup) {
     if (c.code) {
       const at = codeGroupSource(c, this.codeEmbeds).indexes[0];
       return at === void 0 ? Infinity : at + c.code.line / 1e7;
@@ -41666,7 +42297,7 @@ var MarginView = class extends import_obsidian27.ItemView {
     if (this.sourcePath !== this.notes.file) return Infinity;
     const key2 = JSON.stringify([excerpts(c), placementOf(c), c.path, c.kind]), old = this.positions.get(c.id);
     if (old?.key === key2) return old.offset;
-    const offset = annotationStarts(this.sourceText, this.notes.file, c)[0] ?? Infinity;
+    const offset = annotationStarts(this.sourceText, this.notes.file, c, lookup)[0] ?? Infinity;
     this.positions.set(c.id, { key: key2, offset });
     return offset;
   }
@@ -41714,8 +42345,10 @@ var MarginView = class extends import_obsidian27.ItemView {
     this.visibilityLink = this.contentEl.createEl("a", { cls: "study-margin-ordinary-toggle", href: "#" });
     this.visibilityLink.onclick = (e) => {
       e.preventDefault();
-      void this.notes.store.setVisibility({ ...this.notes.store.visibility, hideOrdinary: !this.notes.store.visibility.hideOrdinary }).catch((e2) => new import_obsidian27.Notice(String(e2)));
+      void this.notes.store.setVisibility({ ...this.notes.store.visibility, hideOrdinary: !this.notes.store.visibility.hideOrdinary }).catch((e2) => new import_obsidian28.Notice(String(e2)));
     };
+    const visibility = new VisibilityControls(this.contentEl, this.notes.store);
+    this.register(() => visibility.destroy());
     this.toolbar = this.contentEl.createDiv("study-margin-toolbar");
     this.query = this.toolbar.createEl("input", { type: "search", attr: { placeholder: "Search text \xB7 @12 goes to entry 12", "aria-label": "Search text, or use @ followed by an annotation number" } });
     this.query.oninput = () => this.update();
@@ -41726,7 +42359,7 @@ var MarginView = class extends import_obsidian27.ItemView {
         if (card) {
           this.select(card.dataset.marginId);
           this.focusSelected(true);
-        } else new import_obsidian27.Notice("No annotation with that number in this note.");
+        } else new import_obsidian28.Notice("No annotation with that number in this note.");
       }
     };
     this.filter = this.toolbar.createEl("select", { attr: { "aria-label": "Filter margin note type" } });
@@ -41745,6 +42378,12 @@ var MarginView = class extends import_obsidian27.ItemView {
         this.paneMenu(e);
       }
     });
+    this.viewport = new MarginViewport(this.list);
+    this.register(() => this.viewport?.destroy());
+    this.list.addEventListener("focusin", (e) => {
+      const card = e.target.closest(".study-margin-note");
+      if (card) this.viewport?.restore(card);
+    });
     this.style = this.contentEl.ownerDocument.createElement("style");
     this.contentEl.ownerDocument.head.append(this.style);
     this.register(() => this.style?.remove());
@@ -41752,7 +42391,7 @@ var MarginView = class extends import_obsidian27.ItemView {
       if (this.closed) return;
       this.bridgeEpoch++;
       this.embedsComplete = false;
-      void this.source().catch((e) => new import_obsidian27.Notice(String(e)));
+      void this.source().catch((e) => new import_obsidian28.Notice(String(e)));
     };
     this.registerEvent(this.app.workspace.on("code-links-ready", ready));
     this.app.workspace.onLayoutReady(ready);
@@ -41763,10 +42402,10 @@ var MarginView = class extends import_obsidian27.ItemView {
       if (file?.extension === "md") {
         this.notes.file = file.path;
         this.update();
-        void this.source().catch((e) => new import_obsidian27.Notice("Could not read annotation source: " + String(e)));
+        void this.source().catch((e) => new import_obsidian28.Notice("Could not read annotation source: " + String(e)));
       }
     }));
-    this.registerDomEvent(this.contentEl.ownerDocument.defaultView, "focus", () => void this.notes.store.refresh().catch((e) => new import_obsidian27.Notice(String(e))));
+    this.registerDomEvent(this.contentEl.ownerDocument.defaultView, "focus", () => void this.notes.store.refresh().catch((e) => new import_obsidian28.Notice(String(e))));
     this.contentEl.addEventListener("keydown", (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
         e.preventDefault();
@@ -41778,22 +42417,31 @@ var MarginView = class extends import_obsidian27.ItemView {
         this.query.focus();
       }
     });
+    const refreshSource = () => void this.source().catch((e) => new import_obsidian28.Notice("Could not read annotation source: " + String(e)));
     this.registerEvent(this.app.workspace.on("active-leaf-change", (leaf) => {
       const view = leaf?.view;
-      if (view instanceof import_obsidian27.MarkdownView && view.file && view.file.path !== this.notes.file) {
-        this.notes.file = view.file.path;
-        this.update();
-        void this.source().catch((e) => new import_obsidian27.Notice("Could not read annotation source: " + String(e)));
+      if (view instanceof import_obsidian28.MarkdownView && view.file) {
+        if (view.file.path !== this.notes.file) {
+          this.notes.file = view.file.path;
+          this.update();
+        }
+        refreshSource();
       }
     }));
+    this.registerEvent(this.app.workspace.on("layout-change", refreshSource));
+    this.registerEvent(this.app.workspace.on("editor-change", (_editor, view) => {
+      if (view.file?.path === this.notes.file) refreshSource();
+    }));
     this.registerEvent(this.app.vault.on("modify", (file) => {
-      if (file.path === this.notes.file) void this.source().catch((e) => new import_obsidian27.Notice("Could not read annotation source: " + String(e)));
+      if (file.path === this.notes.file) void this.source().catch((e) => new import_obsidian28.Notice("Could not read annotation source: " + String(e)));
     }));
     this.update();
-    void this.source().catch((e) => new import_obsidian27.Notice("Could not read annotation source: " + String(e)));
+    void this.source().catch((e) => new import_obsidian28.Notice("Could not read annotation source: " + String(e)));
   }
   async onClose() {
     this.closed = true;
+    this.viewport?.destroy();
+    this.viewport = void 0;
     this.bridgeEpoch++;
     for (const timer of this.saveTimers.values()) clearTimeout(timer);
     this.saveTimers.clear();
@@ -41809,7 +42457,11 @@ var MarginView = class extends import_obsidian27.ItemView {
     this.notes.selected = id3;
     for (const [key2, c] of this.cards) c.el.classList.toggle("is-selected", key2 === id3);
     const escaped2 = CSS.escape(id3);
-    if (this.style) this.style.textContent = escaped2 ? `[data-study-comment-ids~="${escaped2}"],[data-study-reading-comment="${escaped2}"],[data-critique-id="${escaped2}"],[data-study-math-ids~="${escaped2}"]{outline:1px solid var(--interactive-accent);outline-offset:2px;}` : "";
+    if (this.style && this.selectedStyle !== id3) {
+      this.selectedStyle = id3;
+      this.style.textContent = escaped2 ? `[data-study-comment-ids~="${escaped2}"],[data-study-reading-comment="${escaped2}"],[data-critique-id="${escaped2}"],[data-study-math-ids~="${escaped2}"]{outline:1px solid var(--interactive-accent);outline-offset:2px;}` : "";
+    }
+    this.viewport?.schedule();
   }
   current(id3) {
     return this.notes.drafts.get(id3) ?? this.notes.store.data.comments.find((c) => c.id === id3);
@@ -41852,21 +42504,21 @@ var MarginView = class extends import_obsidian27.ItemView {
     } catch (e) {
       failed = true;
       this.cards.get(id3)?.status.setText("Save failed \xB7 draft kept");
-      new import_obsidian27.Notice(String(e));
+      new import_obsidian28.Notice(String(e));
     } finally {
       this.saving.delete(id3);
       if (!failed && this.notes.drafts.has(id3) && this.cards.has(id3)) this.schedule(id3);
     }
   }
   paneMenu(e) {
-    const menu = new import_obsidian27.Menu();
+    const menu = new import_obsidian28.Menu();
     this.notes.store.addVisibilityMenu(menu, { x: e.clientX, y: e.clientY });
     menu.addItem((i) => i.setTitle("New margin note").setIcon("plus").onClick(() => {
       if (this.notes.file) void this.notes.open({ path: this.notes.file, quote: "", before: "", after: "" });
     })).addItem((i) => i.setTitle(this.showResolved ? "Hide resolved notes" : "Show resolved notes").onClick(() => {
       this.showResolved = !this.showResolved;
       this.update();
-    })).addItem((i) => i.setTitle("Undo last note deletion").setIcon("undo").onClick(() => void this.restoreNote())).addItem((i) => i.setTitle("Refresh notes from disk").setIcon("refresh-cw").onClick(() => void this.notes.store.refresh().catch((e2) => new import_obsidian27.Notice(String(e2))))).addItem((i) => i.setTitle("Color meanings\u2026").onClick(() => {
+    })).addItem((i) => i.setTitle("Undo last note deletion").setIcon("undo").onClick(() => void this.restoreNote())).addItem((i) => i.setTitle("Refresh notes from disk").setIcon("refresh-cw").onClick(() => void this.notes.store.refresh().catch((e2) => new import_obsidian28.Notice(String(e2))))).addItem((i) => i.setTitle("Color meanings\u2026").onClick(() => {
       this.app.setting.open();
       this.app.setting.openTabById("study-studio");
     })).addItem((i) => i.setTitle("Hide margin").onClick(() => this.leaf.detach())).showAtPosition({ x: e.clientX, y: e.clientY });
@@ -41894,14 +42546,14 @@ var MarginView = class extends import_obsidian27.ItemView {
       undo2.textContent = "Undo";
       undo2.href = "#";
       fragment.append(undo2);
-      const notice = new import_obsidian27.Notice(fragment, 1e4);
+      const notice = new import_obsidian28.Notice(fragment, 1e4);
       undo2.onclick = (e) => {
         e.preventDefault();
         void this.restoreNote(id3);
         notice.hide();
       };
     } catch (e) {
-      new import_obsidian27.Notice("Could not delete note: " + String(e));
+      new import_obsidian28.Notice("Could not delete note: " + String(e));
     }
   }
   async restoreNote(id3) {
@@ -41930,26 +42582,28 @@ var MarginView = class extends import_obsidian27.ItemView {
     if (this.notes.drafts.has(id3) || this.busyEditors.has(id3)) throw Error("Finish the margin edit before changing its type.");
   }
   noteMenu(e, id3) {
+    const card = this.cards.get(id3);
+    if (card) this.viewport?.restore(card.el);
     e.preventDefault();
     e.stopPropagation();
     this.select(id3);
     const c = this.current(id3);
     if (!c) return;
-    const menu = import_obsidian27.Menu.forEvent(e);
+    const menu = import_obsidian28.Menu.forEvent(e);
     this.notes.store.addVisibilityMenu(menu, { x: e.clientX, y: e.clientY });
     for (const a2 of excerpts(c)) menu.addItem((i) => i.setTitle("Go to: " + (a2.renderedQuote ?? a2.quote).slice(0, 55)).setIcon("arrow-up-right").onClick(() => void this.notes.jump(a2)));
     if (c.kind === "sticky") menu.addItem((i) => i.setTitle("Go to post-it").setIcon("arrow-up-right").onClick(() => void this.notes.jumpNote(c.id)));
     if (c.code) menu.addItem((i) => i.setTitle("Go to code").onClick(() => void this.notes.jumpNote(c.id)));
     studyTypeItems(menu, c, (type) => this.notes.store.changeStudyType?.(id3, type), this.app, this.containerEl.ownerDocument);
     if (!c.study && (!c.code || c.code.purpose === "comment")) appearanceItems(menu, c, (s) => this.notes.store.paletteFor(s), (patch) => void this.changeAppearance(id3, patch));
-    if (!this.notes.store.isAnnotationVisible(c)) menu.addItem((i) => i.setTitle("Show " + styleNames[styleOf(c)] + " \xB7 " + c.intent + " in main note").setIcon("eye").onClick(() => void this.notes.store.showAnnotation(c).catch((e2) => new import_obsidian27.Notice(String(e2)))));
+    if (!this.notes.store.isAnnotationVisible(c)) menu.addItem((i) => i.setTitle("Show " + styleNames[styleOf(c)] + " \xB7 " + c.intent + " in main note").setIcon("eye").onClick(() => void this.notes.store.showAnnotation(c).catch((e2) => new import_obsidian28.Notice(String(e2)))));
     menu.addItem((i) => i.setTitle("Delete note").setIcon("trash-2").onClick(() => void this.deleteNote(id3)));
     menu.addItem((i) => i.setTitle(c.resolved ? "Reopen note" : "Resolve note").onClick(() => {
       this.draft(id3).resolved = !c.resolved;
       this.schedule(id3);
     }));
     if (this.notes.drafts.has(id3)) menu.addItem((i) => i.setTitle("Discard unsaved changes\u2026").onClick(() => {
-      const modal = new import_obsidian27.Modal(this.app);
+      const modal = new import_obsidian28.Modal(this.app);
       modal.titleEl.setText("Discard unsaved changes?");
       modal.contentEl.createEl("p", { text: "The saved note will remain." });
       modal.contentEl.createEl("button", { text: "Keep writing" }).onclick = () => modal.close();
@@ -41959,10 +42613,10 @@ var MarginView = class extends import_obsidian27.ItemView {
         this.saveTimers.delete(id3);
         this.notes.drafts.delete(id3);
         this.notes.persist();
-        const card = this.cards.get(id3);
-        if (card) {
-          this.removeChild(card.owner);
-          card.el.remove();
+        const card2 = this.cards.get(id3);
+        if (card2) {
+          this.removeChild(card2.owner);
+          card2.el.remove();
           this.cards.delete(id3);
         }
         this.update();
@@ -42019,7 +42673,11 @@ var MarginView = class extends import_obsidian27.ItemView {
     const rawQuery = this.query.value.toLocaleLowerCase(), numberQuery = annotationSearchNumber(rawQuery);
     let shown = 0;
     const numbers = this.sourcePath === path ? this.tab === "study" ? studyAnnotationNumbers(this.sourceText, path, [...all.values()], (c) => this.app.plugins.plugins["slide-studio"]?.scientificStudyBridge?.resolve(this.sourceText, c.study.figure.figureId, c.study.figure.panelPath, c.study.figure.panelOccurrence).from) : annotationNumbers(this.sourceText, path, this.notes.store.data.comments) : /* @__PURE__ */ new Map();
-    const offsets = new Map([...all.values()].map((c) => [c.id, numbers.get(c.id)?.starts?.[0] ?? this.position(c)]));
+    const lookup = this.sourcePath === path ? placementLookup(path, this.sourceText, [...all.values()].flatMap((c) => {
+      const p = placementOf(c);
+      return p ? [p] : [];
+    })) : void 0;
+    const offsets = new Map([...all.values()].map((c) => [c.id, numbers.get(c.id)?.starts?.[0] ?? this.position(c, lookup)]));
     const groupKey = JSON.stringify([path, this.sourceRevision, [...all.values()].filter(isStudyMark).map((c) => [c.id, c.resolved, c.study, c.code, excerpts(c)])]);
     if (groupKey !== this.stackGroupKey) {
       this.stackGroupKey = groupKey;
@@ -42081,8 +42739,8 @@ var MarginView = class extends import_obsidian27.ItemView {
       card.el.dataset.markStyle = c.kind === "sticky" ? "sticky" : c.markStyle ?? "highlight";
       const typeLabel = card.el.querySelector(".study-code-type-label");
       if (typeLabel && c.code) typeLabel.textContent = c.code.purpose === "question" ? "General question" : c.code.rule === "form" ? "Required syntax" : c.code.rule === "behavior" ? "Any working approach" : "Practice blank";
-      const excerpt2 = excerpts(c).find((a2) => a2.path === path), offset2 = this.position(c), updated = excerpt2?.kind === "math" && Number.isFinite(offset2) && this.sourceText.slice(offset2, offset2 + excerpt2.quote.length) !== excerpt2.quote;
-      card.el.querySelector(".study-margin-hidden-status").textContent = c.code ? "Code annotation" : c.kind === "sticky" && this.sourcePath === path && !Number.isFinite(this.position(c)) ? "Placement not found in note" : c.kind !== "sticky" && this.sourcePath === path && excerpts(c).length > 0 && !Number.isFinite(this.position(c)) ? "Passage changed \xB7 saved excerpt retained" : this.notes.store.isAnnotationVisible(c) ? updated ? "Passage updated \xB7 saved excerpt shown" : "" : "Hidden in main note";
+      const excerpt2 = excerpts(c).find((a2) => a2.path === path), offset2 = this.position(c, lookup), updated = excerpt2?.kind === "math" && Number.isFinite(offset2) && this.sourceText.slice(offset2, offset2 + excerpt2.quote.length) !== excerpt2.quote;
+      card.el.querySelector(".study-margin-hidden-status").textContent = c.code ? "Code annotation" : c.kind === "sticky" && this.sourcePath === path && !Number.isFinite(this.position(c, lookup)) ? "Placement not found in note" : c.kind !== "sticky" && this.sourcePath === path && excerpts(c).length > 0 && !Number.isFinite(this.position(c, lookup)) ? "Passage changed \xB7 saved excerpt retained" : this.notes.store.isAnnotationVisible(c) ? updated ? "Passage updated \xB7 saved excerpt shown" : "" : "Hidden in main note";
       card.el.querySelector(".study-margin-show-annotation").hidden = this.notes.store.isAnnotationVisible(c);
       const visible = isStudyMark(c) === (this.tab === "study") && (numberQuery !== void 0 ? number2 === numberQuery : (this.showResolved || !c.resolved) && (!this.filter.value || typeKey(styleOf(c), c.intent) === this.filter.value) && annotationMatchesSearch(c, rawQuery));
       matches.set(c.id, visible);
@@ -42172,12 +42830,12 @@ var MarginView = class extends import_obsidian27.ItemView {
     h.oncontextmenu = (e) => {
       e.preventDefault();
       e.stopPropagation();
-      new import_obsidian27.Menu().addItem((i) => i.setTitle(g.kind === "code-block" ? "Go to code" : "Go to source").setIcon(g.kind === "code-block" ? "code" : "arrow-up-right").onClick(() => {
+      new import_obsidian28.Menu().addItem((i) => i.setTitle(g.kind === "code-block" ? "Go to code" : "Go to source").setIcon(g.kind === "code-block" ? "code" : "arrow-up-right").onClick(() => {
         const id3 = [...this.memberStacks].find(([, group]) => group === g.id)?.[0];
         if (id3) void this.notes.jumpNote(id3);
       })).showAtPosition({ x: e.clientX, y: e.clientY });
     };
-    this.stackOwners.set(g.id, this.addChild(new import_obsidian27.Component()));
+    this.stackOwners.set(g.id, this.addChild(new import_obsidian28.Component()));
     this.stackHeaders.set(g.id, h);
     return h;
   }
@@ -42194,6 +42852,7 @@ var MarginView = class extends import_obsidian27.ItemView {
       this.filter.value = "";
       this.update();
     }
+    this.viewport?.restore(card.el);
     card.el.scrollIntoView({ block: "nearest" });
     if (flash) {
       card.el.classList.remove("study-navigation-flash");
@@ -42206,6 +42865,7 @@ var MarginView = class extends import_obsidian27.ItemView {
     for (const [otherId, other] of this.cards) if (otherId !== id3 && other.editor && !other.editor.previewing) other.editor.showPreview();
     const card = this.cards.get(id3), c = this.current(id3);
     if (!card || !c) return;
+    this.viewport?.restore(card.el);
     if (!card.editor) {
       const body = card.el.querySelector(".study-margin-body");
       body.empty();
@@ -42253,7 +42913,8 @@ var MarginView = class extends import_obsidian27.ItemView {
     }
   }
   createNote(c) {
-    const owner = this.addChild(new import_obsidian27.Component()), el = this.contentEl.ownerDocument.createElement("article");
+    const renders = [];
+    const owner = this.addChild(new import_obsidian28.Component()), el = this.contentEl.ownerDocument.createElement("article");
     el.className = "study-margin-note";
     el.addEventListener("animationend", (e) => {
       if (e.animationName === "study-margin-locate") el.classList.remove("study-navigation-flash");
@@ -42265,7 +42926,10 @@ var MarginView = class extends import_obsidian27.ItemView {
     el.dataset.codeRule = c.code?.rule ?? "";
     el.style.setProperty("--margin-color", safeColor(c.color));
     el.style.setProperty("--margin-dark", darkCommentColor(c));
-    el.addEventListener("pointerdown", () => this.select(c.id));
+    el.addEventListener("pointerdown", () => {
+      this.viewport?.restore(el);
+      this.select(c.id);
+    });
     el.addEventListener("contextmenu", (e) => this.noteMenu(e, c.id));
     el.addEventListener("keydown", (e) => {
       if (e.key === "ContextMenu" || e.shiftKey && e.key === "F10") {
@@ -42318,7 +42982,7 @@ var MarginView = class extends import_obsidian27.ItemView {
       source.title = (a2.renderedQuote ?? a2.quote) + (excerpts(c).length > 1 ? ` (+${excerpts(c).length - 1} excerpts)` : "");
       if (display.includes("$")) {
         source.empty();
-        void RichMarkdown.render(this.app, display, source, c.path, owner);
+        renders.push(RichMarkdown.render(this.app, display, source, c.path, owner));
       }
       source.tabIndex = 0;
       source.setAttribute("role", "button");
@@ -42330,8 +42994,8 @@ var MarginView = class extends import_obsidian27.ItemView {
     }
     const placed = !a2 ? placementOf(c) : void 0;
     if (placed) {
-      const tail = (placed.renderedQuote ?? placed.quote).replace(/\s+/g, " ").trim(), source = top2.createSpan({ cls: "study-margin-source", text: "After: " + (tail.length > 70 ? "\u2026" + tail.slice(-70) : tail) });
-      source.title = "Post-it placed after: " + (placed.renderedQuote ?? placed.quote);
+      const tail = (placed.renderedQuote ?? placed.quote).replace(/\s+/g, " ").trim(), source = top2.createSpan({ cls: "study-margin-source", text: (placed.edge === "start" ? "Before: " : "After: ") + (tail.length > 70 ? placed.edge === "start" ? tail.slice(0, 70) + "\u2026" : "\u2026" + tail.slice(-70) : tail) });
+      source.title = (placed.edge === "start" ? "Post-it placed before: " : "Post-it placed after: ") + (placed.renderedQuote ?? placed.quote);
       source.tabIndex = 0;
       source.setAttribute("role", "button");
       source.setAttribute("aria-description", "Go to post-it placement");
@@ -42339,6 +43003,14 @@ var MarginView = class extends import_obsidian27.ItemView {
       source.onkeydown = (e) => {
         if (e.key === "Enter") void this.notes.jumpPlacement(c.path, placed);
       };
+    }
+    if (placed?.edge) {
+      const warning = top2.createSpan({ cls: "study-muted study-sticky-reading-warning" }), refresh = () => {
+        warning.setText(this.notes.store.stickyReadingWarning(c.id) ? "Not shown in Reading view: position could not be mapped exactly." : "");
+      };
+      refresh();
+      this.notes.store.stickyReadingListeners.add(refresh);
+      owner.register(() => this.notes.store.stickyReadingListeners.delete(refresh));
     }
     if (excerpts(c).length > 1) {
       const more = top2.createSpan({ cls: "study-margin-more", text: `+${excerpts(c).length - 1}` });
@@ -42375,7 +43047,7 @@ var MarginView = class extends import_obsidian27.ItemView {
     show.onclick = (e) => {
       e.stopPropagation();
       const current = this.current(c.id);
-      if (current) void this.notes.store.showAnnotation(current).catch((e2) => new import_obsidian27.Notice(String(e2)));
+      if (current) void this.notes.store.showAnnotation(current).catch((e2) => new import_obsidian28.Notice(String(e2)));
     };
     const status = top2.createSpan({ cls: "study-margin-save-status", text: this.notes.drafts.has(c.id) ? "draft" : "" });
     status.setAttribute("aria-live", "polite");
@@ -42383,12 +43055,12 @@ var MarginView = class extends import_obsidian27.ItemView {
     const body = el.createDiv("study-margin-body markdown-rendered");
     body.tabIndex = 0;
     body.setAttribute("aria-description", "Write in margin note");
-    void RichMarkdown.render(this.app, c.comment || "*Write in the margin\u2026*", body, c.path, owner, { reuseLeaf: true }).then(() => {
+    renders.push(RichMarkdown.render(this.app, c.comment || "*Write in the margin\u2026*", body, c.path, owner, { reuseLeaf: true }).then(() => {
       body.querySelectorAll("input.task-list-item-checkbox").forEach((box) => {
         box.disabled = true;
         box.title = "Click the note text to edit this checkbox";
       });
-    });
+    }));
     body.onclick = (e) => {
       if (!e.target.closest("a,button,.cm-editor")) this.beginEditor(c.id);
     };
@@ -42399,6 +43071,14 @@ var MarginView = class extends import_obsidian27.ItemView {
       }
     };
     this.list.append(el);
+    let alive = true;
+    owner.register(() => {
+      alive = false;
+      this.viewport?.untrack(el);
+    });
+    void Promise.all(renders).then(() => {
+      if (alive && !this.closed) this.viewport?.track(el, () => this.notes.selected === c.id || !!this.cards.get(c.id)?.editor || this.notes.drafts.has(c.id) || this.saving.has(c.id) || this.saveTimers.has(c.id) || this.busyEditors.has(c.id));
+    }).catch((e) => new import_obsidian28.Notice("Could not render margin note: " + String(e)));
     return { el, owner, signature: JSON.stringify(c), status };
   }
 };
@@ -42449,12 +43129,12 @@ async function registerMarginNotes(plugin, store) {
     store.resizeMargin = void 0;
   });
   plugin.addCommand({ id: "open-margin-notes", name: "Open margin notes", callback: () => void notes.open() });
-  plugin.addCommand({ id: "refresh-margin-notes", name: "Refresh margin notes from disk", callback: () => void store.refresh().catch((e) => new import_obsidian27.Notice(String(e))) });
+  plugin.addCommand({ id: "refresh-margin-notes", name: "Refresh margin notes from disk", callback: () => void store.refresh().catch((e) => new import_obsidian28.Notice(String(e))) });
   return notes;
 }
 
 // src/vault-window-identity.ts
-var import_obsidian28 = require("obsidian");
+var import_obsidian29 = require("obsidian");
 
 // src/vault-window-title.ts
 function vaultWindowTitle(vault, title) {
@@ -42473,7 +43153,7 @@ function vaultWindowTitle(vault, title) {
 
 // src/vault-window-identity.ts
 function registerVaultWindowIdentity(plugin) {
-  if (!import_obsidian28.Platform.isDesktopApp) return;
+  if (!import_obsidian29.Platform.isDesktopApp) return;
   const identity = plugin.addStatusBarItem();
   identity.addClass("study-vault-identity");
   identity.setText(plugin.app.vault.getName());
@@ -43091,8 +43771,8 @@ function shuffledPractice(questions, random = Math.random) {
 }
 
 // src/vocabulary.ts
-var import_obsidian29 = require("obsidian");
-var AddVocabulary = class extends import_obsidian29.Modal {
+var import_obsidian30 = require("obsidian");
+var AddVocabulary = class extends import_obsidian30.Modal {
   constructor(app, courseId, onSaved) {
     super(app);
     this.courseId = courseId;
@@ -43102,10 +43782,10 @@ var AddVocabulary = class extends import_obsidian29.Modal {
     this.titleEl.setText("Add vocabulary");
     let term = "", meaning = "", categories = "", alternatives2 = "";
     this.contentEl.createEl("p", { text: "Describe one meaning clearly. This creates an editable vocabulary note and a linked typed-recall question. Include the article in the term if you want it required." });
-    new import_obsidian29.Setting(this.contentEl).setName("French term or expression").addText((t2) => t2.onChange((v) => term = v));
-    new import_obsidian29.Setting(this.contentEl).setName("Meaning and context").addText((t2) => t2.onChange((v) => meaning = v));
-    new import_obsidian29.Setting(this.contentEl).setName("Categories").setDesc("Comma-separated; create any category you need.").addText((t2) => t2.onChange((v) => categories = v));
-    new import_obsidian29.Setting(this.contentEl).setName("Other accepted French answers").setDesc("Optional, one complete alternative per line.").addTextArea((t2) => t2.onChange((v) => alternatives2 = v));
+    new import_obsidian30.Setting(this.contentEl).setName("French term or expression").addText((t2) => t2.onChange((v) => term = v));
+    new import_obsidian30.Setting(this.contentEl).setName("Meaning and context").addText((t2) => t2.onChange((v) => meaning = v));
+    new import_obsidian30.Setting(this.contentEl).setName("Categories").setDesc("Comma-separated; create any category you need.").addText((t2) => t2.onChange((v) => categories = v));
+    new import_obsidian30.Setting(this.contentEl).setName("Other accepted French answers").setDesc("Optional, one complete alternative per line.").addTextArea((t2) => t2.onChange((v) => alternatives2 = v));
     const error = this.contentEl.createEl("p", { cls: "study-error", attr: { role: "alert" } });
     let saving = false;
     const save = async () => {
@@ -43144,14 +43824,14 @@ ${meaning.trim()}
         }
         this.close();
         this.onSaved();
-        new import_obsidian29.Notice("Vocabulary and recall question saved.");
+        new import_obsidian30.Notice("Vocabulary and recall question saved.");
       } catch (e) {
         error.setText(`Could not save: ${e}`);
       } finally {
         saving = false;
       }
     };
-    new import_obsidian29.Setting(this.contentEl).addButton((b) => b.setButtonText("Save \xB7 Ctrl+Enter").setCta().onClick(() => void save()));
+    new import_obsidian30.Setting(this.contentEl).addButton((b) => b.setButtonText("Save \xB7 Ctrl+Enter").setCta().onClick(() => void save()));
     this.contentEl.addEventListener("keydown", (e) => {
       if (e.ctrlKey && e.key === "Enter") {
         e.preventDefault();
@@ -43167,7 +43847,7 @@ ${meaning.trim()}
 };
 
 // src/learning-ui.ts
-var import_obsidian30 = require("obsidian");
+var import_obsidian31 = require("obsidian");
 
 // src/history-model.ts
 function parseAttempt(raw) {
@@ -43297,7 +43977,7 @@ async function learningView(app, bank, courseId, practice, initial = "review", p
     });
     calendarWrites.set(app, write);
     return write.catch((e) => {
-      new import_obsidian30.Notice(`Calendar could not be saved: ${e}`);
+      new import_obsidian31.Notice(`Calendar could not be saved: ${e}`);
     });
   };
   const draw = async () => {
@@ -43499,7 +44179,7 @@ function attemptColumnLabel(column, count2) {
 }
 
 // src/chapter-home.ts
-var import_obsidian31 = require("obsidian");
+var import_obsidian32 = require("obsidian");
 function registerChapterHome(plugin, navigate) {
   plugin.registerMarkdownCodeBlockProcessor("study-chapter-home", (_source, el, ctx) => {
     const file = plugin.app.vault.getAbstractFileByPath(ctx.sourcePath);
@@ -43512,7 +44192,7 @@ function registerChapterHome(plugin, navigate) {
     const actions = root.createDiv("study-chapter-home-actions");
     const action = (label, icon, detail, run) => {
       const b = actions.createEl("button");
-      (0, import_obsidian31.setIcon)(b.createSpan("study-chapter-action-icon"), icon);
+      (0, import_obsidian32.setIcon)(b.createSpan("study-chapter-action-icon"), icon);
       const text2 = b.createSpan();
       text2.createEl("strong", { text: label });
       text2.createEl("small", { text: detail });
@@ -43531,7 +44211,7 @@ function registerChapterHome(plugin, navigate) {
         card.style.setProperty("--part-color", ["#507b98", "#786494", "#4b8177", "#966958"][i % 4]);
         const cover = card.createDiv("study-part-cover");
         cover.createSpan({ text: String(p.number ?? i + 1).padStart(2, "0") });
-        (0, import_obsidian31.setIcon)(cover.createSpan(), "book-open");
+        (0, import_obsidian32.setIcon)(cover.createSpan(), "book-open");
         const body = card.createDiv("study-part-body");
         body.createEl("small", { text: `PART ${p.number ?? i + 1}` });
         body.createEl("strong", { text: p.title });
@@ -43631,10 +44311,10 @@ function practiceSetRuns(questions, history2, courseId, snapshots = []) {
 }
 
 // src/study-home.ts
-var import_obsidian33 = require("obsidian");
+var import_obsidian34 = require("obsidian");
 
 // src/course-ui.ts
-var import_obsidian32 = require("obsidian");
+var import_obsidian33 = require("obsidian");
 var ROOT = "Study Studio/Courses";
 async function courses(app) {
   const files = app.vault.getMarkdownFiles().filter((f) => f.path.startsWith(ROOT + "/") || app.metadataCache.getFileCache(f)?.frontmatter?.studyCourse);
@@ -43664,7 +44344,7 @@ async function manageCourses(app) {
       await manageCourses(app);
     })().catch((e) => {
       create.disabled = false;
-      new import_obsidian32.Notice(String(e));
+      new import_obsidian33.Notice(String(e));
     });
   };
   for (const { course, file } of entries) {
@@ -43682,8 +44362,8 @@ async function manageCourses(app) {
           return replaceProperty(raw, "studyCourse", { ...current, title: input.value.trim() });
         });
         course.title = input.value.trim();
-        new import_obsidian32.Notice("Course title saved. Historical course labels remain unchanged.");
-      })().catch((e) => new import_obsidian32.Notice(String(e))).finally(() => save.disabled = false);
+        new import_obsidian33.Notice("Course title saved. Historical course labels remain unchanged.");
+      })().catch((e) => new import_obsidian33.Notice(String(e))).finally(() => save.disabled = false);
     };
   }
   if (!entries.length) panel.contentEl.createEl("p", { text: "No courses yet. Existing questions and history remain unassigned." });
@@ -43694,7 +44374,7 @@ async function assignCourses(app, file) {
   const key2 = front?.study ? "study" : front?.studyExam ? "studyExam" : void 0;
   if (!key2) throw Error("Open a question or exam source note first.");
   const definition = key2 === "study" ? parseQuestion(original, file.path).definition : parseExam(original), entries = await courses(app), selected = new Set(definition.courseIds ?? []);
-  const modal = new import_obsidian32.Modal(app);
+  const modal = new import_obsidian33.Modal(app);
   modal.titleEl.setText(`Courses \xB7 ${definition.title}`);
   modal.contentEl.createEl("p", { text: "Membership affects future study choices, not past history. No selection means unassigned. Reopen any already-open editors/cards after saving." });
   const options = new Map(entries.map((e) => [e.course.id, e.course.title]));
@@ -43716,10 +44396,10 @@ async function assignCourses(app, file) {
       return replaceProperty(raw, key2, { ...definition, courseIds, ..."chapters" in definition ? { chapters: definition.chapters?.filter((p) => courseIds.includes(p.courseId)) } : {} });
     }).then(() => {
       modal.close();
-      new import_obsidian32.Notice("Memberships saved. Existing history unchanged.");
+      new import_obsidian33.Notice("Memberships saved. Existing history unchanged.");
     }, (e) => {
       save.disabled = false;
-      new import_obsidian32.Notice(String(e));
+      new import_obsidian33.Notice(String(e));
     });
   };
   modal.open();
@@ -43729,7 +44409,7 @@ async function chooseCourse(app, ids) {
   if ((ids ?? []).some((id3) => !all.some((x) => x.course.id === id3))) throw Error("A course membership references a missing course. Repair it before starting.");
   if (!available.length) return null;
   return new Promise((resolve) => {
-    const modal = new import_obsidian32.Modal(app);
+    const modal = new import_obsidian33.Modal(app);
     let decided = false;
     modal.titleEl.setText("Course for this exam");
     modal.contentEl.createEl("p", { text: "This choice is saved with the session and will not change if memberships change later." });
@@ -43790,13 +44470,13 @@ async function historyView(app) {
       row.createEl("button", { text: "Open original record" }).onclick = () => {
         void (async () => {
           const file = app.vault.getAbstractFileByPath(r.paths[0]);
-          if (!(file instanceof import_obsidian32.TFile)) throw Error("Original record is no longer available.");
+          if (!(file instanceof import_obsidian33.TFile)) throw Error("Original record is no longer available.");
           const raw = await app.vault.read(file), record = new StudioPanel(app);
           record.titleEl.setText("Saved history record");
           record.contentEl.createEl("p", { text: file.path });
           record.contentEl.createEl("pre", { text: raw });
           record.open();
-        })().catch((e) => new import_obsidian32.Notice(String(e)));
+        })().catch((e) => new import_obsidian33.Notice(String(e)));
       };
     }
     if (rows.length > limit) list.createEl("button", { text: "Show 100 more" }).onclick = () => {
@@ -44019,7 +44699,7 @@ function registerStudyHome(plugin, hooks) {
     const raw = JSON.stringify(prefs);
     writes = writes.catch(() => {
     }).then(() => plugin.app.vault.adapter.write(prefPath, raw));
-    void writes.catch((e) => new import_obsidian33.Notice(`Could not save Home preferences: ${e}`));
+    void writes.catch((e) => new import_obsidian34.Notice(`Could not save Home preferences: ${e}`));
   };
   let currentCourse = "";
   let opening = false;
@@ -44042,7 +44722,7 @@ function registerStudyHome(plugin, hooks) {
     }
   };
   registerChapterHome(plugin, { course: (id3) => void open(id3), practice: (id3, chapter) => void open(id3, "practice", chapter), grades: (id3, chapter) => void dashboard(plugin.app, hooks.bank, id3, chapter) });
-  class Home extends import_obsidian33.ItemView {
+  class Home extends import_obsidian34.ItemView {
     refreshTimer;
     revision = 0;
     query = "";
@@ -44196,7 +44876,7 @@ function registerStudyHome(plugin, hooks) {
                   cover.setAttribute("aria-hidden", "true");
                   cover.createSpan({ cls: "study-chapter-number", text: String(c.number ?? index2 + 1).padStart(2, "0") });
                   const emblem = cover.createSpan({ cls: "study-chapter-emblem" });
-                  (0, import_obsidian33.setIcon)(emblem, typeof c.icon === "string" ? c.icon : "book-open");
+                  (0, import_obsidian34.setIcon)(emblem, typeof c.icon === "string" ? c.icon : "book-open");
                   if (typeof c.cover === "string") {
                     const image = this.app.metadataCache.getFirstLinkpathDest(c.cover, f.path);
                     if (image && ["svg", "png", "jpg", "jpeg", "webp"].includes(image.extension)) {
@@ -44219,7 +44899,7 @@ function registerStudyHome(plugin, hooks) {
                   card.onclick = () => openNote(f);
                   const context = (e) => {
                     e.preventDefault();
-                    const menu = new import_obsidian33.Menu();
+                    const menu = new import_obsidian34.Menu();
                     menu.addItem((i) => i.setTitle("Open chapter").onClick(() => openNote(f)));
                     menu.addItem((i) => i.setTitle("Chapter gradebook").onClick(() => void dashboard(this.app, hooks.bank, course.id, c.chapterId)));
                     if (qs.length) menu.addItem((i) => i.setTitle("Practice chapter").onClick(() => hooks.practice(qs)));
@@ -44357,7 +45037,7 @@ function registerStudyHome(plugin, hooks) {
                 count2++;
                 const row = body.createDiv("study-home-destination");
                 row.createEl("strong", { text: exam.title });
-                row.createEl("button", { text: active.some((s) => s.exam.id === exam.id) ? "Start new attempt" : "Start" }).onclick = () => void hooks.start(exam).catch((e) => new import_obsidian33.Notice(String(e)));
+                row.createEl("button", { text: active.some((s) => s.exam.id === exam.id) ? "Start new attempt" : "Start" }).onclick = () => void hooks.start(exam).catch((e) => new import_obsidian34.Notice(String(e)));
               }
               if (!count2) body.createEl("p", { text: "No matching assessments." });
             }
@@ -44421,7 +45101,7 @@ function registerStudyHome(plugin, hooks) {
             const menu = (e) => {
               e.preventDefault();
               e.stopPropagation();
-              const menu2 = new import_obsidian33.Menu();
+              const menu2 = new import_obsidian34.Menu();
               menu2.addItem((i) => i.setTitle(prefs.pins.includes(course.id) ? "Unpin course" : "Pin course").setIcon("pin").onClick(() => {
                 prefs.pins = prefs.pins.includes(course.id) ? prefs.pins.filter((x) => x !== course.id) : [...prefs.pins, course.id];
                 save();
@@ -44471,7 +45151,7 @@ function registerStudyHome(plugin, hooks) {
       }
     }
   }
-  class Sidebar extends import_obsidian33.ItemView {
+  class Sidebar extends import_obsidian34.ItemView {
     getViewType() {
       return SIDE;
     }
@@ -44504,7 +45184,7 @@ function registerStudyHome(plugin, hooks) {
       root.createEl("h4", { text: selected.course.title });
       const action = (label, icon, fn) => {
         const button = root.createEl("button");
-        (0, import_obsidian33.setIcon)(button.createSpan(), icon);
+        (0, import_obsidian34.setIcon)(button.createSpan(), icon);
         button.createSpan({ text: label });
         button.onclick = fn;
       };
@@ -44557,35 +45237,13 @@ function restoreEmptyAnnotations(comments, removed, busy) {
   });
 }
 
-// src/annotation-visibility.ts
-function readVisibility(raw) {
-  const value = raw;
-  const types2 = Array.isArray(value?.hiddenTypes) ? value.hiddenTypes.filter((x) => typeof x === "string") : [];
-  return { version: 2, ...typeof value?.hideOrdinary === "boolean" ? { hideOrdinary: value.hideOrdinary } : {}, ...typeof value?.sourceLines === "boolean" ? { sourceLines: value.sourceLines } : {}, ...typeof value?.annotationNumbers === "boolean" ? { annotationNumbers: value.annotationNumbers } : {}, enabled: value?.enabled !== false, hiddenTypes: [...new Set(value?.version === 2 ? types2 : types2.flatMap((t2) => {
-    try {
-      const parsed = JSON.parse(t2);
-      if (Array.isArray(parsed) && parsed.length === 2 && annotationStyles.includes(parsed[0]) && typeof parsed[1] === "string") return [t2];
-    } catch {
-    }
-    return annotationStyles.map((s) => typeKey(s, t2));
-  }))] };
-}
-function annotationVisible(c, v) {
-  const value = v.version === 2 ? v : readVisibility(v);
-  return !c.deletedAt && value.enabled && (!value.hideOrdinary || isStudyMark(c)) && !value.hiddenTypes.includes(typeKey(styleOf(c), c.intent));
-}
-function visibilityShowing(c, v) {
-  const value = readVisibility(v);
-  return { ...value, ...!isStudyMark(c) && value.hideOrdinary ? { hideOrdinary: false } : {}, enabled: true, hiddenTypes: value.hiddenTypes.filter((t2) => t2 !== typeKey(styleOf(c), c.intent)) };
-}
-
 // src/comment-window.ts
-var import_obsidian34 = require("obsidian");
+var import_obsidian35 = require("obsidian");
 function resizeCommentWindow(modal) {
   const box = modal.modalEl;
   let maximized = false, previous = { width: "", height: "" };
   const toggle = box.createEl("button", { cls: "study-comment-maximize", attr: { "aria-label": "Maximize comment", "title": "Maximize comment" } });
-  (0, import_obsidian34.setIcon)(toggle, "maximize");
+  (0, import_obsidian35.setIcon)(toggle, "maximize");
   toggle.onclick = () => {
     maximized = !maximized;
     if (maximized) {
@@ -44599,7 +45257,7 @@ function resizeCommentWindow(modal) {
     box.classList.toggle("is-maximized", maximized);
     toggle.setAttribute("aria-label", maximized ? "Restore comment size" : "Maximize comment");
     toggle.title = maximized ? "Restore comment size" : "Maximize comment";
-    (0, import_obsidian34.setIcon)(toggle, maximized ? "minimize" : "maximize");
+    (0, import_obsidian35.setIcon)(toggle, maximized ? "minimize" : "maximize");
   };
   for (const edge2 of ["n", "s", "e", "w", "ne", "nw", "se", "sw"]) {
     const handle = box.createDiv({ cls: `study-comment-resize study-comment-resize-${edge2}` });
@@ -44627,10 +45285,28 @@ function resizeCommentWindow(modal) {
 }
 
 // src/review.ts
-var import_obsidian35 = require("obsidian");
+var import_obsidian36 = require("obsidian");
 var ReviewStore = class {
   constructor(app) {
     this.app = app;
+  }
+  /** Transient renderer status: never persisted and never triggers annotation repaint. */
+  stickyReadingWarnings = /* @__PURE__ */ new Set();
+  stickyReadingListeners = /* @__PURE__ */ new Set();
+  stickyReadingWarning(id3) {
+    return this.stickyReadingWarnings.has(id3);
+  }
+  setStickyReadingWarning(id3, _owner, value) {
+    const before = this.stickyReadingWarning(id3);
+    if (value) this.stickyReadingWarnings.add(id3);
+    else this.stickyReadingWarnings.delete(id3);
+    if (before !== value) for (const fn of this.stickyReadingListeners) fn();
+  }
+  clearStickyReadingWarnings(path) {
+    for (const id3 of [...this.stickyReadingWarnings]) {
+      const c = this.data.comments.find((c2) => c2.id === id3);
+      if (!c || !path || c.path === path) this.setStickyReadingWarning(id3, this, false);
+    }
   }
   data = { version: 1, questions: [], comments: [] };
   hoverNodes = /* @__PURE__ */ new WeakSet();
@@ -44658,24 +45334,46 @@ var ReviewStore = class {
   }
   async setVisibility(value) {
     if (this.visibilityBlocked) {
-      new import_obsidian35.Notice("Annotation visibility settings could not be read. The original file has been preserved.");
+      new import_obsidian36.Notice("Annotation visibility settings could not be read. The original file has been preserved.");
       return;
     }
     const next = readVisibility(value);
-    if (next.hideOrdinary === this.visibility.hideOrdinary && next.sourceLines === this.visibility.sourceLines && next.annotationNumbers === this.visibility.annotationNumbers && next.enabled === this.visibility.enabled && [...next.hiddenTypes].sort().join("\0") === [...this.visibility.hiddenTypes].sort().join("\0")) return;
+    if (JSON.stringify(next) === JSON.stringify(this.visibility)) return;
+    const comments = visibilityDifference(this.data.comments.filter((c) => !c.questionId), this.visibility, next);
     this.visibility = next;
     const raw = JSON.stringify(this.visibility, null, 2);
-    const comments = this.data.comments.filter((c) => !c.questionId);
-    this.notify({ annotations: true, visibility: true, paths: new Set(comments.flatMap((c) => [...commentPaths(c)])), commentIds: new Set(comments.map((c) => c.id)) });
+    this.notify({ annotations: comments.length > 0, visibility: true, paths: new Set(comments.flatMap((c) => [...commentPaths(c)])), commentIds: new Set(comments.map((c) => c.id)) });
     this.visibilityPending = this.visibilityPending.catch(() => {
     }).then(() => this.app.vault.adapter.write(this.visibilityPath, raw));
     await this.visibilityPending;
   }
   renameVisibilityType(style, old, next) {
-    if (this.visibility.hiddenTypes.includes(typeKey(style, old))) void this.setVisibility({ ...this.visibility, hiddenTypes: [.../* @__PURE__ */ new Set([...this.visibility.hiddenTypes, typeKey(style, next)])] }).catch((e) => new import_obsidian35.Notice(String(e)));
+    const before = typeKey(style, old), after = typeKey(style, next);
+    if (this.visibility.hiddenTypes.includes(before) || this.visibility.shownTypes?.includes(before)) void this.setVisibility({ ...this.visibility, hiddenTypes: [.../* @__PURE__ */ new Set([...this.visibility.hiddenTypes, ...this.visibility.hiddenTypes.includes(before) ? [after] : []])], ...this.visibility.shownTypes ? { shownTypes: [.../* @__PURE__ */ new Set([...this.visibility.shownTypes, ...this.visibility.shownTypes.includes(before) ? [after] : []])] } : {} }).catch((e) => new import_obsidian36.Notice(String(e)));
+  }
+  visibilityCatalog() {
+    const entries = /* @__PURE__ */ new Map();
+    const add = (mark, p) => {
+      const style = styleOf(mark), key2 = typeKey(style, mark.intent);
+      if (!entries.has(key2)) entries.set(key2, { key: key2, style, meaning: mark.intent, color: p.color, darkColor: p.darkColor, mark, study: isStudyMark(mark) });
+    };
+    for (const style of annotationStyles) for (const p of this.paletteFor(style)) add({ intent: p.meaning, markStyle: style === "sticky" ? void 0 : style, kind: style === "sticky" ? "sticky" : void 0 }, p);
+    for (const rule of ["text", "table", "question"]) {
+      const p = studyPalette[rule];
+      add({ intent: p.intent, markStyle: "highlight", study: { version: 1, rule } }, { meaning: p.intent, ...p });
+    }
+    for (const c of this.data.comments) if (!c.deletedAt && !c.questionId) add(c, { meaning: c.intent, color: c.color, darkColor: c.darkColor });
+    return [...entries.values()];
+  }
+  toggleVisibleType(key2) {
+    const entries = this.visibilityCatalog(), entry = entries.find((e) => e.key === key2);
+    return entry ? this.setVisibility(visibilityToggle(entry.mark, this.visibility, entries.map((e) => e.mark))) : Promise.resolve();
+  }
+  showAllAnnotations(show) {
+    return this.setVisibility(visibilityAll(this.visibility, show));
   }
   visibilityMenu(position2) {
-    const menu = new import_obsidian35.Menu();
+    const menu = new import_obsidian36.Menu();
     this.populateVisibility(menu);
     const win = (this.app.workspace.getMostRecentLeaf()?.view.containerEl.ownerDocument ?? document).defaultView;
     menu.showAtPosition(position2 ?? { x: win.innerWidth / 2, y: 120 });
@@ -44686,21 +45384,19 @@ var ReviewStore = class {
       menu.addItem((i) => i.setTitle("Click annotations to show handles (Reading)").setChecked(handles.enabled()).onClick(() => handles.toggle()));
       menu.addSeparator();
     }
-    const change = (value) => void this.setVisibility(value).catch((e) => new import_obsidian35.Notice(String(e)));
+    const change = (value) => void this.setVisibility(value).catch((e) => new import_obsidian36.Notice(String(e)));
     menu.addItem((i) => i.setTitle("Show source line ranges (Reading)").setChecked(this.visibility.sourceLines !== false).onClick(() => change({ ...this.visibility, sourceLines: this.visibility.sourceLines === false })));
     menu.addItem((i) => i.setTitle("Show annotation numbers").setChecked(this.visibility.annotationNumbers !== false).onClick(() => change({ ...this.visibility, annotationNumbers: this.visibility.annotationNumbers === false })));
-    menu.addItem((i) => i.setTitle("Show annotations in notes").setChecked(this.visibility.enabled).onClick(() => change({ ...this.visibility, enabled: !this.visibility.enabled })));
+    menu.addItem((i) => i.setTitle("Hide all").onClick(() => void this.showAllAnnotations(false).catch((e) => new import_obsidian36.Notice(String(e)))));
     menu.addItem((i) => i.setTitle("Hide ordinary annotations").setChecked(!!this.visibility.hideOrdinary).onClick(() => change({ ...this.visibility, hideOrdinary: !this.visibility.hideOrdinary })));
+    const catalog = this.visibilityCatalog();
     for (const style of annotationStyles) {
       const child = menuGroup(menu, "visibility-" + style, styleNames[style], style === "sticky" ? "sticky-note" : style === "underline" ? "underline" : style === "text" ? "type" : "highlighter");
-      const entries = this.paletteFor(style).map((p) => ({ ...p }));
-      for (const c of this.data.comments.filter((c2) => !c2.deletedAt && !c2.questionId && styleOf(c2) === style)) if (!entries.some((p) => p.meaning === c.intent)) entries.push({ meaning: c.intent, color: c.color, darkColor: c.darkColor });
-      for (const p of entries) {
-        const key2 = typeKey(style, p.meaning);
-        child.addItem((i) => i.setTitle(swatchTitle(style, p, "Show " + (p.meaning || p.color))).setChecked(!this.visibility.hiddenTypes.includes(key2)).onClick(() => change({ ...this.visibility, hiddenTypes: this.visibility.hiddenTypes.includes(key2) ? this.visibility.hiddenTypes.filter((t2) => t2 !== key2) : [...this.visibility.hiddenTypes, key2] })));
+      for (const p of catalog.filter((e) => e.style === style)) {
+        child.addItem((i) => i.setTitle(swatchTitle(style, p, "Show " + (p.meaning || p.color))).setChecked(annotationVisible(p.mark, this.visibility)).onClick(() => void this.toggleVisibleType(p.key).catch((e) => new import_obsidian36.Notice(String(e)))));
       }
     }
-    menu.addItem((i) => i.setTitle("Show all").onClick(() => change({ ...this.visibility, version: 2, enabled: true, hideOrdinary: false, hiddenTypes: [] })));
+    menu.addItem((i) => i.setTitle("Show all").onClick(() => void this.showAllAnnotations(true).catch((e) => new import_obsidian36.Notice(String(e)))));
   }
   addVisibilityMenu(menu, _position) {
     const child = menuGroup(menu, "annotation-visibility", "Annotation visibility", "eye");
@@ -44726,12 +45422,12 @@ var ReviewStore = class {
   addClearEmptyMenu(menu, path) {
     if (menu.__studyClearEmpty) return;
     menu.__studyClearEmpty = true;
-    menu.addItem((i) => i.setSection("selection").setTitle("Clear empty annotations in this note").setIcon("eraser").onClick(() => void this.clearEmptyAnnotations(path).catch((e) => new import_obsidian35.Notice("Could not clear annotations: " + String(e)))));
+    menu.addItem((i) => i.setSection("selection").setTitle("Clear empty annotations in this note").setIcon("eraser").onClick(() => void this.clearEmptyAnnotations(path).catch((e) => new import_obsidian36.Notice("Could not clear annotations: " + String(e)))));
   }
   async clearEmptyAnnotations(path) {
     const removed = await this.emptyAnnotationTransaction(path);
     if (!removed.length) {
-      new import_obsidian35.Notice("No empty annotations to clear.");
+      new import_obsidian36.Notice("No empty annotations to clear.");
       return 0;
     }
     const fragment = document.createDocumentFragment();
@@ -44740,13 +45436,13 @@ var ReviewStore = class {
     undo2.textContent = "Undo";
     undo2.href = "#";
     fragment.append(undo2);
-    const notice = new import_obsidian35.Notice(fragment, 15e3);
+    const notice = new import_obsidian36.Notice(fragment, 15e3);
     undo2.onclick = (e) => {
       e.preventDefault();
       void this.emptyAnnotationTransaction(path, removed).then((restored) => {
         notice.hide();
-        new import_obsidian35.Notice(`Restored ${restored.length} annotations.`);
-      }).catch((e2) => new import_obsidian35.Notice("Could not undo: " + String(e2)));
+        new import_obsidian36.Notice(`Restored ${restored.length} annotations.`);
+      }).catch((e2) => new import_obsidian36.Notice("Could not undo: " + String(e2)));
     };
     return removed.length;
   }
@@ -44782,17 +45478,17 @@ var ReviewStore = class {
       await this.openMargin?.(c);
     } catch (e) {
       if (!saved) this.data.comments = this.data.comments.filter((item) => item.id !== c.id);
-      new import_obsidian35.Notice((saved ? "Annotation saved; could not open margin: " : "Could not save annotation: ") + String(e));
+      new import_obsidian36.Notice((saved ? "Annotation saved; could not open margin: " : "Could not save annotation: ") + String(e));
     }
   }
   showAnnotation(c) {
-    return this.setVisibility(visibilityShowing(c, this.visibility));
+    return this.setVisibility(visibilityShowing(c, this.visibility, this.visibilityCatalog().map((e) => e.mark)));
   }
   addAppearanceMenu(menu, c) {
     const child = menuGroup(menu, "edit-annotation-" + c.id, "Edit annotation" + (c.intent ? ": " + c.intent : ""), "pencil", "selection");
     if (child.__studyAppearance) return;
     child.__studyAppearance = true;
-    appearanceItems(child, c, (s) => this.paletteFor(s), (patch) => void this.changeAppearance?.(c.id, patch).catch((e) => new import_obsidian35.Notice(String(e))));
+    appearanceItems(child, c, (s) => this.paletteFor(s), (patch) => void this.changeAppearance?.(c.id, patch).catch((e) => new import_obsidian36.Notice(String(e))));
     child.addItem((i) => i.setTitle("Open margin note").setIcon("notebook-pen").onClick(() => this.edit(c)));
   }
   warnHidden(c) {
@@ -44803,10 +45499,10 @@ var ReviewStore = class {
     show.textContent = "Show";
     show.href = "#";
     fragment.append(show);
-    const notice = new import_obsidian35.Notice(fragment, 7e3);
+    const notice = new import_obsidian36.Notice(fragment, 7e3);
     show.onclick = (e) => {
       e.preventDefault();
-      void this.showAnnotation(c).catch((e2) => new import_obsidian35.Notice(String(e2)));
+      void this.showAnnotation(c).catch((e2) => new import_obsidian36.Notice(String(e2)));
       notice.hide();
     };
   }
@@ -44826,7 +45522,7 @@ var ReviewStore = class {
         this.visibility = readVisibility(JSON.parse(await this.app.vault.adapter.read(this.visibilityPath)));
       } catch {
         this.visibilityBlocked = true;
-        new import_obsidian35.Notice("Annotation visibility settings could not be read. All marks are visible; the original file was preserved.");
+        new import_obsidian36.Notice("Annotation visibility settings could not be read. All marks are visible; the original file was preserved.");
       }
     }
     if (await this.app.vault.adapter.exists(this.path)) {
@@ -44851,7 +45547,7 @@ var ReviewStore = class {
   clean(raw) {
     const value = sanitizedReview(raw), invalid = raw.comments.filter((c) => !value.comments.includes(c));
     const signature2 = JSON.stringify(invalid);
-    if (invalid.length && signature2 !== this.reportedInvalid) new import_obsidian35.Notice(`${invalid.length} invalid margin record(s) were left intact in the review file. Other notes remain available.`);
+    if (invalid.length && signature2 !== this.reportedInvalid) new import_obsidian36.Notice(`${invalid.length} invalid margin record(s) were left intact in the review file. Other notes remain available.`);
     this.reportedInvalid = signature2;
     return value;
   }
@@ -45012,7 +45708,7 @@ var ReviewStore = class {
     const content2 = node.ownerDocument.createElement("div");
     content2.className = "markdown-rendered";
     popup.append(content2);
-    const owner = new import_obsidian35.Component();
+    const owner = new import_obsidian36.Component();
     owner.load();
     const rect = node.getBoundingClientRect();
     popup.style.position = "fixed";
@@ -45051,8 +45747,8 @@ var ReviewStore = class {
       void this.save({ paths: /* @__PURE__ */ new Set(), commentIds: /* @__PURE__ */ new Set(), annotations: false }).then(() => {
         host.querySelector(".study-review-status")?.remove();
         if (item.remove) host.createSpan({ cls: "study-review-status", text: "Marked for removal" });
-        new import_obsidian35.Notice(item.remove ? "Marked for review. Question and exam remain unchanged." : "Removal mark cleared.");
-      }).catch((e) => new import_obsidian35.Notice(String(e)));
+        new import_obsidian36.Notice(item.remove ? "Marked for review. Question and exam remain unchanged." : "Removal mark cleared.");
+      }).catch((e) => new import_obsidian36.Notice(String(e)));
     }));
     menu.addItem((i) => i.setTitle(quote ? "Comment on selection\u2026" : "Comment on question\u2026").setIcon("message-square").onClick(() => this.edit({ path: q.path, questionId: q.definition.id, context, quote, before: "", after: "" }, () => this.decorate(host, q.definition.id))));
     const comments = this.data.comments.filter((c) => c.questionId === q.definition.id && !c.resolved);
@@ -45060,11 +45756,11 @@ var ReviewStore = class {
   }
   edit(anchor, saved) {
     if (!anchor.questionId && this.openMargin) {
-      void this.openMargin(anchor, false, !!anchor.id).catch((e) => new import_obsidian35.Notice("Could not open margin note: " + String(e)));
+      void this.openMargin(anchor, false, !!anchor.id).catch((e) => new import_obsidian36.Notice("Could not open margin note: " + String(e)));
       return;
     }
     const draftId = anchor.id ?? crypto.randomUUID();
-    const modal = new import_obsidian35.Modal(this.app);
+    const modal = new import_obsidian36.Modal(this.app);
     modal.modalEl.addClass("study-comment-editor");
     modal.titleEl.setText(anchor.kind === "sticky" ? "Sticky note" : anchor.id ? "Edit comment" : "Add comment");
     if (anchor.quote) modal.contentEl.createEl("blockquote", { text: anchor.quote });
@@ -45087,7 +45783,7 @@ var ReviewStore = class {
       color.value = choices[Number(select.value)].color;
       dark.value = darkCommentColor(choices[Number(select.value)]);
     };
-    const owner = new import_obsidian35.Component();
+    const owner = new import_obsidian36.Component();
     owner.load();
     let busy = false;
     const editor = writtenEditor(this.app, modal.contentEl, anchor.path, anchor.comment ?? "", owner, () => {
@@ -45151,7 +45847,7 @@ var ReviewStore = class {
       void this.openMargin();
       return;
     }
-    const modal = new import_obsidian35.Modal(this.app);
+    const modal = new import_obsidian36.Modal(this.app);
     modal.titleEl.setText("Review queue");
     for (const r of this.data.questions.filter((r2) => r2.remove && (!questionId || r2.questionId === questionId))) {
       const row = modal.contentEl.createDiv();
@@ -45159,13 +45855,13 @@ var ReviewStore = class {
       row.createEl("small", { text: r.context });
       row.createEl("button", { text: "Unmark" }).onclick = () => {
         r.remove = false;
-        void this.save({ paths: /* @__PURE__ */ new Set(), commentIds: /* @__PURE__ */ new Set(), annotations: false }).then(() => row.remove()).catch((e) => new import_obsidian35.Notice(String(e)));
+        void this.save({ paths: /* @__PURE__ */ new Set(), commentIds: /* @__PURE__ */ new Set(), annotations: false }).then(() => row.remove()).catch((e) => new import_obsidian36.Notice(String(e)));
       };
     }
     for (const c of this.data.comments.filter((c2) => !c2.resolved && (!questionId || c2.questionId === questionId))) {
       const row = modal.contentEl.createDiv();
       row.createEl("p", { text: `${c.intent}: ${c.quote || c.questionId || c.path}` });
-      const owner = new import_obsidian35.Component();
+      const owner = new import_obsidian36.Component();
       owner.load();
       const previous = modal.onClose.bind(modal);
       modal.onClose = () => {
@@ -45180,85 +45876,8 @@ var ReviewStore = class {
   }
 };
 
-// src/resize-dom.ts
-function resizeDOM(p) {
-  const points = [], aliases = /* @__PURE__ */ new Map(), mathOffsets = /* @__PURE__ */ new Map(), formulas = [];
-  let text2 = "", afterBreak = false;
-  const alias = (node, offset) => {
-    let map2 = aliases.get(node);
-    if (!map2) aliases.set(node, map2 = /* @__PURE__ */ new Map());
-    map2.set(offset, text2.length);
-  };
-  const point = (node, offset) => {
-    alias(node, offset);
-    points[text2.length] = { node, offset };
-  };
-  const walk = (node) => {
-    if (node.nodeType === 1) {
-      const el = node;
-      if (el.matches(".study-math-lines")) return;
-      if (el.matches("br,.math")) {
-        alias(el, 0);
-        const parent = node.parentNode, index2 = [...parent.childNodes].indexOf(node);
-        point(parent, index2);
-        if (el.matches(".math")) {
-          afterBreak = false;
-          mathOffsets.set(el, text2.length);
-          formulas.push(el.querySelector("mjx-math")?.getAttribute("data-latex") ?? el.textContent ?? "");
-          text2 += "\uFFFC";
-        } else {
-          text2 += "\n";
-          afterBreak = true;
-        }
-        point(parent, index2 + 1);
-        return;
-      }
-    }
-    if (node.nodeType === 3) {
-      const t2 = node, skip = afterBreak && t2.data.startsWith("\n") ? 1 : 0;
-      alias(t2, 0);
-      if (t2.length) afterBreak = false;
-      for (let i = 0; i < skip; i++) alias(t2, i + 1);
-      for (let i = skip; i < t2.length; i++) {
-        point(t2, i);
-        text2 += t2.data[i];
-      }
-      point(t2, t2.length);
-      return;
-    }
-    const children = [...node.childNodes];
-    alias(node, 0);
-    for (let i = 0; i < children.length; i++) {
-      walk(children[i]);
-      alias(node, i + 1);
-    }
-  };
-  walk(p);
-  return { text: text2, points, mathOffsets, fingerprint: JSON.stringify(formulas), offset: (node, offset) => aliases.get(node)?.get(offset) };
-}
-
-// src/resize-projection.ts
-function resizeProjection(source) {
-  let text2 = "", at = 0;
-  const boundaries = [0];
-  for (const q of equations(source)) {
-    for (; at < q.from; at++) {
-      text2 += source[at];
-      boundaries.push(at + 1);
-    }
-    text2 += "\uFFFC";
-    boundaries.push(q.to);
-    at = q.to;
-  }
-  for (; at < source.length; at++) {
-    text2 += source[at];
-    boundaries.push(at + 1);
-  }
-  return { text: text2, boundaries };
-}
-
 // src/annotation-handles.ts
-var import_obsidian36 = require("obsidian");
+var import_obsidian37 = require("obsidian");
 function registerAnnotationHandles(plugin, store) {
   const doc2 = plugin.app.workspace.containerEl.ownerDocument, win = doc2.defaultView;
   let enabled = true, cleanup;
@@ -45270,7 +45889,7 @@ function registerAnnotationHandles(plugin, store) {
   const toggle = () => {
     enabled = !enabled;
     close();
-    new import_obsidian36.Notice(enabled ? "Reading annotation handles enabled for this session. Click an annotation to resize it." : "Annotation handles disabled.");
+    new import_obsidian37.Notice(enabled ? "Reading annotation handles enabled for this session. Click an annotation to resize it." : "Annotation handles disabled.");
   };
   store.annotationHandles = { enabled: () => enabled, toggle, open: (mark, id3) => open(mark, void 0, id3) };
   plugin.register(() => {
@@ -45280,7 +45899,7 @@ function registerAnnotationHandles(plugin, store) {
   plugin.register(close);
   const open = (mark, event, chosenId) => {
     const refuse = (message) => {
-      if (!event) new import_obsidian36.Notice(message);
+      if (!event) new import_obsidian37.Notice(message);
     };
     if (!mark.isConnected || !mark.closest(".markdown-preview-view")) {
       refuse("The passage changed. Right-click the annotation again.");
@@ -45298,14 +45917,14 @@ function registerAnnotationHandles(plugin, store) {
     }
     const c = store.data.comments.find((c2) => c2.id === id3);
     if (c?.study || c?.code) return;
-    const view = plugin.app.workspace.getActiveViewOfType(import_obsidian36.MarkdownView);
+    const view = plugin.app.workspace.getActiveViewOfType(import_obsidian37.MarkdownView);
     if (!c || !view?.file || view.getMode() !== "preview" || c.path !== view.file.path || c.deletedAt || c.resolved) {
       refuse("Open this annotation\u2019s note in Reading mode and try again.");
       return;
     }
     const p = mark.closest("p");
     if (!p || p.querySelector("code,img")) {
-      new import_obsidian36.Notice("Dragging does not yet support paragraphs with code or images.");
+      new import_obsidian37.Notice("Dragging does not yet support paragraphs with code or images.");
       return;
     }
     const source = view.editor.getValue(), anchors = excerpts(c), old = anchors.length === 1 ? marginLocation(source, anchors[0]) : void 0;
@@ -45313,7 +45932,7 @@ function registerAnnotationHandles(plugin, store) {
       if (!old) throw Error("Dragging currently supports one excerpt.");
       resizePlainAnnotation(source, anchors, old.from, old.to);
     } catch (e) {
-      new import_obsidian36.Notice(String(e));
+      new import_obsidian37.Notice(String(e));
       return;
     }
     let mapping = resizeDOM(p);
@@ -45321,7 +45940,7 @@ function registerAnnotationHandles(plugin, store) {
     const projection = resizeProjection(source), projectedBase = projection.text.indexOf(text2);
     const oldFrom = projection.boundaries.indexOf(old.from), oldTo = projection.boundaries.indexOf(old.to);
     if (projectedBase < 0 || projection.text.indexOf(text2, projectedBase + 1) >= 0 || oldFrom < projectedBase || oldTo > projectedBase + text2.length || oldTo < 0) {
-      new import_obsidian36.Notice("This rendered paragraph cannot yet be mapped safely for dragging.");
+      new import_obsidian37.Notice("This rendered paragraph cannot yet be mapped safely for dragging.");
       return;
     }
     const sourceOffset = (offset) => projection.boundaries[projectedBase + offset];
@@ -45515,7 +46134,7 @@ function underlineProseRanges(range, equations3, selections) {
 }
 
 // src/floating-palette.ts
-var import_obsidian37 = require("obsidian");
+var import_obsidian38 = require("obsidian");
 var FloatingPalette = class {
   constructor(plugin, store, apply2, capture) {
     this.plugin = plugin;
@@ -45526,6 +46145,7 @@ var FloatingPalette = class {
     store.listeners.add(refresh);
     plugin.register(() => {
       store.listeners.delete(refresh);
+      this.visibility?.destroy();
       this.cleanupResize?.();
       this.el?.remove();
     });
@@ -45539,6 +46159,7 @@ var FloatingPalette = class {
   saved = "";
   index = 0;
   returnFocus;
+  visibility;
   get path() {
     return `${this.plugin.app.vault.configDir}/study-studio-palette-ui.json`;
   }
@@ -45563,10 +46184,12 @@ var FloatingPalette = class {
     }).then(() => this.plugin.app.vault.adapter.write(this.path, raw));
     void this.pending.catch((e) => {
       this.saved = "";
-      new import_obsidian37.Notice("Could not remember palette position: " + String(e));
+      new import_obsidian38.Notice("Could not remember palette position: " + String(e));
     });
   }
   close(restore = false) {
+    this.visibility?.destroy();
+    this.visibility = void 0;
     this.cleanupResize?.();
     this.cleanupResize = void 0;
     this.el?.remove();
@@ -45575,7 +46198,7 @@ var FloatingPalette = class {
     if (restore) this.returnFocus?.();
   }
   remember() {
-    const view = this.plugin.app.workspace.getActiveViewOfType(import_obsidian37.MarkdownView);
+    const view = this.plugin.app.workspace.getActiveViewOfType(import_obsidian38.MarkdownView);
     if (view) {
       this.returnFocus = () => {
         this.plugin.app.workspace.setActiveLeaf(view.leaf, { focus: true });
@@ -45602,7 +46225,7 @@ var FloatingPalette = class {
   use(p, keyboard = false) {
     void this.apply(this.style, p).then(() => {
       if (keyboard) this.returnFocus?.();
-    }).catch((e) => new import_obsidian37.Notice(String(e)));
+    }).catch((e) => new import_obsidian38.Notice(String(e)));
   }
   open(style, keyboard = false) {
     const doc2 = this.plugin.app.workspace.getMostRecentLeaf()?.view.containerEl.ownerDocument ?? document, win = doc2.defaultView;
@@ -45612,6 +46235,7 @@ var FloatingPalette = class {
       if (keyboard) this.focusColor();
       return;
     }
+    this.visibility?.destroy();
     this.cleanupResize?.();
     this.el?.remove();
     if (style) this.style = style;
@@ -45626,9 +46250,10 @@ var FloatingPalette = class {
     head.setAttribute("aria-label", "Drag to move; arrow keys move when focused");
     head.tabIndex = 0;
     const close = head.createEl("button", { cls: "clickable-icon", attr: { "aria-label": "Close annotation palette" } });
-    (0, import_obsidian37.setIcon)(close, "x");
+    (0, import_obsidian38.setIcon)(close, "x");
     close.onclick = () => this.close(true);
     el.addEventListener("mousedown", (e) => {
+      if (e.target.closest(".study-visibility-controls")) return;
       if (e.target.closest("button")) {
         if (!el.contains(doc2.activeElement)) this.remember();
         e.preventDefault();
@@ -45641,11 +46266,12 @@ var FloatingPalette = class {
     for (const style2 of annotationStyles) {
       const b = types2.createEl("button", { cls: "clickable-icon", attr: { "aria-label": styleNames[style2], "aria-pressed": String(style2 === this.style) } });
       b.dataset.paletteStyle = style2;
-      (0, import_obsidian37.setIcon)(b, icons[style2]);
+      (0, import_obsidian38.setIcon)(b, icons[style2]);
       b.onclick = (e) => this.choose(style2, e.detail === 0);
     }
     el.createDiv("study-palette-colors");
     el.createDiv("study-palette-meaning").setAttribute("aria-live", "polite");
+    this.visibility = new VisibilityControls(el, this.store);
     let drag;
     const clamp2 = () => {
       const header = doc2.querySelector(".workspace-tab-header-container")?.getBoundingClientRect().bottom ?? 40;
@@ -45689,6 +46315,7 @@ var FloatingPalette = class {
       }
     };
     el.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape" && e.target.closest(".study-visibility-controls")) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const style2 = { h: "highlight", u: "underline", t: "text", p: "sticky" }[e.key.toLowerCase()];
       const colors = this.store.paletteFor(this.style);
@@ -45715,7 +46342,7 @@ var FloatingPalette = class {
     });
     el.oncontextmenu = (e) => {
       e.preventDefault();
-      new import_obsidian37.Menu().addItem((i) => i.setTitle("Color meanings\u2026").setIcon("palette").onClick(() => {
+      new import_obsidian38.Menu().addItem((i) => i.setTitle("Color meanings\u2026").setIcon("palette").onClick(() => {
         this.plugin.app.setting.open();
         this.plugin.app.setting.openTabById("study-studio");
       })).showAtMouseEvent(e);
@@ -45755,7 +46382,7 @@ var FloatingPalette = class {
 };
 
 // src/math-annotations.ts
-var import_obsidian38 = require("obsidian");
+var import_obsidian39 = require("obsidian");
 var import_view13 = require("@codemirror/view");
 var painted = /* @__PURE__ */ new WeakMap();
 function clearMathMarks(root) {
@@ -45908,7 +46535,7 @@ function liveEquation(view, root, qs) {
   }
 }
 function liveAnchor(view, root) {
-  const info = view.state.field(import_obsidian38.editorInfoField, false), raw = view.state.doc.toString(), q = liveEquation(view, root, equations(raw));
+  const info = view.state.field(import_obsidian39.editorInfoField, false), raw = view.state.doc.toString(), q = liveEquation(view, root, equations(raw));
   if (!info?.file || !q) return;
   return { id: crypto.randomUUID(), path: info.file.path, quote: q.raw, before: raw.slice(Math.max(0, q.from - 48), q.from), after: raw.slice(q.to, q.to + 48), kind: "math" };
 }
@@ -45962,8 +46589,8 @@ function registerMathAnnotations(plugin, store) {
       });
     };
     paint() {
-      const info = this.view.state.field(import_obsidian38.editorInfoField, false);
-      if (!this.view.state.field(import_obsidian38.editorLivePreviewField, false) || !info?.file) return;
+      const info = this.view.state.field(import_obsidian39.editorInfoField, false);
+      if (!this.view.state.field(import_obsidian39.editorLivePreviewField, false) || !info?.file) return;
       const cs = withUnderlineLanes(store.data.comments.filter((c) => !c.resolved && store.isAnnotationVisible(c) && !c.questionId), this.view.state.doc.toString(), info.file.path).flatMap((c) => excerpts(c).filter((a2) => a2.path === info.file.path && (a2.kind === "math" || c.markStyle === "underline")).map((a2) => ({ ...withExcerptLane(c, a2), excerpt: a2 })));
       if (!cs.length && !this.view.contentDOM.querySelector(".study-math-mark")) return;
       if (this.cachedDoc !== this.view.state.doc) {
@@ -45998,7 +46625,7 @@ function registerMathAnnotations(plugin, store) {
       const math = root.querySelector("mjx-math,.ML__latex");
       if (!math) return;
       const cm = root.closest(".cm-editor"), view = cm ? import_view13.EditorView.findFromDOM(cm) : void 0;
-      const markdown2 = plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian38.MarkdownView && v.containerEl.contains(root));
+      const markdown2 = plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian39.MarkdownView && v.containerEl.contains(root));
       const anchor = view ? liveAnchor(view, root) : markdown2?.file ? readingEquationAnchor(root, markdown2.file.path) : void 0;
       if (!anchor) return;
       const selection = doc2.getSelection(), range = selection && !selection.isCollapsed && selection.rangeCount ? selection.getRangeAt(0) : void 0;
@@ -46014,7 +46641,7 @@ function registerMathAnnotations(plugin, store) {
       }
       event.studyMarginMenu = true;
       event.preventDefault();
-      const menu = import_obsidian38.Menu.forEvent(event), open = (a2) => store.edit({ path: a2.path, quote: a2.quote, before: a2.before, after: a2.after, anchors: [a2] });
+      const menu = import_obsidian39.Menu.forEvent(event), open = (a2) => store.edit({ path: a2.path, quote: a2.quote, before: a2.before, after: a2.after, anchors: [a2] });
       store.addMarkMenu(menu, { path: chosen.path, quote: chosen.quote, before: chosen.before, after: chosen.after, anchors: [chosen] });
       for (const c of store.data.comments.filter((c2) => noteIds.has(c2.id) && !c2.resolved)) menu.addItem((i) => i.setSection("study-margin").setTitle("Open margin note: " + (c.comment || c.intent).slice(0, 55)).onClick(() => store.edit(c)));
       menu.addItem((i) => i.setSection("study-margin").setTitle(noteIds.size ? selected ? "Add another comment on selection\u2026" : part ? "Add another comment on this symbol\u2026" : "Add another comment on this equation\u2026" : selected ? "Comment on selection\u2026" : part ? "Comment on this symbol\u2026" : "Comment on this equation\u2026").onClick(() => open(chosen)));
@@ -46038,7 +46665,7 @@ function registerMathAnnotations(plugin, store) {
       event.stopImmediatePropagation();
       if (cs.length === 1) store.edit(cs[0]);
       else {
-        const menu = new import_obsidian38.Menu();
+        const menu = new import_obsidian39.Menu();
         for (const c of cs) menu.addItem((i) => i.setTitle((c.intent || "Note") + ": " + (c.comment || c.quote).slice(0, 70)).onClick(() => store.edit(c)));
         menu.showAtMouseEvent(event);
       }
@@ -46048,9 +46675,40 @@ function registerMathAnnotations(plugin, store) {
   plugin.registerEvent(plugin.app.workspace.on("window-open", (_win, win) => attach(win.document)));
 }
 
+// src/reading-comment-index.ts
+function readingCommentIndex(comments, source, path) {
+  const local = comments.filter((c) => excerpts(c).some((a2) => a2.path === path));
+  const entries = withUnderlineLanes(local, source, path).flatMap((c) => readingCopies(c, path, source)).map((comment2) => ({ comment: comment2, range: comment2.excerpt.sectionSource ? void 0 : locateMarginAnchor(source, comment2.excerpt) }));
+  return { inSection(from, to) {
+    return entries.filter((e) => !e.range || e.range.from < to && e.range.to > from).map((e) => e.comment);
+  } };
+}
+var ReadingCommentCache = class {
+  values = /* @__PURE__ */ new Map();
+  invalidate(paths) {
+    if (paths) for (const path of paths) this.values.delete(path);
+    else this.values.clear();
+  }
+  get(path, text2, comments) {
+    let revisions = this.values.get(path);
+    if (!revisions) {
+      revisions = /* @__PURE__ */ new Map();
+      this.values.set(path, revisions);
+      if (this.values.size > 4) this.values.delete(this.values.keys().next().value);
+    }
+    let index2 = revisions.get(text2);
+    if (!index2) {
+      index2 = readingCommentIndex(comments(), text2, path);
+      revisions.set(text2, index2);
+      if (revisions.size > 2) revisions.delete(revisions.keys().next().value);
+    }
+    return index2;
+  }
+};
+
 // src/comment-settings.ts
-var import_obsidian39 = require("obsidian");
-var CommentSettings = class extends import_obsidian39.PluginSettingTab {
+var import_obsidian40 = require("obsidian");
+var CommentSettings = class extends import_obsidian40.PluginSettingTab {
   constructor(app, plugin, store) {
     super(app, plugin);
     this.store = store;
@@ -46061,17 +46719,17 @@ var CommentSettings = class extends import_obsidian39.PluginSettingTab {
     el.empty();
     el.createEl("h2", { text: "Annotation colors and meanings" });
     el.createEl("p", { text: "Each annotation style has its own color meanings. Existing notes keep their saved meaning and colors." });
-    new import_obsidian39.Setting(el).setName("Annotation style").addDropdown((d) => {
+    new import_obsidian40.Setting(el).setName("Annotation style").addDropdown((d) => {
       for (const style of annotationStyles) d.addOption(style, styleNames[style]);
       d.setValue(this.style).onChange((value) => {
         this.style = value;
         this.display();
       });
     });
-    const persist = () => void this.store.save({ paths: /* @__PURE__ */ new Set(), commentIds: /* @__PURE__ */ new Set(), annotations: false }).catch((e) => new import_obsidian39.Notice(String(e)));
+    const persist = () => void this.store.save({ paths: /* @__PURE__ */ new Set(), commentIds: /* @__PURE__ */ new Set(), annotations: false }).catch((e) => new import_obsidian40.Notice(String(e)));
     const palette = this.store.paletteFor(this.style);
     for (const [index2, entry] of palette.entries()) {
-      const row = new import_obsidian39.Setting(el).setName(`Color ${index2 + 1}`).setDesc("Light \xB7 Dark \xB7 Meaning").addColorPicker((c) => c.setValue(entry.color).onChange((value) => {
+      const row = new import_obsidian40.Setting(el).setName(`Color ${index2 + 1}`).setDesc("Light \xB7 Dark \xB7 Meaning").addColorPicker((c) => c.setValue(entry.color).onChange((value) => {
         entry.color = value;
         persist();
       })).addColorPicker((c) => c.setValue(darkCommentColor(entry)).onChange((value) => {
@@ -46093,7 +46751,7 @@ var CommentSettings = class extends import_obsidian39.PluginSettingTab {
       }));
       row.controlEl.querySelectorAll("input[type=color]").forEach((input, i) => input.setAttribute("aria-label", `${i ? "Dark" : "Light"} color ${index2 + 1}`));
     }
-    new import_obsidian39.Setting(el).addButton((b) => b.setButtonText("Add color").onClick(() => {
+    new import_obsidian40.Setting(el).addButton((b) => b.setButtonText("Add color").onClick(() => {
       palette.push({ color: "#55aa77", meaning: "" });
       persist();
       this.display();
@@ -46106,12 +46764,12 @@ var CommentSettings = class extends import_obsidian39.PluginSettingTab {
 };
 
 // src/annotations.ts
-var import_obsidian42 = require("obsidian");
+var import_obsidian43 = require("obsidian");
 var import_view14 = require("@codemirror/view");
 var import_state13 = require("@codemirror/state");
 
 // src/reading-comments.ts
-var import_obsidian40 = require("obsidian");
+var import_obsidian41 = require("obsidian");
 var sectionSelector = "[data-study-comment-section]";
 var markSelector = "[data-study-reading-comment]";
 function readingMarks(root) {
@@ -46152,7 +46810,7 @@ function paintReadingComments(root, comments, handlers2) {
       handlers2.edit(cs[0]);
       return;
     }
-    const menu = new import_obsidian40.Menu();
+    const menu = new import_obsidian41.Menu();
     for (const c of cs) menu.addItem((item) => item.setTitle((c.intent || "Note") + ": " + (c.comment || c.quote).slice(0, 70)).onClick(() => handlers2.edit(c)));
     const box = mark.getBoundingClientRect();
     menu.showAtPosition({ x: box.left, y: box.bottom });
@@ -46225,7 +46883,7 @@ function paintReadingComments(root, comments, handlers2) {
 }
 
 // src/anchor-protection.ts
-var import_obsidian41 = require("obsidian");
+var import_obsidian42 = require("obsidian");
 var import_state12 = require("@codemirror/state");
 
 // src/anchor-protection-model.ts
@@ -46276,7 +46934,7 @@ function incoming(plugin, target, ids) {
   }
   return found.sort((a2, b) => a2.path.localeCompare(b.path) || a2.line - b.line || a2.id.localeCompare(b.id));
 }
-var RemoveAnchorsModal = class extends import_obsidian41.Modal {
+var RemoveAnchorsModal = class extends import_obsidian42.Modal {
   constructor(plugin, view, file, ids, all) {
     super(plugin.app);
     this.plugin = plugin;
@@ -46301,7 +46959,7 @@ var RemoveAnchorsModal = class extends import_obsidian41.Modal {
     else this.contentEl.createEl("p", { text: "References outside this vault or in unindexed content are not included." });
     this.contentEl.createEl("p", { text: `To confirm, type exactly: ${phrase}` });
     let typed = "";
-    const row = new import_obsidian41.Setting(this.contentEl).setName("Confirmation");
+    const row = new import_obsidian42.Setting(this.contentEl).setName("Confirmation");
     let remove2;
     row.addText((t2) => {
       t2.inputEl.setAttribute("aria-label", "Anchor removal confirmation");
@@ -46310,27 +46968,27 @@ var RemoveAnchorsModal = class extends import_obsidian41.Modal {
         if (remove2) remove2.disabled = typed !== phrase;
       });
     });
-    new import_obsidian41.Setting(this.contentEl).addButton((b) => b.setButtonText("Cancel").onClick(() => this.close())).addButton((b) => {
+    new import_obsidian42.Setting(this.contentEl).addButton((b) => b.setButtonText("Cancel").onClick(() => this.close())).addButton((b) => {
       b.setButtonText("Remove anchors").setWarning();
       remove2 = b.buttonEl;
       remove2.disabled = true;
       b.onClick(() => {
         if (typed !== phrase) return;
-        const info = this.view.state.field(import_obsidian41.editorInfoField, false);
+        const info = this.view.state.field(import_obsidian42.editorInfoField, false);
         if (info?.file?.path !== this.file.path || this.view.state.doc.toString() !== before || JSON.stringify(incoming(this.plugin, this.file, this.ids)) !== signature2) {
-          new import_obsidian41.Notice("The note or its references changed. Reopen the removal dialog to review them.");
+          new import_obsidian42.Notice("The note or its references changed. Reopen the removal dialog to review them.");
           this.close();
           return;
         }
         this.view.dispatch({ changes: anchorRemovalChanges(before, this.ids), annotations: approvedRemoval.of(true), userEvent: "input.anchor-removal" });
         this.close();
-        new import_obsidian41.Notice("Anchors removed. Undo restores them.");
+        new import_obsidian42.Notice("Anchors removed. Undo restores them.");
       });
     });
   }
 };
 function requestAnchorRemoval(plugin, view, ids, all = false) {
-  const file = view.state.field(import_obsidian41.editorInfoField, false)?.file;
+  const file = view.state.field(import_obsidian42.editorInfoField, false)?.file;
   if (!file || !ids.length) return;
   new RemoveAnchorsModal(plugin, view, file, ids, all).open();
 }
@@ -46338,13 +46996,13 @@ function registerAnchorProtection(plugin) {
   let lastNotice = 0;
   plugin.registerEditorExtension(import_state12.EditorState.transactionFilter.of((tr) => {
     if (!tr.docChanged || tr.annotation(approvedRemoval)) return tr;
-    const beforeFile = tr.startState.field(import_obsidian41.editorInfoField, false)?.file;
-    const afterFile = tr.state.field(import_obsidian41.editorInfoField, false)?.file;
+    const beforeFile = tr.startState.field(import_obsidian42.editorInfoField, false)?.file;
+    const afterFile = tr.state.field(import_obsidian42.editorInfoField, false)?.file;
     if (!beforeFile || beforeFile.path !== afterFile?.path) return tr;
     if (!changedAnchorIds(tr).length) return tr;
     if (Date.now() - lastNotice > 2500) {
       lastNotice = Date.now();
-      new import_obsidian41.Notice("Block anchors are protected. Right-click the anchor to remove it, or use \u201CRemove all block anchors from current note\u201D.");
+      new import_obsidian42.Notice("Block anchors are protected. Right-click the anchor to remove it, or use \u201CRemove all block anchors from current note\u201D.");
     }
     return [];
   }));
@@ -46365,17 +47023,9 @@ function registerAnchorProtection(plugin) {
   } });
 }
 
-// src/paper-protection.ts
-function isProtectedPaper(app, path) {
-  try {
-    return app?.plugins?.getPlugin?.("image-gallery")?.api?.library?.isProtected?.(path) === true;
-  } catch {
-    return false;
-  }
-}
-
 // src/annotations.ts
 var refreshAnnotations = import_state13.StateEffect.define();
+var excludedReading = ".study-comment-editor,.study-comment-popover,.study-margin-pane,.study-margin-note,.evidence-reader,.evidence-paper,.evidence-editor";
 var AnchorChip = class extends import_view14.WidgetType {
   constructor(id3, plugin) {
     super();
@@ -46394,19 +47044,23 @@ var AnchorChip = class extends import_view14.WidgetType {
     span.oncontextmenu = (event) => {
       event.preventDefault();
       event.stopPropagation();
-      new import_obsidian42.Menu().addItem((i) => i.setTitle(`Remove block anchor ${this.id}\u2026`).setIcon("unlink").onClick(() => requestAnchorRemoval(this.plugin, view, [this.id]))).showAtMouseEvent(event);
+      new import_obsidian43.Menu().addItem((i) => i.setTitle(`Remove block anchor ${this.id}\u2026`).setIcon("unlink").onClick(() => requestAnchorRemoval(this.plugin, view, [this.id]))).showAtMouseEvent(event);
     };
     return span;
   }
 };
 function stickyButton(container, c, store) {
   const button = container.createEl("button", { cls: "study-sticky-note", attr: { "aria-label": c.resolved ? "Open resolved sticky note" : "Open sticky note" } });
-  (0, import_obsidian42.setIcon)(button, "sticky-note");
+  (0, import_obsidian43.setIcon)(button, "sticky-note");
   button.title = c.resolved ? "Resolved sticky note" : "Sticky note";
   button.classList.toggle("is-resolved", c.resolved);
   button.style.setProperty("--critique-color", safeColor(c.color));
   button.style.setProperty("--critique-dark", darkCommentColor(c));
-  button.onclick = () => store.edit(c);
+  button.onclick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    store.edit(c);
+  };
   button.onmouseenter = () => store.hover(button, c);
   button.onfocus = () => store.hover(button, c);
   button.addEventListener("blur", () => button.dispatchEvent(new Event("mouseleave")));
@@ -46416,7 +47070,7 @@ function stickyMarker(doc2, c, store) {
   const span = doc2.createElement("span");
   span.className = "study-sticky-placement study-sticky-anchor";
   span.dataset.studyStickyId = c.id;
-  span.style.margin = "0 0 0 .35em";
+  span.style.margin = placementOf(c)?.edge === "start" ? "0 .35em 0 0" : "0 0 0 .35em";
   span.style.display = "inline-block";
   span.style.verticalAlign = "middle";
   stickyButton(span, c, store);
@@ -46439,14 +47093,96 @@ var StickyWidget = class extends import_view14.WidgetType {
   }
 };
 function registerAnnotations(plugin, store) {
+  const readingCache = new ReadingCommentCache(), readingChanges = /* @__PURE__ */ new WeakMap();
+  let regularIds = new Set(store.data.comments.filter((c) => c.kind !== "sticky").map((c) => c.id));
+  const invalidateReading = (change) => {
+    if (change && !change.annotations) return;
+    const next = new Set(store.data.comments.filter((c) => c.kind !== "sticky").map((c) => c.id)), relevant = !change || [...change.commentIds].some((id3) => regularIds.has(id3) || next.has(id3));
+    if (change) readingChanges.set(change, relevant);
+    if (relevant) readingCache.invalidate(change?.paths);
+    regularIds = next;
+  };
+  store.listeners.add(invalidateReading);
+  plugin.register(() => {
+    store.listeners.delete(invalidateReading);
+    readingCache.invalidate();
+  });
   registerAnnotationHandles(plugin, store);
-  const ownReading = readingChildren(plugin);
+  let stickyPaths;
+  let stickyIds = new Set(store.data.comments.filter((c) => c.kind === "sticky").map((c) => c.id));
+  let stickyChange;
+  const locations = /* @__PURE__ */ new Map();
+  const invalidate = (change) => {
+    if (!change || change.annotations) {
+      const next = new Set(store.data.comments.filter((c) => c.kind === "sticky").map((c) => c.id));
+      if (!change || change.visibility || [...change.commentIds].some((id3) => stickyIds.has(id3) || next.has(id3))) {
+        stickyChange = change;
+        stickyPaths = void 0;
+        locations.clear();
+      }
+      stickyIds = next;
+    }
+  };
+  store.listeners.add(invalidate);
+  plugin.register(() => store.listeners.delete(invalidate));
+  const stickies = (path) => {
+    if (!stickyPaths) {
+      stickyPaths = /* @__PURE__ */ new Map();
+      for (const c of store.data.comments) if (c.kind === "sticky" && !c.deletedAt && placementOf(c)) {
+        const list = stickyPaths.get(c.path) ?? [];
+        list.push(c);
+        stickyPaths.set(c.path, list);
+      }
+    }
+    return stickyPaths.get(path) ?? [];
+  };
+  const located = (path, text2, from, to) => {
+    let entry = locations.get(path);
+    if (entry?.text !== text2) {
+      const lookup = placementLookup(path, text2, stickies(path).map((c) => placementOf(c)));
+      entry = { text: text2, items: stickies(path).flatMap((c) => {
+        const end = lookup(placementOf(c));
+        return end === void 0 ? [] : [{ c, end }];
+      }).sort((a2, b) => a2.end - b.end || a2.c.id.localeCompare(b.c.id)) };
+      locations.delete(path);
+      locations.set(path, entry);
+      if (locations.size > 4) locations.delete(locations.keys().next().value);
+    }
+    let lo = 0, hi = entry.items.length;
+    while (lo < hi) {
+      const mid = lo + hi >>> 1;
+      if (entry.items[mid].end < from) lo = mid + 1;
+      else hi = mid;
+    }
+    let stop = lo;
+    while (stop < entry.items.length && entry.items[stop].end <= to) stop++;
+    return entry.items.slice(lo, stop);
+  };
+  const sourceRevisions = /* @__PURE__ */ new Map();
+  plugin.registerEvent(plugin.app.vault.on("modify", (file) => {
+    const comments = stickies(file.path);
+    if (!comments.length || !(file instanceof import_obsidian43.TFile)) return;
+    const revision = {};
+    sourceRevisions.delete(file.path);
+    sourceRevisions.set(file.path, revision);
+    if (sourceRevisions.size > 4) sourceRevisions.delete(sourceRevisions.keys().next().value);
+    void plugin.app.vault.cachedRead(file).then((text2) => {
+      if (sourceRevisions.get(file.path) !== revision) return;
+      revision.text = text2;
+      const change = { paths: /* @__PURE__ */ new Set([file.path]), commentIds: new Set(comments.map((c) => c.id)), annotations: true };
+      invalidate(change);
+      for (const repaint of stickyRepaints) repaint(change);
+    }).catch(() => {
+    });
+  }));
+  const stickyRepaints = /* @__PURE__ */ new Set();
+  const ownReading = readingChildren(plugin), readingOwners = /* @__PURE__ */ new WeakMap();
   registerMathAnnotations(plugin, store);
   registerAnchorProtection(plugin);
   plugin.addSettingTab(new CommentSettings(plugin.app, plugin, store));
   const addPlacedSticky = async (path, placement, p = store.paletteFor("sticky")[0]) => {
     if (!placement) {
-      new import_obsidian42.Notice("Could not find a distinctive passage for this post-it. Select a passage and try again.");
+      new import_obsidian43.Notice("This position is ambiguous in repeated text. Choose a nearby distinctive passage.");
       return;
     }
     const id3 = crypto.randomUUID(), c = { id: id3, kind: "sticky", path, quote: "", before: "", after: "", comment: "", intent: p?.meaning ?? "", color: p?.color ?? "#e2b714", darkColor: p?.darkColor, updated: (/* @__PURE__ */ new Date()).toISOString(), resolved: false, placement };
@@ -46462,85 +47198,66 @@ function registerAnnotations(plugin, store) {
         const i = store.data.comments.indexOf(c);
         if (i >= 0) store.data.comments.splice(i, 1);
       }
-      new import_obsidian42.Notice((saved ? "Post-it saved, but its margin could not open: " : "Could not save post-it: ") + String(error));
+      new import_obsidian43.Notice((saved ? "Post-it saved, but its margin could not open: " : "Could not save post-it: ") + String(error));
     }
   };
-  const protectedPath = (path) => isProtectedPaper(plugin.app, path);
-  const addSticky = async (editor, path, p = store.paletteFor("sticky")[0], anchors) => {
-    const raw = editor.getValue(), from = editor.posToOffset(editor.getCursor("from")), to = editor.posToOffset(editor.getCursor("to")), heading2 = headingPlacementFor(raw, from);
-    if (heading2 || protectedPath(path)) {
-      await addPlacedSticky(path, heading2 ?? placementFromAnchors(raw, anchors) ?? placementFor(raw, from, to), p);
+  const editorPoints = /* @__PURE__ */ new WeakMap();
+  const addSticky = async (editor, path, p = store.paletteFor("sticky")[0], snapshot) => {
+    const raw = editor.getValue();
+    if (snapshot && snapshot.text !== raw) {
+      new import_obsidian43.Notice("The passage changed. Select the placement again.");
       return;
     }
-    let placed = false;
-    const cursor = editor.getCursor(), id3 = crypto.randomUUID(), c = { id: id3, kind: "sticky", path, quote: "", before: "", after: "", comment: "", intent: p?.meaning ?? "", color: p?.color ?? "#e2b714", darkColor: p?.darkColor, updated: (/* @__PURE__ */ new Date()).toISOString(), resolved: false };
+    const offset = snapshot?.offset ?? editor.posToOffset(editor.getCursor("to"));
+    if (snapshot?.selectionFrom !== void 0 && selectionEndsOnLineBreak(raw, snapshot.selectionFrom, offset)) {
+      new import_obsidian43.Notice("The selection ends on a new line. Place the caret at the intended Post-it position.");
+      return;
+    }
+    const checked = stickyBoundary(raw, offset);
+    if (checked.reason) {
+      new import_obsidian43.Notice(checked.reason);
+      return;
+    }
+    await addPlacedSticky(path, placementFor(raw, checked.offset, checked.offset), p);
+  };
+  const addStickyReading = async (path, snapshot, p = store.paletteFor("sticky")[0]) => {
     try {
-      store.data.comments.push(c);
-      await store.save({ paths: /* @__PURE__ */ new Set([path]), commentIds: /* @__PURE__ */ new Set([id3]), annotations: true });
-      const current = plugin.app.workspace.getLeavesOfType("markdown").some((l) => l.view instanceof import_obsidian42.MarkdownView && l.view.editor === editor && l.view.file?.path === path);
-      if (!current) throw Error("The source note changed before the post-it was placed.");
-      editor.replaceRange("\n\n```study-sticky\n" + id3 + "\n```\n\n", cursor);
-      placed = true;
-      store.warnHidden(c);
-      await store.openMargin?.(c, true);
+      const source = plugin.app.vault.getAbstractFileByPath(path);
+      if (!(source instanceof import_obsidian43.TFile) || await plugin.app.vault.read(source) !== snapshot.text) {
+        new import_obsidian43.Notice("The passage changed. Select it again.");
+        return;
+      }
+      const checked = stickyBoundary(snapshot.text, snapshot.offset);
+      if (checked.reason) {
+        new import_obsidian43.Notice(checked.reason);
+        return;
+      }
+      await addPlacedSticky(path, placementFor(snapshot.text, checked.offset, checked.offset), p);
     } catch (error) {
-      const item = store.data.comments.find((x) => x.id === id3);
-      if (item && !placed) {
-        item.resolved = true;
-        item.deletedAt = (/* @__PURE__ */ new Date()).toISOString();
-        await store.save({ paths: /* @__PURE__ */ new Set([path]), commentIds: /* @__PURE__ */ new Set([id3]), annotations: true });
-      }
-      new import_obsidian42.Notice((placed ? "Post-it saved, but its margin could not open: " : "Could not place post-it: ") + String(error));
+      new import_obsidian43.Notice("Could not place post-it: " + String(error));
     }
   };
-  const addStickyReading = async (path, snapshot, p = store.paletteFor("sticky")[0], anchors) => {
-    const at = Math.max(0, snapshot.offset - 1), heading2 = headingPlacementFor(snapshot.text, at);
-    if (heading2 || protectedPath(path)) {
-      try {
-        const source = plugin.app.vault.getAbstractFileByPath(path);
-        if (!(source instanceof import_obsidian42.TFile) || await plugin.app.vault.read(source) !== snapshot.text) {
-          new import_obsidian42.Notice("The passage changed. Select it again.");
-          return;
-        }
-        await addPlacedSticky(path, heading2 ?? placementFromAnchors(snapshot.text, anchors) ?? placementFor(snapshot.text, at, at), p);
-      } catch (error) {
-        new import_obsidian42.Notice("Could not place post-it: " + String(error));
+  const stickyMenus = /* @__PURE__ */ new WeakSet();
+  const addEditorStickyMenu = (menu, editor, info) => {
+    if (!info.file || stickyMenus.has(menu)) return;
+    const cm = editor.cm, point = cm && editorPoints.get(cm);
+    if (point?.renderedBlock) return;
+    stickyMenus.add(menu);
+    if (cm) editorPoints.delete(cm);
+    const snapshot = point ?? { text: editor.getValue(), offset: editor.posToOffset(editor.getCursor("to")), selectionFrom: editor.posToOffset(editor.getCursor("from")) }, path = info.file.path;
+    paletteItems(menuGroup(menu, "mark-sticky", "Post-it", "sticky-note"), "sticky", store.paletteFor("sticky"), (p) => {
+      if (info.file?.path !== path) {
+        new import_obsidian43.Notice("The note changed. Select the placement again.");
+        return;
       }
-      return;
-    }
-    const file = plugin.app.vault.getAbstractFileByPath(path);
-    if (!(file instanceof import_obsidian42.TFile)) return;
-    const id3 = crypto.randomUUID(), c = { id: id3, kind: "sticky", path, quote: "", before: "", after: "", comment: "", intent: p?.meaning ?? "", color: p?.color ?? "#e2b714", darkColor: p?.darkColor, updated: (/* @__PURE__ */ new Date()).toISOString(), resolved: false };
-    let placed = false;
-    try {
-      store.data.comments.push(c);
-      await store.save({ paths: /* @__PURE__ */ new Set([path]), commentIds: /* @__PURE__ */ new Set([id3]), annotations: true });
-      await plugin.app.vault.process(file, (raw) => {
-        if (raw !== snapshot.text) throw Error("The passage changed. Select the placement again.");
-        return raw.slice(0, snapshot.offset) + "\n\n```study-sticky\n" + id3 + "\n```\n\n" + raw.slice(snapshot.offset);
-      });
-      placed = true;
-      store.warnHidden(c);
-      await store.openMargin?.(c, true);
-    } catch (e) {
-      if (!placed) {
-        const item = store.data.comments.find((x) => x.id === id3);
-        if (item) {
-          item.deletedAt = (/* @__PURE__ */ new Date()).toISOString();
-          item.resolved = true;
-          await store.save({ paths: /* @__PURE__ */ new Set([path]), commentIds: /* @__PURE__ */ new Set([id3]), annotations: true });
-        }
-      }
-      new import_obsidian42.Notice(String(e));
-    }
+      void addSticky(editor, path, p, snapshot);
+    });
   };
-  plugin.registerEvent(plugin.app.workspace.on("editor-menu", (menu, editor, info) => {
-    if (info.file) paletteItems(menuGroup(menu, "mark-sticky", "Post-it", "sticky-note"), "sticky", store.paletteFor("sticky"), (p) => void addSticky(editor, info.file.path, p));
-  }));
+  plugin.registerEvent(plugin.app.workspace.on("editor-menu", addEditorStickyMenu));
   plugin.registerMarkdownCodeBlockProcessor("study-sticky", (source, el, ctx) => {
     el.addClass("study-sticky-placement");
     const id3 = source.trim();
-    class Sticky extends import_obsidian42.MarkdownRenderChild {
+    class Sticky extends import_obsidian43.MarkdownRenderChild {
       onload() {
         store.listeners.add(this.render);
         this.register(() => store.listeners.delete(this.render));
@@ -46570,7 +47287,7 @@ function registerAnnotations(plugin, store) {
     }
   }));
   const currentSelection = () => {
-    const view = plugin.app.workspace.getActiveViewOfType(import_obsidian42.MarkdownView);
+    const view = plugin.app.workspace.getActiveViewOfType(import_obsidian43.MarkdownView);
     if (!view?.file) return;
     const path = view.file.path, pending = store.pendingAnnotationSelection?.(path);
     if (pending?.length) {
@@ -46594,40 +47311,34 @@ function registerAnnotations(plugin, store) {
     return { path, quote: first.quote, before: first.before, after: first.after, anchors };
   };
   for (const style of ["highlight", "underline", "text"]) plugin.addCommand({ id: "mark-selection-" + style, name: styleNames[style] + " selection\u2026", checkCallback: (checking) => {
-    if (!plugin.app.workspace.getActiveViewOfType(import_obsidian42.MarkdownView)?.file) return false;
+    if (!plugin.app.workspace.getActiveViewOfType(import_obsidian43.MarkdownView)?.file) return false;
     if (!checking) palette.open(style, true);
     return true;
   } });
   plugin.addCommand({ id: "insert-sticky-note", name: "Insert post-it\u2026", checkCallback: (checking) => {
-    if (!plugin.app.workspace.getActiveViewOfType(import_obsidian42.MarkdownView)?.file) return false;
+    if (!plugin.app.workspace.getActiveViewOfType(import_obsidian43.MarkdownView)?.file) return false;
     if (!checking) palette.open("sticky", true);
     return true;
   } });
   let captured;
   const capture = () => {
-    const view = plugin.app.workspace.getActiveViewOfType(import_obsidian42.MarkdownView);
+    const view = plugin.app.workspace.getActiveViewOfType(import_obsidian43.MarkdownView);
     if (!view?.file) {
       captured = void 0;
       return;
     }
     const selection = view.containerEl.ownerDocument.getSelection();
-    captured = { view, path: view.file.path, raw: view.editor.getValue(), anchor: currentSelection(), at: selection ? readingInsertion(selection, view.file.path) : void 0, cursor: view.editor.getCursor() };
+    captured = { view, path: view.file.path, raw: view.editor.getValue(), anchor: currentSelection(), at: readingStickyInsertion(selection, view.file.path), cursor: view.editor.getCursor("to"), selectionFrom: view.editor.posToOffset(view.editor.getCursor("from")) };
   };
   const palette = new FloatingPalette(plugin, store, async (style, p) => {
     const c = captured;
     if (!c || c.view.file?.path !== c.path) throw Error("Select a passage or placement first.");
     if (c.view.editor.getValue() !== c.raw) throw Error("The passage changed. Select it again.");
     if (style === "sticky") {
-      if (protectedPath(c.path)) {
-        const at = c.view.editor.posToOffset(c.cursor);
-        await addPlacedSticky(c.path, placementFromAnchors(c.raw, c.anchor?.anchors) ?? (c.view.getMode() !== "source" && c.at ? placementFor(c.at.text, Math.max(0, c.at.offset - 1), Math.max(0, c.at.offset - 1)) : placementFor(c.raw, at, at)), p);
-        return;
-      }
       if (c.view.getMode() === "source") {
-        c.view.editor.setCursor(c.cursor);
-        await addSticky(c.view.editor, c.path, p);
+        await addSticky(c.view.editor, c.path, p, { text: c.raw, offset: c.view.editor.posToOffset(c.cursor), selectionFrom: c.selectionFrom });
       } else {
-        if (!c.at) throw Error("Select a passage for the post-it placement.");
+        if (!c.at) throw Error("Place the caret in ordinary text, outside links, code, or equations. This position could not be mapped exactly.");
         await addStickyReading(c.path, c.at, p);
       }
       return;
@@ -46661,7 +47372,7 @@ function registerAnnotations(plugin, store) {
     if (change && !change.annotations) return;
     plugin.app.workspace.getLeavesOfType("markdown").forEach((leaf) => {
       const view = leaf.view;
-      if (!(view instanceof import_obsidian42.MarkdownView) || change && !change.paths.has(view.file?.path ?? "")) return;
+      if (!(view instanceof import_obsidian43.MarkdownView) || change && !change.paths.has(view.file?.path ?? "")) return;
       const cm = view.editor?.cm;
       cm?.dispatch({ effects: refreshAnnotations.of(null) });
     });
@@ -46671,16 +47382,43 @@ function registerAnnotations(plugin, store) {
   plugin.registerEditorExtension(import_view14.ViewPlugin.fromClass(class {
     constructor(view) {
       this.view = view;
+      view.dom.ownerDocument.defaultView.addEventListener("contextmenu", this.capturePoint, true);
+      view.dom.ownerDocument.defaultView.addEventListener("keydown", this.captureKey, true);
+      view.dom.ownerDocument.defaultView.addEventListener("pointerdown", this.capturePointer, true);
       this.build();
     }
     decorations = import_view14.Decoration.none;
     atomic = import_view14.Decoration.none;
+    keyboardContext = false;
+    captureKey = (event) => {
+      editorPoints.delete(this.view);
+      this.keyboardContext = this.view.hasFocus && (event.key === "ContextMenu" || event.key === "F10" && event.shiftKey);
+    };
+    capturePointer = () => {
+      this.keyboardContext = false;
+      editorPoints.delete(this.view);
+    };
+    capturePoint = (event) => {
+      if (!this.view.dom.contains(event.target)) return;
+      const raw = this.view.state.doc.toString(), selection = this.view.state.selection.main, at = this.keyboardContext ? selection.to : this.view.posAtCoords({ x: event.clientX, y: event.clientY });
+      this.keyboardContext = false;
+      if (at !== null) {
+        const point = { text: raw, renderedBlock: !!event.target.closest(".cm-embed-block"), offset: !selection.empty && at >= selection.from && at <= selection.to ? selection.to : at, selectionFrom: !selection.empty && at >= selection.from && at <= selection.to ? selection.from : void 0 };
+        editorPoints.set(this.view, point);
+      }
+    };
+    destroy() {
+      this.view.dom.ownerDocument.defaultView.removeEventListener("contextmenu", this.capturePoint, true);
+      this.view.dom.ownerDocument.defaultView.removeEventListener("keydown", this.captureKey, true);
+      this.view.dom.ownerDocument.defaultView.removeEventListener("pointerdown", this.capturePointer, true);
+      editorPoints.delete(this.view);
+    }
     update(update) {
-      if (update.docChanged || update.selectionSet || update.transactions.some((t2) => t2.effects.some((e) => e.is(refreshAnnotations))) || update.startState.field(import_obsidian42.editorLivePreviewField, false) !== update.state.field(import_obsidian42.editorLivePreviewField, false) || update.startState.field(import_obsidian42.editorInfoField, false)?.file?.path !== update.state.field(import_obsidian42.editorInfoField, false)?.file?.path) this.build();
+      if (update.docChanged || update.selectionSet || update.transactions.some((t2) => t2.effects.some((e) => e.is(refreshAnnotations))) || update.startState.field(import_obsidian43.editorLivePreviewField, false) !== update.state.field(import_obsidian43.editorLivePreviewField, false) || update.startState.field(import_obsidian43.editorInfoField, false)?.file?.path !== update.state.field(import_obsidian43.editorInfoField, false)?.file?.path) this.build();
     }
     build() {
-      const state = this.view.state, info = state.field(import_obsidian42.editorInfoField, false);
-      const live = !!state.field(import_obsidian42.editorLivePreviewField, false);
+      const state = this.view.state, info = state.field(import_obsidian43.editorInfoField, false);
+      const live = !!state.field(import_obsidian43.editorLivePreviewField, false);
       const raw = state.doc.toString(), commentRanges = [], qs = live ? equations(raw) : [], ranges = [], anchors = [];
       for (const c of withUnderlineLanes(store.data.comments.filter((c2) => !c2.resolved && store.isAnnotationVisible(c2) && !c2.questionId), raw, info?.file?.path ?? "")) {
         for (const a2 of excerpts(c).filter((a3) => a3.path === info?.file?.path && !a3.sectionSource && (!live || a3.kind !== "math"))) {
@@ -46697,13 +47435,13 @@ function registerAnnotations(plugin, store) {
         ranges.push(mark);
         anchors.push(mark);
       }
-      const path = info?.file?.path;
-      if (path && live) for (const c of store.data.comments) {
+      const path = info?.file?.path, lookup = path ? placementLookup(path, raw, stickies(path).map((c) => placementOf(c))) : void 0;
+      if (path) for (const c of stickies(path)) {
         if (c.kind !== "sticky" || c.deletedAt || c.path !== path || !store.isAnnotationVisible(c)) continue;
         const p = placementOf(c);
         if (!p) continue;
-        const end = cachedPlacementEnd(path, raw, p);
-        if (end !== void 0) ranges.push(import_view14.Decoration.widget({ widget: new StickyWidget(c, store), side: 1 }).range(end));
+        const end = lookup(p);
+        if (end !== void 0) ranges.push(import_view14.Decoration.widget({ widget: new StickyWidget(c, store), side: p.edge === "start" ? -1 : 1 }).range(end));
       }
       this.decorations = import_view14.Decoration.set(ranges, true);
       this.atomic = import_view14.Decoration.set(anchors, true);
@@ -46717,7 +47455,7 @@ function registerAnnotations(plugin, store) {
     const node = event.target.closest("[data-critique-id]");
     const ids = (node?.dataset.studyCommentIds ?? node?.dataset.critiqueId ?? "").split(" "), comments = store.data.comments.filter((c) => ids.includes(c.id));
     if (comments.length) {
-      const menu = import_obsidian42.Menu.forEvent(event);
+      const menu = import_obsidian43.Menu.forEvent(event);
       for (const c of comments) store.addAppearanceMenu(menu, c);
     }
     return false;
@@ -46729,14 +47467,16 @@ function registerAnnotations(plugin, store) {
     menu.addItem((i) => i.setSection("selection").setTitle("Add selection to selected margin note").onClick(() => store.addToMargin?.(editorExcerpts(editor.getValue(), editor.posToOffset(editor.getCursor("from")), editor.posToOffset(editor.getCursor("to")), info.file.path))));
   }));
   plugin.registerMarkdownPostProcessor((el, ctx) => {
-    if (el.closest(".study-comment-editor,.study-comment-popover,.study-margin-pane,.evidence-reader,.evidence-paper,.evidence-editor")) return;
+    if (el.closest(excludedReading)) return;
     let sectionPath = ctx.sourcePath;
     registerReadingContext(el, () => sectionPath, ctx);
-    const owner = ownReading(new import_obsidian42.MarkdownRenderChild(el));
+    readingOwners.get(el)?.unload();
+    const owner = ownReading(new import_obsidian43.MarkdownRenderChild(el));
+    readingOwners.set(el, owner);
     ctx.addChild(owner);
     owner.registerDomEvent(el, "contextmenu", (event) => {
       if (event.target.closest(".study-card,.study-margin-pane")) return;
-      const menu = import_obsidian42.Menu.forEvent(event), shared = event;
+      const menu = import_obsidian43.Menu.forEvent(event), shared = event;
       event.preventDefault();
       const mark = event.target.closest("[data-study-reading-comment]");
       if (mark) for (const id3 of (mark.dataset.studyCommentIds ?? mark.dataset.studyReadingComment ?? "").split(" ")) {
@@ -46752,7 +47492,7 @@ function registerAnnotations(plugin, store) {
           menu.addItem((i) => i.setSection("selection").setTitle(title).setIcon("move-horizontal").onClick(() => {
             const current = mark.isConnected ? mark : preview?.isConnected ? [...preview.querySelectorAll("[data-study-reading-comment]")].find((m) => (m.dataset.studyCommentIds ?? m.dataset.studyReadingComment ?? "").split(" ").includes(id3)) : void 0;
             if (!current) {
-              new import_obsidian42.Notice("The passage changed. Right-click the annotation again.");
+              new import_obsidian43.Notice("The passage changed. Right-click the annotation again.");
               return;
             }
             store.annotationHandles?.open(current, id3);
@@ -46772,10 +47512,16 @@ function registerAnnotations(plugin, store) {
       }
       if (!shared.studyPaletteMenu) {
         shared.studyPaletteMenu = true;
-        const info = readingSectionInfo(el, ctx);
-        if (info) {
-          const offset = info.text.split("\n").slice(0, info.lineEnd + 1).join("\n").length, path = sectionPath, picked = selection && !selection.isCollapsed && selection.toString().trim() && protectedPath(path) ? readingExcerpts(selection, path) : void 0;
-          paletteItems(menuGroup(menu, "mark-sticky", "Post-it", "sticky-note"), "sticky", store.paletteFor("sticky"), (p) => void addStickyReading(path, { text: info.text, offset }, p, picked));
+        const path = sectionPath, snapshot = readingStickyInsertion(selection, path, event);
+        if (!stickyMenus.has(menu)) {
+          stickyMenus.add(menu);
+          paletteItems(menuGroup(menu, "mark-sticky", "Post-it", "sticky-note"), "sticky", store.paletteFor("sticky"), (p) => {
+            if (!snapshot) {
+              new import_obsidian43.Notice("This position could not be mapped exactly. Place the Post-it in ordinary text, outside links, code, or equations.");
+              return;
+            }
+            void addStickyReading(path, snapshot, p);
+          });
         }
         menu.addItem((i) => i.setSection("selection").setTitle("Annotation palette\u2026").setIcon("palette").onClick(() => palette.open()));
       }
@@ -46786,7 +47532,7 @@ function registerAnnotations(plugin, store) {
       }
     });
     el.dataset.studyCommentSection = "";
-    class ReadingAnnotations extends import_obsidian42.MarkdownRenderChild {
+    class ReadingAnnotations extends import_obsidian43.MarkdownRenderChild {
       pending = false;
       alive = false;
       stopSelection;
@@ -46810,7 +47556,11 @@ function registerAnnotations(plugin, store) {
       }
       refresh = (change) => this.run(change, false);
       run(change, retry) {
-        if (!this.alive || change && (!change.annotations || !change.paths.has(sectionPath))) return;
+        if (el.closest(excludedReading)) {
+          this.unload();
+          return;
+        }
+        if (!this.alive || change && (!change.annotations || !change.paths.has(sectionPath) || readingChanges.get(change) === false)) return;
         if (!retry) this.readinessAttempt = 0;
         const section = readingSectionInfo(el, ctx);
         if (!readingSectionReady(section)) {
@@ -46828,7 +47578,8 @@ function registerAnnotations(plugin, store) {
           this.readinessTimer = void 0;
         }
         this.readinessAttempt = 0;
-        const comments = withUnderlineLanes(store.data.comments.filter((c) => !c.resolved && store.isAnnotationVisible(c) && !c.questionId && c.kind !== "sticky"), section.text, sectionPath).flatMap((c) => readingCopies(c, sectionPath, section.text)).filter((c) => !c.anchors || readingAnchorApplies(el, c.excerpt));
+        const bounds = readingSectionBounds(section, sectionPath), index2 = readingCache.get(sectionPath, section.text, () => store.data.comments.filter((c) => !c.resolved && store.isAnnotationVisible(c) && !c.questionId && c.kind !== "sticky"));
+        const comments = index2.inSection(bounds.from, bounds.to).filter((c) => !c.anchors || readingAnchorApplies(el, c.excerpt, section));
         const marks2 = [...readingMarks(el), ...el.querySelectorAll("[data-study-math-ids]")], text2 = readingText(el);
         if (change && !el.querySelector(".study-has-underline,.study-math-underlined") && !marks2.some((m) => (m.dataset.studyMathIds ?? m.dataset.studyCommentIds ?? m.dataset.studyReadingComment ?? "").split(" ").some((id3) => change.commentIds.has(id3))) && !comments.some((c) => change.commentIds.has(c.id) && (c.excerpt.kind === "math" || c.quote && text2.includes(c.quote)))) return;
         if (!marks2.length && !comments.some((c) => c.excerpt.kind === "math" || c.quote && text2.includes(c.quote))) return;
@@ -46855,31 +47606,58 @@ function registerAnnotations(plugin, store) {
         paintReadingComments(el, comments, { hover: (mark, c) => store.hover(mark, store.data.comments.find((x) => x.id === c.id) ?? c), edit: (c) => store.edit(store.data.comments.find((x) => x.id === c.id) ?? c) });
       }
     }
-    ctx.addChild(ownReading(new ReadingAnnotations(el)));
-    class ReadingStickies extends import_obsidian42.MarkdownRenderChild {
+    owner.addChild(ownReading(new ReadingAnnotations(el)));
+    class ReadingStickies extends import_obsidian43.MarkdownRenderChild {
       alive = false;
       readinessTimer;
       readinessAttempt = 0;
+      sourceFrame;
+      sourcePaint = (change) => {
+        if (!change.paths.has(sectionPath)) return;
+        const win = el.ownerDocument.defaultView;
+        if (this.sourceFrame !== void 0) win.cancelAnimationFrame(this.sourceFrame);
+        this.sourceFrame = win.requestAnimationFrame(() => {
+          this.sourceFrame = void 0;
+          this.run(void 0, false);
+        });
+      };
       onload() {
         this.alive = true;
         store.listeners.add(this.paint);
-        this.register(() => store.listeners.delete(this.paint));
+        stickyRepaints.add(this.sourcePaint);
+        this.register(() => {
+          store.listeners.delete(this.paint);
+          stickyRepaints.delete(this.sourcePaint);
+        });
         this.paint();
       }
       onunload() {
         this.alive = false;
         if (this.readinessTimer) clearTimeout(this.readinessTimer);
+        if (this.sourceFrame !== void 0) el.ownerDocument.defaultView.cancelAnimationFrame(this.sourceFrame);
         this.clear();
+      }
+      warnings = /* @__PURE__ */ new Set();
+      warn(next) {
+        for (const id3 of this.warnings) if (!next.has(id3)) store.setStickyReadingWarning(id3, this, false);
+        for (const id3 of next) if (!this.warnings.has(id3)) store.setStickyReadingWarning(id3, this, true);
+        this.warnings = next;
       }
       clear() {
         el.querySelectorAll(".study-sticky-anchor").forEach((n) => n.remove());
       }
       paint = (change) => this.run(change, false);
       run(change, retry) {
+        if (el.closest(excludedReading)) {
+          this.unload();
+          return;
+        }
         if (!this.alive || change && (!change.annotations || !change.paths.has(sectionPath))) return;
+        if (change && change !== stickyChange) return;
         if (!retry) this.readinessAttempt = 0;
         const info = readingSectionInfo(el, ctx);
-        if (!readingSectionReady(info)) {
+        const expected = sourceRevisions.get(sectionPath)?.text;
+        if (!readingSectionReady(info) || expected !== void 0 && info?.text !== expected) {
           if (!this.readinessTimer && this.readinessAttempt < 7) {
             const delay = Math.min(1e3, 32 * 2 ** this.readinessAttempt++);
             this.readinessTimer = setTimeout(() => {
@@ -46894,25 +47672,28 @@ function registerAnnotations(plugin, store) {
           this.readinessTimer = void 0;
         }
         this.readinessAttempt = 0;
-        const placed = store.data.comments.filter((c) => c.kind === "sticky" && !c.deletedAt && c.path === sectionPath && placementOf(c));
+        const placed = stickies(sectionPath);
         if (!placed.length && !el.querySelector(".study-sticky-anchor")) return;
         this.clear();
-        let from = 0;
-        for (let i = 0, at = 0; i < info.lineStart && at >= 0; i++) {
-          at = info.text.indexOf("\n", at);
-          if (at < 0) break;
-          at++;
-          from = at;
-        }
-        let to = from;
-        for (let i = info.lineStart; i <= info.lineEnd; i++) {
-          const next = info.text.indexOf("\n", to);
-          to = next < 0 ? info.text.length : next + (i < info.lineEnd ? 1 : 0);
-        }
-        for (const c of placed) {
-          if (!store.isAnnotationVisible(c)) continue;
-          const end = cachedPlacementEnd(sectionPath, info.text, placementOf(c));
-          if (end === void 0 || !endInRange(end, from, to)) continue;
+        const { from, to } = readingSectionBounds(info, sectionPath);
+        const items = located(sectionPath, info.text, from, to).filter(({ c, end }) => store.isAnnotationVisible(c) && endInRange(end, from, to, placementOf(c).edge));
+        const mapping = items.length ? readingStickyMap(el, info, sectionPath) : void 0, pending = [], warnings = /* @__PURE__ */ new Set();
+        for (const { c, end } of items) {
+          const point = mapping?.point(end);
+          if (point) {
+            const parent = point.node.nodeType === 1 ? point.node : point.node.parentElement;
+            if (!parent?.closest("a,code,pre,.math,.internal-embed,button")) {
+              const range = el.ownerDocument.createRange();
+              range.setStart(point.node, point.offset);
+              range.collapse(true);
+              pending.push({ range, c });
+              continue;
+            }
+          }
+          if (placementOf(c).edge) {
+            warnings.add(c.id);
+            continue;
+          }
           const blocks = sourceBlocks(info.text), lineStart = info.text.lastIndexOf("\n", end - 1) + 1, heading2 = blocks.some((b) => b.from === lineStart && b.to === end) && /^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$/.exec(info.text.slice(lineStart, end));
           if (heading2) {
             const label = plain(heading2[2]), candidates = [...el.querySelectorAll("h" + heading2[1].length)];
@@ -46939,26 +47720,48 @@ function registerAnnotations(plugin, store) {
           }
           target.append(stickyMarker(el.ownerDocument, c, store));
         }
+        for (const { range, c } of pending.reverse()) range.insertNode(stickyMarker(el.ownerDocument, c, store));
+        for (const { c } of items) store.setStickyReadingWarning(c.id, this, warnings.has(c.id));
+        this.warn(warnings);
       }
     }
-    ctx.addChild(ownReading(new ReadingStickies(el)));
+    owner.addChild(ownReading(new ReadingStickies(el)));
   });
   plugin.registerEvent(plugin.app.vault.on("rename", (file, old) => {
     let changed = false;
-    for (const c of store.data.comments) if (c.path === old || c.path.startsWith(old + "/")) {
-      c.path = file.path + c.path.slice(old.length);
-      changed = true;
-    }
-    for (const c of store.data.comments) for (const a2 of c.anchors ?? []) if (a2.path === old || a2.path.startsWith(old + "/")) {
-      a2.path = file.path + a2.path.slice(old.length);
-      changed = true;
+    const paths = /* @__PURE__ */ new Set([old, file.path]), ids = /* @__PURE__ */ new Set();
+    for (const c of store.data.comments) {
+      if (c.path === old || c.path.startsWith(old + "/")) {
+        paths.add(c.path);
+        c.path = file.path + c.path.slice(old.length);
+        paths.add(c.path);
+        ids.add(c.id);
+        changed = true;
+      }
+      for (const a2 of c.anchors ?? []) if (a2.path === old || a2.path.startsWith(old + "/")) {
+        paths.add(a2.path);
+        a2.path = file.path + a2.path.slice(old.length);
+        paths.add(a2.path);
+        ids.add(c.id);
+        changed = true;
+      }
     }
     for (const q of store.data.questions) if (q.path === old || q.path.startsWith(old + "/")) {
       q.path = file.path + q.path.slice(old.length);
       changed = true;
     }
-    if (changed) void store.save({ paths: /* @__PURE__ */ new Set(), commentIds: /* @__PURE__ */ new Set(), annotations: false });
+    if (changed) {
+      invalidate();
+      store.clearStickyReadingWarnings();
+      void store.save({ paths, commentIds: ids, annotations: true });
+    }
   }));
+  return { onStudyContextMenu: (menu, event) => {
+    const target = event.target, root = target?.closest?.(".cm-editor");
+    if (!root || target?.closest(".cm-embed-block")) return;
+    const cm = import_view14.EditorView.findFromDOM(root), info = cm?.state.field(import_obsidian43.editorInfoField, false);
+    if (info?.editor) addEditorStickyMenu(menu, info.editor, info);
+  } };
 }
 
 // src/paper-source-path.ts
@@ -47105,7 +47908,7 @@ function linkedEvidence(text2) {
 }
 
 // src/evidence-links.ts
-var import_obsidian43 = require("obsidian");
+var import_obsidian44 = require("obsidian");
 var import_state14 = require("@codemirror/state");
 var import_view15 = require("@codemirror/view");
 var import_language14 = require("@codemirror/language");
@@ -47186,7 +47989,7 @@ function registerEvidenceLinks(plugin) {
     toDOM(view) {
       const span = view.dom.ownerDocument.createElement("span");
       span.className = "evidence-citation";
-      span.append((0, import_obsidian43.sanitizeHTMLToDom)(this.html));
+      span.append((0, import_obsidian44.sanitizeHTMLToDom)(this.html));
       span.setAttribute("role", "button");
       span.tabIndex = 0;
       span.setAttribute("aria-label", `Open supporting evidence for citation ${span.textContent}`);
@@ -47207,10 +48010,10 @@ function registerEvidenceLinks(plugin) {
   }
   const decorate = (view) => {
     const ranges = [];
-    const renderer = plugin.app.plugins?.plugins?.["obsidian-pandoc-reference-list"], file = view.state.field(import_obsidian43.editorInfoField, false)?.file;
+    const renderer = plugin.app.plugins?.plugins?.["obsidian-pandoc-reference-list"], file = view.state.field(import_obsidian44.editorInfoField, false)?.file;
     const cache5 = file ? renderer?.bibManager?.getCacheForPath(file.path) : null;
     const from = view.state.doc.lineAt(view.viewport.from).from, to = view.state.doc.lineAt(view.viewport.to).to, text2 = view.state.doc.sliceString(from, to);
-    const linked = renderer?.settings.renderCitations && view.state.field(import_obsidian43.editorLivePreviewField, false) ? linkedEvidence(text2) : [];
+    const linked = renderer?.settings.renderCitations && view.state.field(import_obsidian44.editorLivePreviewField, false) ? linkedEvidence(text2) : [];
     const replaced = [];
     for (const f of linked) {
       const start = from + f.citeFrom, end = from + f.to;
@@ -47256,7 +48059,7 @@ function registerEvidenceLinks(plugin) {
 }
 
 // src/evidence-workflow.ts
-var import_obsidian45 = require("obsidian");
+var import_obsidian46 = require("obsidian");
 
 // src/citation-review-report.ts
 function sourceTableLocations(source, tables) {
@@ -47348,7 +48151,7 @@ function reviewMarkdown(report, jsonName) {
 }
 
 // src/evidence-reader.ts
-var import_obsidian44 = require("obsidian");
+var import_obsidian45 = require("obsidian");
 var READER = "study-evidence-reader";
 function imageFile(app, source, path) {
   const direct = app.metadataCache.getFirstLinkpathDest(paperSourcePath(app, path), paperSourcePath(app, source));
@@ -47376,7 +48179,7 @@ function paint(el, s) {
   el.style.setProperty("--evidence-dark", s.darkColor || s.color || "#247441");
   el.style.setProperty("--evidence-opacity", String(s.opacity ?? 0.15));
 }
-var EvidenceReader = class extends import_obsidian44.ItemView {
+var EvidenceReader = class extends import_obsidian45.ItemView {
   constructor(leaf, choose, edit, identity) {
     super(leaf);
     this.choose = choose;
@@ -47426,7 +48229,7 @@ var EvidenceReader = class extends import_obsidian44.ItemView {
     await this.app.vault.create(jsonName, JSON.stringify(report, null, 2) + "\n");
     const note = await this.app.vault.create(stem + ".md", reviewMarkdown(report, jsonName));
     await this.app.workspace.getLeaf("tab").openFile(note);
-    new import_obsidian44.Notice("Citation review saved as Markdown and JSON.");
+    new import_obsidian45.Notice("Citation review saved as Markdown and JSON.");
   }
   scheduleRefresh() {
     clearTimeout(this.refreshTimer);
@@ -47451,7 +48254,7 @@ var EvidenceReader = class extends import_obsidian44.ItemView {
     this.claim = claim;
     this.paper = paper;
     this.component?.unload();
-    this.component = new import_obsidian44.Component();
+    this.component = new import_obsidian45.Component();
     this.component.load();
     this.contentEl.empty();
     this.contentEl.addClass("evidence-reader");
@@ -47459,8 +48262,8 @@ var EvidenceReader = class extends import_obsidian44.ItemView {
     const toolbar = this.contentEl.createDiv("evidence-toolbar");
     toolbar.oncontextmenu = (e) => {
       e.preventDefault();
-      const menu = new import_obsidian44.Menu();
-      menu.addItem((i) => i.setTitle("Export citation review report").setIcon("file-output").onClick(() => void this.exportReview().catch((error) => new import_obsidian44.Notice(error.message))));
+      const menu = new import_obsidian45.Menu();
+      menu.addItem((i) => i.setTitle("Export citation review report").setIcon("file-output").onClick(() => void this.exportReview().catch((error) => new import_obsidian45.Notice(error.message))));
       menu.showAtMouseEvent(e);
     };
     toolbar.createEl("strong", { text: claim.label });
@@ -47473,7 +48276,7 @@ var EvidenceReader = class extends import_obsidian44.ItemView {
       selectionActions.classList.toggle("is-editing", this.editing);
       if (!this.editing) selectionActions.empty();
       editButton.setText(this.editing ? "Finish selecting" : "Edit selections");
-      new import_obsidian44.Notice(this.editing ? "Select text with the mouse to add a citation selection. Click an existing highlight to replace its passage." : "Selection editing finished.");
+      new import_obsidian45.Notice(this.editing ? "Select text with the mouse to add a citation selection. Click an existing highlight to replace its passage." : "Selection editing finished.");
     };
     const selectionActions = toolbar.createDiv("evidence-selection-actions");
     selectionActions.classList.toggle("is-editing", this.editing);
@@ -47483,7 +48286,7 @@ var EvidenceReader = class extends import_obsidian44.ItemView {
     review.onchange = () => {
       if (review.value === "") return;
       const i = Number(review.value), s = paper.selections[i];
-      const m = new import_obsidian44.Modal(this.app);
+      const m = new import_obsidian45.Modal(this.app);
       m.titleEl.setText("Review citation selection");
       if (s.quote) m.contentEl.createEl("blockquote", { text: s.quote });
       m.contentEl.createEl("p", { text: s.comment || "No comment attached." });
@@ -47497,7 +48300,7 @@ var EvidenceReader = class extends import_obsidian44.ItemView {
         this.replacing = i;
         selectionActions.classList.add("is-editing");
         editButton.setText("Finish selecting");
-        new import_obsidian44.Notice("Select the corrected passage, then choose Replace selection. The old record stays unchanged until you save.");
+        new import_obsidian45.Notice("Select the corrected passage, then choose Replace selection. The old record stays unchanged until you save.");
       };
       m.open();
       review.value = "";
@@ -47505,7 +48308,7 @@ var EvidenceReader = class extends import_obsidian44.ItemView {
     toolbar.createEl("button", { text: mark ? "Clear highlights" : "Show highlights" }).onclick = () => void this.show(claim, paper, !mark);
     toolbar.createEl("button", { text: "Open original" }).onclick = () => void this.app.workspace.openLinkText(paperSourcePath(this.app, paper.path), "", "tab");
     const file = this.app.vault.getAbstractFileByPath(paperSourcePath(this.app, paper.path));
-    if (!(file instanceof import_obsidian44.TFile)) {
+    if (!(file instanceof import_obsidian45.TFile)) {
       this.contentEl.createEl("p", { text: `Unavailable paper: ${paper.path}`, cls: "evidence-error" });
       return;
     }
@@ -47513,7 +48316,7 @@ var EvidenceReader = class extends import_obsidian44.ItemView {
     if (generation !== this.generation) return;
     this.source = source;
     const body = this.contentEl.createDiv("markdown-rendered evidence-paper");
-    await import_obsidian44.MarkdownRenderer.render(this.app, renderablePaper(this.source), body, paperSourcePath(this.app, paper.path), this.component);
+    await import_obsidian45.MarkdownRenderer.render(this.app, renderablePaper(this.source), body, paperSourcePath(this.app, paper.path), this.component);
     if (generation !== this.generation) return;
     body.addEventListener("mouseup", () => {
       if (!this.editing) return;
@@ -47583,7 +48386,7 @@ var EvidenceReader = class extends import_obsidian44.ItemView {
     el.setAttribute("aria-label", `Citation selection ${index2 + 1}: ${s.comment || "Open comment"}`);
     el.title = s.comment || "Open citation comment";
     const show = () => {
-      const m = new import_obsidian44.Modal(this.app);
+      const m = new import_obsidian45.Modal(this.app);
       m.titleEl.setText(`Citation source \xB7 ${this.paper?.label}`);
       if (s.quote) m.contentEl.createEl("blockquote", { text: s.quote });
       m.contentEl.createEl("p", { text: s.comment || "No comment attached." });
@@ -47597,7 +48400,7 @@ var EvidenceReader = class extends import_obsidian44.ItemView {
         this.replacing = index2;
         this.contentEl.querySelector(".evidence-selection-actions")?.classList.add("is-editing");
         this.contentEl.querySelector(".evidence-paper")?.classList.add("is-replacing");
-        new import_obsidian44.Notice("Select the replacement passage with the mouse, then choose Replace selection in the toolbar.");
+        new import_obsidian45.Notice("Select the replacement passage with the mouse, then choose Replace selection in the toolbar.");
       };
       resizeCommentWindow(m);
       m.open();
@@ -47688,12 +48491,12 @@ function registerEvidenceWorkflow(plugin) {
       try {
         presets = JSON.parse(await app.vault.adapter.read(presetPath));
       } catch {
-        new import_obsidian45.Notice("Could not read evidence color presets.");
+        new import_obsidian46.Notice("Could not read evidence color presets.");
       }
     }
   });
   let saveQueue = Promise.resolve();
-  const fail = (e) => new import_obsidian45.Notice(e instanceof Error ? e.message : String(e), 1e4);
+  const fail = (e) => new import_obsidian46.Notice(e instanceof Error ? e.message : String(e), 1e4);
   const load = async (file) => {
     if (!safePath(file) || !file.endsWith(".yaml")) throw Error("Evidence file must be a vault-relative .yaml path.");
     const raw = await app.vault.adapter.read(file);
@@ -47715,10 +48518,10 @@ function registerEvidenceWorkflow(plugin) {
     return job;
   };
   function choose(claim, open) {
-    const m = new import_obsidian45.Modal(app);
+    const m = new import_obsidian46.Modal(app);
     m.titleEl.setText(claim.label);
     for (const paper of claim.papers) {
-      const available = app.vault.getAbstractFileByPath(paperSourcePath(app, paper.path)) instanceof import_obsidian45.TFile;
+      const available = app.vault.getAbstractFileByPath(paperSourcePath(app, paper.path)) instanceof import_obsidian46.TFile;
       const b = m.contentEl.createEl("button", { text: `${paper.label} [${paper.citekey}]${available ? "" : " \u2014 file missing"}`, cls: "evidence-paper-choice" });
       b.onclick = () => {
         m.close();
@@ -47766,13 +48569,13 @@ function registerEvidenceWorkflow(plugin) {
     return true;
   } });
   plugin.addCommand({ id: "open-evidence-record", name: "Open Citation Source Viewer", callback: () => {
-    const m = new import_obsidian45.Modal(app);
+    const m = new import_obsidian46.Modal(app);
     m.titleEl.setText("Open Citation Source Viewer");
     let file = lastFile, id3 = lastID, window2 = true;
-    new import_obsidian45.Setting(m.contentEl).setName("Citation record file").addText((t2) => t2.setValue(file).onChange((v) => file = v));
-    new import_obsidian45.Setting(m.contentEl).setName("Claim ID").addText((t2) => t2.setValue(id3).onChange((v) => id3 = v));
-    new import_obsidian45.Setting(m.contentEl).setName("Separate window").addToggle((t2) => t2.setValue(true).onChange((v) => window2 = v));
-    new import_obsidian45.Setting(m.contentEl).addButton((b) => b.setButtonText("Open").onClick(() => {
+    new import_obsidian46.Setting(m.contentEl).setName("Citation record file").addText((t2) => t2.setValue(file).onChange((v) => file = v));
+    new import_obsidian46.Setting(m.contentEl).setName("Claim ID").addText((t2) => t2.setValue(id3).onChange((v) => id3 = v));
+    new import_obsidian46.Setting(m.contentEl).setName("Separate window").addToggle((t2) => t2.setValue(true).onChange((v) => window2 = v));
+    new import_obsidian46.Setting(m.contentEl).addButton((b) => b.setButtonText("Open").onClick(() => {
       m.close();
       void openRecord({ file, id: id3, window: String(window2) });
     }));
@@ -47781,7 +48584,7 @@ function registerEvidenceWorkflow(plugin) {
   function colorEditor(m, s) {
     const redraw = () => {
       box.empty();
-      new import_obsidian45.Setting(box).setName("Color preset").addDropdown((d) => {
+      new import_obsidian46.Setting(box).setName("Color preset").addDropdown((d) => {
         d.addOption("", "Custom");
         Object.keys(presets).filter((k) => k !== "$default").forEach((k) => d.addOption(k, k));
         d.onChange((k) => {
@@ -47792,7 +48595,7 @@ function registerEvidenceWorkflow(plugin) {
         });
       });
       let picker, hex;
-      new import_obsidian45.Setting(box).setName("Color").addColorPicker((p) => {
+      new import_obsidian46.Setting(box).setName("Color").addColorPicker((p) => {
         picker = p;
         p.setValue(s.color || "#247441").onChange((v) => {
           s.color = v;
@@ -47805,10 +48608,10 @@ function registerEvidenceWorkflow(plugin) {
           if (/^#[\da-f]{6}$/i.test(v)) picker.setValue(v);
         });
       });
-      new import_obsidian45.Setting(box).setName("Dark-mode color (optional)").addText((t2) => t2.setPlaceholder("Same color if empty").setValue(s.darkColor || "").onChange((v) => s.darkColor = v || void 0));
-      new import_obsidian45.Setting(box).setName("Fill opacity").addSlider((t2) => t2.setLimits(0, 1, 0.05).setValue(s.opacity ?? 0.15).setDynamicTooltip().onChange((v) => s.opacity = v));
+      new import_obsidian46.Setting(box).setName("Dark-mode color (optional)").addText((t2) => t2.setPlaceholder("Same color if empty").setValue(s.darkColor || "").onChange((v) => s.darkColor = v || void 0));
+      new import_obsidian46.Setting(box).setName("Fill opacity").addSlider((t2) => t2.setLimits(0, 1, 0.05).setValue(s.opacity ?? 0.15).setDynamicTooltip().onChange((v) => s.opacity = v));
       let name2 = "";
-      new import_obsidian45.Setting(box).setName("Save named preset").addText((t2) => t2.setPlaceholder("Your color meaning").onChange((v) => name2 = v)).addButton((b) => b.setButtonText("Save preset").onClick(async () => {
+      new import_obsidian46.Setting(box).setName("Save named preset").addText((t2) => t2.setPlaceholder("Your color meaning").onChange((v) => name2 = v)).addButton((b) => b.setButtonText("Save preset").onClick(async () => {
         try {
           validateSelection(s);
           if (!name2.trim()) throw Error("Enter a preset name.");
@@ -47822,12 +48625,12 @@ function registerEvidenceWorkflow(plugin) {
     };
     const box = m.contentEl.createDiv();
     redraw();
-    new import_obsidian45.Setting(m.contentEl).addButton((b) => b.setButtonText("Use these colors by default").onClick(async () => {
+    new import_obsidian46.Setting(m.contentEl).addButton((b) => b.setButtonText("Use these colors by default").onClick(async () => {
       try {
         validateSelection(s);
         presets.$default = { color: s.color || "#247441", darkColor: s.darkColor, opacity: s.opacity ?? 0.15 };
         await app.vault.adapter.write(presetPath, JSON.stringify(presets, null, 2));
-        new import_obsidian45.Notice("Default evidence colors saved.");
+        new import_obsidian46.Notice("Default evidence colors saved.");
       } catch (e) {
         fail(e);
       }
@@ -47835,7 +48638,7 @@ function registerEvidenceWorkflow(plugin) {
   }
   async function edit(source, selection, index2) {
     const s = { color: "#247441", opacity: 0.15, ...presets.$default, ...selection };
-    const m = new import_obsidian45.Modal(app);
+    const m = new import_obsidian46.Modal(app);
     m.modalEl.addClass("evidence-editor");
     m.titleEl.setText(index2 === void 0 ? "Save citation selection" : "Edit citation selection");
     let file = lastFile, id3 = lastID, key2 = lastKey, label = current?.paper.path === source ? current.paper.label : source.split("/").pop()?.replace(/\.md$/, "") || source, claimLabel = "";
@@ -47846,14 +48649,14 @@ function registerEvidenceWorkflow(plugin) {
     } catch {
     }
     let comment2;
-    new import_obsidian45.Setting(m.contentEl).setName("Comment").setClass("evidence-comment-field").addTextArea((t2) => {
+    new import_obsidian46.Setting(m.contentEl).setName("Comment").setClass("evidence-comment-field").addTextArea((t2) => {
       comment2 = t2.inputEl;
       t2.setPlaceholder("Add a comment on this source passage\u2026").setValue(s.comment || "").onChange((v) => s.comment = v);
     });
     const details = m.contentEl.createEl("details", { cls: "evidence-record-details" });
     details.createEl("summary", { text: "Citation record and selected passage" });
     if (index2 === void 0 && !id3) details.open = true;
-    new import_obsidian45.Setting(details).setName("Citation record file").addText((t2) => t2.setValue(file).onChange(async (v) => {
+    new import_obsidian46.Setting(details).setName("Citation record file").addText((t2) => t2.setValue(file).onChange(async (v) => {
       file = v;
       try {
         snapshot = (await load(v)).raw;
@@ -47861,19 +48664,19 @@ function registerEvidenceWorkflow(plugin) {
         snapshot = "";
       }
     }));
-    new import_obsidian45.Setting(details).setName("Claim ID").addText((t2) => t2.setValue(id3).onChange((v) => id3 = v));
-    new import_obsidian45.Setting(details).setName("Claim label (for new claim)").addText((t2) => t2.onChange((v) => claimLabel = v));
-    new import_obsidian45.Setting(details).setName("Paper citekey").addText((t2) => t2.setValue(key2).onChange((v) => key2 = v));
-    new import_obsidian45.Setting(details).setName("Paper label").addText((t2) => t2.setValue(label).onChange((v) => label = v));
+    new import_obsidian46.Setting(details).setName("Claim ID").addText((t2) => t2.setValue(id3).onChange((v) => id3 = v));
+    new import_obsidian46.Setting(details).setName("Claim label (for new claim)").addText((t2) => t2.onChange((v) => claimLabel = v));
+    new import_obsidian46.Setting(details).setName("Paper citekey").addText((t2) => t2.setValue(key2).onChange((v) => key2 = v));
+    new import_obsidian46.Setting(details).setName("Paper label").addText((t2) => t2.setValue(label).onChange((v) => label = v));
     if (s.quote) {
-      new import_obsidian45.Setting(details).setName("Exact quote").addTextArea((t2) => t2.setValue(s.quote).onChange((v) => s.quote = v));
-      new import_obsidian45.Setting(details).setName("Immediately preceding text (optional)").addTextArea((t2) => t2.setValue(s.before || "").onChange((v) => s.before = v || void 0));
-      new import_obsidian45.Setting(details).setName("Immediately following text (optional)").addTextArea((t2) => t2.setValue(s.after || "").onChange((v) => s.after = v || void 0));
+      new import_obsidian46.Setting(details).setName("Exact quote").addTextArea((t2) => t2.setValue(s.quote).onChange((v) => s.quote = v));
+      new import_obsidian46.Setting(details).setName("Immediately preceding text (optional)").addTextArea((t2) => t2.setValue(s.before || "").onChange((v) => s.before = v || void 0));
+      new import_obsidian46.Setting(details).setName("Immediately following text (optional)").addTextArea((t2) => t2.setValue(s.after || "").onChange((v) => s.after = v || void 0));
     }
     colorEditor(m, s);
     const footer = m.modalEl.createDiv("evidence-editor-footer");
     const output = footer.createDiv();
-    new import_obsidian45.Setting(footer).addButton((b) => b.setButtonText("Save and copy link").setCta().onClick(async () => {
+    new import_obsidian46.Setting(footer).addButton((b) => b.setButtonText("Save and copy link").setCta().onClick(async () => {
       try {
         if (!safePath(file) || !file.endsWith(".yaml") || !id3 || !key2) throw Error("Enter a vault-relative YAML file, claim ID and citekey.");
         validateSelection(s);
@@ -47900,7 +48703,7 @@ function registerEvidenceWorkflow(plugin) {
         await navigator.clipboard.writeText(`[evidence](${uri})`);
         output.setText("Saved and copied. Paste immediately after the Pandoc citation.");
         b.setDisabled(true);
-        new import_obsidian45.Notice("Evidence saved; link copied.");
+        new import_obsidian46.Notice("Evidence saved; link copied.");
         if (leaf && current?.file === file && current?.id === id3) {
           current = { file, id: id3, claim, paper, raw: snapshot, keys: claim.papers.map((p) => p.citekey) };
           await leaf.view.show(claim, paper);
@@ -47953,7 +48756,7 @@ function registerEvidenceWorkflow(plugin) {
   }
   plugin.registerMarkdownPostProcessor((el, ctx) => {
     if (el.closest(".study-margin-pane")) return;
-    const owner = ownReading(new import_obsidian45.MarkdownRenderChild(el));
+    const owner = ownReading(new import_obsidian46.MarkdownRenderChild(el));
     ctx.addChild(owner);
     owner.registerDomEvent(el, "contextmenu", (e) => {
       if (e.target.closest(".modal")) return;
@@ -47964,7 +48767,7 @@ function registerEvidenceWorkflow(plugin) {
       if (shared.studyEvidenceMenu) return;
       shared.studyEvidenceMenu = true;
       e.preventDefault();
-      const menu = import_obsidian45.Menu.forEvent(e);
+      const menu = import_obsidian46.Menu.forEvent(e);
       if (quote) menu.addItem((i) => i.setSection("study-evidence").setTitle("Save selected text as citation source\u2026").onClick(() => void edit(ctx.sourcePath, { quote }).catch(fail)));
       if (img) {
         const src = img.closest(".internal-embed")?.getAttribute("src") || img.getAttribute("src") || "";
@@ -48024,7 +48827,7 @@ function registerEvidenceWorkflow(plugin) {
 }
 
 // src/evidence.ts
-var import_obsidian46 = require("obsidian");
+var import_obsidian47 = require("obsidian");
 
 // src/evidence-model.ts
 function parseEvidence(raw) {
@@ -48063,7 +48866,7 @@ function registerEvidence(plugin) {
   };
   const render = (leaf, target) => {
     const view = leaf.view;
-    if (!(view instanceof import_obsidian46.MarkdownView) || view.file?.path !== target.path) {
+    if (!(view instanceof import_obsidian47.MarkdownView) || view.file?.path !== target.path) {
       clear(leaf);
       return;
     }
@@ -48096,7 +48899,7 @@ function registerEvidence(plugin) {
           piece.replaceWith(mark);
           mark.append(piece);
           const show = () => {
-            const modal = new import_obsidian46.Modal(plugin.app);
+            const modal = new import_obsidian47.Modal(plugin.app);
             modal.titleEl.setText("Supporting passage");
             modal.contentEl.createEl("blockquote", { text: passage.quote });
             modal.contentEl.createEl("p", { text: passage.comment || "No comment attached." });
@@ -48135,7 +48938,7 @@ function registerEvidence(plugin) {
       Object.assign(mark.style, { left: `${x * 100}%`, top: `${y * 100}%`, width: `${w * 100}%`, height: `${h * 100}%` });
       mark.title = area.comment || "Supporting area";
       mark.onclick = () => {
-        const modal = new import_obsidian46.Modal(plugin.app);
+        const modal = new import_obsidian47.Modal(plugin.app);
         modal.titleEl.setText("Supporting area");
         modal.contentEl.createEl("p", { text: area.comment || "No comment attached." });
         resizeCommentWindow(modal);
@@ -48143,7 +48946,7 @@ function registerEvidence(plugin) {
       };
     }
     root.querySelector(".study-evidence-highlight,.study-evidence-area")?.scrollIntoView({ block: "center" });
-    if (missed) new import_obsidian46.Notice(`${missed} supporting passage(s) could not be uniquely located. No approximate match was highlighted.`);
+    if (missed) new import_obsidian47.Notice(`${missed} supporting passage(s) could not be uniquely located. No approximate match was highlighted.`);
   };
   const imageTarget = (image) => image.closest(".internal-embed")?.getAttribute("src") || image.getAttribute("src") || "";
   plugin.registerObsidianProtocolHandler("study-evidence", async (params) => {
@@ -48155,7 +48958,7 @@ function registerEvidence(plugin) {
       const target = parseEvidence(params.target || "");
       target.path = paperSourcePath(plugin.app, target.path);
       const file = plugin.app.vault.getAbstractFileByPath(target.path);
-      if (!(file instanceof import_obsidian46.TFile)) throw Error("Source paper is not present in this vault");
+      if (!(file instanceof import_obsidian47.TFile)) throw Error("Source paper is not present in this vault");
       const leaf = plugin.app.workspace.getLeaf(target.window ? "window" : "tab");
       await leaf.openFile(file, { state: { mode: "preview" } });
       await plugin.app.workspace.revealLeaf(leaf);
@@ -48177,7 +48980,7 @@ function registerEvidence(plugin) {
         win.clearTimeout(timer);
       });
     } catch (e) {
-      new import_obsidian46.Notice(e instanceof Error ? e.message : "Invalid evidence link");
+      new import_obsidian47.Notice(e instanceof Error ? e.message : "Invalid evidence link");
     }
   });
   plugin.addCommand({ id: "clear-evidence-highlights", name: "Clear temporary evidence highlights", callback: () => {
@@ -48185,7 +48988,7 @@ function registerEvidence(plugin) {
     for (const leaf of plugin.app.workspace.getLeavesOfType("study-evidence-reader")) void leaf.view.clear();
   } });
   plugin.registerEvent(plugin.app.workspace.on("layout-change", () => {
-    for (const [leaf, target] of active) if (!(leaf.view instanceof import_obsidian46.MarkdownView) || leaf.view.file?.path !== target.path) clear(leaf);
+    for (const [leaf, target] of active) if (!(leaf.view instanceof import_obsidian47.MarkdownView) || leaf.view.file?.path !== target.path) clear(leaf);
   }));
   plugin.register(() => {
     for (const leaf of [...active.keys()]) clear(leaf);
@@ -48193,16 +48996,16 @@ function registerEvidence(plugin) {
   plugin.addCommand({ id: "copy-evidence-link", name: "Copy evidence link to selected passage", editorCheckCallback: (checking, editor, info) => {
     if (!info.file || !editor.getSelection().trim()) return false;
     if (checking) return true;
-    const path = info.file.path, quote = editor.getSelection(), modal = new import_obsidian46.Modal(plugin.app);
+    const path = info.file.path, quote = editor.getSelection(), modal = new import_obsidian47.Modal(plugin.app);
     let comment2 = "", popout = true;
     modal.titleEl.setText("Copy evidence link");
     modal.contentEl.createEl("p", { text: "Select plain rendered text. The link carries the passage and optional comment; nothing is added to the paper." });
-    new import_obsidian46.Setting(modal.contentEl).setName("Comment").addTextArea((t2) => t2.onChange((v) => comment2 = v));
-    new import_obsidian46.Setting(modal.contentEl).setName("Open in separate window").addToggle((t2) => t2.setValue(true).onChange((v) => popout = v));
-    new import_obsidian46.Setting(modal.contentEl).addButton((b) => b.setButtonText("Copy link").setCta().onClick(async () => {
+    new import_obsidian47.Setting(modal.contentEl).setName("Comment").addTextArea((t2) => t2.onChange((v) => comment2 = v));
+    new import_obsidian47.Setting(modal.contentEl).setName("Open in separate window").addToggle((t2) => t2.setValue(true).onChange((v) => popout = v));
+    new import_obsidian47.Setting(modal.contentEl).addButton((b) => b.setButtonText("Copy link").setCta().onClick(async () => {
       await navigator.clipboard.writeText(`[Supporting passage](${evidenceURI(plugin.app.vault.getName(), { path, passages: [{ quote, comment: comment2 }], window: popout })})`);
       modal.close();
-      new import_obsidian46.Notice("Evidence link copied");
+      new import_obsidian47.Notice("Evidence link copied");
     }));
     modal.open();
     return true;
@@ -48210,8 +49013,8 @@ function registerEvidence(plugin) {
 }
 
 // src/note-grouping-ui.ts
-var import_obsidian47 = require("obsidian");
-var NoteGrouping = class extends import_obsidian47.Component {
+var import_obsidian48 = require("obsidian");
+var NoteGrouping = class extends import_obsidian48.Component {
   constructor(host, view, path, ended, complete) {
     super();
     this.host = host;
@@ -48275,7 +49078,7 @@ var NoteGrouping = class extends import_obsidian47.Component {
         await this.complete([...this.selected].map(Number));
         this.unload();
       } catch (e) {
-        new import_obsidian47.Notice(String(e));
+        new import_obsidian48.Notice(String(e));
       } finally {
         this.reviewing = false;
       }
@@ -48330,10 +49133,10 @@ function groupOccurrences(source, lines, title, prompt = "") {
 }
 
 // src/note-removal.ts
-var import_obsidian49 = require("obsidian");
+var import_obsidian50 = require("obsidian");
 
 // src/question-deletion.ts
-var import_obsidian48 = require("obsidian");
+var import_obsidian49 = require("obsidian");
 
 // src/deletion-model.ts
 function removeQuestionEmbeds(raw, ids) {
@@ -48357,7 +49160,7 @@ function examUsesQuestions(exam, selected, bank) {
 
 // src/question-deletion.ts
 async function readCurrent(app, file) {
-  const views = app.workspace.getLeavesOfType("markdown").map((l) => l.view).filter((v) => v instanceof import_obsidian48.MarkdownView && v.file?.path === file.path && v.getMode() === "source");
+  const views = app.workspace.getLeavesOfType("markdown").map((l) => l.view).filter((v) => v instanceof import_obsidian49.MarkdownView && v.file?.path === file.path && v.getMode() === "source");
   const sources = views.map((v) => v.editor.getValue());
   if (new Set(sources).size > 1) throw Error(`Open copies of ${file.path} disagree. Save or close those copies first.`);
   return sources[0] ?? await app.vault.read(file);
@@ -48366,7 +49169,7 @@ async function plan(host, questions, bank, notePath) {
   const app = host.app, ids = new Set(questions.map((q) => q.definition.id)), out = { notePath, questions: [], changes: [], blocked: [] };
   for (const q of questions) {
     const file = app.vault.getAbstractFileByPath(q.path);
-    if (!(file instanceof import_obsidian48.TFile)) throw Error(`Question disappeared: ${q.definition.title}`);
+    if (!(file instanceof import_obsidian49.TFile)) throw Error(`Question disappeared: ${q.definition.title}`);
     const raw = await readCurrent(app, file);
     if (raw !== q.raw) throw Error(`Question changed: ${q.definition.title}. Reopen deletion to review its current version.`);
     out.questions.push({ q, file, raw });
@@ -48422,7 +49225,7 @@ async function applyLocked(host, p, recheck) {
       if (await readCurrent(app, c.file) !== c.before) throw Error(`Note changed: ${c.file.path}`);
       for (const leaf of app.workspace.getLeavesOfType("markdown")) {
         const v = leaf.view;
-        if (v instanceof import_obsidian48.MarkdownView && v.file?.path === c.file.path) await v.save();
+        if (v instanceof import_obsidian49.MarkdownView && v.file?.path === c.file.path) await v.save();
       }
       await app.vault.process(c.file, (raw) => {
         if (raw !== c.before) throw Error(`Note changed: ${c.file.path}`);
@@ -48456,9 +49259,9 @@ async function applyLocked(host, p, recheck) {
     throw Error(`${String(error)}. ${restored ? "Changes rolled back." : "Some changes could not be rolled back."} Recovery copy: ${backup.path}`);
   }
   const removed = p.changes.reduce((n, c) => n + c.count, 0);
-  new import_obsidian48.Notice(p.notePath ? `Removed ${removed} question card${removed === 1 ? "" : "s"} from this note. Question files and other notes are unchanged.` : `Moved ${p.questions.length} question${p.questions.length === 1 ? "" : "s"} to vault trash. Recorded history is preserved. Recovery: ${backup.path}`, 12e3);
+  new import_obsidian49.Notice(p.notePath ? `Removed ${removed} question card${removed === 1 ? "" : "s"} from this note. Question files and other notes are unchanged.` : `Moved ${p.questions.length} question${p.questions.length === 1 ? "" : "s"} to vault trash. Recorded history is preserved. Recovery: ${backup.path}`, 12e3);
 }
-var DeleteQuestions = class extends import_obsidian48.Modal {
+var DeleteQuestions = class extends import_obsidian49.Modal {
   constructor(host, questions, done, notePath) {
     super(host.app);
     this.host = host;
@@ -48534,7 +49337,7 @@ var DeleteQuestions = class extends import_obsidian48.Modal {
 };
 
 // src/note-removal.ts
-var NoteRemoval = class extends import_obsidian49.Component {
+var NoteRemoval = class extends import_obsidian50.Component {
   constructor(host, view, path, ended) {
     super();
     this.host = host;
@@ -48596,13 +49399,13 @@ var NoteRemoval = class extends import_obsidian49.Component {
         }
         const bank = await this.host.bank(), questions = bank.filter((q) => this.selected.has(q.definition.id));
         if (!questions.length) {
-          new import_obsidian49.Notice("The selected questions are no longer available.");
+          new import_obsidian50.Notice("The selected questions are no longer available.");
           return;
         }
         const modal = new DeleteQuestions(this.host, questions, () => this.unload(), this.path);
         modal.open();
       } catch (e) {
-        new import_obsidian49.Notice(String(e));
+        new import_obsidian50.Notice(String(e));
       } finally {
         this.reviewing = false;
       }
@@ -48647,7 +49450,7 @@ var NoteRemoval = class extends import_obsidian49.Component {
 };
 
 // src/figure-retirement.ts
-var import_obsidian50 = require("obsidian");
+var import_obsidian51 = require("obsidian");
 var hash3 = async (b) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", b)), (x) => x.toString(16).padStart(2, "0")).join("");
 function registerFigureRetirement(plugin, store) {
   let stopped = false, timer, pending = Promise.resolve();
@@ -48659,7 +49462,7 @@ function registerFigureRetirement(plugin, store) {
   };
   const changed = async (path, f) => {
     const note = plugin.app.vault.getAbstractFileByPath(path);
-    if (!(note instanceof import_obsidian50.TFile)) return false;
+    if (!(note instanceof import_obsidian51.TFile)) return false;
     const bridge = plugin.app.plugins.plugins["slide-studio"]?.scientificStudyBridge;
     if (bridge?.version !== 1) return false;
     const source = await plugin.app.vault.read(note);
@@ -48670,14 +49473,14 @@ function registerFigureRetirement(plugin, store) {
       const paths = bridge.panels(source, f.figureId), hashes = [];
       for (const path2 of paths) {
         const image2 = plugin.app.vault.getAbstractFileByPath(path2) ?? plugin.app.metadataCache.getFirstLinkpathDest(path2, note.path);
-        if (!(image2 instanceof import_obsidian50.TFile)) return false;
+        if (!(image2 instanceof import_obsidian51.TFile)) return false;
         watch(image2.path, path2);
         hashes.push(await hash3(await plugin.app.vault.readBinary(image2)));
       }
       return hashes.includes(f.imageHash) ? false : JSON.stringify([paths, hashes]);
     }
     const image = plugin.app.vault.getAbstractFileByPath(f.imagePath);
-    if (!(image instanceof import_obsidian50.TFile)) return false;
+    if (!(image instanceof import_obsidian51.TFile)) return false;
     const current = await hash3(await plugin.app.vault.readBinary(image));
     return current !== f.imageHash ? current : false;
   };
@@ -48715,13 +49518,13 @@ function registerFigureRetirement(plugin, store) {
     } catch (e) {
       if (!reported.has(key2)) {
         reported.add(key2);
-        new import_obsidian50.Notice("Figure questions need review before retirement: " + String(e), 15e3);
+        new import_obsidian51.Notice("Figure questions need review before retirement: " + String(e), 15e3);
       }
     }
   };
   const run = (notes) => {
     pending = pending.then(() => check3(notes)).catch((e) => {
-      new import_obsidian50.Notice("Could not check figure questions: " + String(e));
+      new import_obsidian51.Notice("Could not check figure questions: " + String(e));
     });
     return pending;
   };
@@ -48754,11 +49557,11 @@ function registerFigureRetirement(plugin, store) {
       if (seen.has(key2)) continue;
       seen.add(key2);
       const note = plugin.app.vault.getAbstractFileByPath(c.path);
-      if (!(note instanceof import_obsidian50.TFile)) continue;
+      if (!(note instanceof import_obsidian51.TFile)) continue;
       try {
         for (const path of bridge.panels(await plugin.app.vault.cachedRead(note), f.figureId)) {
           const image = plugin.app.vault.getAbstractFileByPath(path) ?? plugin.app.metadataCache.getFirstLinkpathDest(path, c.path);
-          if (image instanceof import_obsidian50.TFile) watch(image.path, c.path);
+          if (image instanceof import_obsidian51.TFile) watch(image.path, c.path);
         }
       } catch {
       }
@@ -48781,11 +49584,11 @@ function registerFigureRetirement(plugin, store) {
 }
 
 // src/shortcut-guide.ts
-var import_obsidian51 = require("obsidian");
+var import_obsidian52 = require("obsidian");
 function registerShortcutGuide(plugin) {
   plugin.addCommand({ id: "shortcut-guide", name: "Open keyboard shortcut guide", hotkeys: [{ modifiers: ["Mod", "Alt"], key: "/" }], callback: () => new ShortcutGuide(plugin.app).open() });
 }
-var ShortcutGuide = class extends import_obsidian51.Modal {
+var ShortcutGuide = class extends import_obsidian52.Modal {
   onOpen() {
     this.titleEl.setText("Keyboard shortcuts");
     const runtime = this.app;
@@ -48845,7 +49648,7 @@ var ShortcutGuide = class extends import_obsidian51.Modal {
 };
 
 // src/lab-organizer.ts
-var import_obsidian52 = require("obsidian");
+var import_obsidian53 = require("obsidian");
 
 // src/lab-chapter-moves.ts
 var labChapterMoves = [
@@ -48983,13 +49786,13 @@ async function organizeCourseLab(app) {
     const source = app.vault.getAbstractFileByPath(move.from), destination = app.vault.getAbstractFileByPath(move.to);
     if (source && destination) throw Error(`Both source and destination exist: ${move.from}. Resolve the duplicate first.`);
     const file = source ?? destination;
-    if (!(file instanceof import_obsidian52.TFile)) throw Error(`Missing lab note: ${move.from}`);
+    if (!(file instanceof import_obsidian53.TFile)) throw Error(`Missing lab note: ${move.from}`);
     if ("kind" in move) {
       const raw = await app.vault.read(file);
       const id3 = move.kind === "question" ? parseQuestion(raw, file.path).definition.id : parseExam(raw).id;
       if (id3 !== move.id) throw Error(`Unexpected note identity: ${file.path}`);
     }
-    if (source instanceof import_obsidian52.TFile) pending.push({ file: source, to: move.to });
+    if (source instanceof import_obsidian53.TFile) pending.push({ file: source, to: move.to });
   }
   for (const { file, to } of pending) {
     const parts = to.split("/");
@@ -49011,7 +49814,7 @@ async function organizeCourseLab(app) {
   });
   for (const path of ["Courses/Calculus/Questions", "Courses/French/Questions", "Courses/Python/Questions", "Courses/Fluid Dynamics/Questions", "Courses/Fluid Dynamics/Exams"]) {
     const f = app.vault.getAbstractFileByPath(path);
-    if (f instanceof import_obsidian52.TFolder && !f.children.length) await app.vault.trash(f, true);
+    if (f instanceof import_obsidian53.TFolder && !f.children.length) await app.vault.trash(f, true);
   }
   return pending.length;
 }
@@ -49295,8 +50098,8 @@ async function orderingField(app, parent, q, initial, owner, changed) {
 }
 
 // src/exam-ui.ts
-var import_obsidian53 = require("obsidian");
 var import_obsidian54 = require("obsidian");
+var import_obsidian55 = require("obsidian");
 var uid = (prefix) => `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
 function newExam() {
   return { version: 1, id: uid("exam"), title: "New exam", mode: "sections", allowBack: true, shuffleSections: false, sections: [{ id: uid("section"), title: "Section 1", shuffleGroups: false, groups: [{ id: uid("group"), title: "Group 1", shuffleQuestions: false, questions: [] }] }] };
@@ -49401,7 +50204,7 @@ var ExamEditor = class extends StudioPanel {
         }
         this.button(group, "Add question", () => {
           if (!this.bank.length) {
-            new import_obsidian54.Notice("Create a question first.");
+            new import_obsidian55.Notice("Create a question first.");
             return;
           }
           g.questions.push({ id: uid("slot"), questionId: this.bank[0].definition.id, variants: 1 });
@@ -49424,10 +50227,10 @@ var ExamEditor = class extends StudioPanel {
         button.disabled = true;
         void this.save(structuredClone(e)).then(() => this.close(), (err) => {
           button.disabled = false;
-          new import_obsidian54.Notice(String(err));
+          new import_obsidian55.Notice(String(err));
         });
       } catch (err) {
-        new import_obsidian54.Notice(String(err));
+        new import_obsidian55.Notice(String(err));
       }
     };
   }
@@ -49484,7 +50287,7 @@ var ExamRunner = class extends StudioPanel {
   async render() {
     const generation = ++this.generation;
     this.owner?.unload();
-    this.owner = new import_obsidian54.Component();
+    this.owner = new import_obsidian55.Component();
     this.owner.load();
     this.mathOpen = 0;
     this.controls = [];
@@ -49633,7 +50436,7 @@ var ExamRunner = class extends StudioPanel {
     const actions = (event) => {
       event.preventDefault();
       event.stopPropagation();
-      const menu = new import_obsidian53.Menu();
+      const menu = new import_obsidian54.Menu();
       this.reviews?.questionMenu(menu, entry.question, d, `exam:${this.session.id}`);
       const r = d.getBoundingClientRect();
       menu.showAtPosition({ x: "clientX" in event ? event.clientX : r.left, y: "clientY" in event ? event.clientY : r.top });
@@ -49701,7 +50504,7 @@ var ExamRunner = class extends StudioPanel {
     this.generation++;
     this.owner?.unload();
     void this.pending.then(() => this.released(), () => {
-      new import_obsidian54.Notice("The last exam save failed. Resume uses the last saved responses.");
+      new import_obsidian55.Notice("The last exam save failed. Resume uses the last saved responses.");
       this.released();
     });
   }
@@ -49819,8 +50622,8 @@ var QuestionIndex = class {
 };
 
 // src/response-math.ts
-var import_obsidian55 = require("obsidian");
-var AnswerMathEditor = class extends import_obsidian55.Modal {
+var import_obsidian56 = require("obsidian");
+var AnswerMathEditor = class extends import_obsidian56.Modal {
   constructor(app, value, path, apply2, restoreFocus) {
     super(app);
     this.value = value;
@@ -49829,7 +50632,7 @@ var AnswerMathEditor = class extends import_obsidian55.Modal {
     this.restoreFocus = restoreFocus;
     this.modalEl.addClass("study-response-math-modal");
   }
-  owner = new import_obsidian55.Component();
+  owner = new import_obsidian56.Component();
   onOpen() {
     this.titleEl.setText("Edit your math answer");
     this.owner.load();
@@ -50131,8 +50934,8 @@ function questionEditorHelp(title, root, d) {
 }
 
 // src/diagram-author.ts
-var import_obsidian56 = require("obsidian");
-var ImagePicker = class extends import_obsidian56.FuzzySuggestModal {
+var import_obsidian57 = require("obsidian");
+var ImagePicker = class extends import_obsidian57.FuzzySuggestModal {
   constructor(app, chosen) {
     super(app);
     this.chosen = chosen;
@@ -50171,8 +50974,8 @@ function diagramAuthor(app, root, d, path, area, rebuild) {
       diagram.image = dest;
       image.value = dest;
       draw();
-      new import_obsidian56.Notice("Image imported into the vault. It remains available if you cancel this question.");
-    })().catch((e) => new import_obsidian56.Notice(String(e)));
+      new import_obsidian57.Notice("Image imported into the vault. It remains available if you cancel this question.");
+    })().catch((e) => new import_obsidian57.Notice(String(e)));
   };
   image.onchange = () => {
     diagram.image = image.value;
@@ -50330,7 +51133,7 @@ function diagramAuthor(app, root, d, path, area, rebuild) {
 }
 
 // src/code-author.ts
-var import_obsidian57 = require("obsidian");
+var import_obsidian58 = require("obsidian");
 function codeAuthor(root, d, owner, changed = () => {
 }) {
   const notify = changed;
@@ -50420,7 +51223,7 @@ function codeAuthor(root, d, owner, changed = () => {
   make.setAttribute("aria-keyshortcuts", "Control+Shift+B");
   const add = () => {
     if (guarded) {
-      new import_obsidian57.Notice("Re-prepare the marked code to change this question\u2019s blank boundaries.");
+      new import_obsidian58.Notice("Re-prepare the marked code to change this question\u2019s blank boundaries.");
       return;
     }
     try {
@@ -50433,7 +51236,7 @@ function codeAuthor(root, d, owner, changed = () => {
       source.focus();
       source.setSelectionRange(from, from + `{{blank:${id3}}}`.length);
     } catch (e) {
-      new import_obsidian57.Notice(String(e));
+      new import_obsidian58.Notice(String(e));
     }
   };
   source.oninput = () => {
@@ -50457,7 +51260,7 @@ function codeAuthor(root, d, owner, changed = () => {
 }
 
 // src/authoring.ts
-var import_obsidian58 = require("obsidian");
+var import_obsidian59 = require("obsidian");
 
 // src/authoring-model.ts
 var alternatives = (value) => value.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
@@ -50578,7 +51381,7 @@ var QuestionEditor = class extends StudioPanel {
   pausedControls = [];
   liveFields = /* @__PURE__ */ new Map();
   writtenFields = /* @__PURE__ */ new Map();
-  renderComponent = new import_obsidian58.Component();
+  renderComponent = new import_obsidian59.Component();
   closed = false;
   titleInput;
   rankInput;
@@ -50599,7 +51402,7 @@ var QuestionEditor = class extends StudioPanel {
       if (this.mathEditors || this.busy) return;
       event.preventDefault();
       event.stopPropagation();
-      const menu = new import_obsidian58.Menu();
+      const menu = new import_obsidian59.Menu();
       menu.addItem((i) => i.setTitle("1 \xB7 Preview question").onClick(() => void this.previewQuestion()));
       menu.addItem((i) => i.setTitle("2 \xB7 Save question").onClick(() => void this.save(false)));
       menu.addItem((i) => i.setTitle("3 \xB7 Save and open note").onClick(() => void this.save(true)));
@@ -50629,17 +51432,17 @@ var QuestionEditor = class extends StudioPanel {
         else this.removeTableDimension(event.shiftKey);
       }
     }, true);
-    new import_obsidian58.Setting(root).setName("Title").addText(
+    new import_obsidian59.Setting(root).setName("Title").addText(
       (t2) => (this.titleInput = t2.inputEl, t2).setValue(this.definition.title).onChange((v) => (this.definition.title = v, this.validationAttempted && this.validateFields(false)))
     );
     const details = root.createEl("details", { cls: "study-author-details" });
     details.createEl("summary", { text: "Details" });
-    new import_obsidian58.Setting(details).setName("Concepts").addText(
+    new import_obsidian59.Setting(details).setName("Concepts").addText(
       (t2) => t2.setValue(this.definition.concepts.join(", ")).onChange(
         (v) => this.definition.concepts = v.split(",").map((x) => x.trim()).filter(Boolean)
       )
     );
-    new import_obsidian58.Setting(details).setName("Difficulty rank").setDesc("1 = easiest. Rank both versions to set their order; blank leaves it unranked.").addText((t2) => {
+    new import_obsidian59.Setting(details).setName("Difficulty rank").setDesc("1 = easiest. Rank both versions to set their order; blank leaves it unranked.").addText((t2) => {
       this.rankInput = t2.inputEl;
       t2.inputEl.inputMode = "numeric";
       t2.inputEl.setAttribute("aria-label", "Difficulty rank");
@@ -50655,7 +51458,7 @@ var QuestionEditor = class extends StudioPanel {
           const title = catalog.find((c) => c.course.id === id3)?.course.title ?? id3;
           const existing = this.definition.chapters?.find((c) => c.courseId === id3);
           const chapterId = existing?.chapterId ?? `chapter-${crypto.randomUUID().slice(0, 8)}`;
-          new import_obsidian58.Setting(chapters).setName(`Chapter \xB7 ${title}`).addText((text2) => {
+          new import_obsidian59.Setting(chapters).setName(`Chapter \xB7 ${title}`).addText((text2) => {
             const list = chapters.createEl("datalist");
             list.id = `chapters-${crypto.randomUUID()}`;
             const known = /* @__PURE__ */ new Map();
@@ -50757,7 +51560,7 @@ var QuestionEditor = class extends StudioPanel {
     });
   }
   area(parent, label, value, change, rows = 2) {
-    const owner = new import_obsidian58.Component();
+    const owner = new import_obsidian59.Component();
     this.renderComponent.addChild(owner);
     const editor = writtenEditor(this.app, parent, this.file.path, value, owner, (v) => {
       change(v);
@@ -50802,7 +51605,7 @@ var QuestionEditor = class extends StudioPanel {
   renderRules() {
     const root = this.gridHost;
     if (this.mathEditors) {
-      new import_obsidian58.Notice("Finish the active math or drawing editor before changing question structure.");
+      new import_obsidian59.Notice("Finish the active math or drawing editor before changing question structure.");
       return;
     }
     for (const [input, owner] of this.writtenFields) if (root.contains(input)) {
@@ -50816,7 +51619,7 @@ var QuestionEditor = class extends StudioPanel {
     if (["short-answer", "drawing"].includes(d.type)) {
       if (d.type === "drawing") {
         root.createEl("h3", { text: "Reference drawing (hidden until submission)" });
-        const referenceOwner = new import_obsidian58.Component();
+        const referenceOwner = new import_obsidian59.Component();
         this.renderComponent.addChild(referenceOwner);
         const field = drawingInput(this.app, root, d.drawing ? JSON.stringify(d.drawing) : "", referenceOwner, (value) => {
           d.drawing = value ? JSON.parse(value) : void 0;
@@ -50915,7 +51718,7 @@ var QuestionEditor = class extends StudioPanel {
           event.preventDefault();
           event.stopPropagation();
           if (this.mathEditors) return;
-          const m = new import_obsidian58.Menu();
+          const m = new import_obsidian59.Menu();
           m.addItem((item) => item.setTitle("1 \xB7 Add choice after this").onClick(() => this.addChoice(index2 + 1)));
           m.addItem((item) => item.setTitle("2 \xB7 Mark correct").setChecked(d.correct.includes(c.id)).onClick(() => {
             d.correct = d.correct.includes(c.id) ? d.correct.filter((id3) => id3 !== c.id) : [...d.correct, c.id];
@@ -51109,12 +51912,12 @@ var QuestionEditor = class extends StudioPanel {
     if (!this.grid || this.mathEditors) return;
     const active = this.contentEl.ownerDocument.activeElement, cell = active?.closest("[data-table-column]");
     if (!cell || !column && cell.dataset.tableRow === void 0) {
-      new import_obsidian58.Notice("Focus a cell in the row or column to delete.");
+      new import_obsidian59.Notice("Focus a cell in the row or column to delete.");
       return;
     }
     const grid = this.grid, r = Number(cell.dataset.tableRow ?? 0), c = Number(cell.dataset.tableColumn);
     if ((column ? grid.columns.length : grid.rows.length) <= 1) {
-      new import_obsidian58.Notice("Keep at least one row and one column.");
+      new import_obsidian59.Notice("Keep at least one row and one column.");
       return;
     }
     if (column) {
@@ -51189,7 +51992,7 @@ var QuestionEditor = class extends StudioPanel {
   }
   previewQuestion() {
     if (this.mathEditors) {
-      new import_obsidian58.Notice("Finish the active math or drawing editor before previewing the question.");
+      new import_obsidian59.Notice("Finish the active math or drawing editor before previewing the question.");
       return;
     }
     if (!this.validateFields()) return;
@@ -51255,7 +52058,7 @@ var QuestionEditor = class extends StudioPanel {
   }
   async save(openNote) {
     if (this.mathEditors) {
-      new import_obsidian58.Notice("Finish the active math or drawing editor before saving the question.");
+      new import_obsidian59.Notice("Finish the active math or drawing editor before saving the question.");
       return;
     }
     if (this.busy) return;
@@ -51298,12 +52101,12 @@ var QuestionEditor = class extends StudioPanel {
       let savedFile;
       if (this.createFile) savedFile = await this.createFile(next);
       else {
-        if (!(this.file instanceof import_obsidian58.TFile)) throw Error("Question file is unavailable.");
+        if (!(this.file instanceof import_obsidian59.TFile)) throw Error("Question file is unavailable.");
         savedFile = this.file;
         await this.app.vault.process(savedFile, (current) => checkedReplacement(current, this.original.raw, next));
       }
       this.close();
-      new import_obsidian58.Notice(outputWarning ? "Question saved; output unavailable: " + outputWarning : "Question saved. Reopen practice to load the changes.");
+      new import_obsidian59.Notice(outputWarning ? "Question saved; output unavailable: " + outputWarning : "Question saved. Reopen practice to load the changes.");
       if (openNote) await this.app.workspace.getLeaf("tab").openFile(savedFile);
     } catch (e) {
       if (!this.closed) {
@@ -51325,12 +52128,12 @@ var QuestionEditor = class extends StudioPanel {
 };
 
 // src/main.ts
-var import_obsidian59 = require("obsidian");
+var import_obsidian60 = require("obsidian");
 var ROOT2 = "Study Studio";
 var QUESTIONS = `${ROOT2}/Questions`;
 var ATTEMPTS = `${ROOT2}/Attempts`;
 var errorText = (e) => e instanceof Error ? e.message : String(e);
-var Card = class extends import_obsidian59.MarkdownRenderChild {
+var Card = class extends import_obsidian60.MarkdownRenderChild {
   constructor(el, plugin, q, context, done, preview = false, exam, retryCourse, ephemeral = false, onChecked, retained) {
     super(el);
     this.plugin = plugin;
@@ -51441,18 +52244,18 @@ var Card = class extends import_obsidian59.MarkdownRenderChild {
     const showMenu = (event) => {
       event.preventDefault();
       event.stopPropagation();
-      const menu = new import_obsidian59.Menu();
+      const menu = new import_obsidian60.Menu();
       const blocked = this.editing > 0 || this.working || this.rendering;
       const reveal2 = Array.from(el.querySelectorAll("button")).find((b) => b.textContent === "Reveal without scoring");
       if (reveal2) menu.addItem((item) => item.setTitle("1 \xB7 Reveal without scoring").setDisabled(blocked || reveal2.disabled).onClick(() => reveal2.click()));
       if (!this.preview || this.exam) this.reviewsMenu(menu, q, el);
       if (!this.exam && (!this.preview || this.ephemeral)) menu.addItem((item) => item.setTitle("3 \xB7 Edit question").setDisabled(blocked).onClick(() => void this.plugin.openQuestion(d.id)));
       if (!this.preview && !this.exam) {
-        menu.addItem((item) => item.setTitle("2 \xB7 Reset question").setDisabled(blocked).onClick(() => void this.plugin.resetPractice(this.context, [d.id]).catch((e) => new import_obsidian59.Notice(errorText(e)))));
+        menu.addItem((item) => item.setTitle("2 \xB7 Reset question").setDisabled(blocked).onClick(() => void this.plugin.resetPractice(this.context, [d.id]).catch((e) => new import_obsidian60.Notice(errorText(e)))));
         const sourcePath = this.plugin.practiceSource(this.context);
-        if (sourcePath) menu.addItem((item) => item.setTitle("4 \xB7 Group or remove from note\u2026").setDisabled(blocked).onClick(() => void this.plugin.bank().then((bank) => manageNote(this.plugin.app, bank, (id3) => void this.plugin.openQuestion(id3), d.id, sourcePath)).catch((e) => new import_obsidian59.Notice(errorText(e)))));
+        if (sourcePath) menu.addItem((item) => item.setTitle("4 \xB7 Group or remove from note\u2026").setDisabled(blocked).onClick(() => void this.plugin.bank().then((bank) => manageNote(this.plugin.app, bank, (id3) => void this.plugin.openQuestion(id3), d.id, sourcePath)).catch((e) => new import_obsidian60.Notice(errorText(e)))));
         if (courseInput) menu.addItem((item) => item.setTitle(`5 \xB7 Course: ${course?.title ?? "Unassigned"}\u2026`).setDisabled(blocked || courseInput.disabled).onClick(() => {
-          const choices = new import_obsidian59.Menu();
+          const choices = new import_obsidian60.Menu();
           for (const [index2, option] of Array.from(courseInput.options).entries()) choices.addItem((item2) => item2.setTitle(`${index2 + 1} \xB7 ${option.text}`).setChecked(option.value === courseInput.value).onClick(() => {
             courseInput.value = option.value;
             courseInput.dispatchEvent(new Event("change"));
@@ -51463,7 +52266,7 @@ var Card = class extends import_obsidian59.MarkdownRenderChild {
       }
       menu.addSeparator();
       menu.addItem((item) => item.setTitle("6 \xB7 Question information").onClick(() => {
-        const modal = new import_obsidian59.Modal(this.plugin.app);
+        const modal = new import_obsidian60.Modal(this.plugin.app);
         modal.titleEl.setText(d.title);
         if (d.concepts.length) modal.contentEl.createEl("p", { text: "Concepts: " + d.concepts.join(" \xB7 ") });
         modal.contentEl.createEl("p", { text: "Course: " + (course?.title ?? "Unassigned") });
@@ -51545,12 +52348,12 @@ var Card = class extends import_obsidian59.MarkdownRenderChild {
           await this.plugin.saveAttempt(record);
           this.plugin.completions[key2] = record;
           ++draftRevision;
-          await this.plugin.putDraft(key2, void 0).catch(() => new import_obsidian59.Notice("Attempt saved; draft cleanup could not be saved."));
+          await this.plugin.putDraft(key2, void 0).catch(() => new import_obsidian60.Notice("Attempt saved; draft cleanup could not be saved."));
         }
         if (courseInput) courseInput.disabled = true;
         return record;
       }, () => {
-        if (!this.preview) void this.plugin.resetPractice(this.context, [d.id]).catch((e) => new import_obsidian59.Notice(errorText(e)));
+        if (!this.preview) void this.plugin.resetPractice(this.context, [d.id]).catch((e) => new import_obsidian60.Notice(errorText(e)));
         else {
           this.unload();
           this.load();
@@ -51821,7 +52624,7 @@ var Card = class extends import_obsidian59.MarkdownRenderChild {
           await this.plugin.saveAttempt(record);
           this.plugin.completions[key2] = record;
           ++draftRevision;
-          void this.plugin.putDraft(key2, void 0).catch(() => new import_obsidian59.Notice("Attempt saved, but the old draft could not be cleared."));
+          void this.plugin.putDraft(key2, void 0).catch(() => new import_obsidian60.Notice("Attempt saved, but the old draft could not be cleared."));
         }
         draftStatus.empty();
         finished = true;
@@ -51954,7 +52757,7 @@ var Card = class extends import_obsidian59.MarkdownRenderChild {
           const again = feedback.createEl("button", { text: "Try again" });
           if (!prior) again.focus();
           again.onclick = () => {
-            if (!this.preview) void this.plugin.resetPractice(this.context, [d.id]).catch((e) => new import_obsidian59.Notice(errorText(e)));
+            if (!this.preview) void this.plugin.resetPractice(this.context, [d.id]).catch((e) => new import_obsidian60.Notice(errorText(e)));
             else {
               this.unload();
               this.load();
@@ -51994,7 +52797,7 @@ var Card = class extends import_obsidian59.MarkdownRenderChild {
     );
   }
 };
-var PickQuestion = class extends import_obsidian59.FuzzySuggestModal {
+var PickQuestion = class extends import_obsidian60.FuzzySuggestModal {
   constructor(plugin, questions, choose) {
     super(plugin.app);
     this.plugin = plugin;
@@ -52012,7 +52815,7 @@ var PickQuestion = class extends import_obsidian59.FuzzySuggestModal {
     this.choose(q);
   }
 };
-var CreateQuestion = class extends import_obsidian59.Modal {
+var CreateQuestion = class extends import_obsidian60.Modal {
   constructor(plugin, editor, source) {
     super(plugin.app);
     this.plugin = plugin;
@@ -52044,21 +52847,21 @@ var CreateQuestion = class extends import_obsidian59.Modal {
     const existingGroups = embeds(sourceText ?? "").filter((e) => e.group);
     let targetGroup = -1;
     let titleInput;
-    new import_obsidian59.Setting(this.contentEl).setName("Title").addText((t2) => {
+    new import_obsidian60.Setting(this.contentEl).setName("Title").addText((t2) => {
       titleInput = t2.inputEl;
       t2.setPlaceholder("e.g. Velocity gradient").onChange((v) => title = v);
     });
     const placement = this.contentEl.createEl("details");
     placement.hidden = !existingGroups.length;
     placement.createEl("summary", { text: "Add to an existing group (optional)" });
-    if (existingGroups.length) new import_obsidian59.Setting(placement).setName("Place question").addDropdown((d) => {
+    if (existingGroups.length) new import_obsidian60.Setting(placement).setName("Place question").addDropdown((d) => {
       d.addOption("-1", "Individual card after selection");
       existingGroups.forEach((g, i) => d.addOption(String(i), g.title));
       d.onChange((v) => targetGroup = Number(v));
     });
     const types2 = [["choice", "Multiple choice"], ["blank", "Fill in the blank"], ["table", "Complete the table"], ["code", "Complete the code"], ["diagram", "Label the diagram"], ["ordering", "Put steps in order"], ["short-answer", "Short answer / essay"], ["drawing", "Drawing response"]];
     let typeSelect;
-    new import_obsidian59.Setting(this.contentEl).setName("Question type").setDesc("Tab here, then press 1\u20138 to choose.").addDropdown((d) => {
+    new import_obsidian60.Setting(this.contentEl).setName("Question type").setDesc("Tab here, then press 1\u20138 to choose.").addDropdown((d) => {
       typeSelect = d.selectEl;
       types2.forEach(([id3, label], i) => d.addOption(id3, `${i + 1} \xB7 ${label}`));
       d.setValue(kind).onChange((v) => kind = v);
@@ -52081,10 +52884,10 @@ var CreateQuestion = class extends import_obsidian59.Modal {
     this.contentEl.createEl("p", {
       text: "Ctrl+Enter continues. Your selection stays in the note; saving adds a question after it."
     });
-    new import_obsidian59.Setting(this.contentEl).addButton(
+    new import_obsidian60.Setting(this.contentEl).addButton(
       (b) => b.setButtonText("Continue to question editor").setCta().onClick(async () => {
         if (!title.trim()) {
-          new import_obsidian59.Notice("Enter a question title.");
+          new import_obsidian60.Notice("Enter a question title.");
           return;
         }
         b.setDisabled(true);
@@ -52102,7 +52905,7 @@ var CreateQuestion = class extends import_obsidian59.Modal {
             draft,
             (el, q) => new Card(el, this.plugin, q, "author-preview", void 0, true),
             async (raw) => {
-              const sourceView = this.source ? this.app.workspace.getLeavesOfType("markdown").map((leaf) => leaf.view).find((view) => view instanceof import_obsidian59.MarkdownView && view.file?.path === this.source.path) : void 0;
+              const sourceView = this.source ? this.app.workspace.getLeavesOfType("markdown").map((leaf) => leaf.view).find((view) => view instanceof import_obsidian60.MarkdownView && view.file?.path === this.source.path) : void 0;
               const sourceEditor = sourceView?.getMode() === "source" ? sourceView.editor : void 0;
               const currentSource = this.source ? sourceEditor?.getValue() ?? await this.app.vault.read(this.source) : void 0;
               const canInsert = sourceText !== void 0 && currentSource === sourceText;
@@ -52121,15 +52924,15 @@ var CreateQuestion = class extends import_obsidian59.Modal {
                     return current.slice(0, insertion.at) + insertion.text + current.slice(end);
                   });
                 } catch {
-                  new import_obsidian59.Notice("Question saved. The source note changed; use Insert question card to link it.", 1e4);
+                  new import_obsidian60.Notice("Question saved. The source note changed; use Insert question card to link it.", 1e4);
                 }
               }
-              if (this.source && !canInsert) new import_obsidian59.Notice("Question saved. The note changed while you were editing; use Insert question card to choose its placement.", 1e4);
+              if (this.source && !canInsert) new import_obsidian60.Notice("Question saved. The note changed while you were editing; use Insert question card to choose its placement.", 1e4);
               return f;
             }
           ).open();
         } catch (e) {
-          new import_obsidian59.Notice(errorText(e));
+          new import_obsidian60.Notice(errorText(e));
           b.setDisabled(false);
         }
       })
@@ -52144,7 +52947,7 @@ var CreateQuestion = class extends import_obsidian59.Modal {
     this.contentEl.empty();
   }
 };
-var ReviewSetup = class extends import_obsidian59.Modal {
+var ReviewSetup = class extends import_obsidian60.Modal {
   constructor(plugin, questions, context) {
     super(plugin.app);
     this.plugin = plugin;
@@ -52160,7 +52963,7 @@ var ReviewSetup = class extends import_obsidian59.Modal {
     this.contentEl.createEl("p", {
       text: `${this.questions.length} variants across ${families.size} question families. Choose how many variants from each family to include. Selection is random, without repeats.`
     });
-    new import_obsidian59.Setting(this.contentEl).setName("Variants per family").addDropdown(
+    new import_obsidian60.Setting(this.contentEl).setName("Variants per family").addDropdown(
       (d) => d.addOptions({
         "1": "One",
         "2": "Up to two",
@@ -52168,7 +52971,7 @@ var ReviewSetup = class extends import_obsidian59.Modal {
         "999999": "All"
       }).onChange((v) => count2 = Number(v))
     );
-    new import_obsidian59.Setting(this.contentEl).addButton(
+    new import_obsidian60.Setting(this.contentEl).addButton(
       (b) => b.setButtonText("Start review").setCta().onClick(() => {
         const selected = selectVariants(this.questions, count2);
         this.close();
@@ -52180,7 +52983,7 @@ var ReviewSetup = class extends import_obsidian59.Modal {
     this.contentEl.empty();
   }
 };
-var Review = class extends import_obsidian59.Modal {
+var Review = class extends import_obsidian60.Modal {
   constructor(plugin, questions, context) {
     super(plugin.app);
     this.plugin = plugin;
@@ -52230,16 +53033,16 @@ var Review = class extends import_obsidian59.Modal {
     this.contentEl.empty();
   }
 };
-var StudyStudio = class extends import_obsidian59.Plugin {
+var StudyStudio = class extends import_obsidian60.Plugin {
   configurePractice(questions, title = "Practice", course) {
-    const setup = new import_obsidian59.Modal(this.app);
+    const setup = new import_obsidian60.Modal(this.app);
     setup.titleEl.setText("Practice settings");
     setup.contentEl.createEl("p", { text: `${title} \xB7 ${questions.length} questions` });
     let randomize = false;
     let required = 1;
-    new import_obsidian59.Setting(setup.contentEl).setName("Question order").addDropdown((select) => select.addOption("chapter", "Chapter order").addOption("random", "Random order").setValue("chapter").onChange((value) => randomize = value === "random"));
-    new import_obsidian59.Setting(setup.contentEl).setName("Clear missed questions after").addDropdown((select) => select.addOption("1", "One correct answer").addOption("2", "Two consecutive correct answers").setValue("1").onChange((value) => required = value === "2" ? 2 : 1));
-    new import_obsidian59.Setting(setup.contentEl).addButton((button) => button.setButtonText("Cancel").onClick(() => setup.close())).addButton((button) => button.setButtonText("Start practice").setCta().setDisabled(!questions.length).onClick(() => {
+    new import_obsidian60.Setting(setup.contentEl).setName("Question order").addDropdown((select) => select.addOption("chapter", "Chapter order").addOption("random", "Random order").setValue("chapter").onChange((value) => randomize = value === "random"));
+    new import_obsidian60.Setting(setup.contentEl).setName("Clear missed questions after").addDropdown((select) => select.addOption("1", "One correct answer").addOption("2", "Two consecutive correct answers").setValue("1").onChange((value) => required = value === "2" ? 2 : 1));
+    new import_obsidian60.Setting(setup.contentEl).addButton((button) => button.setButtonText("Cancel").onClick(() => setup.close())).addButton((button) => button.setButtonText("Start practice").setCta().setDisabled(!questions.length).onClick(() => {
       setup.close();
       const ordered = chapterOrder(questions);
       const context = `practice-set:${course?.id ?? "unassigned"}:${crypto.randomUUID()}`;
@@ -52250,7 +53053,7 @@ var StudyStudio = class extends import_obsidian59.Plugin {
   async openPracticePage(questions, title = "Practice", course, provided, expected = questions.length, savedContext, submittedStamp, reviewState) {
     const context = savedContext ?? `practice-set:${course?.id ?? "unassigned"}:${crypto.randomUUID()}`;
     const frozenFile = this.app.vault.getAbstractFileByPath(practiceSessionPath(context));
-    if (frozenFile instanceof import_obsidian59.TFile) {
+    if (frozenFile instanceof import_obsidian60.TFile) {
       await this.showFrozenPractice(parsePracticeSession(await this.app.vault.read(frozenFile)), provided);
       return;
     }
@@ -52278,7 +53081,7 @@ var StudyStudio = class extends import_obsidian59.Plugin {
       });
     };
     panel.copyLink = () => {
-      void navigator.clipboard.writeText(practiceLink(this.app.vault.getName(), { title, ids: review.fullIds, course: course?.id })).then(() => new import_obsidian59.Notice("Practice set link copied. Opens the set without sharing your answers."), () => new import_obsidian59.Notice("Could not copy the practice link."));
+      void navigator.clipboard.writeText(practiceLink(this.app.vault.getName(), { title, ids: review.fullIds, course: course?.id })).then(() => new import_obsidian60.Notice("Practice set link copied. Opens the set without sharing your answers."), () => new import_obsidian60.Notice("Could not copy the practice link."));
     };
     if (review.round) top2.createEl("p", { text: `Review round ${review.round} \xB7 Clear each question after ${review.required === 1 ? "one correct answer" : "two consecutive correct answers"}. The original set score is unchanged.`, cls: "study-muted" });
     const layout = root.createDiv("study-practice-workspace"), nav2 = layout.createEl("nav", { cls: "study-practice-question-nav", attr: { "aria-label": "Practice questions" } }), body = layout.createDiv("study-practice-question-list");
@@ -52350,7 +53153,7 @@ var StudyStudio = class extends import_obsidian59.Plugin {
           if (!record || record.mode !== "attempt") throw Error("A response could not be saved. Retry submission.");
         }
         if (!summary().ready) {
-          new import_obsidian59.Notice("Complete the rubric assessment for written responses, then submit the set.");
+          new import_obsidian60.Notice("Complete the rubric assessment for written responses, then submit the set.");
           return;
         }
         const frozen = freezePractice(context, title, course, review, questions.map((q) => this.completions[draftKey(context, q.definition.id)]));
@@ -52366,7 +53169,7 @@ var StudyStudio = class extends import_obsidian59.Plugin {
         this.app.workspace.requestSaveLayout();
         gradeHost.scrollIntoView({ behavior: "smooth", block: "start" });
       } catch (e) {
-        new import_obsidian59.Notice(errorText(e));
+        new import_obsidian60.Notice(errorText(e));
       } finally {
         submitting = false;
         update();
@@ -52381,15 +53184,15 @@ var StudyStudio = class extends import_obsidian59.Plugin {
           await submitAll();
           return;
         }
-        const warning = new import_obsidian59.Modal(this.app);
+        const warning = new import_obsidian60.Modal(this.app);
         warning.titleEl.setText("Unanswered questions");
         warning.contentEl.createEl("p", { text: `Questions ${missing.join(", ")} have unanswered fields. These will receive zero credit; completed fields still earn their normal credit.` });
-        new import_obsidian59.Setting(warning.contentEl).addButton((b) => b.setButtonText("Return to questions").onClick(() => warning.close())).addButton((b) => b.setButtonText("Submit anyway").setCta().onClick(() => {
+        new import_obsidian60.Setting(warning.contentEl).addButton((b) => b.setButtonText("Return to questions").onClick(() => warning.close())).addButton((b) => b.setButtonText("Submit anyway").setCta().onClick(() => {
           warning.close();
           void submitAll();
         }));
         warning.open();
-      })().catch((e) => new import_obsidian59.Notice(errorText(e)));
+      })().catch((e) => new import_obsidian60.Notice(errorText(e)));
     };
     this.practiceResultListeners.add(update);
     panel.register(() => this.practiceResultListeners.delete(update));
@@ -52442,12 +53245,12 @@ var StudyStudio = class extends import_obsidian59.Plugin {
     const folder = `${ROOT2}/Exam sessions`;
     await this.ensureFolder(folder);
     const path = `${folder}/${session.id}.json`, file = this.app.vault.getAbstractFileByPath(path), raw = JSON.stringify(session, null, 2) + "\n";
-    if (file instanceof import_obsidian59.TFile) await this.app.vault.modify(file, raw);
+    if (file instanceof import_obsidian60.TFile) await this.app.vault.modify(file, raw);
     else await this.app.vault.create(path, raw);
   }
   showExam(session) {
     if (this.examWindows.has(session.id)) {
-      new import_obsidian59.Notice("That exam session is already open.");
+      new import_obsidian60.Notice("That exam session is already open.");
       return;
     }
     this.examWindows.add(session.id);
@@ -52485,7 +53288,7 @@ var StudyStudio = class extends import_obsidian59.Plugin {
       this.drafts = drafts;
       this.completions = completions;
       this.noteLocations[path] = id3;
-      void this.persistPractice().catch((e) => new import_obsidian59.Notice("Could not save practice location: " + errorText(e)));
+      void this.persistPractice().catch((e) => new import_obsidian60.Notice("Could not save practice location: " + errorText(e)));
     }
     return this.noteLocations[path];
   }
@@ -52496,7 +53299,7 @@ var StudyStudio = class extends import_obsidian59.Plugin {
       this.expandedNotes.delete(path);
       this.expandedNotes.set(newPath + path.slice(oldPath.length), open);
     }
-    void this.persistPractice().catch((e) => new import_obsidian59.Notice("Could not save moved practice state: " + errorText(e)));
+    void this.persistPractice().catch((e) => new import_obsidian60.Notice("Could not save moved practice state: " + errorText(e)));
   }
   savedData = {};
   draftWrites = Promise.resolve();
@@ -52519,7 +53322,7 @@ var StudyStudio = class extends import_obsidian59.Plugin {
       }
       await this.persistPractice();
       cards.forEach((c) => c.reload());
-      new import_obsidian59.Notice("Practice reset. Recorded history is preserved.");
+      new import_obsidian60.Notice("Practice reset. Recorded history is preserved.");
     } catch (e) {
       for (const key2 of target) {
         if (priorDrafts[key2]) this.drafts[key2] = priorDrafts[key2];
@@ -52552,7 +53355,7 @@ var StudyStudio = class extends import_obsidian59.Plugin {
     this.expandedNotes.set(path, open);
     this.app.workspace.getLeavesOfType("markdown").forEach((leaf) => {
       const view = leaf.view;
-      if (view instanceof import_obsidian59.MarkdownView && view.file?.path === path)
+      if (view instanceof import_obsidian60.MarkdownView && view.file?.path === path)
         view.containerEl.querySelectorAll("details.study-embed").forEach((el) => {
           el.open = open;
         });
@@ -52579,10 +53382,10 @@ var StudyStudio = class extends import_obsidian59.Plugin {
       }
     }
     if (!questions.length) {
-      new import_obsidian59.Notice("The linked practice questions are no longer available.");
+      new import_obsidian60.Notice("The linked practice questions are no longer available.");
       return;
     }
-    if (questions.length !== new Set(ids).size) new import_obsidian59.Notice("Some linked questions are unavailable. Showing those that are present.");
+    if (questions.length !== new Set(ids).size) new import_obsidian60.Notice("Some linked questions are unavailable. Showing those that are present.");
     const sourcePaths = [...new Set(questions.map((q) => q.definition.studySource?.path).filter(Boolean))];
     if (sourcePaths.length === 1) this.app.workspace.trigger("study-practice-source", sourcePaths[0]);
     return testYourself(this.app, questions, title, (host, q, checked, kept) => new Card(host, this, q, "test-yourself", void 0, true, void 0, void 0, true, checked, kept));
@@ -52603,13 +53406,13 @@ var StudyStudio = class extends import_obsidian59.Plugin {
       this.reviews.jumpCode = void 0;
       this.app.workspace.trigger("study-code-annotations-ready");
     });
-    registerAnnotations(this, this.reviews);
+    const annotations = registerAnnotations(this, this.reviews);
     this.studyDirectiveApi = new StudyDirectiveApi(this.reviews, (f) => this.indexCreatedQuestion(f), () => this.bank());
     this.figureStudyApi = new FigureStudyApi(this, this.studyDirectiveApi, () => this.bank(), (ids, title) => this.openTestYourself(ids, title));
     this.figureRetirement = registerFigureRetirement(this, this.reviews);
     this.app.workspace.trigger("study-figure-ready", { version: 1 });
     this.register(() => this.studyDirectiveApi.dispose());
-    registerStudySelections(this, this.studyDirectiveApi);
+    registerStudySelections(this, this.studyDirectiveApi, annotations.onStudyContextMenu);
     const practiceLinks = registerStudyPracticeLinks(this, this.reviews, () => this.bank(), (ids, title) => this.openTestYourself(ids, title));
     registerPracticeOutline(this, practiceLinks, (ids, title) => this.openTestYourself(ids, title));
     registerReferenceGutters(this, this.reviews);
@@ -52618,7 +53421,7 @@ var StudyStudio = class extends import_obsidian59.Plugin {
     registerPanelRestorer(this.app, "practice-frozen", (panel, state) => {
       void (async () => {
         const file = this.app.vault.getAbstractFileByPath(practiceSessionPath(String(state.context)));
-        if (!(file instanceof import_obsidian59.TFile)) throw Error("Saved practice session not found.");
+        if (!(file instanceof import_obsidian60.TFile)) throw Error("Saved practice session not found.");
         await this.showFrozenPractice(parsePracticeSession(await this.app.vault.read(file)), panel);
       })().catch((e) => panel.contentEl.setText(errorText(e)));
     });
@@ -52646,24 +53449,24 @@ var StudyStudio = class extends import_obsidian59.Plugin {
           const course = selection.course ? (await courses(this.app)).find((c) => c.course.id === selection.course)?.course : void 0;
           if (selection.course && !course) throw Error("This practice link needs a course not found in this vault. Sync the course files first.");
           this.configurePractice(selection.ids.map((id3) => byId.get(id3)), selection.title, course);
-        })().catch((e) => new import_obsidian59.Notice(errorText(e), 1e4));
+        })().catch((e) => new import_obsidian60.Notice(errorText(e), 1e4));
       });
     });
     registerShortcutGuide(this);
     this.addCommand({ id: "group-note-questions", name: "Group questions on this note\u2026", checkCallback: (checking) => {
-      const view = this.app.workspace.getActiveViewOfType(import_obsidian59.MarkdownView);
+      const view = this.app.workspace.getActiveViewOfType(import_obsidian60.MarkdownView);
       if (!view?.file) return false;
       if (!checking) void this.groupNoteQuestions(view.file.path);
       return true;
     } });
     this.addCommand({ id: "remove-note-questions", name: "Remove questions from this note\u2026", checkCallback: (checking) => {
-      const view = this.app.workspace.getActiveViewOfType(import_obsidian59.MarkdownView);
+      const view = this.app.workspace.getActiveViewOfType(import_obsidian60.MarkdownView);
       if (!view?.file) return false;
       if (!checking) void this.removeNoteQuestions(view.file.path);
       return true;
     } });
-    this.addCommand({ id: "manage-note-questions", name: "Manage questions in this note", hotkeys: [{ modifiers: ["Mod", "Alt"], key: "G" }], callback: () => void this.bank().then((bank) => manageNote(this.app, bank, (id3) => void this.openQuestion(id3))).catch((e) => new import_obsidian59.Notice(errorText(e))) });
-    if (this.app.vault.getName() === "study_studio_lab") this.addCommand({ id: "organize-course-lab", name: "Organize course lab into chapter folders", callback: () => void organizeCourseLab(this.app).then((n) => new import_obsidian59.Notice(`Moved ${n} lab notes into chapter folders.`, 8e3)).catch((e) => new import_obsidian59.Notice(errorText(e), 12e3)) });
+    this.addCommand({ id: "manage-note-questions", name: "Manage questions in this note", hotkeys: [{ modifiers: ["Mod", "Alt"], key: "G" }], callback: () => void this.bank().then((bank) => manageNote(this.app, bank, (id3) => void this.openQuestion(id3))).catch((e) => new import_obsidian60.Notice(errorText(e))) });
+    if (this.app.vault.getName() === "study_studio_lab") this.addCommand({ id: "organize-course-lab", name: "Organize course lab into chapter folders", callback: () => void organizeCourseLab(this.app).then((n) => new import_obsidian60.Notice(`Moved ${n} lab notes into chapter folders.`, 8e3)).catch((e) => new import_obsidian60.Notice(errorText(e), 12e3)) });
     this.registerMarkdownCodeBlockProcessor("study-dashboard", (source, el) => {
       const id3 = source.trim() || "all";
       if (!/^[\w-]+$/.test(id3)) {
@@ -52672,35 +53475,35 @@ var StudyStudio = class extends import_obsidian59.Plugin {
       }
       el.createEl("button", { text: id3 === "all" ? "Open all-course dashboard" : "Open course dashboard", cls: "mod-cta" }).onclick = () => void dashboard(this.app, () => this.bank(), id3);
     });
-    this.addCommand({ id: "study-dashboard", name: "Open study dashboard", callback: () => void dashboard(this.app, () => this.bank()).catch((e) => new import_obsidian59.Notice(errorText(e))) });
+    this.addCommand({ id: "study-dashboard", name: "Open study dashboard", callback: () => void dashboard(this.app, () => this.bank()).catch((e) => new import_obsidian60.Notice(errorText(e))) });
     this.addCommand({ id: "reset-note-practice", name: "Reset all practice questions in this note", checkCallback: (checking) => {
-      const view = this.app.workspace.getActiveViewOfType(import_obsidian59.MarkdownView);
+      const view = this.app.workspace.getActiveViewOfType(import_obsidian60.MarkdownView);
       if (!view?.file) return false;
       if (!checking) {
         const path = view.file.path;
         const source = view.getMode() === "source" ? view.editor.getValue() : void 0;
-        void (source === void 0 ? this.app.vault.read(view.file) : Promise.resolve(source)).then((raw) => this.resetPractice(path, noteQuestionIds(raw))).catch((e) => new import_obsidian59.Notice(errorText(e)));
+        void (source === void 0 ? this.app.vault.read(view.file) : Promise.resolve(source)).then((raw) => this.resetPractice(path, noteQuestionIds(raw))).catch((e) => new import_obsidian60.Notice(errorText(e)));
       }
       return true;
     } });
-    this.addCommand({ id: "manage-courses", name: "Manage courses", callback: () => void manageCourses(this.app).catch((e) => new import_obsidian59.Notice(errorText(e))) });
+    this.addCommand({ id: "manage-courses", name: "Manage courses", callback: () => void manageCourses(this.app).catch((e) => new import_obsidian60.Notice(errorText(e))) });
     this.addCommand({ id: "assign-courses", name: "Assign current note to courses", callback: () => {
       const file = this.app.workspace.getActiveFile();
-      if (file) void assignCourses(this.app, file).catch((e) => new import_obsidian59.Notice(errorText(e)));
-      else new import_obsidian59.Notice("Open a question or exam source note first.");
+      if (file) void assignCourses(this.app, file).catch((e) => new import_obsidian60.Notice(errorText(e)));
+      else new import_obsidian60.Notice("Open a question or exam source note first.");
     } });
     const candidate = (file) => file.extension === "md" && (this.authoredPaths.has(file.path) || file.path.startsWith(QUESTIONS + "/") || !!this.app.metadataCache.getFileCache(file)?.frontmatter?.study);
     this.questionIndex = new QuestionIndex({
       paths: () => this.app.vault.getMarkdownFiles().filter(candidate).map((f) => f.path),
       read: async (path) => {
         const file = this.app.vault.getAbstractFileByPath(path);
-        return file instanceof import_obsidian59.TFile && candidate(file) ? this.app.vault.read(file) : void 0;
+        return file instanceof import_obsidian60.TFile && candidate(file) ? this.app.vault.read(file) : void 0;
       }
     });
     this.register(() => this.questionIndex.dispose());
     this.app.workspace.trigger("study-code-annotations-ready");
     const changed = (file) => {
-      if (file instanceof import_obsidian59.TFile && (candidate(file) || this.questionIndex.has(file.path))) this.questionIndex.invalidate(file.path);
+      if (file instanceof import_obsidian60.TFile && (candidate(file) || this.questionIndex.has(file.path))) this.questionIndex.invalidate(file.path);
     };
     this.registerEvent(this.app.vault.on("create", changed));
     this.registerEvent(this.app.vault.on("modify", changed));
@@ -52708,7 +53511,7 @@ var StudyStudio = class extends import_obsidian59.Plugin {
       changed(file);
       for (const path of this.authoredPaths) if (within(path, file.path)) this.authoredPaths.delete(path);
       for (const path of Object.keys(this.noteLocations)) if (within(path, file.path)) delete this.noteLocations[path];
-      void this.persistPractice().catch((e) => new import_obsidian59.Notice(errorText(e)));
+      void this.persistPractice().catch((e) => new import_obsidian60.Notice(errorText(e)));
     }));
     this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
       for (const path of [...this.authoredPaths]) if (within(path, oldPath)) {
@@ -52718,10 +53521,10 @@ var StudyStudio = class extends import_obsidian59.Plugin {
       try {
         this.renamePractice(oldPath, file.path);
       } catch (e) {
-        new import_obsidian59.Notice(errorText(e));
+        new import_obsidian60.Notice(errorText(e));
       }
       this.questionIndex.invalidate(oldPath);
-      if (file instanceof import_obsidian59.TFile) this.questionIndex.invalidate(file.path);
+      if (file instanceof import_obsidian60.TFile) this.questionIndex.invalidate(file.path);
       else {
         this.questionIndex.invalidatePrefix(oldPath);
         this.questionIndex.discover();
@@ -52737,21 +53540,21 @@ var StudyStudio = class extends import_obsidian59.Plugin {
       }
     }));
     this.addCommand({ id: "question-index-status", name: "Show question index status", callback: () => {
-      void this.questionIndex.ready().then(() => new import_obsidian59.Notice(JSON.stringify(this.questionIndex.stats()), 1e4)).catch((e) => new import_obsidian59.Notice(errorText(e)));
+      void this.questionIndex.ready().then(() => new import_obsidian60.Notice(JSON.stringify(this.questionIndex.stats()), 1e4)).catch((e) => new import_obsidian60.Notice(errorText(e)));
     } });
     this.addCommand({ id: "create-exam", name: "Create exam", callback: () => {
-      void this.editExam().catch((e) => new import_obsidian59.Notice(errorText(e)));
+      void this.editExam().catch((e) => new import_obsidian60.Notice(errorText(e)));
     } });
     this.addCommand({ id: "edit-exam", name: "Edit current exam", editorCallback: (_editor, view) => {
-      if (view.file) void this.editExam(view.file).catch((e) => new import_obsidian59.Notice(errorText(e)));
+      if (view.file) void this.editExam(view.file).catch((e) => new import_obsidian60.Notice(errorText(e)));
     } });
     this.addCommand({ id: "start-exam", name: "Start current exam", editorCallback: (_editor, view) => {
-      if (view.file) void this.app.vault.read(view.file).then((raw) => this.launchExam(parseExam(raw))).catch((e) => new import_obsidian59.Notice(errorText(e)));
+      if (view.file) void this.app.vault.read(view.file).then((raw) => this.launchExam(parseExam(raw))).catch((e) => new import_obsidian60.Notice(errorText(e)));
     } });
     this.addCommand({ id: "resume-exam", name: "Resume exam or view exam results", callback: () => {
       void (async () => {
         const files = this.app.vault.getFiles().filter((f) => f.path.startsWith(`${ROOT2}/Exam sessions/`) && f.extension === "json").sort((a2, b) => b.stat.mtime - a2.stat.mtime);
-        const modal = new import_obsidian59.Modal(this.app);
+        const modal = new import_obsidian60.Modal(this.app);
         modal.titleEl.setText("Exam sessions");
         if (!files.length) modal.contentEl.createEl("p", { text: "No exams started yet." });
         for (const file of files) {
@@ -52766,7 +53569,7 @@ var StudyStudio = class extends import_obsidian59.Plugin {
           }
         }
         modal.open();
-      })().catch((e) => new import_obsidian59.Notice(errorText(e)));
+      })().catch((e) => new import_obsidian60.Notice(errorText(e)));
     } });
     this.registerMarkdownCodeBlockProcessor("study-exam", async (source, el, ctx) => {
       try {
@@ -52779,7 +53582,7 @@ var StudyStudio = class extends import_obsidian59.Plugin {
         const { file, exam } = matches[0];
         el.addClass("study-exam-launcher");
         const sheet = el.createDiv("study-print-sheet study-print-only");
-        const owner = new import_obsidian59.MarkdownRenderChild(sheet);
+        const owner = new import_obsidian60.MarkdownRenderChild(sheet);
         ctx.addChild(owner);
         const printSession = createSession(exam, await this.bank(), "print-preview", () => 0);
         let section = "";
@@ -52796,14 +53599,14 @@ var StudyStudio = class extends import_obsidian59.Plugin {
         const printMenu = (event) => {
           event.preventDefault();
           event.stopPropagation();
-          new import_obsidian59.Menu().addItem((x) => x.setTitle("Show printable question sheet").onClick(() => {
+          new import_obsidian60.Menu().addItem((x) => x.setTitle("Show printable question sheet").onClick(() => {
             sheet.toggleClass("study-print-only", false);
             sheet.scrollIntoView({ block: "start" });
           })).showAtPosition({ x: event.clientX, y: event.clientY });
         };
         el.addEventListener("contextmenu", printMenu);
-        el.createEl("button", { text: "Start new exam", cls: "mod-cta" }).onclick = () => void this.app.vault.read(file).then((raw) => this.launchExam(parseExam(raw))).catch((e) => new import_obsidian59.Notice(errorText(e)));
-        el.createEl("button", { text: "Edit exam" }).onclick = () => void this.editExam(file).catch((e) => new import_obsidian59.Notice(errorText(e)));
+        el.createEl("button", { text: "Start new exam", cls: "mod-cta" }).onclick = () => void this.app.vault.read(file).then((raw) => this.launchExam(parseExam(raw))).catch((e) => new import_obsidian60.Notice(errorText(e)));
+        el.createEl("button", { text: "Edit exam" }).onclick = () => void this.editExam(file).catch((e) => new import_obsidian60.Notice(errorText(e)));
       } catch (e) {
         el.createEl("p", { text: errorText(e), cls: "study-error" });
       }
@@ -52815,7 +53618,7 @@ var StudyStudio = class extends import_obsidian59.Plugin {
     this.drafts = this.savedData.practiceDrafts && typeof this.savedData.practiceDrafts === "object" && !Array.isArray(this.savedData.practiceDrafts) ? this.savedData.practiceDrafts : {};
     this.completions = this.savedData.practiceCompletions && typeof this.savedData.practiceCompletions === "object" && !Array.isArray(this.savedData.practiceCompletions) ? this.savedData.practiceCompletions : {};
     for (const open of [true, false]) this.addCommand({ id: open ? "expand-all-questions" : "collapse-all-questions", name: open ? "Expand all questions in this note" : "Collapse all questions in this note", checkCallback: (checking) => {
-      const view = this.app.workspace.getActiveViewOfType(import_obsidian59.MarkdownView);
+      const view = this.app.workspace.getActiveViewOfType(import_obsidian60.MarkdownView);
       if (!view?.file) return false;
       if (!checking) this.expandNote(view.file.path, open);
       return true;
@@ -52830,7 +53633,7 @@ var StudyStudio = class extends import_obsidian59.Plugin {
         const groupMenu = (event) => {
           event.preventDefault();
           event.stopPropagation();
-          const menu = new import_obsidian59.Menu().addItem((item) => item.setTitle("1 \xB7 Reset group practice").setIcon("rotate-ccw").onClick(() => void this.resetPractice(practiceContext, group.questions).catch((e) => new import_obsidian59.Notice(errorText(e))))).addItem((item) => item.setTitle("2 \xB7 Remove multiple questions from this note\u2026").setIcon("trash").onClick(() => void this.removeNoteQuestions(ctx.sourcePath))).addItem((item) => item.setTitle("3 \xB7 Edit group and parent prompt\u2026").setIcon("pencil").onClick(() => void this.bank().then((bank) => editGroup(this.app, ctx.sourcePath, bank, ctx.getSectionInfo(el)?.lineStart, group.title, this.groupTools(ctx.sourcePath))).catch((e) => new import_obsidian59.Notice(errorText(e)))));
+          const menu = new import_obsidian60.Menu().addItem((item) => item.setTitle("1 \xB7 Reset group practice").setIcon("rotate-ccw").onClick(() => void this.resetPractice(practiceContext, group.questions).catch((e) => new import_obsidian60.Notice(errorText(e))))).addItem((item) => item.setTitle("2 \xB7 Remove multiple questions from this note\u2026").setIcon("trash").onClick(() => void this.removeNoteQuestions(ctx.sourcePath))).addItem((item) => item.setTitle("3 \xB7 Edit group and parent prompt\u2026").setIcon("pencil").onClick(() => void this.bank().then((bank) => editGroup(this.app, ctx.sourcePath, bank, ctx.getSectionInfo(el)?.lineStart, group.title, this.groupTools(ctx.sourcePath))).catch((e) => new import_obsidian60.Notice(errorText(e)))));
           const rect = summary.getBoundingClientRect();
           menu.showAtPosition({ x: "clientX" in event ? event.clientX : rect.left, y: "clientY" in event ? event.clientY : rect.bottom });
         };
@@ -52840,7 +53643,7 @@ var StudyStudio = class extends import_obsidian59.Plugin {
         });
         const host = details.createDiv();
         if (group.prompt) {
-          const parent = host.createDiv("study-group-prompt"), owner = new import_obsidian59.MarkdownRenderChild(parent);
+          const parent = host.createDiv("study-group-prompt"), owner = new import_obsidian60.MarkdownRenderChild(parent);
           ctx.addChild(owner);
           await RichMarkdown.render(this.app, group.prompt, parent, ctx.sourcePath, owner);
         }
@@ -52864,9 +53667,9 @@ var StudyStudio = class extends import_obsidian59.Plugin {
         new GroupEditor(this.app, path, bank, { title: "", questions: [] }, async (group) => {
           if (view.file?.path !== path || editor.getValue() !== raw) throw Error("Note changed. Reopen Insert question group.");
           editor.replaceRange("\n" + embedSource(group.questions, group.title, group.prompt) + "\n", from, to);
-          if (view instanceof import_obsidian59.MarkdownView) await this.app.workspace.revealLeaf(view.leaf);
+          if (view instanceof import_obsidian60.MarkdownView) await this.app.workspace.revealLeaf(view.leaf);
         }, destination.scope, this.groupTools(path)).open();
-      }).catch((e) => new import_obsidian59.Notice(errorText(e)));
+      }).catch((e) => new import_obsidian60.Notice(errorText(e)));
     } });
     this.registerMarkdownCodeBlockProcessor(
       "study",
@@ -52901,7 +53704,7 @@ var StudyStudio = class extends import_obsidian59.Plugin {
             if (loaded) return;
             event.preventDefault();
             event.stopPropagation();
-            const menu = new import_obsidian59.Menu();
+            const menu = new import_obsidian60.Menu();
             menu.addItem((i) => i.setTitle("3 \xB7 Edit question").onClick(() => void this.openQuestion(id3)));
             menu.addItem((i) => i.setTitle("7 \xB7 Remove from this note\u2026").onClick(() => void this.removeNoteQuestions(ctx.sourcePath, [id3])));
             menu.addItem((i) => i.setTitle("9 \xB7 Delete question everywhere\u2026").setIcon("trash").onClick(() => void this.deleteQuestions([id3])));
@@ -52938,7 +53741,7 @@ var StudyStudio = class extends import_obsidian59.Plugin {
             (el, q) => new Card(el, this, q, "author-preview", void 0, true)
           ).open();
         } catch (e) {
-          new import_obsidian59.Notice(errorText(e));
+          new import_obsidian60.Notice(errorText(e));
         }
       }
     });
@@ -52961,12 +53764,12 @@ var StudyStudio = class extends import_obsidian59.Plugin {
       editorCallback: (editor, view) => {
         const source = editor.getValue(), from = editor.getCursor("from"), to = editor.getCursor("to");
         void Promise.all([this.bank(), chapterDestination(this.app, view.file ?? void 0)]).then(([bank, destination]) => new ScopedQuestionPicker(this.app, bank, destination.scope, (q) => {
-          if (this.app.workspace.getActiveViewOfType(import_obsidian59.MarkdownView) !== view || editor.getValue() !== source) {
-            new import_obsidian59.Notice("Note changed. Reopen Insert question card.");
+          if (this.app.workspace.getActiveViewOfType(import_obsidian60.MarkdownView) !== view || editor.getValue() !== source) {
+            new import_obsidian60.Notice("Note changed. Reopen Insert question card.");
             return;
           }
           editor.replaceRange("\n" + embedSource([q.definition.id]) + "\n", from, to);
-        }, "Insert question card").open()).catch((e) => new import_obsidian59.Notice(errorText(e)));
+        }, "Insert question card").open()).catch((e) => new import_obsidian60.Notice(errorText(e)));
       }
     });
     this.addCommand({
@@ -52999,11 +53802,11 @@ var StudyStudio = class extends import_obsidian59.Plugin {
             { line: 0, ch: 0 },
             editor.offsetToPos(raw.length)
           );
-          new import_obsidian59.Notice(
+          new import_obsidian60.Notice(
             "Selection is now a blank; its answer was saved in properties."
           );
         } catch (e) {
-          new import_obsidian59.Notice(errorText(e));
+          new import_obsidian60.Notice(errorText(e));
         }
       }
     });
@@ -53018,7 +53821,7 @@ var StudyStudio = class extends import_obsidian59.Plugin {
             view.file?.path ?? ""
           ).open();
         } catch (e) {
-          new import_obsidian59.Notice(errorText(e));
+          new import_obsidian60.Notice(errorText(e));
         }
       }
     });
@@ -53038,10 +53841,10 @@ var StudyStudio = class extends import_obsidian59.Plugin {
             serialize(d, q.prompt, q.explanation)
           );
           await this.app.workspace.getLeaf("tab").openFile(file);
-          new import_obsidian59.Notice(
+          new import_obsidian60.Notice(
             "Variant created. Edit its prompt, blanks and answers; family ID stays shared."
           );
-        })().catch((e) => new import_obsidian59.Notice(errorText(e)));
+        })().catch((e) => new import_obsidian60.Notice(errorText(e)));
       }
     });
     this.addCommand({
@@ -53064,7 +53867,7 @@ var StudyStudio = class extends import_obsidian59.Plugin {
             ),
             view.file?.path ?? ""
           ).open();
-        })().catch((e) => new import_obsidian59.Notice(errorText(e)));
+        })().catch((e) => new import_obsidian60.Notice(errorText(e)));
       }
     });
     this.addCommand({
@@ -53073,7 +53876,7 @@ var StudyStudio = class extends import_obsidian59.Plugin {
       callback: () => {
         void this.bank().then((bank) => {
           if (!bank.length) {
-            new import_obsidian59.Notice("Create a question first.");
+            new import_obsidian60.Notice("Create a question first.");
             return;
           }
           new PickQuestion(
@@ -53081,13 +53884,13 @@ var StudyStudio = class extends import_obsidian59.Plugin {
             bank,
             (q) => new Review(this, [q], "question-bank").open()
           ).open();
-        }).catch((e) => new import_obsidian59.Notice(errorText(e)));
+        }).catch((e) => new import_obsidian60.Notice(errorText(e)));
       }
     });
     this.addCommand({
       id: "history",
       name: "Show review history",
-      callback: () => void this.history().catch((e) => new import_obsidian59.Notice(errorText(e)))
+      callback: () => void this.history().catch((e) => new import_obsidian60.Notice(errorText(e)))
     });
     this.addRibbonIcon(
       "graduation-cap",
@@ -53099,13 +53902,13 @@ var StudyStudio = class extends import_obsidian59.Plugin {
             bank,
             (q) => new Review(this, [q], "question-bank").open()
           ).open()
-        ).catch((e) => new import_obsidian59.Notice(errorText(e)));
+        ).catch((e) => new import_obsidian60.Notice(errorText(e)));
       }
     );
   }
   async ensureFolder(path) {
     let parent = "";
-    for (const part of (0, import_obsidian59.normalizePath)(path).split("/")) {
+    for (const part of (0, import_obsidian60.normalizePath)(path).split("/")) {
       parent = parent ? `${parent}/${part}` : part;
       if (!this.app.vault.getAbstractFileByPath(parent)) {
         try {
@@ -53130,18 +53933,18 @@ var StudyStudio = class extends import_obsidian59.Plugin {
     try {
       const bank = await this.bank(), questions = bank.filter((q) => ids.includes(q.definition.id));
       if (!questions.length) {
-        new import_obsidian59.Notice("No saved questions to delete.");
+        new import_obsidian60.Notice("No saved questions to delete.");
         return;
       }
       new DeleteQuestions(this, questions, done).open();
     } catch (e) {
-      new import_obsidian59.Notice(errorText(e));
+      new import_obsidian60.Notice(errorText(e));
     }
   }
   groupingMode;
   async groupNoteQuestions(path) {
     try {
-      const view = this.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian59.MarkdownView && v.file?.path === path);
+      const view = this.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian60.MarkdownView && v.file?.path === path);
       if (!view?.file) return;
       const file = view.file;
       this.groupingMode?.unload();
@@ -53165,13 +53968,13 @@ var StudyStudio = class extends import_obsidian59.Plugin {
       this.groupingMode = mode;
       this.addChild(mode);
     } catch (e) {
-      new import_obsidian59.Notice(errorText(e));
+      new import_obsidian60.Notice(errorText(e));
     }
   }
   groupTools(path) {
     return { preview: (host, q) => new Card(host, this, q, "group-preview", void 0, true), create: (kind, accept) => {
       void (async () => {
-        const source = this.app.vault.getAbstractFileByPath(path), destination = await chapterDestination(this.app, source instanceof import_obsidian59.TFile ? source : void 0), id3 = crypto.randomUUID(), questionPath = `${destination.folder}/Question-${id3}.md`, draft = intakeDraft(kind, id3, "New question", "", questionPath);
+        const source = this.app.vault.getAbstractFileByPath(path), destination = await chapterDestination(this.app, source instanceof import_obsidian60.TFile ? source : void 0), id3 = crypto.randomUUID(), questionPath = `${destination.folder}/Question-${id3}.md`, draft = intakeDraft(kind, id3, "New question", "", questionPath);
         draft.definition.title = "";
         if (destination.scope) draft.definition.courseIds = [destination.scope.courseId];
         if (destination.placement) draft.definition.chapters = [destination.placement];
@@ -53182,18 +53985,18 @@ var StudyStudio = class extends import_obsidian59.Plugin {
           accept(parseQuestion(raw, questionPath));
           return file;
         }).open();
-      })().catch((e) => new import_obsidian59.Notice(errorText(e)));
+      })().catch((e) => new import_obsidian60.Notice(errorText(e)));
     } };
   }
   removalMode;
   async removeNoteQuestions(path, selected) {
     try {
       const file = this.app.vault.getAbstractFileByPath(path);
-      if (!(file instanceof import_obsidian59.TFile)) return;
-      const view = this.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian59.MarkdownView && v.file?.path === path);
+      if (!(file instanceof import_obsidian60.TFile)) return;
+      const view = this.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian60.MarkdownView && v.file?.path === path);
       if (!selected) {
         if (!view) {
-          new import_obsidian59.Notice("Open this note to select its questions.");
+          new import_obsidian60.Notice("Open this note to select its questions.");
           return;
         }
         this.removalMode?.unload();
@@ -53208,26 +54011,26 @@ var StudyStudio = class extends import_obsidian59.Plugin {
       const ids = selected ?? embeds(view?.editor.getValue() ?? await this.app.vault.read(file)).flatMap((b) => b.ids);
       const bank = await this.bank(), questions = bank.filter((q) => ids.includes(q.definition.id));
       if (!questions.length) {
-        new import_obsidian59.Notice("No question cards in this note.");
+        new import_obsidian60.Notice("No question cards in this note.");
         return;
       }
       new DeleteQuestions(this, questions, () => {
       }, path).open();
     } catch (e) {
-      new import_obsidian59.Notice(errorText(e));
+      new import_obsidian60.Notice(errorText(e));
     }
   }
   async openQuestion(id3) {
-    const origin = this.app.workspace.getActiveViewOfType(import_obsidian59.MarkdownView)?.leaf;
+    const origin = this.app.workspace.getActiveViewOfType(import_obsidian60.MarkdownView)?.leaf;
     try {
       const q = await this.find(id3);
       const file = this.app.vault.getAbstractFileByPath(q.path);
-      if (file instanceof import_obsidian59.TFile) new QuestionEditor(this.app, file, q, (el, draft) => new Card(el, this, draft, "author-preview", void 0, true), void 0, (done) => void this.deleteQuestions([id3], () => {
+      if (file instanceof import_obsidian60.TFile) new QuestionEditor(this.app, file, q, (el, draft) => new Card(el, this, draft, "author-preview", void 0, true), void 0, (done) => void this.deleteQuestions([id3], () => {
         done();
         if (origin) void this.app.workspace.revealLeaf(origin);
       })).open();
     } catch (e) {
-      new import_obsidian59.Notice(errorText(e));
+      new import_obsidian60.Notice(errorText(e));
     }
   }
   async saveAttempt(attempt) {
