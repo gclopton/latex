@@ -24,7 +24,7 @@ __export(main_exports, {
 });
 module.exports = __toCommonJS(main_exports);
 
-// node_modules/@codemirror/commands/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/commands/dist/index.js
 var dist_exports3 = {};
 __export(dist_exports3, {
   blockComment: () => blockComment,
@@ -139,7 +139,7 @@ __export(dist_exports3, {
   undoSelection: () => undoSelection
 });
 
-// node_modules/@codemirror/state/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/state/dist/index.js
 var dist_exports = {};
 __export(dist_exports, {
   Annotation: () => Annotation,
@@ -173,7 +173,7 @@ __export(dist_exports, {
   fromCodePoint: () => fromCodePoint
 });
 
-// node_modules/@marijn/find-cluster-break/src/index.js
+// ../obsidian-study-studio/node_modules/@marijn/find-cluster-break/src/index.js
 var rangeFrom = [];
 var rangeTo = [];
 (() => {
@@ -247,7 +247,7 @@ function codePointSize(code) {
   return code < 65536 ? 1 : 2;
 }
 
-// node_modules/@codemirror/state/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/state/dist/index.js
 var Text = class _Text {
   /**
   Get the line description around the given position.
@@ -268,7 +268,7 @@ var Text = class _Text {
   /**
   Replace a range of the text with the given content.
   */
-  replace(from, to, text2) {
+  replace(from, to, text3) {
     [from, to] = clip(this, from, to);
     let parts = [];
     this.decompose(
@@ -278,10 +278,10 @@ var Text = class _Text {
       2
       /* Open.To */
     );
-    if (text2.length)
-      text2.decompose(
+    if (text3.length)
+      text3.decompose(
         0,
-        text2.length,
+        text3.length,
         parts,
         1 | 2
         /* Open.To */
@@ -293,7 +293,7 @@ var Text = class _Text {
       1
       /* Open.From */
     );
-    return TextNode.from(parts, this.length - (to - from) + text2.length);
+    return TextNode.from(parts, this.length - (to - from) + text3.length);
   }
   /**
   Append another document to this one.
@@ -389,18 +389,18 @@ var Text = class _Text {
   /**
   Create a `Text` instance for the given array of lines.
   */
-  static of(text2) {
-    if (text2.length == 0)
+  static of(text3) {
+    if (text3.length == 0)
       throw new RangeError("A document must have at least one line");
-    if (text2.length == 1 && !text2[0])
+    if (text3.length == 1 && !text3[0])
       return _Text.empty;
-    return text2.length <= 32 ? new TextLeaf(text2) : TextNode.from(TextLeaf.split(text2, []));
+    return text3.length <= 32 ? new TextLeaf(text3) : TextNode.from(TextLeaf.split(text3, []));
   }
 };
 var TextLeaf = class _TextLeaf extends Text {
-  constructor(text2, length = textLength(text2)) {
+  constructor(text3, length = textLength(text3)) {
     super();
-    this.text = text2;
+    this.text = text3;
     this.length = length;
   }
   get lines() {
@@ -419,26 +419,26 @@ var TextLeaf = class _TextLeaf extends Text {
     }
   }
   decompose(from, to, target, open) {
-    let text2 = from <= 0 && to >= this.length ? this : new _TextLeaf(sliceText(this.text, from, to), Math.min(to, this.length) - Math.max(0, from));
+    let text3 = from <= 0 && to >= this.length ? this : new _TextLeaf(sliceText(this.text, from, to), Math.min(to, this.length) - Math.max(0, from));
     if (open & 1) {
       let prev = target.pop();
-      let joined = appendText(text2.text, prev.text.slice(), 0, text2.length);
+      let joined = appendText(text3.text, prev.text.slice(), 0, text3.length);
       if (joined.length <= 32) {
-        target.push(new _TextLeaf(joined, prev.length + text2.length));
+        target.push(new _TextLeaf(joined, prev.length + text3.length));
       } else {
         let mid = joined.length >> 1;
         target.push(new _TextLeaf(joined.slice(0, mid)), new _TextLeaf(joined.slice(mid)));
       }
     } else {
-      target.push(text2);
+      target.push(text3);
     }
   }
-  replace(from, to, text2) {
-    if (!(text2 instanceof _TextLeaf))
-      return super.replace(from, to, text2);
+  replace(from, to, text3) {
+    if (!(text3 instanceof _TextLeaf))
+      return super.replace(from, to, text3);
     [from, to] = clip(this, from, to);
-    let lines = appendText(this.text, appendText(text2.text, sliceText(this.text, 0, from)), to);
-    let newLen = this.length + text2.length - (to - from);
+    let lines = appendText(this.text, appendText(text3.text, sliceText(this.text, 0, from)), to);
+    let newLen = this.length + text3.length - (to - from);
     if (lines.length <= 32)
       return new _TextLeaf(lines, newLen);
     return TextNode.from(_TextLeaf.split(lines, []), newLen);
@@ -463,9 +463,9 @@ var TextLeaf = class _TextLeaf extends Text {
   scanIdentical() {
     return 0;
   }
-  static split(text2, target) {
+  static split(text3, target) {
     let part = [], len = -1;
-    for (let line of text2) {
+    for (let line of text3) {
       part.push(line);
       len += line.length + 1;
       if (part.length == 32) {
@@ -510,24 +510,24 @@ var TextNode = class _TextNode extends Text {
       pos = end + 1;
     }
   }
-  replace(from, to, text2) {
+  replace(from, to, text3) {
     [from, to] = clip(this, from, to);
-    if (text2.lines < this.lines)
+    if (text3.lines < this.lines)
       for (let i = 0, pos = 0; i < this.children.length; i++) {
         let child = this.children[i], end = pos + child.length;
         if (from >= pos && to <= end) {
-          let updated = child.replace(from - pos, to - pos, text2);
+          let updated = child.replace(from - pos, to - pos, text3);
           let totalLines = this.lines - child.lines + updated.lines;
           if (updated.lines < totalLines >> 5 - 1 && updated.lines > totalLines >> 5 + 1) {
             let copy = this.children.slice();
             copy[i] = updated;
-            return new _TextNode(copy, this.length - (to - from) + text2.length);
+            return new _TextNode(copy, this.length - (to - from) + text3.length);
           }
           return super.replace(pos, end, updated);
         }
         pos = end + 1;
       }
-    return super.replace(from, to, text2);
+    return super.replace(from, to, text3);
   }
   sliceString(from, to = this.length, lineSep = "\n") {
     [from, to] = clip(this, from, to);
@@ -610,15 +610,15 @@ var TextNode = class _TextNode extends Text {
   }
 };
 Text.empty = /* @__PURE__ */ new TextLeaf([""], 0);
-function textLength(text2) {
+function textLength(text3) {
   let length = -1;
-  for (let line of text2)
+  for (let line of text3)
     length += line.length + 1;
   return length;
 }
-function appendText(text2, target, from = 0, to = 1e9) {
-  for (let pos = 0, i = 0, first = true; i < text2.length && pos <= to; i++) {
-    let line = text2[i], end = pos + line.length;
+function appendText(text3, target, from = 0, to = 1e9) {
+  for (let pos = 0, i = 0, first = true; i < text3.length && pos <= to; i++) {
+    let line = text3[i], end = pos + line.length;
     if (end >= from) {
       if (end > to)
         line = line.slice(0, to - pos);
@@ -634,17 +634,17 @@ function appendText(text2, target, from = 0, to = 1e9) {
   }
   return target;
 }
-function sliceText(text2, from, to) {
-  return appendText(text2, [""], from, to);
+function sliceText(text3, from, to) {
+  return appendText(text3, [""], from, to);
 }
 var RawTextCursor = class {
-  constructor(text2, dir = 1) {
+  constructor(text3, dir = 1) {
     this.dir = dir;
     this.done = false;
     this.lineBreak = false;
     this.value = "";
-    this.nodes = [text2];
-    this.offsets = [dir > 0 ? 1 : (text2 instanceof TextLeaf ? text2.text.length : text2.children.length) << 1];
+    this.nodes = [text3];
+    this.offsets = [dir > 0 ? 1 : (text3 instanceof TextLeaf ? text3.text.length : text3.children.length) << 1];
   }
   nextInner(skip, dir) {
     this.done = this.lineBreak = false;
@@ -701,11 +701,11 @@ var RawTextCursor = class {
   }
 };
 var PartialTextCursor = class {
-  constructor(text2, start, end) {
+  constructor(text3, start, end) {
     this.value = "";
     this.done = false;
-    this.cursor = new RawTextCursor(text2, start > end ? -1 : 1);
-    this.pos = start > end ? text2.length : 0;
+    this.cursor = new RawTextCursor(text3, start > end ? -1 : 1);
+    this.pos = start > end ? text3.length : 0;
     this.from = Math.min(start, end);
     this.to = Math.max(start, end);
   }
@@ -781,11 +781,11 @@ var Line = class {
   /**
   @internal
   */
-  constructor(from, to, number2, text2) {
+  constructor(from, to, number2, text3) {
     this.from = from;
     this.to = to;
     this.number = number2;
-    this.text = text2;
+    this.text = text3;
   }
   /**
   The length of the line (not including any line break after it).
@@ -794,9 +794,9 @@ var Line = class {
     return this.to - this.from;
   }
 };
-function clip(text2, from, to) {
-  from = Math.max(0, Math.min(text2.length, from));
-  return [from, Math.max(from, Math.min(text2.length, to))];
+function clip(text3, from, to) {
+  from = Math.max(0, Math.min(text3.length, from));
+  return [from, Math.max(from, Math.min(text3.length, to))];
 }
 function findClusterBreak2(str, pos, forward = true, includeExtending = true) {
   return findClusterBreak(str, pos, forward, includeExtending);
@@ -1014,7 +1014,7 @@ var ChangeSet = class _ChangeSet extends ChangeDesc {
   apply(doc2) {
     if (this.length != doc2.length)
       throw new RangeError("Applying change set to a document with the wrong length");
-    iterChanges(this, (fromA, toA, fromB, _toB, text2) => doc2 = doc2.replace(fromB, fromB + (toA - fromA), text2), false);
+    iterChanges(this, (fromA, toA, fromB, _toB, text3) => doc2 = doc2.replace(fromB, fromB + (toA - fromA), text3), false);
     return doc2;
   }
   mapDesc(other, before = false) {
@@ -1258,18 +1258,18 @@ function iterChanges(desc, f, individual) {
       posA += len;
       posB += len;
     } else {
-      let endA = posA, endB = posB, text2 = Text.empty;
+      let endA = posA, endB = posB, text3 = Text.empty;
       for (; ; ) {
         endA += len;
         endB += ins;
         if (ins && inserted)
-          text2 = text2.append(inserted[i - 2 >> 1]);
+          text3 = text3.append(inserted[i - 2 >> 1]);
         if (individual || i == desc.sections.length || desc.sections[i + 1] < 0)
           break;
         len = desc.sections[i++];
         ins = desc.sections[i++];
       }
-      f(posA, endA, posB, endB, text2);
+      f(posA, endA, posB, endB, text3);
       posA = endA;
       posB = endB;
     }
@@ -2517,12 +2517,12 @@ var EditorState = class _EditorState {
   Create a [transaction spec](https://codemirror.net/6/docs/ref/#state.TransactionSpec) that
   replaces every selection range with the given content.
   */
-  replaceSelection(text2) {
-    if (typeof text2 == "string")
-      text2 = this.toText(text2);
+  replaceSelection(text3) {
+    if (typeof text3 == "string")
+      text3 = this.toText(text3);
     return this.changeByRange((range) => ({
-      changes: { from: range.from, to: range.to, insert: text2 },
-      range: EditorSelection.cursor(range.from + text2.length)
+      changes: { from: range.from, to: range.to, insert: text3 },
+      range: EditorSelection.cursor(range.from + text3.length)
     }));
   }
   /**
@@ -2740,18 +2740,18 @@ var EditorState = class _EditorState {
   this returns null.
   */
   wordAt(pos) {
-    let { text: text2, from, length } = this.doc.lineAt(pos);
+    let { text: text3, from, length } = this.doc.lineAt(pos);
     let cat = this.charCategorizer(pos);
     let start = pos - from, end = pos - from;
     while (start > 0) {
-      let prev = findClusterBreak2(text2, start, false);
-      if (cat(text2.slice(prev, start)) != CharCategory.Word)
+      let prev = findClusterBreak2(text3, start, false);
+      if (cat(text3.slice(prev, start)) != CharCategory.Word)
         break;
       start = prev;
     }
     while (end < length) {
-      let next = findClusterBreak2(text2, end);
-      if (cat(text2.slice(end, next)) != CharCategory.Word)
+      let next = findClusterBreak2(text3, end);
+      if (cat(text3.slice(end, next)) != CharCategory.Word)
         break;
       end = next;
     }
@@ -3584,7 +3584,7 @@ function findColumn(string4, col, tabSize, strict) {
   return strict === true ? -1 : string4.length;
 }
 
-// node_modules/@codemirror/view/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/view/dist/index.js
 var dist_exports2 = {};
 __export(dist_exports2, {
   BidiSpan: () => BidiSpan,
@@ -3637,7 +3637,7 @@ __export(dist_exports2, {
   tooltips: () => tooltips
 });
 
-// node_modules/style-mod/src/style-mod.js
+// ../obsidian-study-studio/node_modules/style-mod/src/style-mod.js
 var C = "\u037C";
 var COUNT = typeof Symbol == "undefined" ? "__" + C : Symbol.for(C);
 var SET = typeof Symbol == "undefined" ? "__styleSet" + Math.floor(Math.random() * 1e8) : Symbol("styleSet");
@@ -3757,10 +3757,10 @@ var StyleSet = class {
         root.adoptedStyleSheets = [this.sheet, ...root.adoptedStyleSheets];
     } else {
       if (changed) {
-        let text2 = "";
+        let text3 = "";
         for (let i = 0; i < this.modules.length; i++)
-          text2 += this.modules[i].getRules() + "\n";
-        this.styleTag.textContent = text2;
+          text3 += this.modules[i].getRules() + "\n";
+        this.styleTag.textContent = text3;
       }
       let target = root.head || root;
       if (this.styleTag.parentNode != target)
@@ -3773,7 +3773,7 @@ var StyleSet = class {
   }
 };
 
-// node_modules/w3c-keyname/index.js
+// ../obsidian-study-studio/node_modules/w3c-keyname/index.js
 var base = {
   8: "Backspace",
   9: "Tab",
@@ -3879,7 +3879,7 @@ function keyName(event) {
   return name2;
 }
 
-// node_modules/crelt/index.js
+// ../obsidian-study-studio/node_modules/crelt/index.js
 function crelt() {
   var elt2 = arguments[0];
   if (typeof elt2 == "string") elt2 = document.createElement(elt2);
@@ -3908,7 +3908,7 @@ function add(elt2, child) {
   }
 }
 
-// node_modules/@codemirror/view/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/view/dist/index.js
 var nav = typeof navigator != "undefined" ? navigator : { userAgent: "", vendor: "", platform: "" };
 var doc = typeof document != "undefined" ? document : { documentElement: { style: {} } };
 var ie_edge = /* @__PURE__ */ /Edge\/(\d+)/.exec(nav.userAgent);
@@ -4632,9 +4632,9 @@ function mergeChildrenInto(parent, from, to, insert2, openStart, openEnd) {
 }
 var MaxJoinLen = 256;
 var TextView = class _TextView extends ContentView {
-  constructor(text2) {
+  constructor(text3) {
     super();
-    this.text = text2;
+    this.text = text3;
   }
   get length() {
     return this.text.length;
@@ -4749,8 +4749,8 @@ var MarkView = class _MarkView extends ContentView {
     return coordsInChildren(this, pos, side);
   }
 };
-function textCoords(text2, pos, side) {
-  let length = text2.nodeValue.length;
+function textCoords(text3, pos, side) {
+  let length = text3.nodeValue.length;
   if (pos > length)
     pos = length;
   let from = pos, to = pos, flatten2 = 0;
@@ -4770,7 +4770,7 @@ function textCoords(text2, pos, side) {
     else if (to < length)
       to++;
   }
-  let rects = textRange(text2, from, to).getClientRects();
+  let rects = textRange(text3, from, to).getClientRects();
   if (!rects.length)
     return null;
   let rect = rects[(flatten2 ? flatten2 < 0 : side >= 0) ? 0 : rects.length - 1];
@@ -4837,8 +4837,8 @@ var WidgetView = class _WidgetView extends ContentView {
     let top2 = this;
     while (top2.parent)
       top2 = top2.parent;
-    let { view } = top2, text2 = view && view.state.doc, start = this.posAtStart;
-    return text2 ? text2.slice(start, start + this.length) : Text.empty;
+    let { view } = top2, text3 = view && view.state.doc, start = this.posAtStart;
+    return text3 ? text3.slice(start, start + this.length) : Text.empty;
   }
   domAtPos(pos) {
     return (this.length ? pos == 0 : this.side > 0) ? DOMPos.before(this.dom) : DOMPos.after(this.dom, pos == this.length);
@@ -5711,8 +5711,8 @@ var ContentBuilder = class _ContentBuilder {
     if (this.openStart < 0)
       this.openStart = openStart;
   }
-  static build(text2, from, to, decorations3, dynamicDecorationMap) {
-    let builder = new _ContentBuilder(text2, from, to, dynamicDecorationMap);
+  static build(text3, from, to, decorations3, dynamicDecorationMap) {
+    let builder = new _ContentBuilder(text3, from, to, dynamicDecorationMap);
     builder.openEnd = RangeSet.spans(decorations3, from, to, builder);
     if (builder.openStart < 0)
       builder.openStart = builder.openEnd;
@@ -5869,7 +5869,7 @@ function computeCharTypes(line, rFrom, rTo, isolates, outerType) {
 }
 function processBracketPairs(line, rFrom, rTo, isolates, outerType) {
   let oppositeType = outerType == 1 ? 2 : 1;
-  for (let iI = 0, sI = 0, context = 0; iI <= isolates.length; iI++) {
+  for (let iI = 0, sI = 0, context2 = 0; iI <= isolates.length; iI++) {
     let from = iI ? isolates[iI - 1].to : rFrom, to = iI < isolates.length ? isolates[iI].from : rTo;
     for (let i = from, ch, br, type; i < to; i++) {
       if (br = Brackets[ch = line.charCodeAt(i)]) {
@@ -5889,11 +5889,11 @@ function processBracketPairs(line, rFrom, rTo, isolates, outerType) {
         } else {
           BracketStack[sI++] = i;
           BracketStack[sI++] = ch;
-          BracketStack[sI++] = context;
+          BracketStack[sI++] = context2;
         }
       } else if ((type = types[i]) == 2 || type == 1) {
         let embed = type == outerType;
-        context = embed ? 0 : 1;
+        context2 = embed ? 0 : 1;
         for (let sJ = sI - 3; sJ >= 0; sJ -= 3) {
           let cur = BracketStack[sJ + 2];
           if (cur & 2)
@@ -6099,9 +6099,9 @@ function moveVisually(line, order2, dir, start, forward) {
     return EditorSelection.cursor(nextSpan.side(!forward, dir) + line.from, nextSpan.forward(forward, dir) ? 1 : -1, nextSpan.level);
   return EditorSelection.cursor(nextIndex + line.from, span.forward(forward, dir) ? -1 : 1, span.level);
 }
-function autoDirection(text2, from, to) {
+function autoDirection(text3, from, to) {
   for (let i = from; i < to; i++) {
-    let type = charType(text2.charCodeAt(i));
+    let type = charType(text3.charCodeAt(i));
     if (type == 1)
       return LTR;
     if (type == 2 || type == 4)
@@ -6143,13 +6143,13 @@ var ScrollTarget = class _ScrollTarget {
 };
 var scrollIntoView = /* @__PURE__ */ StateEffect.define({ map: (t2, ch) => t2.map(ch) });
 var setEditContextFormatting = /* @__PURE__ */ StateEffect.define();
-function logException(state, exception, context) {
+function logException(state, exception, context2) {
   let handler = state.facet(exceptionSink);
   if (handler.length)
     handler[0](exception);
-  else if (window.onerror && window.onerror(String(exception), context, void 0, void 0, exception)) ;
-  else if (context)
-    console.error(context + ":", exception);
+  else if (window.onerror && window.onerror(String(exception), context2, void 0, void 0, exception)) ;
+  else if (context2)
+    console.error(context2 + ":", exception);
   else
     console.error(exception);
 }
@@ -6639,9 +6639,9 @@ var DocView = class extends ContentView {
           if (browser.gecko) {
             let nextTo = nextToUneditable(anchor.node, anchor.offset);
             if (nextTo && nextTo != (1 | 2)) {
-              let text2 = (nextTo == 1 ? textNodeBefore : textNodeAfter)(anchor.node, anchor.offset);
-              if (text2)
-                anchor = new DOMPos(text2.node, text2.offset);
+              let text3 = (nextTo == 1 ? textNodeBefore : textNodeAfter)(anchor.node, anchor.offset);
+              if (text3)
+                anchor = new DOMPos(text3.node, text3.offset);
             }
           }
           rawSel.collapse(anchor.node, anchor.offset);
@@ -6971,10 +6971,10 @@ function findCompositionRange(view, changes, headPos) {
   let found = findCompositionNode(view, headPos);
   if (!found)
     return null;
-  let { node: textNode, from, to } = found, text2 = textNode.nodeValue;
-  if (/[\n\r]/.test(text2))
+  let { node: textNode, from, to } = found, text3 = textNode.nodeValue;
+  if (/[\n\r]/.test(text3))
     return null;
-  if (view.state.doc.sliceString(found.from, found.to) != text2)
+  if (view.state.doc.sliceString(found.from, found.to) != text3)
     return null;
   let inv = changes.invertedDesc;
   let range = new ChangedRange(inv.mapPos(from), inv.mapPos(to), from, to);
@@ -7421,8 +7421,8 @@ var DOMReader = class {
     this.text = "";
     this.lineSeparator = state.facet(EditorState.lineSeparator);
   }
-  append(text2) {
-    this.text += text2;
+  append(text3) {
+    this.text += text3;
   }
   lineBreak() {
     this.text += LineBreakPlaceholder;
@@ -7447,20 +7447,20 @@ var DOMReader = class {
     return this;
   }
   readTextNode(node) {
-    let text2 = node.nodeValue;
+    let text3 = node.nodeValue;
     for (let point of this.points)
       if (point.node == node)
-        point.pos = this.text.length + Math.min(point.offset, text2.length);
+        point.pos = this.text.length + Math.min(point.offset, text3.length);
     for (let off = 0, re = this.lineSeparator ? null : /\r\n?|\n/g; ; ) {
       let nextBreak = -1, breakSize = 1, m;
       if (this.lineSeparator) {
-        nextBreak = text2.indexOf(this.lineSeparator, off);
+        nextBreak = text3.indexOf(this.lineSeparator, off);
         breakSize = this.lineSeparator.length;
-      } else if (m = re.exec(text2)) {
+      } else if (m = re.exec(text3)) {
         nextBreak = m.index;
         breakSize = m[0].length;
       }
-      this.append(text2.slice(off, nextBreak < 0 ? text2.length : nextBreak));
+      this.append(text3.slice(off, nextBreak < 0 ? text3.length : nextBreak));
       if (nextBreak < 0)
         break;
       this.lineBreak();
@@ -7641,12 +7641,12 @@ function applyDOMChangeInner(view, change, newSel, lastKey = -1) {
   // after a completion when you press enter
   (change.from == sel.from || change.from == sel.from - 1 && view.state.sliceDoc(change.from, sel.from) == " ") && change.insert.length == 1 && change.insert.lines == 2 && dispatchKey(view.contentDOM, "Enter", 13) || (change.from == sel.from - 1 && change.to == sel.to && change.insert.length == 0 || lastKey == 8 && change.insert.length < change.to - change.from && change.to > sel.head) && dispatchKey(view.contentDOM, "Backspace", 8) || change.from == sel.from && change.to == sel.to + 1 && change.insert.length == 0 && dispatchKey(view.contentDOM, "Delete", 46)))
     return true;
-  let text2 = change.insert.toString();
+  let text3 = change.insert.toString();
   if (view.inputState.composing >= 0)
     view.inputState.composing++;
   let defaultTr;
   let defaultInsert = () => defaultTr || (defaultTr = applyDefaultInsert(view, change, newSel));
-  if (!view.state.facet(inputHandler).some((h) => h(view, change.from, change.to, text2, defaultInsert)))
+  if (!view.state.facet(inputHandler).some((h) => h(view, change.from, change.to, text3, defaultInsert)))
     view.dispatch(defaultInsert());
   return true;
 }
@@ -8097,16 +8097,16 @@ function capturePaste(view) {
     doPaste(view, target.value);
   }, 50);
 }
-function textFilter(state, facet, text2) {
+function textFilter(state, facet, text3) {
   for (let filter of state.facet(facet))
-    text2 = filter(text2, state);
-  return text2;
+    text3 = filter(text3, state);
+  return text3;
 }
 function doPaste(view, input) {
   input = textFilter(view.state, clipboardInputFilter, input);
-  let { state } = view, changes, i = 1, text2 = state.toText(input);
-  let byLine = text2.lines == state.selection.ranges.length;
-  let linewise = lastLinewiseCopy != null && state.selection.ranges.every((r) => r.empty) && lastLinewiseCopy == text2.toString();
+  let { state } = view, changes, i = 1, text3 = state.toText(input);
+  let byLine = text3.lines == state.selection.ranges.length;
+  let linewise = lastLinewiseCopy != null && state.selection.ranges.every((r) => r.empty) && lastLinewiseCopy == text3.toString();
   if (linewise) {
     let lastLine = -1;
     changes = state.changeByRange((range) => {
@@ -8114,7 +8114,7 @@ function doPaste(view, input) {
       if (line.from == lastLine)
         return { range };
       lastLine = line.from;
-      let insert2 = state.toText((byLine ? text2.line(i++).text : input) + state.lineBreak);
+      let insert2 = state.toText((byLine ? text3.line(i++).text : input) + state.lineBreak);
       return {
         changes: { from: line.from, insert: insert2 },
         range: EditorSelection.cursor(range.from + insert2.length)
@@ -8122,14 +8122,14 @@ function doPaste(view, input) {
     });
   } else if (byLine) {
     changes = state.changeByRange((range) => {
-      let line = text2.line(i++);
+      let line = text3.line(i++);
       return {
         changes: { from: range.from, to: range.to, insert: line.text },
         range: EditorSelection.cursor(range.from + line.length)
       };
     });
   } else {
-    changes = state.replaceSelection(text2);
+    changes = state.replaceSelection(text3);
   }
   view.dispatch(changes, {
     userEvent: "input.paste",
@@ -8293,14 +8293,14 @@ handlers.dragend = (view) => {
   view.inputState.draggedContent = null;
   return false;
 };
-function dropText(view, event, text2, direct) {
-  text2 = textFilter(view.state, clipboardInputFilter, text2);
-  if (!text2)
+function dropText(view, event, text3, direct) {
+  text3 = textFilter(view.state, clipboardInputFilter, text3);
+  if (!text3)
     return;
   let dropPos = view.posAtCoords({ x: event.clientX, y: event.clientY }, false);
   let { draggedContent } = view.inputState;
   let del = direct && draggedContent && dragMovesSelection(view, event) ? { from: draggedContent.from, to: draggedContent.to } : null;
-  let ins = { from: dropPos, insert: text2 };
+  let ins = { from: dropPos, insert: text3 };
   let changes = view.state.changes(del ? [del, ins] : ins);
   view.focus();
   view.dispatch({
@@ -8317,26 +8317,26 @@ handlers.drop = (view, event) => {
     return true;
   let files = event.dataTransfer.files;
   if (files && files.length) {
-    let text2 = Array(files.length), read = 0;
+    let text3 = Array(files.length), read = 0;
     let finishFile = () => {
       if (++read == files.length)
-        dropText(view, event, text2.filter((s) => s != null).join(view.state.lineBreak), false);
+        dropText(view, event, text3.filter((s) => s != null).join(view.state.lineBreak), false);
     };
     for (let i = 0; i < files.length; i++) {
       let reader = new FileReader();
       reader.onerror = finishFile;
       reader.onload = () => {
         if (!/[\x00-\x08\x0e-\x1f]{2}/.test(reader.result))
-          text2[i] = reader.result;
+          text3[i] = reader.result;
         finishFile();
       };
       reader.readAsText(files[i]);
     }
     return true;
   } else {
-    let text2 = event.dataTransfer.getData("Text");
-    if (text2) {
-      dropText(view, event, text2, true);
+    let text3 = event.dataTransfer.getData("Text");
+    if (text3) {
+      dropText(view, event, text3, true);
       return true;
     }
   }
@@ -8355,15 +8355,15 @@ handlers.paste = (view, event) => {
     return false;
   }
 };
-function captureCopy(view, text2) {
+function captureCopy(view, text3) {
   let parent = view.dom.parentNode;
   if (!parent)
     return;
   let target = parent.appendChild(document.createElement("textarea"));
   target.style.cssText = "position: fixed; left: -10000px; top: 10px";
-  target.value = text2;
+  target.value = text3;
   target.focus();
-  target.selectionEnd = text2.length;
+  target.selectionEnd = text3.length;
   target.selectionStart = 0;
   setTimeout(() => {
     target.remove();
@@ -8393,10 +8393,10 @@ function copiedRange(state) {
 }
 var lastLinewiseCopy = null;
 handlers.copy = handlers.cut = (view, event) => {
-  let { text: text2, ranges, linewise } = copiedRange(view.state);
-  if (!text2 && !linewise)
+  let { text: text3, ranges, linewise } = copiedRange(view.state);
+  if (!text3 && !linewise)
     return false;
-  lastLinewiseCopy = linewise ? text2 : null;
+  lastLinewiseCopy = linewise ? text3 : null;
   if (event.type == "cut" && !view.state.readOnly)
     view.dispatch({
       changes: ranges,
@@ -8406,10 +8406,10 @@ handlers.copy = handlers.cut = (view, event) => {
   let data2 = brokenClipboardAPI ? null : event.clipboardData;
   if (data2) {
     data2.clearData();
-    data2.setData("text/plain", text2);
+    data2.setData("text/plain", text3);
     return true;
   } else {
-    captureCopy(view, text2);
+    captureCopy(view, text3);
     return false;
   }
 };
@@ -8481,11 +8481,11 @@ observers.contextmenu = (view) => {
 handlers.beforeinput = (view, event) => {
   var _a2, _b;
   if (event.inputType == "insertReplacementText" && view.observer.editContext) {
-    let text2 = (_a2 = event.dataTransfer) === null || _a2 === void 0 ? void 0 : _a2.getData("text/plain"), ranges = event.getTargetRanges();
-    if (text2 && ranges.length) {
+    let text3 = (_a2 = event.dataTransfer) === null || _a2 === void 0 ? void 0 : _a2.getData("text/plain"), ranges = event.getTargetRanges();
+    if (text3 && ranges.length) {
       let r = ranges[0];
       let from = view.posAtDOM(r.startContainer, r.startOffset), to = view.posAtDOM(r.endContainer, r.endOffset);
-      applyDOMChangeInner(view, { from, to, insert: view.state.toText(text2) }, null);
+      applyDOMChangeInner(view, { from, to, insert: view.state.toText(text3) }, null);
       return true;
     }
   }
@@ -10252,8 +10252,8 @@ var DOMObserver = class {
     let { view } = this, sel = this.selectionRange;
     if (view.state.facet(editable) ? view.root.activeElement != this.dom : !hasSelection(this.dom, sel))
       return;
-    let context = sel.anchorNode && view.docView.nearest(sel.anchorNode);
-    if (context && context.ignoreEvent(event)) {
+    let context2 = sel.anchorNode && view.docView.nearest(sel.anchorNode);
+    if (context2 && context2.ignoreEvent(event)) {
       if (!wasChanged)
         this.selectionChanged = false;
       return;
@@ -10580,7 +10580,7 @@ var EditContextManager = class {
     this.handlers = /* @__PURE__ */ Object.create(null);
     this.composing = null;
     this.resetRange(view.state);
-    let context = this.editContext = new window.EditContext({
+    let context2 = this.editContext = new window.EditContext({
       text: view.state.doc.sliceString(this.from, this.to),
       selectionStart: this.toContextPos(Math.max(this.from, Math.min(this.to, view.state.selection.main.anchor))),
       selectionEnd: this.toContextPos(view.state.selection.main.head)
@@ -10618,7 +10618,7 @@ var EditContextManager = class {
         this.revertPending(view.state);
         this.setSelection(view.state);
       }
-      if (change.from < change.to && !change.insert.length && view.inputState.composing >= 0 && !/[\\p{Alphabetic}\\p{Number}_]/.test(context.text.slice(Math.max(0, e.updateRangeStart - 1), Math.min(context.text.length, e.updateRangeStart + 1))))
+      if (change.from < change.to && !change.insert.length && view.inputState.composing >= 0 && !/[\\p{Alphabetic}\\p{Number}_]/.test(context2.text.slice(Math.max(0, e.updateRangeStart - 1), Math.min(context2.text.length, e.updateRangeStart + 1))))
         this.handlers.compositionend(e);
     };
     this.handlers.characterboundsupdate = (e) => {
@@ -10628,7 +10628,7 @@ var EditContextManager = class {
         prev = rect && new DOMRect(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top) || prev || new DOMRect();
         rects.push(prev);
       }
-      context.updateCharacterBounds(e.rangeStart, rects);
+      context2.updateCharacterBounds(e.rangeStart, rects);
     };
     this.handlers.textformatupdate = (e) => {
       let deco = [];
@@ -10661,7 +10661,7 @@ var EditContextManager = class {
       }
     };
     for (let event in this.handlers)
-      context.addEventListener(event, this.handlers[event]);
+      context2.addEventListener(event, this.handlers[event]);
     this.measureReq = { read: (view2) => {
       this.editContext.updateControlBounds(view2.contentDOM.getBoundingClientRect());
       let sel = getSelection(view2.root);
@@ -14243,7 +14243,7 @@ var __test = {
   getHeightChangeFlag: () => heightChangeFlag
 };
 
-// node_modules/@lezer/common/dist/index.js
+// ../obsidian-study-studio/node_modules/@lezer/common/dist/index.js
 var DefaultBufferLength = 1024;
 var nextPropID = 0;
 var Range3 = class {
@@ -14777,8 +14777,8 @@ var BaseNode = class {
   resolveInner(pos, side = 0) {
     return resolveNode(this, pos, side, true);
   }
-  matchContext(context) {
-    return matchNodeContext(this.parent, context);
+  matchContext(context2) {
+    return matchNodeContext(this.parent, context2);
   }
   enterUnfinishedNodesBefore(pos) {
     let scan = this.childBefore(pos), node = this;
@@ -14959,12 +14959,12 @@ function getChildren(node, type, before, after) {
       return after == null ? result : [];
   }
 }
-function matchNodeContext(node, context, i = context.length - 1) {
+function matchNodeContext(node, context2, i = context2.length - 1) {
   for (let p = node; i >= 0; p = p.parent) {
     if (!p)
       return false;
     if (!p.type.isAnonymous) {
-      if (context[i] && context[i] != p.name)
+      if (context2[i] && context2[i] != p.name)
         return false;
       i--;
     }
@@ -14989,12 +14989,12 @@ var BufferNode = class _BufferNode extends BaseNode {
   get to() {
     return this.context.start + this.context.buffer.buffer[this.index + 2];
   }
-  constructor(context, _parent, index2) {
+  constructor(context2, _parent, index2) {
     super();
-    this.context = context;
+    this.context = context2;
     this._parent = _parent;
     this.index = index2;
-    this.type = context.buffer.set.types[context.buffer.buffer[index2]];
+    this.type = context2.buffer.set.types[context2.buffer.buffer[index2]];
   }
   child(dir, pos, side) {
     let { buffer } = this.context;
@@ -15465,16 +15465,16 @@ var TreeCursor = class {
   of direct parent node names. Empty strings in the context array
   are treated as wildcards.
   */
-  matchContext(context) {
+  matchContext(context2) {
     if (!this.buffer)
-      return matchNodeContext(this.node.parent, context);
+      return matchNodeContext(this.node.parent, context2);
     let { buffer } = this.buffer, { types: types2 } = buffer.set;
-    for (let i = context.length - 1, d = this.stack.length - 1; i >= 0; d--) {
+    for (let i = context2.length - 1, d = this.stack.length - 1; i >= 0; d--) {
       if (d < 0)
-        return matchNodeContext(this._tree, context, i);
+        return matchNodeContext(this._tree, context2, i);
       let type = types2[buffer.buffer[this.stack[d]]];
       if (!type.isAnonymous) {
-        if (context[i] && context[i] != type.name)
+        if (context2[i] && context2[i] != type.name)
           return false;
         i--;
       }
@@ -16294,7 +16294,7 @@ function enterFragments(mounts, ranges) {
   return result;
 }
 
-// node_modules/@lezer/highlight/dist/index.js
+// ../obsidian-study-studio/node_modules/@lezer/highlight/dist/index.js
 var nextTagID = 0;
 var Tag = class _Tag {
   /**
@@ -16447,10 +16447,10 @@ var ruleNodeProp = new NodeProp({
   }
 });
 var Rule = class {
-  constructor(tags3, mode, context, next) {
+  constructor(tags3, mode, context2, next) {
     this.tags = tags3;
     this.mode = mode;
-    this.context = context;
+    this.context = context2;
     this.next = next;
   }
   get opaque() {
@@ -17018,7 +17018,7 @@ var classHighlighter = tagHighlighter([
   { tag: tags.punctuation, class: "tok-punctuation" }
 ]);
 
-// node_modules/@codemirror/language/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/language/dist/index.js
 var _a;
 var languageDataProp = /* @__PURE__ */ new NodeProp();
 function defineLanguageFacet(baseData) {
@@ -17408,9 +17408,9 @@ function cutFragments(fragments, from, to) {
   return TreeFragment.applyChanges(fragments, [{ fromA: from, toA: to, fromB: from, toB: to }]);
 }
 var LanguageState = class _LanguageState {
-  constructor(context) {
-    this.context = context;
-    this.tree = context.tree;
+  constructor(context2) {
+    this.context = context2;
+    this.tree = context2.tree;
   }
   apply(tr) {
     if (!tr.docChanged && this.tree == this.context.tree)
@@ -17664,16 +17664,16 @@ function indentString(state, cols) {
     result += ch;
   return result;
 }
-function getIndentation(context, pos) {
-  if (context instanceof EditorState)
-    context = new IndentContext(context);
-  for (let service of context.state.facet(indentService)) {
-    let result = service(context, pos);
+function getIndentation(context2, pos) {
+  if (context2 instanceof EditorState)
+    context2 = new IndentContext(context2);
+  for (let service of context2.state.facet(indentService)) {
+    let result = service(context2, pos);
     if (result !== void 0)
       return result;
   }
-  let tree2 = syntaxTree(context.state);
-  return tree2.length >= pos ? syntaxIndentation(context, tree2, pos) : null;
+  let tree2 = syntaxTree(context2.state);
+  return tree2.length >= pos ? syntaxIndentation(context2, tree2, pos) : null;
 }
 var IndentContext = class {
   /**
@@ -17712,18 +17712,18 @@ var IndentContext = class {
   textAfterPos(pos, bias = 1) {
     if (this.options.simulateDoubleBreak && pos == this.options.simulateBreak)
       return "";
-    let { text: text2, from } = this.lineAt(pos, bias);
-    return text2.slice(pos - from, Math.min(text2.length, pos + 100 - from));
+    let { text: text3, from } = this.lineAt(pos, bias);
+    return text3.slice(pos - from, Math.min(text3.length, pos + 100 - from));
   }
   /**
   Find the column for the given position.
   */
   column(pos, bias = 1) {
-    let { text: text2, from } = this.lineAt(pos, bias);
-    let result = this.countColumn(text2, pos - from);
+    let { text: text3, from } = this.lineAt(pos, bias);
+    let result = this.countColumn(text3, pos - from);
     let override = this.options.overrideIndentation ? this.options.overrideIndentation(from) : -1;
     if (override > -1)
-      result += override - this.countColumn(text2, text2.search(/\S|$/));
+      result += override - this.countColumn(text3, text3.search(/\S|$/));
     return result;
   }
   /**
@@ -17737,14 +17737,14 @@ var IndentContext = class {
   Find the indentation column of the line at the given point.
   */
   lineIndent(pos, bias = 1) {
-    let { text: text2, from } = this.lineAt(pos, bias);
+    let { text: text3, from } = this.lineAt(pos, bias);
     let override = this.options.overrideIndentation;
     if (override) {
       let overriden = override(from);
       if (overriden > -1)
         return overriden;
     }
-    return this.countColumn(text2, text2.search(/\S|$/));
+    return this.countColumn(text3, text3.search(/\S|$/));
   }
   /**
   Returns the [simulated line
@@ -17794,11 +17794,11 @@ function topIndent() {
   return 0;
 }
 var TreeIndentContext = class _TreeIndentContext extends IndentContext {
-  constructor(base2, pos, context) {
+  constructor(base2, pos, context2) {
     super(base2.state, base2.options);
     this.base = base2;
     this.pos = pos;
-    this.context = context;
+    this.context = context2;
   }
   /**
   The syntax tree node to which the indentation strategy
@@ -17810,8 +17810,8 @@ var TreeIndentContext = class _TreeIndentContext extends IndentContext {
   /**
   @internal
   */
-  static create(base2, pos, context) {
-    return new _TreeIndentContext(base2, pos, context);
+  static create(base2, pos, context2) {
+    return new _TreeIndentContext(base2, pos, context2);
   }
   /**
   Get the text directly after `this.pos`, either the entire line
@@ -17860,13 +17860,13 @@ function isParent(parent, of) {
       return true;
   return false;
 }
-function bracketedAligned(context) {
-  let tree2 = context.node;
+function bracketedAligned(context2) {
+  let tree2 = context2.node;
   let openToken = tree2.childAfter(tree2.from), last = tree2.lastChild;
   if (!openToken)
     return null;
-  let sim = context.options.simulateBreak;
-  let openLine = context.state.doc.lineAt(openToken.from);
+  let sim = context2.options.simulateBreak;
+  let openLine = context2.state.doc.lineAt(openToken.from);
   let lineEnd2 = sim == null || sim <= openLine.from ? openLine.to : Math.min(openLine.to, sim);
   for (let pos = openToken.to; ; ) {
     let next = tree2.childAfter(pos);
@@ -17882,21 +17882,21 @@ function bracketedAligned(context) {
   }
 }
 function delimitedIndent({ closing, align = true, units = 1 }) {
-  return (context) => delimitedStrategy(context, align, units, closing);
+  return (context2) => delimitedStrategy(context2, align, units, closing);
 }
-function delimitedStrategy(context, align, units, closing, closedAt) {
-  let after = context.textAfter, space5 = after.match(/^\s*/)[0].length;
-  let closed = closing && after.slice(space5, space5 + closing.length) == closing || closedAt == context.pos + space5;
-  let aligned = align ? bracketedAligned(context) : null;
+function delimitedStrategy(context2, align, units, closing, closedAt) {
+  let after = context2.textAfter, space5 = after.match(/^\s*/)[0].length;
+  let closed = closing && after.slice(space5, space5 + closing.length) == closing || closedAt == context2.pos + space5;
+  let aligned = align ? bracketedAligned(context2) : null;
   if (aligned)
-    return closed ? context.column(aligned.from) : context.column(aligned.to);
-  return context.baseIndent + (closed ? 0 : context.unit * units);
+    return closed ? context2.column(aligned.from) : context2.column(aligned.to);
+  return context2.baseIndent + (closed ? 0 : context2.unit * units);
 }
-var flatIndent = (context) => context.baseIndent;
+var flatIndent = (context2) => context2.baseIndent;
 function continuedIndent({ except, units = 1 } = {}) {
-  return (context) => {
-    let matchExcept = except && except.test(context.textAfter);
-    return context.baseIndent + (matchExcept ? 0 : units * context.unit);
+  return (context2) => {
+    let matchExcept = except && except.test(context2.textAfter);
+    return context2.baseIndent + (matchExcept ? 0 : units * context2.unit);
   };
 }
 var DontIndentBeyond = 200;
@@ -18233,12 +18233,12 @@ function matchPlainBrackets(state, pos, dir, tree2, tokenType2, maxScanDistance,
   let startToken = { from: dir < 0 ? pos - 1 : pos, to: dir > 0 ? pos + 1 : pos };
   let iter = state.doc.iterRange(pos, dir > 0 ? state.doc.length : 0), depth2 = 0;
   for (let distance = 0; !iter.next().done && distance <= maxScanDistance; ) {
-    let text2 = iter.value;
+    let text3 = iter.value;
     if (dir < 0)
-      distance += text2.length;
+      distance += text3.length;
     let basePos = pos + distance * dir;
-    for (let pos2 = dir > 0 ? 0 : text2.length - 1, end = dir > 0 ? text2.length : -1; pos2 != end; pos2 += dir) {
-      let found = brackets.indexOf(text2[pos2]);
+    for (let pos2 = dir > 0 ? 0 : text3.length - 1, end = dir > 0 ? text3.length : -1; pos2 != end; pos2 += dir) {
+      let found = brackets.indexOf(text3[pos2]);
       if (found < 0 || tree2.resolveInner(basePos + pos2, 1).type != tokenType2)
         continue;
       if (found % 2 == 0 == dir > 0) {
@@ -18250,7 +18250,7 @@ function matchPlainBrackets(state, pos, dir, tree2, tokenType2, maxScanDistance,
       }
     }
     if (dir > 0)
-      distance += text2.length;
+      distance += text3.length;
   }
   return iter.done ? { start: startToken, matched: false } : null;
 }
@@ -18563,39 +18563,39 @@ var Parse = class {
     this.chunkReused = void 0;
     this.rangeIndex = 0;
     this.to = ranges[ranges.length - 1].to;
-    let context = ParseContext.get(), from = ranges[0].from;
-    let { state, tree: tree2 } = findStartInFragments(lang, fragments, from, this.to, context === null || context === void 0 ? void 0 : context.state);
+    let context2 = ParseContext.get(), from = ranges[0].from;
+    let { state, tree: tree2 } = findStartInFragments(lang, fragments, from, this.to, context2 === null || context2 === void 0 ? void 0 : context2.state);
     this.state = state;
     this.parsedPos = this.chunkStart = from + tree2.length;
     for (let i = 0; i < tree2.children.length; i++) {
       this.chunks.push(tree2.children[i]);
       this.chunkPos.push(tree2.positions[i]);
     }
-    if (context && this.parsedPos < context.viewport.from - 1e5 && ranges.some((r) => r.from <= context.viewport.from && r.to >= context.viewport.from)) {
-      this.state = this.lang.streamParser.startState(getIndentUnit(context.state));
-      context.skipUntilInView(this.parsedPos, context.viewport.from);
-      this.parsedPos = context.viewport.from;
+    if (context2 && this.parsedPos < context2.viewport.from - 1e5 && ranges.some((r) => r.from <= context2.viewport.from && r.to >= context2.viewport.from)) {
+      this.state = this.lang.streamParser.startState(getIndentUnit(context2.state));
+      context2.skipUntilInView(this.parsedPos, context2.viewport.from);
+      this.parsedPos = context2.viewport.from;
     }
     this.moveRangeIndex();
   }
   advance() {
-    let context = ParseContext.get();
+    let context2 = ParseContext.get();
     let parseEnd = this.stoppedAt == null ? this.to : Math.min(this.to, this.stoppedAt);
     let end = Math.min(
       parseEnd,
       this.chunkStart + 512
       /* C.ChunkSize */
     );
-    if (context)
-      end = Math.min(end, context.viewport.to);
+    if (context2)
+      end = Math.min(end, context2.viewport.to);
     while (this.parsedPos < end)
-      this.parseLine(context);
+      this.parseLine(context2);
     if (this.chunkStart < this.parsedPos)
       this.finishChunk();
     if (this.parsedPos >= parseEnd)
       return this.finish();
-    if (context && this.parsedPos >= context.viewport.to) {
-      context.skipUntilInView(this.parsedPos, parseEnd);
+    if (context2 && this.parsedPos >= context2.viewport.to) {
+      context2.skipUntilInView(this.parsedPos, parseEnd);
       return this.finish();
     }
     return null;
@@ -18662,9 +18662,9 @@ var Parse = class {
       this.chunk.push(id3, from, to, size);
     return offset;
   }
-  parseLine(context) {
+  parseLine(context2) {
     let { line, end } = this.nextLine(), offset = 0, { streamParser } = this.lang;
-    let stream = new StringStream(line, context ? context.state.tabSize : 4, context ? getIndentUnit(context.state) : 2);
+    let stream = new StringStream(line, context2 ? context2.state.tabSize : 4, context2 ? getIndentUnit(context2.state) : 2);
     if (stream.eol()) {
       streamParser.blankLine(this.state, stream.indentUnit);
     } else {
@@ -18799,7 +18799,7 @@ var marks = {
   auto: /* @__PURE__ */ Decoration.mark({ class: "cm-iso", inclusive: true, attributes: { dir: "auto" }, bidiIsolate: null })
 };
 
-// node_modules/@codemirror/commands/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/commands/dist/index.js
 var toggleComment = (target) => {
   let { state } = target, line = state.doc.lineAt(state.selection.main.from), config = getConfig(target.state, line.from);
   return config.line ? toggleLineComment(target) : config.block ? toggleBlockCommentByLine(target) : false;
@@ -19852,8 +19852,8 @@ var insertNewlineKeepIndent = ({ state, dispatch }) => {
 function isBetweenBrackets(state, pos) {
   if (/\(\)|\[\]|\{\}/.test(state.sliceDoc(pos - 1, pos + 1)))
     return { from: pos, to: pos };
-  let context = syntaxTree(state).resolveInner(pos);
-  let before = context.childBefore(pos), after = context.childAfter(pos), closedBy;
+  let context2 = syntaxTree(state).resolveInner(pos);
+  let before = context2.childBefore(pos), after = context2.childAfter(pos), closedBy;
   if (before && after && before.to <= pos && after.from >= pos && (closedBy = before.type.prop(NodeProp.closedBy)) && closedBy.indexOf(after.name) > -1 && state.doc.lineAt(before.to).from == state.doc.lineAt(after.from).from && !/\S/.test(state.sliceDoc(before.to, after.from)))
     return { from: before.to, to: after.from };
   return null;
@@ -19914,12 +19914,12 @@ var indentSelection = ({ state, dispatch }) => {
   if (state.readOnly)
     return false;
   let updated = /* @__PURE__ */ Object.create(null);
-  let context = new IndentContext(state, { overrideIndentation: (start) => {
+  let context2 = new IndentContext(state, { overrideIndentation: (start) => {
     let found = updated[start];
     return found == null ? -1 : found;
   } });
   let changes = changeBySelectedLine(state, (line, changes2, range) => {
-    let indent2 = getIndentation(context, line.from);
+    let indent2 = getIndentation(context2, line.from);
     if (indent2 == null)
       return;
     if (!/\S/.test(line.text))
@@ -20037,7 +20037,40 @@ var defaultKeymap = /* @__PURE__ */ [
 ].concat(standardKeymap);
 var indentWithTab = { key: "Tab", run: indentMore, shift: indentLess };
 
-// node_modules/@lezer/markdown/dist/index.js
+// src/math-shortcut.ts
+var import_obsidian = require("obsidian");
+function focusedMathShortcut(app, owner, target, open) {
+  let scope;
+  const release = () => {
+    if (scope) {
+      app.keymap.popScope(scope);
+      scope = void 0;
+    }
+  };
+  const focus = () => {
+    if (scope) return;
+    let parent = owner.scope;
+    if (!parent) app.workspace.iterateAllLeaves((leaf) => {
+      if (leaf.view.containerEl.contains(target)) parent = leaf.view.scope ?? void 0;
+    });
+    scope = new import_obsidian.Scope(parent ?? app.scope);
+    scope.register(["Meta", "Shift"], "m", () => {
+      if (target.contains(target.ownerDocument.activeElement)) {
+        open();
+        return false;
+      }
+      return true;
+    });
+    app.keymap.pushScope(scope);
+  };
+  owner.registerDomEvent(target, "focusin", focus);
+  owner.registerDomEvent(target, "focusout", (event) => {
+    if (!event.relatedTarget || !target.contains(event.relatedTarget)) release();
+  });
+  owner.register(release);
+}
+
+// ../obsidian-study-studio/node_modules/@lezer/markdown/dist/index.js
 var CompositeBlock = class _CompositeBlock {
   static create(type, value, from, parentHash, end) {
     let hash4 = parentHash + (parentHash << 8) + type + (value << 4) | 0;
@@ -20164,8 +20197,8 @@ var Line2 = class {
   /**
   @internal
   */
-  reset(text2) {
-    this.text = text2;
+  reset(text3) {
+    this.text = text3;
     this.baseIndent = this.basePos = this.pos = this.indent = 0;
     this.forwardInner();
     this.depth = 1;
@@ -20621,9 +20654,9 @@ var LinkReferenceParser = class {
     }
   }
 };
-function lineEnd(text2, pos) {
-  for (; pos < text2.length; pos++) {
-    let next = text2.charCodeAt(pos);
+function lineEnd(text3, pos) {
+  for (; pos < text3.length; pos++) {
+    let next = text3.charCodeAt(pos);
     if (next == 10)
       break;
     if (!space(next))
@@ -20856,9 +20889,9 @@ var BlockContext = class {
   leading characters covered by composite blocks.
   */
   readLine() {
-    let { line } = this, { text: text2, end } = this.scanLine(this.absoluteLineStart);
+    let { line } = this, { text: text3, end } = this.scanLine(this.absoluteLineStart);
     this.absoluteLineEnd = end;
-    line.reset(text2);
+    line.reset(text3);
     for (; line.depth < this.stack.length; line.depth++) {
       let cx = this.stack[line.depth], handler = this.parser.skipContextMarkup[cx.type];
       if (!handler)
@@ -20874,14 +20907,14 @@ var BlockContext = class {
     }
   }
   lineChunkAt(pos) {
-    let next = this.input.chunk(pos), text2;
+    let next = this.input.chunk(pos), text3;
     if (!this.input.lineChunks) {
       let eol = next.indexOf("\n");
-      text2 = eol < 0 ? next : next.slice(0, eol);
+      text3 = eol < 0 ? next : next.slice(0, eol);
     } else {
-      text2 = next == "\n" ? "" : next;
+      text3 = next == "\n" ? "" : next;
     }
-    return pos + text2.length > this.to ? text2.slice(0, this.to - pos) : text2;
+    return pos + text3.length > this.to ? text3.slice(0, this.to - pos) : text3;
   }
   /**
   The end position of the previous line.
@@ -21114,8 +21147,8 @@ var MarkdownParser = class _MarkdownParser extends Parser {
   returning an array of [`Element`](#Element) objects representing
   the inline content.
   */
-  parseInline(text2, offset) {
-    let cx = new InlineContext(this, text2, offset);
+  parseInline(text3, offset) {
+    let cx = new InlineContext(this, text3, offset);
     outer: for (let pos = offset; pos < cx.end; ) {
       let next = cx.char(pos);
       for (let token of this.inlineParsers)
@@ -21396,16 +21429,16 @@ var DefaultInline = {
   }
 };
 function finishLink(cx, content2, type, start, startPos) {
-  let { text: text2 } = cx, next = cx.char(startPos), endPos = startPos;
+  let { text: text3 } = cx, next = cx.char(startPos), endPos = startPos;
   content2.unshift(elt(Type.LinkMark, start, start + (type == Type.Image ? 2 : 1)));
   content2.push(elt(Type.LinkMark, startPos - 1, startPos));
   if (next == 40) {
     let pos = cx.skipSpace(startPos + 1);
-    let dest = parseURL(text2, pos - cx.offset, cx.offset), title;
+    let dest = parseURL(text3, pos - cx.offset, cx.offset), title;
     if (dest) {
       pos = cx.skipSpace(dest.to);
       if (pos != dest.to) {
-        title = parseLinkTitle(text2, pos - cx.offset, cx.offset);
+        title = parseLinkTitle(text3, pos - cx.offset, cx.offset);
         if (title)
           pos = cx.skipSpace(title.to);
       }
@@ -21420,7 +21453,7 @@ function finishLink(cx, content2, type, start, startPos) {
       content2.push(elt(Type.LinkMark, pos, endPos));
     }
   } else if (next == 91) {
-    let label = parseLinkLabel(text2, startPos - cx.offset, cx.offset, false);
+    let label = parseLinkLabel(text3, startPos - cx.offset, cx.offset, false);
     if (label) {
       content2.push(label);
       endPos = label.to;
@@ -21428,11 +21461,11 @@ function finishLink(cx, content2, type, start, startPos) {
   }
   return elt(type, start, endPos, content2);
 }
-function parseURL(text2, start, offset) {
-  let next = text2.charCodeAt(start);
+function parseURL(text3, start, offset) {
+  let next = text3.charCodeAt(start);
   if (next == 60) {
-    for (let pos = start + 1; pos < text2.length; pos++) {
-      let ch = text2.charCodeAt(pos);
+    for (let pos = start + 1; pos < text3.length; pos++) {
+      let ch = text3.charCodeAt(pos);
       if (ch == 62)
         return elt(Type.URL, start + offset, pos + 1 + offset);
       if (ch == 60 || ch == 10)
@@ -21441,8 +21474,8 @@ function parseURL(text2, start, offset) {
     return null;
   } else {
     let depth2 = 0, pos = start;
-    for (let escaped3 = false; pos < text2.length; pos++) {
-      let ch = text2.charCodeAt(pos);
+    for (let escaped3 = false; pos < text3.length; pos++) {
+      let ch = text3.charCodeAt(pos);
       if (space(ch)) {
         break;
       } else if (escaped3) {
@@ -21457,16 +21490,16 @@ function parseURL(text2, start, offset) {
         escaped3 = true;
       }
     }
-    return pos > start ? elt(Type.URL, start + offset, pos + offset) : pos == text2.length ? null : false;
+    return pos > start ? elt(Type.URL, start + offset, pos + offset) : pos == text3.length ? null : false;
   }
 }
-function parseLinkTitle(text2, start, offset) {
-  let next = text2.charCodeAt(start);
+function parseLinkTitle(text3, start, offset) {
+  let next = text3.charCodeAt(start);
   if (next != 39 && next != 34 && next != 40)
     return false;
   let end = next == 40 ? 41 : next;
-  for (let pos = start + 1, escaped3 = false; pos < text2.length; pos++) {
-    let ch = text2.charCodeAt(pos);
+  for (let pos = start + 1, escaped3 = false; pos < text3.length; pos++) {
+    let ch = text3.charCodeAt(pos);
     if (escaped3)
       escaped3 = false;
     else if (ch == end)
@@ -21476,9 +21509,9 @@ function parseLinkTitle(text2, start, offset) {
   }
   return null;
 }
-function parseLinkLabel(text2, start, offset, requireNonWS) {
-  for (let escaped3 = false, pos = start + 1, end = Math.min(text2.length, pos + 999); pos < end; pos++) {
-    let ch = text2.charCodeAt(pos);
+function parseLinkLabel(text3, start, offset, requireNonWS) {
+  for (let escaped3 = false, pos = start + 1, end = Math.min(text3.length, pos + 999); pos < end; pos++) {
+    let ch = text3.charCodeAt(pos);
     if (escaped3)
       escaped3 = false;
     else if (ch == 93)
@@ -21498,9 +21531,9 @@ var InlineContext = class {
   /**
   @internal
   */
-  constructor(parser8, text2, offset) {
+  constructor(parser8, text3, offset) {
     this.parser = parser8;
-    this.text = text2;
+    this.text = text3;
     this.offset = offset;
     this.parts = [];
   }
@@ -21990,26 +22023,26 @@ function count(str, from, to, ch) {
       result++;
   return result;
 }
-function autolinkURLEnd(text2, from) {
+function autolinkURLEnd(text3, from) {
   urlRE.lastIndex = from;
-  let m = urlRE.exec(text2);
+  let m = urlRE.exec(text3);
   if (!m || lastTwoDomainWords.exec(m[0])[0].indexOf("_") > -1)
     return -1;
   let end = from + m[0].length;
   for (; ; ) {
-    let last = text2[end - 1], m2;
-    if (/[?!.,:*_~]/.test(last) || last == ")" && count(text2, from, end, ")") > count(text2, from, end, "("))
+    let last = text3[end - 1], m2;
+    if (/[?!.,:*_~]/.test(last) || last == ")" && count(text3, from, end, ")") > count(text3, from, end, "("))
       end--;
-    else if (last == ";" && (m2 = /&(?:#\d+|#x[a-f\d]+|\w+);$/.exec(text2.slice(from, end))))
+    else if (last == ";" && (m2 = /&(?:#\d+|#x[a-f\d]+|\w+);$/.exec(text3.slice(from, end))))
       end = from + m2.index;
     else
       break;
   }
   return end;
 }
-function autolinkEmailEnd(text2, from) {
+function autolinkEmailEnd(text3, from) {
   emailRE.lastIndex = from;
-  let m = emailRE.exec(text2);
+  let m = emailRE.exec(text3);
   if (!m)
     return -1;
   let last = m[0][m[0].length - 1];
@@ -22116,14 +22149,14 @@ function markdownContext(source) {
   let fragments = [];
   const previous = source.length < 4096 ? void 0 : [...cache5.entries()].sort((a2, b) => Math.abs(a2[0].length - source.length) - Math.abs(b[0].length - source.length))[0];
   if (previous) {
-    const [before, context] = previous;
+    const [before, context2] = previous;
     let from = 0, toA = before.length, toB = source.length;
     while (from < toA && from < toB && before[from] === source[from]) from++;
     while (toA > from && toB > from && before[toA - 1] === source[toB - 1]) {
       toA--;
       toB--;
     }
-    fragments = TreeFragment.applyChanges(TreeFragment.addTree(context.tree), [{ fromA: from, toA, fromB: from, toB }]);
+    fragments = TreeFragment.applyChanges(TreeFragment.addTree(context2.tree), [{ fromA: from, toA, fromB: from, toB }]);
   }
   const tree2 = parser2.parse(source, fragments), excluded = [];
   tree2.iterate({ enter: (n) => {
@@ -22273,21 +22306,21 @@ var marginListKeys = [
 var marginLists = [indentUnit.of("    "), Prec.high(keymap.of(marginListKeys))];
 
 // src/rich-markdown.ts
-var import_obsidian = require("obsidian");
+var import_obsidian2 = require("obsidian");
 
 // src/rich-blocks.ts
 var markdownParser = parser.configure([Table]);
-function tableCells(text2, offset) {
+function tableCells(text3, offset) {
   const pipes = [];
-  for (let i = 0; i < text2.length; i++) if (text2[i] === "|") {
+  for (let i = 0; i < text3.length; i++) if (text3[i] === "|") {
     let escapes = 0;
-    for (let p = i - 1; p >= 0 && text2[p] === "\\"; p--) escapes++;
+    for (let p = i - 1; p >= 0 && text3[p] === "\\"; p--) escapes++;
     if (escapes % 2 === 0) pipes.push(i);
   }
-  const start = /^\s*\|/.test(text2) ? pipes.shift() + 1 : 0, end = /\|\s*$/.test(text2) && pipes.length ? pipes.pop() : text2.length;
+  const start = /^\s*\|/.test(text3) ? pipes.shift() + 1 : 0, end = /\|\s*$/.test(text3) && pipes.length ? pipes.pop() : text3.length;
   const bounds = [start - 1, ...pipes, end];
   return bounds.slice(0, -1).map((p, i) => {
-    const raw = text2.slice(p + 1, bounds[i + 1]), left = raw.length - raw.trimStart().length, right = raw.trimEnd().length;
+    const raw = text3.slice(p + 1, bounds[i + 1]), left = raw.length - raw.trimStart().length, right = raw.trimEnd().length;
     return { from: offset + p + 1 + left, to: offset + p + 1 + Math.max(left, right), text: raw.trim() };
   });
 }
@@ -22307,8 +22340,8 @@ function richTables(source) {
   }
   return out;
 }
-function cellMarkdown(text2) {
-  return text2.replace(/\r?\n/g, "<br>").replace(/(?<!\\)(?:\\\\)*\|/g, (match) => match.slice(0, -1) + "\\|");
+function cellMarkdown(text3) {
+  return text3.replace(/\r?\n/g, "<br>").replace(/(?<!\\)(?:\\\\)*\|/g, (match) => match.slice(0, -1) + "\\|");
 }
 function imageSpans(source) {
   const out = [], excluded = [];
@@ -22354,7 +22387,7 @@ ${image}
 
 // src/rich-markdown.ts
 var RichMarkdown = { async render(app, source, host, path, owner, options = {}) {
-  await import_obsidian.MarkdownRenderer.render(app, source, host, path, owner);
+  await import_obsidian2.MarkdownRenderer.render(app, source, host, path, owner);
   for (const link of Array.from(host.querySelectorAll("a.internal-link"))) {
     owner.registerDomEvent(link, "click", (event) => {
       if (event.button !== 0) return;
@@ -22362,7 +22395,7 @@ var RichMarkdown = { async render(app, source, host, path, owner, options = {}) 
       if (!target) return;
       event.preventDefault();
       event.stopPropagation();
-      void app.workspace.openLinkText(target, path, options.reuseLeaf ? import_obsidian.Keymap.isModEvent(event) : true);
+      void app.workspace.openLinkText(target, path, options.reuseLeaf ? import_obsidian2.Keymap.isModEvent(event) : true);
     }, { capture: true });
   }
   const images = Array.from(host.querySelectorAll("img"));
@@ -22515,6 +22548,14 @@ function replaceFieldMath(source, q, latex, tag) {
   safeReplacement(source, q, replacement);
   return source.slice(0, q.from) + replacement + source.slice(q.to);
 }
+function replaceFieldMathSource(source, q, latex, inserting = false, answers = false) {
+  safeReplacement(source, q, q.raw);
+  if (!q.display && /[\r\n]/.test(latex)) throw Error("Keep inline equations and accepted answers on one line.");
+  const replacement = inserting ? answers ? latex : q.display ? `$$
+${latex}
+$$` : `$${latex}$` : q.raw.slice(0, q.bodyFrom - q.from) + latex + q.raw.slice(q.bodyTo - q.from);
+  return source.slice(0, q.from) + replacement + source.slice(q.to);
+}
 
 // src/blank-authoring.ts
 function blankSelection(source, from, to, id3) {
@@ -22530,7 +22571,7 @@ function blankSelection(source, from, to, id3) {
       math2 = q.display ? "display" : "inline";
     } else if (touching.some((q2) => from > q2.from || to < q2.to)) throw Error("Include the whole equation in your selection.");
   }
-  const text2 = source.slice(from, to), accepted = math2 ? equations(text2)[0].body.trim() : text2;
+  const text3 = source.slice(from, to), accepted = math2 ? equations(text3)[0].body.trim() : text3;
   const marker = `{{blank:${id3}}}`;
   return { prompt: source.slice(0, from) + marker + source.slice(to), from, to: from + marker.length, answer: { id: id3, accepted: [accepted], ...math2 ? { math: math2 } : {} } };
 }
@@ -22542,7 +22583,7 @@ function answerText(answer) {
   return answer.math ? (answer.math === "display" ? "$$" : "$") + value + (answer.math === "display" ? "$$" : "$") : value;
 }
 
-// node_modules/@lezer/lr/dist/index.js
+// ../obsidian-study-studio/node_modules/@lezer/lr/dist/index.js
 var Stack = class _Stack {
   /**
   @internal
@@ -22993,9 +23034,9 @@ var Stack = class _Stack {
     if (last < 0 || this.buffer[last] != -4)
       this.buffer.push(this.lookAhead, this.pos, this.pos, -4);
   }
-  updateContext(context) {
-    if (context != this.curContext.context) {
-      let newCx = new StackContext(this.curContext.tracker, context);
+  updateContext(context2) {
+    if (context2 != this.curContext.context) {
+      let newCx = new StackContext(this.curContext.tracker, context2);
       if (newCx.hash != this.curContext.hash)
         this.emitContext();
       this.curContext = newCx;
@@ -23022,10 +23063,10 @@ var Stack = class _Stack {
   }
 };
 var StackContext = class {
-  constructor(tracker, context) {
+  constructor(tracker, context2) {
     this.tracker = tracker;
-    this.context = context;
-    this.hash = tracker.strict ? tracker.hash(context) : 0;
+    this.context = context2;
+    this.hash = tracker.strict ? tracker.hash(context2) : 0;
   }
 };
 var SimulatedStack = class {
@@ -23570,7 +23611,7 @@ var TokenCache = class {
       3
       /* ParseState.TokenizerMask */
     );
-    let context = stack.curContext ? stack.curContext.hash : 0;
+    let context2 = stack.curContext ? stack.curContext.hash : 0;
     let lookAhead = 0;
     for (let i = 0; i < tokenizers.length; i++) {
       if ((1 << i & mask) == 0)
@@ -23578,10 +23619,10 @@ var TokenCache = class {
       let tokenizer = tokenizers[i], token = this.tokens[i];
       if (main && !tokenizer.fallback)
         continue;
-      if (tokenizer.contextual || token.start != stack.pos || token.mask != mask || token.context != context) {
+      if (tokenizer.contextual || token.start != stack.pos || token.mask != mask || token.context != context2) {
         this.updateCachedToken(token, tokenizer, stack);
         token.mask = mask;
-        token.context = context;
+        token.context = context2;
       }
       if (token.lookAhead > token.end + 25)
         lookAhead = Math.max(token.lookAhead, lookAhead);
@@ -24304,7 +24345,7 @@ function getSpecializer(spec) {
   return spec.get;
 }
 
-// node_modules/@lezer/python/dist/index.js
+// ../obsidian-study-studio/node_modules/@lezer/python/dist/index.js
 var printKeyword = 1;
 var indent = 194;
 var dedent = 195;
@@ -24420,8 +24461,8 @@ var newlines = new ExternalTokenizer((input, stack) => {
   }
 }, { contextual: true });
 var indentation = new ExternalTokenizer((input, stack) => {
-  let context = stack.context;
-  if (context.flags) return;
+  let context2 = stack.context;
+  if (context2.flags) return;
   let prev = input.peek(-1);
   if (prev == newline || prev == carriageReturn) {
     let depth2 = 0, chars = 0;
@@ -24432,8 +24473,8 @@ var indentation = new ExternalTokenizer((input, stack) => {
       input.advance();
       chars++;
     }
-    if (depth2 != context.indent && input.next != newline && input.next != carriageReturn && input.next != hash) {
-      if (depth2 < context.indent) input.acceptToken(dedent, -chars);
+    if (depth2 != context2.indent && input.next != newline && input.next != carriageReturn && input.next != hash) {
+      if (depth2 < context2.indent) input.acceptToken(dedent, -chars);
       else input.acceptToken(indent);
     }
   }
@@ -24477,24 +24518,24 @@ var stringFlags = new Map([
 ].map(([term, flags]) => [term, flags | cx_String]));
 var trackIndent = new ContextTracker({
   start: topIndent2,
-  reduce(context, term, _, input) {
-    if (context.flags & cx_Bracketed && bracketed.has(term) || (term == String$1 || term == FormatString) && context.flags & cx_String)
-      return context.parent;
-    return context;
+  reduce(context2, term, _, input) {
+    if (context2.flags & cx_Bracketed && bracketed.has(term) || (term == String$1 || term == FormatString) && context2.flags & cx_String)
+      return context2.parent;
+    return context2;
   },
-  shift(context, term, stack, input) {
+  shift(context2, term, stack, input) {
     if (term == indent)
-      return new Context(context, countIndent(input.read(input.pos, stack.pos)), 0);
+      return new Context(context2, countIndent(input.read(input.pos, stack.pos)), 0);
     if (term == dedent)
-      return context.parent;
+      return context2.parent;
     if (term == ParenL || term == BracketL || term == BraceL || term == replacementStart)
-      return new Context(context, 0, cx_Bracketed);
+      return new Context(context2, 0, cx_Bracketed);
     if (stringFlags.has(term))
-      return new Context(context, 0, stringFlags.get(term) | context.flags & cx_Bracketed);
-    return context;
+      return new Context(context2, 0, stringFlags.get(term) | context2.flags & cx_Bracketed);
+    return context2;
   },
-  hash(context) {
-    return context.hash;
+  hash(context2) {
+    return context2.hash;
   }
 });
 var legacyPrint = new ExternalTokenizer((input) => {
@@ -24640,7 +24681,7 @@ var parser3 = LRParser.deserialize({
   tokenPrec: 7668
 });
 
-// node_modules/@codemirror/autocomplete/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/autocomplete/dist/index.js
 var CompletionContext = class {
   /**
   Create a new completion context. (Mostly useful for testing
@@ -24729,20 +24770,20 @@ function prefixMatch(options) {
 function completeFromList(list) {
   let options = list.map((o) => typeof o == "string" ? { label: o } : o);
   let [validFor, match] = options.every((o) => /^\w+$/.test(o.label)) ? [/\w*$/, /\w+$/] : prefixMatch(options);
-  return (context) => {
-    let token = context.matchBefore(match);
-    return token || context.explicit ? { from: token ? token.from : context.pos, options, validFor } : null;
+  return (context2) => {
+    let token = context2.matchBefore(match);
+    return token || context2.explicit ? { from: token ? token.from : context2.pos, options, validFor } : null;
   };
 }
 function ifNotIn(nodes, source) {
-  return (context) => {
-    for (let pos = syntaxTree(context.state).resolveInner(context.pos, -1); pos; pos = pos.parent) {
+  return (context2) => {
+    for (let pos = syntaxTree(context2.state).resolveInner(context2.pos, -1); pos; pos = pos.parent) {
       if (nodes.indexOf(pos.name) > -1)
         return null;
       if (pos.type.isTop)
         break;
     }
-    return source(context);
+    return source(context2);
   };
 }
 function ensureAnchor(expr, start) {
@@ -24906,21 +24947,21 @@ var Snippet = class _Snippet {
     this.fieldPositions = fieldPositions;
   }
   instantiate(state, pos) {
-    let text2 = [], lineStart = [pos];
+    let text3 = [], lineStart = [pos];
     let lineObj = state.doc.lineAt(pos), baseIndent = /^\s*/.exec(lineObj.text)[0];
     for (let line of this.lines) {
-      if (text2.length) {
+      if (text3.length) {
         let indent2 = baseIndent, tabs = /^\t*/.exec(line)[0].length;
         for (let i = 0; i < tabs; i++)
           indent2 += state.facet(indentUnit);
         lineStart.push(pos + indent2.length - tabs);
         line = indent2 + line.slice(tabs);
       }
-      text2.push(line);
+      text3.push(line);
       pos += line.length + 1;
     }
     let ranges = this.fieldPositions.map((pos2) => new FieldRange(pos2.field, lineStart[pos2.line] + pos2.from, lineStart[pos2.line] + pos2.to));
-    return { text: text2, ranges };
+    return { text: text3, ranges };
   }
   static parse(template3) {
     let fields = [];
@@ -25029,10 +25070,10 @@ function fieldSelection(ranges, field) {
 function snippet(template3) {
   let snippet2 = Snippet.parse(template3);
   return (editor, completion, from, to) => {
-    let { text: text2, ranges } = snippet2.instantiate(editor.state, from);
+    let { text: text3, ranges } = snippet2.instantiate(editor.state, from);
     let { main } = editor.state.selection;
     let spec = {
-      changes: { from, to: to == main.from ? main.to : to, insert: Text.of(text2) },
+      changes: { from, to: to == main.from ? main.to : to, insert: Text.of(text3) },
       scrollIntoView: true,
       annotations: completion ? [pickedCompletion.of(completion), Transaction.userEvent.of("input.complete")] : void 0
     };
@@ -25105,7 +25146,7 @@ closedBracket.startSide = 1;
 closedBracket.endSide = -1;
 var android = typeof navigator == "object" && /* @__PURE__ */ /Android\b/.test(navigator.userAgent);
 
-// node_modules/@codemirror/lang-python/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/lang-python/dist/index.js
 var cache = /* @__PURE__ */ new NodeWeakMap();
 var ScopeNodes = /* @__PURE__ */ new Set([
   "Script",
@@ -25192,21 +25233,21 @@ function getScope(doc2, node) {
 }
 var Identifier = /^[\w\xa1-\uffff][\w\d\xa1-\uffff]*$/;
 var dontComplete = ["String", "FormatString", "Comment", "PropertyName"];
-function localCompletionSource(context) {
-  let inner = syntaxTree(context.state).resolveInner(context.pos, -1);
+function localCompletionSource(context2) {
+  let inner = syntaxTree(context2.state).resolveInner(context2.pos, -1);
   if (dontComplete.indexOf(inner.name) > -1)
     return null;
-  let isWord = inner.name == "VariableName" || inner.to - inner.from < 20 && Identifier.test(context.state.sliceDoc(inner.from, inner.to));
-  if (!isWord && !context.explicit)
+  let isWord = inner.name == "VariableName" || inner.to - inner.from < 20 && Identifier.test(context2.state.sliceDoc(inner.from, inner.to));
+  if (!isWord && !context2.explicit)
     return null;
   let options = [];
   for (let pos = inner; pos; pos = pos.parent) {
     if (ScopeNodes.has(pos.name))
-      options = options.concat(getScope(context.state.doc, pos));
+      options = options.concat(getScope(context2.state.doc, pos));
   }
   return {
     options,
-    from: isWord ? inner.from : context.pos,
+    from: isWord ? inner.from : context2.pos,
     validFor: Identifier
   };
 }
@@ -25417,9 +25458,9 @@ var snippets = [
   })
 ];
 var globalCompletion = /* @__PURE__ */ ifNotIn(dontComplete, /* @__PURE__ */ completeFromList(/* @__PURE__ */ globals.concat(snippets)));
-function innerBody(context) {
-  let { node, pos } = context;
-  let lineIndent = context.lineIndent(pos, -1);
+function innerBody(context2) {
+  let { node, pos } = context2;
+  let lineIndent = context2.lineIndent(pos, -1);
   let found = null;
   for (; ; ) {
     let before = node.childBefore(pos);
@@ -25428,7 +25469,7 @@ function innerBody(context) {
     } else if (before.name == "Comment") {
       pos = before.from;
     } else if (before.name == "Body" || before.name == "MatchBody") {
-      if (context.baseIndentFor(before) + context.unit <= lineIndent)
+      if (context2.baseIndentFor(before) + context2.unit <= lineIndent)
         found = before;
       node = before;
     } else if (before.name == "MatchClause") {
@@ -25441,29 +25482,29 @@ function innerBody(context) {
   }
   return found;
 }
-function indentBody(context, node) {
-  let base2 = context.baseIndentFor(node);
-  let line = context.lineAt(context.pos, -1), to = line.from + line.text.length;
-  if (/^\s*($|#)/.test(line.text) && context.node.to < to + 100 && !/\S/.test(context.state.sliceDoc(to, context.node.to)) && context.lineIndent(context.pos, -1) <= base2)
+function indentBody(context2, node) {
+  let base2 = context2.baseIndentFor(node);
+  let line = context2.lineAt(context2.pos, -1), to = line.from + line.text.length;
+  if (/^\s*($|#)/.test(line.text) && context2.node.to < to + 100 && !/\S/.test(context2.state.sliceDoc(to, context2.node.to)) && context2.lineIndent(context2.pos, -1) <= base2)
     return null;
-  if (/^\s*(else:|elif |except |finally:|case\s+[^=:]+:)/.test(context.textAfter) && context.lineIndent(context.pos, -1) > base2)
+  if (/^\s*(else:|elif |except |finally:|case\s+[^=:]+:)/.test(context2.textAfter) && context2.lineIndent(context2.pos, -1) > base2)
     return null;
-  return base2 + context.unit;
+  return base2 + context2.unit;
 }
 var pythonLanguage = /* @__PURE__ */ LRLanguage.define({
   name: "python",
   parser: /* @__PURE__ */ parser3.configure({
     props: [
       /* @__PURE__ */ indentNodeProp.add({
-        Body: (context) => {
+        Body: (context2) => {
           var _a2;
-          let body = /^\s*(#|$)/.test(context.textAfter) && innerBody(context) || context.node;
-          return (_a2 = indentBody(context, body)) !== null && _a2 !== void 0 ? _a2 : context.continue();
+          let body = /^\s*(#|$)/.test(context2.textAfter) && innerBody(context2) || context2.node;
+          return (_a2 = indentBody(context2, body)) !== null && _a2 !== void 0 ? _a2 : context2.continue();
         },
-        MatchBody: (context) => {
+        MatchBody: (context2) => {
           var _a2;
-          let inner = innerBody(context);
-          return (_a2 = indentBody(context, inner || context.node)) !== null && _a2 !== void 0 ? _a2 : context.continue();
+          let inner = innerBody(context2);
+          return (_a2 = indentBody(context2, inner || context2.node)) !== null && _a2 !== void 0 ? _a2 : context2.continue();
         },
         IfStatement: (cx) => /^\s*(else:|elif )/.test(cx.textAfter) ? cx.baseIndent : cx.continue(),
         "ForStatement WhileStatement": (cx) => /^\s*else:/.test(cx.textAfter) ? cx.baseIndent : cx.continue(),
@@ -25478,10 +25519,10 @@ var pythonLanguage = /* @__PURE__ */ LRLanguage.define({
         "ArrayExpression ArrayComprehensionExpression": /* @__PURE__ */ delimitedIndent({ closing: "]" }),
         MemberExpression: (cx) => cx.baseIndent + cx.unit,
         "String FormatString": () => null,
-        Script: (context) => {
+        Script: (context2) => {
           var _a2;
-          let inner = innerBody(context);
-          return (_a2 = inner && indentBody(context, inner)) !== null && _a2 !== void 0 ? _a2 : context.continue();
+          let inner = innerBody(context2);
+          return (_a2 = inner && indentBody(context2, inner)) !== null && _a2 !== void 0 ? _a2 : context2.continue();
         }
       }),
       /* @__PURE__ */ foldNodeProp.add({
@@ -25525,7 +25566,7 @@ function python() {
   ]);
 }
 
-// node_modules/@lezer/cpp/dist/index.js
+// ../obsidian-study-studio/node_modules/@lezer/cpp/dist/index.js
 var RawString = 1;
 var templateArgsEndFallback = 2;
 var MacroName = 3;
@@ -25664,7 +25705,7 @@ var parser4 = LRParser.deserialize({
   tokenPrec: 24852
 });
 
-// node_modules/@codemirror/lang-cpp/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/lang-cpp/dist/index.js
 var cppLanguage = /* @__PURE__ */ LRLanguage.define({
   name: "cpp",
   parser: /* @__PURE__ */ parser4.configure({
@@ -25673,7 +25714,7 @@ var cppLanguage = /* @__PURE__ */ LRLanguage.define({
         IfStatement: /* @__PURE__ */ continuedIndent({ except: /^\s*({|else\b)/ }),
         TryStatement: /* @__PURE__ */ continuedIndent({ except: /^\s*({|catch)\b/ }),
         LabeledStatement: flatIndent,
-        CaseStatement: (context) => context.baseIndent + context.unit,
+        CaseStatement: (context2) => context2.baseIndent + context2.unit,
         BlockComment: () => null,
         CompoundStatement: /* @__PURE__ */ delimitedIndent({ closing: "}" }),
         Statement: /* @__PURE__ */ continuedIndent({ except: /^{/ })
@@ -25696,7 +25737,7 @@ function cpp() {
   return new LanguageSupport(cppLanguage);
 }
 
-// node_modules/@codemirror/legacy-modes/mode/shell.js
+// ../obsidian-study-studio/node_modules/@codemirror/legacy-modes/mode/shell.js
 var words = {};
 function define(style, dict) {
   for (var i = 0; i < dict.length; i++) {
@@ -25917,7 +25958,7 @@ var shell = {
   }
 };
 
-// node_modules/@codemirror/legacy-modes/mode/mathematica.js
+// ../obsidian-study-studio/node_modules/@codemirror/legacy-modes/mode/mathematica.js
 var Identifier2 = "[a-zA-Z\\$][a-zA-Z0-9\\$]*";
 var pBase = "(?:\\d+)";
 var pFloat = "(?:\\.\\d+|\\d+\\.\\d*|\\d+)";
@@ -26030,7 +26071,7 @@ var mathematica = {
 var languages = { python: python().language, py: python().language, cpp: cpp().language, "c++": cpp().language, c: cpp().language, bash: StreamLanguage.define(shell), sh: StreamLanguage.define(shell), shell: StreamLanguage.define(shell), mathematica: StreamLanguage.define(mathematica), wolfram: StreamLanguage.define(mathematica), wl: StreamLanguage.define(mathematica) };
 var writtenLanguage = (info) => languages[info.toLowerCase()] ?? null;
 
-// node_modules/@lezer/html/dist/index.js
+// ../obsidian-study-studio/node_modules/@lezer/html/dist/index.js
 var scriptText = 55;
 var StartCloseScriptTag = 1;
 var styleText = 56;
@@ -26174,15 +26215,15 @@ function ElementContext(name2, parent) {
 var startTagTerms = [StartTag, StartSelfClosingTag, StartScriptTag, StartStyleTag, StartTextareaTag];
 var elementContext = new ContextTracker({
   start: null,
-  shift(context, term, stack, input) {
-    return startTagTerms.indexOf(term) > -1 ? new ElementContext(tagNameAfter(input, 1) || "", context) : context;
+  shift(context2, term, stack, input) {
+    return startTagTerms.indexOf(term) > -1 ? new ElementContext(tagNameAfter(input, 1) || "", context2) : context2;
   },
-  reduce(context, term) {
-    return term == Element3 && context ? context.parent : context;
+  reduce(context2, term) {
+    return term == Element3 && context2 ? context2.parent : context2;
   },
-  reuse(context, node, stack, input) {
+  reuse(context2, node, stack, input) {
     let type = node.type.id;
-    return type == StartTag || type == OpenTag ? new ElementContext(tagNameAfter(input, 1) || "", context) : context;
+    return type == StartTag || type == OpenTag ? new ElementContext(tagNameAfter(input, 1) || "", context2) : context2;
   },
   strict: false
 });
@@ -26230,9 +26271,9 @@ var commentContent = new ExternalTokenizer((input) => {
     input.advance();
   }
 });
-function inForeignElement(context) {
-  for (; context; context = context.parent)
-    if (context.name == "svg" || context.name == "math") return true;
+function inForeignElement(context2) {
+  for (; context2; context2 = context2.parent)
+    if (context2.name == "svg" || context2.name == "math") return true;
   return false;
 }
 var endTag = new ExternalTokenizer((input, stack) => {
@@ -26374,7 +26415,7 @@ function configureNesting(tags3 = [], attributes = []) {
   });
 }
 
-// node_modules/@lezer/css/dist/index.js
+// ../obsidian-study-studio/node_modules/@lezer/css/dist/index.js
 var descendantOp = 148;
 var Unit = 1;
 var identifier = 149;
@@ -26553,7 +26594,7 @@ var parser6 = LRParser.deserialize({
   tokenPrec: 2433
 });
 
-// node_modules/@codemirror/lang-css/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/lang-css/dist/index.js
 var _properties = null;
 function properties() {
   if (!_properties && typeof document == "object" && document.body) {
@@ -27357,8 +27398,8 @@ function variableNames(doc2, node, isVariable) {
     return result;
   }
 }
-var defineCSSCompletionSource = (isVariable) => (context) => {
-  let { state, pos } = context, node = syntaxTree(state).resolveInner(pos, -1);
+var defineCSSCompletionSource = (isVariable) => (context2) => {
+  let { state, pos } = context2, node = syntaxTree(state).resolveInner(pos, -1);
   let isDash = node.type.isError && node.from == node.to - 1 && state.doc.sliceString(node.from, node.to) == "-";
   if (node.name == "PropertyName" || (isDash || node.name == "TagName") && /^(Block|Styles)$/.test(node.resolve(node.to).name))
     return { from: node.from, options: properties(), validFor: identifier2 };
@@ -27366,7 +27407,7 @@ var defineCSSCompletionSource = (isVariable) => (context) => {
     return { from: node.from, options: values, validFor: identifier2 };
   if (node.name == "PseudoClassName")
     return { from: node.from, options: pseudoClasses, validFor: identifier2 };
-  if (isVariable(node) || (context.explicit || isDash) && isVarArg(node, state.doc))
+  if (isVariable(node) || (context2.explicit || isDash) && isVarArg(node, state.doc))
     return {
       from: isVariable(node) || isDash ? node.from : pos,
       options: variableNames(state.doc, astTop(node), isVariable),
@@ -27380,7 +27421,7 @@ var defineCSSCompletionSource = (isVariable) => (context) => {
   }
   if (node.name == "AtKeyword")
     return { from: node.from, options: atRules, validFor: identifier2 };
-  if (!context.explicit)
+  if (!context2.explicit)
     return null;
   let above = node.resolve(pos), before = above.childBefore(pos);
   if (before && before.name == ":" && above.name == "PseudoClassSelector")
@@ -27414,7 +27455,7 @@ function css() {
   return new LanguageSupport(cssLanguage, cssLanguage.data.of({ autocomplete: cssCompletionSource }));
 }
 
-// node_modules/@lezer/javascript/dist/index.js
+// ../obsidian-study-studio/node_modules/@lezer/javascript/dist/index.js
 var noSemi = 317;
 var noSemiType = 318;
 var incdec = 1;
@@ -27467,8 +27508,8 @@ var dot2 = 46;
 var bracketL2 = 91;
 var trackNewline = new ContextTracker({
   start: false,
-  shift(context, term) {
-    return term == LineComment || term == BlockComment || term == spaces ? context : term == newline3;
+  shift(context2, term) {
+    return term == LineComment || term == BlockComment || term == spaces ? context2 : term == newline3;
   },
   strict: false
 });
@@ -27626,7 +27667,7 @@ var parser7 = LRParser.deserialize({
   tokenPrec: 15178
 });
 
-// node_modules/@codemirror/lang-javascript/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/lang-javascript/dist/index.js
 var snippets2 = [
   /* @__PURE__ */ snippetCompletion("function ${name}(${params}) {\n	${}\n}", {
     label: "function",
@@ -27783,21 +27824,21 @@ var dontComplete2 = [
   ".",
   "?."
 ];
-function localCompletionSource2(context) {
-  let inner = syntaxTree(context.state).resolveInner(context.pos, -1);
+function localCompletionSource2(context2) {
+  let inner = syntaxTree(context2.state).resolveInner(context2.pos, -1);
   if (dontComplete2.indexOf(inner.name) > -1)
     return null;
-  let isWord = inner.name == "VariableName" || inner.to - inner.from < 20 && Identifier3.test(context.state.sliceDoc(inner.from, inner.to));
-  if (!isWord && !context.explicit)
+  let isWord = inner.name == "VariableName" || inner.to - inner.from < 20 && Identifier3.test(context2.state.sliceDoc(inner.from, inner.to));
+  if (!isWord && !context2.explicit)
     return null;
   let options = [];
   for (let pos = inner; pos; pos = pos.parent) {
     if (ScopeNodes2.has(pos.name))
-      options = options.concat(getScope2(context.state.doc, pos));
+      options = options.concat(getScope2(context2.state.doc, pos));
   }
   return {
     options,
-    from: isWord ? inner.from : context.pos,
+    from: isWord ? inner.from : context2.pos,
     validFor: Identifier3
   };
 }
@@ -27809,24 +27850,24 @@ var javascriptLanguage = /* @__PURE__ */ LRLanguage.define({
         IfStatement: /* @__PURE__ */ continuedIndent({ except: /^\s*({|else\b)/ }),
         TryStatement: /* @__PURE__ */ continuedIndent({ except: /^\s*({|catch\b|finally\b)/ }),
         LabeledStatement: flatIndent,
-        SwitchBody: (context) => {
-          let after = context.textAfter, closed = /^\s*\}/.test(after), isCase = /^\s*(case|default)\b/.test(after);
-          return context.baseIndent + (closed ? 0 : isCase ? 1 : 2) * context.unit;
+        SwitchBody: (context2) => {
+          let after = context2.textAfter, closed = /^\s*\}/.test(after), isCase = /^\s*(case|default)\b/.test(after);
+          return context2.baseIndent + (closed ? 0 : isCase ? 1 : 2) * context2.unit;
         },
         Block: /* @__PURE__ */ delimitedIndent({ closing: "}" }),
         ArrowFunction: (cx) => cx.baseIndent + cx.unit,
         "TemplateString BlockComment": () => null,
         "Statement Property": /* @__PURE__ */ continuedIndent({ except: /^\s*{/ }),
-        JSXElement(context) {
-          let closed = /^\s*<\//.test(context.textAfter);
-          return context.lineIndent(context.node.from) + (closed ? 0 : context.unit);
+        JSXElement(context2) {
+          let closed = /^\s*<\//.test(context2.textAfter);
+          return context2.lineIndent(context2.node.from) + (closed ? 0 : context2.unit);
         },
-        JSXEscape(context) {
-          let closed = /\s*\}/.test(context.textAfter);
-          return context.lineIndent(context.node.from) + (closed ? 0 : context.unit);
+        JSXEscape(context2) {
+          let closed = /\s*\}/.test(context2.textAfter);
+          return context2.lineIndent(context2.node.from) + (closed ? 0 : context2.unit);
         },
-        "JSXOpenTag JSXSelfClosingTag"(context) {
-          return context.column(context.node.from) + context.unit;
+        "JSXOpenTag JSXSelfClosingTag"(context2) {
+          return context2.column(context2.node.from) + context2.unit;
         }
       }),
       /* @__PURE__ */ foldNodeProp.add({
@@ -27904,8 +27945,8 @@ function elementName(doc2, tree2, max = doc2.length) {
   return "";
 }
 var android2 = typeof navigator == "object" && /* @__PURE__ */ /Android\b/.test(navigator.userAgent);
-var autoCloseTags = /* @__PURE__ */ EditorView.inputHandler.of((view, from, to, text2, defaultInsert) => {
-  if ((android2 ? view.composing : view.compositionStarted) || view.state.readOnly || from != to || text2 != ">" && text2 != "/" || !javascriptLanguage.isActiveAt(view.state, from, -1))
+var autoCloseTags = /* @__PURE__ */ EditorView.inputHandler.of((view, from, to, text3, defaultInsert) => {
+  if ((android2 ? view.composing : view.compositionStarted) || view.state.readOnly || from != to || text3 != ">" && text3 != "/" || !javascriptLanguage.isActiveAt(view.state, from, -1))
     return false;
   let base2 = defaultInsert(), { state } = base2;
   let closeTags = state.changeByRange((range) => {
@@ -27913,16 +27954,16 @@ var autoCloseTags = /* @__PURE__ */ EditorView.inputHandler.of((view, from, to, 
     let { head } = range, around = syntaxTree(state).resolveInner(head - 1, -1), name2;
     if (around.name == "JSXStartTag")
       around = around.parent;
-    if (state.doc.sliceString(head - 1, head) != text2 || around.name == "JSXAttributeValue" && around.to > head) ;
-    else if (text2 == ">" && around.name == "JSXFragmentTag") {
+    if (state.doc.sliceString(head - 1, head) != text3 || around.name == "JSXAttributeValue" && around.to > head) ;
+    else if (text3 == ">" && around.name == "JSXFragmentTag") {
       return { range, changes: { from: head, insert: `</>` } };
-    } else if (text2 == "/" && around.name == "JSXStartCloseTag") {
+    } else if (text3 == "/" && around.name == "JSXStartCloseTag") {
       let empty = around.parent, base3 = empty.parent;
       if (base3 && empty.from == head - 2 && ((name2 = elementName(state.doc, base3.firstChild, head)) || ((_a2 = base3.firstChild) === null || _a2 === void 0 ? void 0 : _a2.name) == "JSXFragmentTag")) {
         let insert2 = `${name2}>`;
         return { range: EditorSelection.cursor(head + insert2.length, -1), changes: { from: head, insert: insert2 } };
       }
-    } else if (text2 == ">") {
+    } else if (text3 == ">") {
       let openTag = findOpenTag(around);
       if (openTag && openTag.name == "JSXOpenTag" && !/^\/?>|^<\//.test(state.doc.sliceString(head, head + 2)) && (name2 = elementName(state.doc, openTag, head)))
         return { range, changes: { from: head, insert: `</${name2}>` } };
@@ -27938,7 +27979,7 @@ var autoCloseTags = /* @__PURE__ */ EditorView.inputHandler.of((view, from, to, 
   return true;
 });
 
-// node_modules/@codemirror/lang-html/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/lang-html/dist/index.js
 var Targets = ["_blank", "_self", "_top", "_parent"];
 var Charsets = ["ascii", "utf-8", "utf-16", "latin1", "latin1"];
 var Methods = ["get", "post", "put", "delete"];
@@ -28481,8 +28522,8 @@ function completeAttrValue(state, schema4, tree2, from, to) {
   }
   return { from, to, options, validFor: token };
 }
-function htmlCompletionFor(schema4, context) {
-  let { state, pos } = context, tree2 = syntaxTree(state).resolveInner(pos, -1), around = tree2.resolve(pos);
+function htmlCompletionFor(schema4, context2) {
+  let { state, pos } = context2, tree2 = syntaxTree(state).resolveInner(pos, -1), around = tree2.resolve(pos);
   for (let scan = pos, before; around == tree2 && (before = tree2.childBefore(scan)); ) {
     let last = before.lastChild;
     if (!last || !last.type.isError || last.from < last.to)
@@ -28500,19 +28541,19 @@ function htmlCompletionFor(schema4, context) {
     return completeAttrName(state, schema4, tree2, tree2.name == "AttributeName" ? tree2.from : pos, pos);
   } else if (tree2.name == "Is" || tree2.name == "AttributeValue" || tree2.name == "UnquotedAttributeValue") {
     return completeAttrValue(state, schema4, tree2, tree2.name == "Is" ? pos : tree2.from, pos);
-  } else if (context.explicit && (around.name == "Element" || around.name == "Text" || around.name == "Document")) {
+  } else if (context2.explicit && (around.name == "Element" || around.name == "Text" || around.name == "Document")) {
     return completeStartTag(state, schema4, tree2, pos);
   } else {
     return null;
   }
 }
-function htmlCompletionSource(context) {
-  return htmlCompletionFor(Schema.default, context);
+function htmlCompletionSource(context2) {
+  return htmlCompletionFor(Schema.default, context2);
 }
 function htmlCompletionSourceWith(config) {
   let { extraTags, extraGlobalAttributes: extraAttrs } = config;
   let schema4 = extraAttrs || extraTags ? new Schema(extraTags, extraAttrs) : Schema.default;
-  return (context) => htmlCompletionFor(schema4, context);
+  return (context2) => htmlCompletionFor(schema4, context2);
 }
 var jsonParser = /* @__PURE__ */ javascriptLanguage.parser.configure({ top: "SingleExpression" });
 var defaultNesting = [
@@ -28564,27 +28605,27 @@ var htmlPlain = /* @__PURE__ */ LRLanguage.define({
   parser: /* @__PURE__ */ parser5.configure({
     props: [
       /* @__PURE__ */ indentNodeProp.add({
-        Element(context) {
-          let after = /^(\s*)(<\/)?/.exec(context.textAfter);
-          if (context.node.to <= context.pos + after[0].length)
-            return context.continue();
-          return context.lineIndent(context.node.from) + (after[2] ? 0 : context.unit);
+        Element(context2) {
+          let after = /^(\s*)(<\/)?/.exec(context2.textAfter);
+          if (context2.node.to <= context2.pos + after[0].length)
+            return context2.continue();
+          return context2.lineIndent(context2.node.from) + (after[2] ? 0 : context2.unit);
         },
-        "OpenTag CloseTag SelfClosingTag"(context) {
-          return context.column(context.node.from) + context.unit;
+        "OpenTag CloseTag SelfClosingTag"(context2) {
+          return context2.column(context2.node.from) + context2.unit;
         },
-        Document(context) {
-          if (context.pos + /\s*/.exec(context.textAfter)[0].length < context.node.to)
-            return context.continue();
+        Document(context2) {
+          if (context2.pos + /\s*/.exec(context2.textAfter)[0].length < context2.node.to)
+            return context2.continue();
           let endElt = null, close;
-          for (let cur = context.node; ; ) {
+          for (let cur = context2.node; ; ) {
             let last = cur.lastChild;
             if (!last || last.name != "Element" || last.to != cur.to)
               break;
             endElt = cur = last;
           }
           if (endElt && !((close = endElt.lastChild) && (close.name == "CloseTag" || close.name == "SelfClosingTag")))
-            return context.lineIndent(endElt.from) + context.unit;
+            return context2.lineIndent(endElt.from) + context2.unit;
           return null;
         }
       }),
@@ -28638,22 +28679,22 @@ function isClosed(doc2, elt2, name2) {
     elt2 = next;
   }
 }
-var autoCloseTags2 = /* @__PURE__ */ EditorView.inputHandler.of((view, from, to, text2, insertTransaction) => {
-  if (view.composing || view.state.readOnly || from != to || text2 != ">" && text2 != "/" || !htmlLanguage.isActiveAt(view.state, from, -1))
+var autoCloseTags2 = /* @__PURE__ */ EditorView.inputHandler.of((view, from, to, text3, insertTransaction) => {
+  if (view.composing || view.state.readOnly || from != to || text3 != ">" && text3 != "/" || !htmlLanguage.isActiveAt(view.state, from, -1))
     return false;
   let base2 = insertTransaction(), { state } = base2;
   let closeTags = state.changeByRange((range) => {
     var _a2;
-    let didType = state.doc.sliceString(range.from - 1, range.to) == text2;
+    let didType = state.doc.sliceString(range.from - 1, range.to) == text3;
     let { head } = range, after = syntaxTree(state).resolveInner(head, -1), name2;
-    if (didType && text2 == ">" && after.name == "EndTag") {
+    if (didType && text3 == ">" && after.name == "EndTag") {
       let tag = after.parent;
       if ((name2 = elementName2(state.doc, tag.parent, head)) && !selfClosers2.has(name2) && !isClosed(state.doc, tag.parent, name2)) {
         let to2 = head + (state.doc.sliceString(head, head + 1) === ">" ? 1 : 0);
         let insert2 = `</${name2}>`;
         return { range, changes: { from: head, to: to2, insert: insert2 } };
       }
-    } else if (didType && text2 == "/" && after.name == "IncompleteCloseTag") {
+    } else if (didType && text3 == "/" && after.name == "IncompleteCloseTag") {
       let tag = after.parent;
       if (after.from == head - 2 && ((_a2 = tag.lastChild) === null || _a2 === void 0 ? void 0 : _a2.name) != "CloseTag" && (name2 = elementName2(state.doc, tag, head)) && !selfClosers2.has(name2)) {
         let to2 = head + (state.doc.sliceString(head, head + 1) === ">" ? 1 : 0);
@@ -28678,7 +28719,7 @@ var autoCloseTags2 = /* @__PURE__ */ EditorView.inputHandler.of((view, from, to,
   return true;
 });
 
-// node_modules/@codemirror/lang-markdown/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/lang-markdown/dist/index.js
 var data = /* @__PURE__ */ defineLanguageFacet({ commentTokens: { block: { open: "<!--", close: "-->" } } });
 var headingProp = /* @__PURE__ */ new NodeProp();
 var commonmark = /* @__PURE__ */ parser.configure({
@@ -28782,10 +28823,10 @@ var Context2 = class {
   }
 };
 function getContext(node, doc2) {
-  let nodes = [], context = [];
+  let nodes = [], context2 = [];
   for (let cur = node; cur; cur = cur.parent) {
     if (cur.name == "FencedCode")
-      return context;
+      return context2;
     if (cur.name == "ListItem" || cur.name == "Blockquote")
       nodes.push(cur);
   }
@@ -28793,14 +28834,14 @@ function getContext(node, doc2) {
     let node2 = nodes[i], match;
     let line = doc2.lineAt(node2.from), startPos = node2.from - line.from;
     if (node2.name == "Blockquote" && (match = /^ *>( ?)/.exec(line.text.slice(startPos)))) {
-      context.push(new Context2(node2, startPos, startPos + match[0].length, "", match[1], ">", null));
+      context2.push(new Context2(node2, startPos, startPos + match[0].length, "", match[1], ">", null));
     } else if (node2.name == "ListItem" && node2.parent.name == "OrderedList" && (match = /^( *)\d+([.)])( *)/.exec(line.text.slice(startPos)))) {
       let after = match[3], len = match[0].length;
       if (after.length >= 4) {
         after = after.slice(0, after.length - 4);
         len -= 4;
       }
-      context.push(new Context2(node2.parent, startPos, startPos + len, match[1], after, match[2], node2));
+      context2.push(new Context2(node2.parent, startPos, startPos + len, match[1], after, match[2], node2));
     } else if (node2.name == "ListItem" && node2.parent.name == "BulletList" && (match = /^( *)([-+*])( {1,4}\[[ xX]\])?( +)/.exec(line.text.slice(startPos)))) {
       let after = match[4], len = match[0].length;
       if (after.length > 4) {
@@ -28810,10 +28851,10 @@ function getContext(node, doc2) {
       let type = match[2];
       if (match[3])
         type += match[3].replace(/[xX]/, " ");
-      context.push(new Context2(node2.parent, startPos, startPos + len, match[1], after, type, node2));
+      context2.push(new Context2(node2.parent, startPos, startPos + len, match[1], after, type, node2));
     }
   }
-  return context;
+  return context2;
 }
 function itemNumber(item, doc2) {
   return /^(\s*)(\d+)(?=[.)])/.exec(doc2.sliceString(item.from, item.from + 10));
@@ -28859,19 +28900,19 @@ var insertNewlineContinueMarkup = ({ state, dispatch }) => {
     if (!range.empty || !markdownLanguage.isActiveAt(state, range.from, -1) && !markdownLanguage.isActiveAt(state, range.from, 1))
       return dont = { range };
     let pos = range.from, line = doc2.lineAt(pos);
-    let context = getContext(tree2.resolveInner(pos, -1), doc2);
-    while (context.length && context[context.length - 1].from > pos - line.from)
-      context.pop();
-    if (!context.length)
+    let context2 = getContext(tree2.resolveInner(pos, -1), doc2);
+    while (context2.length && context2[context2.length - 1].from > pos - line.from)
+      context2.pop();
+    if (!context2.length)
       return dont = { range };
-    let inner = context[context.length - 1];
+    let inner = context2[context2.length - 1];
     if (inner.to - inner.spaceAfter.length > pos - line.from)
       return dont = { range };
     let emptyLine = pos >= inner.to - inner.spaceAfter.length && !/\S/.test(line.text.slice(inner.to));
     if (inner.item && emptyLine) {
       let first = inner.node.firstChild, second = inner.node.getChild("ListItem", "ListItem");
       if (first.to >= pos || second && second.to < pos || line.from > 0 && !/[^\s>]/.test(doc2.lineAt(line.from - 1).text)) {
-        let next = context.length > 1 ? context[context.length - 2] : null;
+        let next = context2.length > 1 ? context2[context2.length - 2] : null;
         let delTo, insert3 = "";
         if (next && next.item) {
           delTo = line.from + next.from;
@@ -28886,7 +28927,7 @@ var insertNewlineContinueMarkup = ({ state, dispatch }) => {
           renumberList(next.item, doc2, changes3);
         return { range: EditorSelection.cursor(delTo + insert3.length), changes: changes3 };
       } else {
-        let insert3 = blankLine(context, state, line);
+        let insert3 = blankLine(context2, state, line);
         return {
           range: EditorSelection.cursor(pos + insert3.length + 1),
           changes: { from: line.from, insert: insert3 + state.lineBreak }
@@ -28909,8 +28950,8 @@ var insertNewlineContinueMarkup = ({ state, dispatch }) => {
     let continued = inner.item && inner.item.from < line.from;
     let insert2 = "";
     if (!continued || /^[\s\d.)\-+*>]*/.exec(line.text)[0].length >= inner.to) {
-      for (let i = 0, e = context.length - 1; i <= e; i++) {
-        insert2 += i == e && !continued ? context[i].marker(doc2, 1) : context[i].blank(i < e ? countColumn(line.text, 4, context[i + 1].from) - insert2.length : null);
+      for (let i = 0, e = context2.length - 1; i <= e; i++) {
+        insert2 += i == e && !continued ? context2[i].marker(doc2, 1) : context2[i].blank(i < e ? countColumn(line.text, 4, context2[i + 1].from) - insert2.length : null);
       }
     }
     let from = pos;
@@ -28918,7 +28959,7 @@ var insertNewlineContinueMarkup = ({ state, dispatch }) => {
       from--;
     insert2 = normalizeIndent(insert2, state);
     if (nonTightList(inner.node, state.doc))
-      insert2 = blankLine(context, state, line) + state.lineBreak + insert2;
+      insert2 = blankLine(context2, state, line) + state.lineBreak + insert2;
     changes2.push({ from, to: pos, insert: state.lineBreak + insert2 });
     return { range: EditorSelection.cursor(from + insert2.length + 1), changes: changes2 };
   });
@@ -28940,10 +28981,10 @@ function nonTightList(node, doc2) {
   let empty = /^[\s>]*$/.test(line1.text);
   return line1.number + (empty ? 0 : 1) < line2.number;
 }
-function blankLine(context, state, line) {
+function blankLine(context2, state, line) {
   let insert2 = "";
-  for (let i = 0, e = context.length - 2; i <= e; i++) {
-    insert2 += context[i].blank(i < e ? countColumn(line.text, 4, context[i + 1].from) - insert2.length : null, i < e);
+  for (let i = 0, e = context2.length - 2; i <= e; i++) {
+    insert2 += context2[i].blank(i < e ? countColumn(line.text, 4, context2[i + 1].from) - insert2.length : null, i < e);
   }
   return normalizeIndent(insert2, state);
 }
@@ -28971,9 +29012,9 @@ var deleteMarkupBackward = ({ state, dispatch }) => {
     let pos = range.from, { doc: doc2 } = state;
     if (range.empty && markdownLanguage.isActiveAt(state, range.from)) {
       let line = doc2.lineAt(pos);
-      let context = getContext(contextNodeForDelete(tree2, pos), doc2);
-      if (context.length) {
-        let inner = context[context.length - 1];
+      let context2 = getContext(contextNodeForDelete(tree2, pos), doc2);
+      if (context2.length) {
+        let inner = context2[context2.length - 1];
         let spaceEnd = inner.to - inner.spaceAfter.length + (inner.spaceAfter ? 1 : 0);
         if (pos - line.from > spaceEnd && !/\S/.test(line.text.slice(spaceEnd, pos - line.from)))
           return {
@@ -29032,8 +29073,8 @@ function markdown(config = {}) {
     support.push(lang.data.of({ autocomplete: htmlTagCompletion }));
   return new LanguageSupport(lang, support);
 }
-function htmlTagCompletion(context) {
-  let { state, pos } = context, m = /<[:\-\.\w\u00b7-\uffff]*$/.exec(state.sliceDoc(pos - 25, pos));
+function htmlTagCompletion(context2) {
+  let { state, pos } = context2, m = /<[:\-\.\w\u00b7-\uffff]*$/.exec(state.sliceDoc(pos - 25, pos));
   if (!m)
     return null;
   let tree2 = syntaxTree(state).resolveInner(pos, -1);
@@ -29099,11 +29140,11 @@ function anchoredEquations(source, anchors) {
 }
 
 // src/written-editor.ts
-var import_obsidian3 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 
 // src/math-field.ts
-var import_obsidian2 = require("obsidian");
-var MathField = class extends import_obsidian2.Component {
+var import_obsidian3 = require("obsidian");
+var MathField = class extends import_obsidian3.Component {
   constructor(app, input, path, answers, changed, busy, showPreview = true, references) {
     super();
     this.app = app;
@@ -29121,11 +29162,14 @@ var MathField = class extends import_obsidian2.Component {
     this.frameHost = wrap.createDiv("study-field-math");
     this.registerDomEvent(input, "input", () => this.refresh());
     this.registerDomEvent(input, "keydown", (e) => {
-      if (e.ctrlKey && e.code === "KeyM") {
+      if (e.code === "KeyM" && (e.ctrlKey || e.metaKey && e.shiftKey && !e.altKey)) {
         e.preventDefault();
         e.stopPropagation();
-        void this.openAtCursor(e.shiftKey && !this.answers);
+        void this.openAtCursor(e.ctrlKey && e.shiftKey && !this.answers);
       }
+    });
+    focusedMathShortcut(app, this, input, () => {
+      void this.openAtCursor();
     });
     this.refresh();
   }
@@ -29147,7 +29191,7 @@ var MathField = class extends import_obsidian2.Component {
   async render() {
     const generation = ++this.generation;
     this.rendering?.unload();
-    const component = new import_obsidian2.Component();
+    const component = new import_obsidian3.Component();
     component.load();
     this.rendering = component;
     const source = this.input.value, qs = fieldEquations(source, this.answers);
@@ -29155,7 +29199,7 @@ var MathField = class extends import_obsidian2.Component {
     if (this.answers) {
       for (const q of qs) {
         const row = stage.createDiv("study-answer-preview");
-        await import_obsidian2.MarkdownRenderer.render(this.app, q.bodyFrom === q.from ? `$${q.body}$` : q.raw, row, this.path, component);
+        await import_obsidian3.MarkdownRenderer.render(this.app, q.bodyFrom === q.from ? `$${q.body}$` : q.raw, row, this.path, component);
         row.setAttribute("role", "button");
         row.tabIndex = 0;
         row.title = "Edit this answer with Math Studio";
@@ -29168,7 +29212,7 @@ var MathField = class extends import_obsidian2.Component {
         };
       }
     } else {
-      await import_obsidian2.MarkdownRenderer.render(this.app, source || "*Preview appears here.*", stage, this.path, component);
+      await import_obsidian3.MarkdownRenderer.render(this.app, source || "*Preview appears here.*", stage, this.path, component);
       const nodes = Array.from(stage.querySelectorAll(".math"));
       if (nodes.length === qs.length) nodes.forEach((node, i) => {
         node.tabIndex = 0;
@@ -29206,21 +29250,26 @@ var MathField = class extends import_obsidian2.Component {
   async open(q, inserting = false, justify = false) {
     if (this.input.disabled || this.disposeFrame || this.input.closest(".study-author-modal")?.querySelector(".study-field-math iframe")) return;
     const runtime = this.app.plugins?.getPlugin("math-studio");
-    if (!runtime?.frameCode || !runtime.fontCSS || !runtime.mathCSS) {
-      new import_obsidian2.Notice("Enable Math Studio to edit equations visually. Markdown editing remains available.");
-      return;
-    }
     const original = this.input.value;
     if (!inserting && original.slice(q.from, q.to) !== q.raw) {
       this.refresh();
-      new import_obsidian2.Notice("The field changed. Select the equation again.");
+      new import_obsidian3.Notice("The field changed. Select the equation again.");
+      return;
+    }
+    if (!runtime?.frameCode || !runtime.fontCSS || !runtime.mathCSS || !runtime.buildId) {
+      this.openSource(q, inserting, original, "The visual editor is unavailable. You can edit the LaTeX source here.");
+      return;
+    }
+    const problem = unsupported(q.body);
+    if (problem) {
+      this.openSource(q, inserting, original, problem);
       return;
     }
     let reference = null;
     try {
       reference = this.references?.(this.input, q) ?? null;
     } catch (error) {
-      new import_obsidian2.Notice(String(error));
+      new import_obsidian3.Notice(String(error));
       return;
     }
     const doc2 = this.input.ownerDocument, win = doc2.defaultView, id3 = crypto.randomUUID();
@@ -29244,7 +29293,13 @@ var MathField = class extends import_obsidian2.Component {
     const receive = async (event) => {
       if (event.source !== iframe.contentWindow || event.data?.mathStudio !== id3) return;
       const data2 = event.data;
-      if (data2.type === "ready") readyBuild = data2.buildId;
+      if (data2.type === "ready") {
+        readyBuild = data2.buildId;
+        if (readyBuild !== runtime.buildId) {
+          this.openSource(q, inserting, original, "The visual editor versions do not match. You can edit the LaTeX source here.");
+          return;
+        }
+      }
       if (["choose-reference", "wrap-reference", "discard-reference"].includes(data2.type)) {
         try {
           if (!reference || runtime.buildId !== readyBuild) throw Error("Enable matching reference tools.");
@@ -29258,7 +29313,11 @@ var MathField = class extends import_obsidian2.Component {
         }
       }
       if (data2.type === "resize") iframe.style.height = `${Math.max(280, Math.min(780, Number(data2.height) || 300))}px`;
-      if ((data2.type === "cancel" || data2.type === "native") && !saving) finish();
+      if (data2.type === "cancel" && !saving) finish();
+      if (data2.type === "native" && !saving) {
+        this.openSource(q, inserting, original);
+        return;
+      }
       if (data2.type === "copy") void win.navigator.clipboard.writeText(String(data2.latex));
       if (data2.type === "save") {
         if (saving) return;
@@ -29294,6 +29353,85 @@ var MathField = class extends import_obsidian2.Component {
     this.frameHost.append(iframe);
     iframe.scrollIntoView({ block: "nearest" });
   }
+  openSource(q, inserting, original, reason = "Edit LaTeX directly. Rendering is not required to save.") {
+    this.disposeFrame?.();
+    let reference = null;
+    try {
+      reference = this.references?.(this.input, q) ?? null;
+    } catch (error2) {
+      new import_obsidian3.Notice(String(error2));
+      return;
+    }
+    const doc2 = this.input.ownerDocument, panel = doc2.createElement("div");
+    panel.className = "study-field-source";
+    const info = doc2.createElement("p");
+    info.textContent = reason;
+    const source = doc2.createElement("textarea");
+    source.value = q.body;
+    source.setAttribute("aria-label", "Equation LaTeX source");
+    source.spellcheck = false;
+    source.rows = Math.max(3, Math.min(12, q.body.split("\n").length + 1));
+    const error = doc2.createElement("p");
+    error.setAttribute("role", "alert");
+    const cancel = doc2.createElement("button");
+    cancel.type = "button";
+    cancel.textContent = "Cancel";
+    const save = doc2.createElement("button");
+    save.type = "button";
+    save.textContent = "Save LaTeX";
+    save.className = "mod-cta";
+    let saving = false;
+    const finish = () => {
+      if (saving) return;
+      this.disposeFrame?.();
+      this.input.focus();
+    };
+    cancel.onclick = finish;
+    save.onclick = async () => {
+      if (saving) return;
+      saving = true;
+      try {
+        if (this.input.value !== original) throw Error("The field changed. Your LaTeX draft remains open.");
+        const next = replaceFieldMathSource(original, q, source.value, inserting, this.answers);
+        if (reference && next !== original) await reference.validate(next);
+        if (this.input.value !== original || !panel.isConnected) throw Error("The field changed. Your LaTeX draft remains open.");
+        this.input.value = next;
+        this.changed();
+        this.refresh();
+        saving = false;
+        finish();
+      } catch (e) {
+        error.textContent = e.message;
+      } finally {
+        saving = false;
+      }
+    };
+    source.onkeydown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        finish();
+      } else if (e.key === "Enter" && (e.shiftKey || e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        e.stopPropagation();
+        save.click();
+      }
+    };
+    this.inputWasDisabled = this.input.disabled;
+    this.input.disabled = true;
+    this.busy(true);
+    this.disposeFrame = () => {
+      reference?.dispose();
+      panel.remove();
+      this.input.disabled = this.inputWasDisabled;
+      this.disposeFrame = void 0;
+      this.busy(false);
+    };
+    panel.append(info, source, error, cancel, save);
+    this.frameHost.append(panel);
+    panel.scrollIntoView({ block: "nearest" });
+    source.focus();
+  }
   onunload() {
     this.generation++;
     if (this.timer) clearTimeout(this.timer);
@@ -29304,10 +29442,68 @@ var MathField = class extends import_obsidian2.Component {
   }
 };
 
+// src/table-insert.ts
+var import_obsidian4 = require("obsidian");
+var InsertTableModal = class extends import_obsidian4.Modal {
+  constructor(app, insert2, finished) {
+    super(app);
+    this.insert = insert2;
+    this.finished = finished;
+  }
+  onOpen() {
+    this.titleEl.setText("Insert table");
+    let rows = 2, columns = 2;
+    new import_obsidian4.Setting(this.contentEl).setName("Body rows").setDesc("The heading row is added separately.").addText((t2) => {
+      t2.inputEl.type = "number";
+      t2.inputEl.min = "1";
+      t2.inputEl.max = "20";
+      t2.setValue("2").onChange((v) => rows = Number(v));
+    });
+    new import_obsidian4.Setting(this.contentEl).setName("Columns").addText((t2) => {
+      t2.inputEl.type = "number";
+      t2.inputEl.min = "1";
+      t2.inputEl.max = "10";
+      t2.setValue("2").onChange((v) => columns = Number(v));
+    });
+    const error = this.contentEl.createEl("p", { attr: { role: "alert" } });
+    const submit = () => {
+      if (!Number.isInteger(rows) || rows < 1 || rows > 20 || !Number.isInteger(columns) || columns < 1 || columns > 10) {
+        error.setText("Choose 1\u201320 body rows and 1\u201310 columns.");
+        return;
+      }
+      if (this.insert(rows, columns)) this.close();
+    };
+    new import_obsidian4.Setting(this.contentEl).addButton((b) => b.setButtonText("Cancel").onClick(() => this.close())).addButton((b) => b.setButtonText("Insert table").setCta().onClick(submit));
+    this.scope.register([], "Enter", () => {
+      submit();
+      return false;
+    });
+  }
+  onClose() {
+    this.contentEl.empty();
+    this.finished();
+  }
+};
+
+// src/table-insert-model.ts
+function tableInsertion(source, at, rows, columns) {
+  if (!Number.isInteger(rows) || rows < 1 || rows > 20 || !Number.isInteger(columns) || columns < 1 || columns > 10) throw Error("Invalid table dimensions");
+  const existing = richTables(source).find((t2) => at >= t2.from && at <= t2.to);
+  const from = existing?.to ?? Math.max(0, Math.min(source.length, at));
+  const before = source.slice(0, from), after = source.slice(from);
+  const prefix = before.endsWith("\n\n") || !before ? "" : before.endsWith("\n") ? "\n" : "\n\n";
+  const line = (cells2) => "| " + cells2.join(" | ") + " |";
+  const table = [line(Array.from({ length: columns }, (_, i) => `Heading ${i + 1}`)), line(Array(columns).fill("---")), ...Array.from({ length: rows }, () => line(Array(columns).fill("")))].join("\n");
+  const suffix = after.startsWith("\n\n") ? "" : after.startsWith("\n") ? "\n" : "\n\n";
+  return { from, insert: prefix + table + suffix };
+}
+
 // src/written-editor.ts
 function writtenEditor(app, host, path, value, owner, change, busy, label = "Your response", options = {}) {
-  const wrap = host.createDiv("study-written-input");
-  wrap.createEl("label", { text: label });
+  const wrap = host.createDiv("study-written-input"), labelEl = wrap.createEl("label", { text: label });
+  const marginLabel = label === "Margin note";
+  if (marginLabel) labelEl.id = "study-margin-label-" + crypto.randomUUID();
+  const editorLabel = marginLabel ? { "aria-labelledby": labelEl.id } : { "aria-label": label === "Your response" ? "Your written response" : label };
   const source = wrap.createEl("textarea");
   source.hidden = true;
   source.value = value;
@@ -29318,7 +29514,8 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
   const preview = wrap.createDiv("study-written-preview markdown-rendered");
   preview.hidden = true;
   preview.tabIndex = 0;
-  preview.setAttribute("aria-label", label + " preview");
+  if (marginLabel) preview.setAttribute("aria-labelledby", labelEl.id);
+  else preview.setAttribute("aria-label", label + " preview");
   let previewMode = false, generation = 0, previewOwner, composing = false, contextMenu = false;
   const clearPreview = () => {
     generation++;
@@ -29341,10 +29538,10 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
     if (!options.previewOnBlur || disposed || mathOpen || importing || composing || view.composing) return;
     previewMode = true;
     clearPreview();
-    const ticket = generation, focusAtRequest = view.hasFocus, renderer = owner.addChild(new import_obsidian3.Component());
+    const ticket = generation, focusAtRequest = view.hasFocus, renderer = owner.addChild(new import_obsidian5.Component());
     previewOwner = renderer;
-    const stage = wrap.ownerDocument.createElement("div"), text2 = view.state.doc.toString();
-    void RichMarkdown.render(app, text2 || "*Write in the margin\u2026*", stage, path, renderer, { reuseLeaf: true }).then(() => {
+    const stage = wrap.ownerDocument.createElement("div"), text3 = view.state.doc.toString();
+    void RichMarkdown.render(app, text3 || "*Write in the margin\u2026*", stage, path, renderer, { reuseLeaf: true }).then(() => {
       if (disposed || ticket !== generation || !previewMode) return;
       if (mathOpen || importing || composing || view.composing || !focusAtRequest && view.hasFocus) {
         previewMode = false;
@@ -29357,7 +29554,7 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
       if (focus) preview.focus();
     }).catch(() => {
       if (ticket === generation && previewMode) {
-        preview.textContent = text2;
+        preview.textContent = text3;
         preview.hidden = false;
         surface.hidden = true;
         if (focus) preview.focus();
@@ -29430,7 +29627,7 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
       node.tabIndex = 0;
       node.title = "Edit with Math Studio";
       node.textContent = this.raw;
-      const rendering = new import_obsidian3.Component();
+      const rendering = new import_obsidian5.Component();
       rendering.load();
       node.rendering = rendering;
       const stage = node.ownerDocument.createElement("span");
@@ -29465,10 +29662,10 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
   }
   const refreshBlankEffect = StateEffect.define();
   class BlankWidget extends WidgetType {
-    constructor(id3, text2, number2) {
+    constructor(id3, text3, number2) {
       super();
       this.id = id3;
-      this.text = text2;
+      this.text = text3;
       this.number = number2;
     }
     eq(other) {
@@ -29482,7 +29679,7 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
       node.setAttribute("aria-label", `Blank ${this.number}: ${this.text || "empty answer"}`);
       node.title = `Blank ${this.number} \xB7 edit accepted answers`;
       node.textContent = this.text || `Blank ${this.number}`;
-      const rendering = new import_obsidian3.Component();
+      const rendering = new import_obsidian5.Component();
       rendering.load();
       node.rendering = rendering;
       if (equations(this.text).length) {
@@ -29529,7 +29726,7 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
       const node = wrap.ownerDocument.createElement("div");
       node.className = "study-live-table";
       node.setAttribute("aria-label", "Editable prompt table");
-      const childOwner = new import_obsidian3.Component();
+      const childOwner = new import_obsidian5.Component();
       childOwner.load();
       const control = { owner: childOwner, cells: [], syncing: false };
       tableControls.set(node, control);
@@ -29540,10 +29737,10 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
         row.forEach((cell, c) => {
           const td = tr.createEl(r === 0 ? "th" : "td");
           td.style.textAlign = this.table.align[c] ?? "left";
-          const inner = writtenEditor(app, td, path, cell.text, childOwner, (text2) => {
+          const inner = writtenEditor(app, td, path, cell.text, childOwner, (text3) => {
             if (control.syncing || disposed) return;
             const from = view.posAtDOM(node), current = richTables(view.state.doc.toString()).find((t2) => t2.from === from), target = current?.rows[r]?.[c];
-            if (target) view.dispatch({ changes: { from: target.from, to: target.to, insert: cellMarkdown(text2) } });
+            if (target) view.dispatch({ changes: { from: target.from, to: target.to, insert: cellMarkdown(text3) } });
           }, busy, `Table ${r === 0 ? "heading" : `row ${r}`} column ${c + 1}`, { toolbar: false, rich: false });
           inner.disabled = this.readonly;
           control.cells[r][c] = inner;
@@ -29560,7 +29757,7 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
       node.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        new import_obsidian3.Menu().addItem((i) => i.setTitle("Edit table Markdown (rows and columns)").setDisabled(this.readonly).onClick(source2)).showAtPosition({ x: e.clientX, y: e.clientY });
+        new import_obsidian5.Menu().addItem((i) => i.setTitle("Edit table Markdown (rows and columns)").setDisabled(this.readonly).onClick(source2)).showAtPosition({ x: e.clientX, y: e.clientY });
       });
       node.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
@@ -29573,7 +29770,7 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
           e.preventDefault();
           e.stopPropagation();
           const rect = node.getBoundingClientRect();
-          new import_obsidian3.Menu().addItem((i) => i.setTitle("Edit table Markdown (rows and columns)").setDisabled(locked).onClick(source2)).showAtPosition({ x: rect.left, y: rect.top });
+          new import_obsidian5.Menu().addItem((i) => i.setTitle("Edit table Markdown (rows and columns)").setDisabled(locked).onClick(source2)).showAtPosition({ x: rect.left, y: rect.top });
         }
       });
       return node;
@@ -29620,7 +29817,7 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
       node.tabIndex = 0;
       node.setAttribute("role", "button");
       node.setAttribute("aria-label", "Image: edit Markdown link");
-      const renderer = new import_obsidian3.Component();
+      const renderer = new import_obsidian5.Component();
       renderer.load();
       node.rendering = renderer;
       let alive = true;
@@ -29645,7 +29842,7 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
       const menu = (event) => {
         event.preventDefault();
         event.stopPropagation();
-        const m = new import_obsidian3.Menu();
+        const m = new import_obsidian5.Menu();
         ["left", "center", "right"].forEach((alignment, i) => m.addItem((item) => item.setTitle(`${i + 1} \xB7 Align ${alignment}`).setChecked(imageAlignment(this.raw) === alignment).setDisabled(locked || mathOpen).onClick(() => {
           const from = view.posAtDOM(node), insert2 = (this.block ? "" : "\n\n") + alignImage(this.raw, alignment) + (this.block ? "" : "\n\n");
           view.dispatch({ changes: { from, to: from + this.raw.length, insert: insert2 }, selection: { anchor: from + insert2.length } });
@@ -29682,7 +29879,7 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
     return Decoration.replace({ widget: new BlankWidget(token.id, answer ? answerText(answer) : "", index2 + 1) }).range(token.from, token.to);
   }) : [], true);
   const blanks = StateField.define({ create: makeBlanks, update: (old, tr) => tr.docChanged || tr.effects.some((e) => e.is(refreshBlankEffect)) ? makeBlanks(tr.state) : old, provide: (f) => [EditorView.decorations.from(f), EditorView.atomicRanges.of((v) => v.state.field(f))] });
-  const parse2 = (text2) => options.answers ? fieldEquations(text2, true).filter((q) => q.bodyFrom !== q.from || /[\\_^]/.test(q.body)) : equations(text2);
+  const parse2 = (text3) => options.answers ? fieldEquations(text3, true).filter((q) => q.bodyFrom !== q.from || /[\\_^]/.test(q.body)) : equations(text3);
   const focusChanged = StateEffect.define();
   const decorations3 = (state, parsed, focused, rawTable, previousFormatting) => {
     const source2 = state.doc.toString(), rich = options.rich !== false && !options.answers;
@@ -29760,7 +29957,7 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
       try {
         for (const file of files) links.push(await importPromptImage(app, path, file));
       } catch (e) {
-        new import_obsidian3.Notice("Image import: " + String(e));
+        new import_obsidian5.Notice("Image import: " + String(e));
       } finally {
         if (!disposed) {
           if (links.length) {
@@ -29795,13 +29992,16 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
   } }), markdown({ codeLanguages: writtenLanguage }), syntaxHighlighting(highlight2), history(), keymap.of([...options.mathReferences ? [{ key: "Mod-j", run: (v) => {
     open(v.state.selection.main.from, v.state.selection.main.to, false, true);
     return true;
-  } }] : [], { key: "Ctrl-m", run: (v) => {
+  } }] : [], { key: "Meta-Shift-m", stopPropagation: true, run: (v) => {
+    open(v.state.selection.main.from, v.state.selection.main.to);
+    return true;
+  } }, { key: "Ctrl-m", run: (v) => {
     open(v.state.selection.main.from, v.state.selection.main.to);
     return true;
   } }, { key: "Ctrl-Shift-m", run: (v) => {
     open(v.state.selection.main.from, v.state.selection.main.to, true);
     return true;
-  } }, ...defaultKeymap, ...historyKeymap]), EditorView.lineWrapping, editable2.of([EditorView.editable.of(true), EditorState.readOnly.of(false)]), EditorView.contentAttributes.of({ "aria-label": label === "Your response" ? "Your written response" : label, "aria-multiline": "true", role: "textbox" }), math2, blanks, EditorView.updateListener.of((update) => {
+  } }, ...defaultKeymap, ...historyKeymap]), EditorView.lineWrapping, editable2.of([EditorView.editable.of(true), EditorState.readOnly.of(false)]), EditorView.contentAttributes.of({ ...editorLabel, "aria-multiline": "true", role: "textbox" }), math2, blanks, EditorView.updateListener.of((update) => {
     if (update.docChanged) {
       source.value = update.state.doc.toString();
       change(source.value);
@@ -29814,15 +30014,45 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
       source.setSelectionRange(s.from, s.to);
     }
   })] }) });
+  focusedMathShortcut(app, owner, view.contentDOM, () => open(view.state.selection.main.from, view.state.selection.main.to));
   followEditorWindow(view, surface, owner);
+  let tableDialog;
+  const insertTable = (atEnd = false) => {
+    if (disposed || locked || mathOpen || importing || tableDialog || options.rich === false || options.answers) return;
+    const original = view.state.doc.toString(), at = atEnd ? original.length : view.state.selection.main.to;
+    if (fencedCode(original).some((b) => at >= b.from && at <= b.to)) {
+      new import_obsidian5.Notice("Place the caret outside the code block to insert a table.");
+      return;
+    }
+    if (equations(original).some((q) => at > q.from && at < q.to)) {
+      new import_obsidian5.Notice("Place the caret outside the equation to insert a table.");
+      return;
+    }
+    busy(true);
+    tableDialog = new InsertTableModal(app, (rows, columns) => {
+      if (disposed || locked || view.state.doc.toString() !== original) {
+        new import_obsidian5.Notice("The note changed. Close this dialog and insert the table again.");
+        return false;
+      }
+      const edit = tableInsertion(original, at, rows, columns);
+      view.dispatch({ changes: { from: edit.from, insert: edit.insert }, selection: { anchor: edit.from + edit.insert.length } });
+      return true;
+    }, () => {
+      tableDialog = void 0;
+      busy(false);
+      if (!disposed) resume();
+    });
+    tableDialog.open();
+  };
   if (options.toolbar === false) wrap.querySelector(".study-math-tools")?.remove();
   wrap.querySelectorAll(".study-math-tools button").forEach((button2, i) => button2.onclick = () => open(view.state.selection.main.from, view.state.selection.main.to, i === 1));
   owner.register(() => {
     disposed = true;
     generation++;
+    tableDialog?.close();
     view.destroy();
   });
-  return { source, dom: view.dom, refreshBlanks: () => view.dispatch({ effects: refreshBlankEffect.of(null) }), focus: resume, focusAt: (point) => {
+  return { source, dom: view.dom, refreshBlanks: () => view.dispatch({ effects: refreshBlankEffect.of(null) }), focus: resume, insertTable, focusAt: (point) => {
     resume();
     view.requestMeasure({ read: () => view.posAtCoords(point), write: (pos) => {
       queueMicrotask(() => {
@@ -29848,10 +30078,10 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
 var rankError = "Difficulty rank must be a positive whole number (1 = easiest).";
 var validRank = (rank) => typeof rank === "number" && Number.isSafeInteger(rank) && rank >= 1;
 function parseRank(value) {
-  const text2 = value.trim();
-  if (!text2) return void 0;
-  const rank = Number(text2);
-  if (!/^[1-9]\d*$/.test(text2) || !validRank(rank)) throw Error(rankError);
+  const text3 = value.trim();
+  if (!text3) return void 0;
+  const rank = Number(text3);
+  if (!/^[1-9]\d*$/.test(text3) || !validRank(rank)) throw Error(rankError);
   return rank;
 }
 function versionGroup(d) {
@@ -29947,8 +30177,8 @@ async function referenceFingerprint(d) {
   const hash4 = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(["reference-output-v1", language2, source, entries])));
   return Array.from(new Uint8Array(hash4), (b) => b.toString(16).padStart(2, "0")).join("");
 }
-function cleanReferenceOutput(text2) {
-  const clean2 = text2.replace(/\x1b\][^\x07]*(?:\x07|\x1b\\)/g, "").replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "").replace(/\r\n?/g, "\n").replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "");
+function cleanReferenceOutput(text3) {
+  const clean2 = text3.replace(/\x1b\][^\x07]*(?:\x07|\x1b\\)/g, "").replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "").replace(/\r\n?/g, "\n").replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "");
   const lines = clean2.split("\n"), bounded = lines.slice(0, 400).join("\n");
   const limit = bounded.length > 16384 && /[\uD800-\uDBFF]/.test(bounded[16383]) ? 16383 : 16384;
   return { text: bounded.slice(0, limit), truncated: lines.length > 400 || bounded.length > limit };
@@ -30042,7 +30272,7 @@ function diagramReference(d, index2) {
   return d.labels.length > 1 ? d.labels[index2].reference ?? blankReference(index2) : "";
 }
 
-// node_modules/yaml/browser/dist/nodes/identity.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/identity.js
 var ALIAS = Symbol.for("yaml.alias");
 var DOC = Symbol.for("yaml.document");
 var MAP = Symbol.for("yaml.map");
@@ -30078,7 +30308,7 @@ function isNode(node) {
 }
 var hasAnchor = (node) => (isScalar(node) || isCollection(node)) && !!node.anchor;
 
-// node_modules/yaml/browser/dist/visit.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/visit.js
 var BREAK = Symbol("break visit");
 var SKIP = Symbol("skip children");
 var REMOVE = Symbol("remove node");
@@ -30228,7 +30458,7 @@ function replaceNode(key2, path, node) {
   }
 }
 
-// node_modules/yaml/browser/dist/doc/directives.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/doc/directives.js
 var escapeChars = {
   "!": "%21",
   ",": "%2C",
@@ -30391,7 +30621,7 @@ var Directives = class _Directives {
 Directives.defaultYaml = { explicit: false, version: "1.2" };
 Directives.defaultTags = { "!!": "tag:yaml.org,2002:" };
 
-// node_modules/yaml/browser/dist/doc/anchors.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/doc/anchors.js
 function anchorIsValid(anchor) {
   if (/[\x00-\x19\s,[\]{}]/.test(anchor)) {
     const sa = JSON.stringify(anchor);
@@ -30450,7 +30680,7 @@ function createNodeAnchors(doc2, prefix) {
   };
 }
 
-// node_modules/yaml/browser/dist/doc/applyReviver.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/doc/applyReviver.js
 function applyReviver(reviver, obj, key2, val) {
   if (val && typeof val === "object") {
     if (Array.isArray(val)) {
@@ -30494,7 +30724,7 @@ function applyReviver(reviver, obj, key2, val) {
   return reviver.call(obj, key2, val);
 }
 
-// node_modules/yaml/browser/dist/nodes/toJS.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/toJS.js
 function toJS(value, arg, ctx) {
   if (Array.isArray(value))
     return value.map((v, i) => toJS(v, String(i), ctx));
@@ -30517,7 +30747,7 @@ function toJS(value, arg, ctx) {
   return value;
 }
 
-// node_modules/yaml/browser/dist/nodes/Node.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/Node.js
 var NodeBase = class {
   constructor(type) {
     Object.defineProperty(this, NODE_TYPE, { value: type });
@@ -30549,7 +30779,7 @@ var NodeBase = class {
   }
 };
 
-// node_modules/yaml/browser/dist/nodes/Alias.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/Alias.js
 var Alias = class extends NodeBase {
   constructor(source) {
     super(ALIAS);
@@ -30656,7 +30886,7 @@ function getAliasCount(doc2, node, anchors) {
   return 1;
 }
 
-// node_modules/yaml/browser/dist/nodes/Scalar.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/Scalar.js
 var isScalarValue = (value) => !value || typeof value !== "function" && typeof value !== "object";
 var Scalar = class extends NodeBase {
   constructor(value) {
@@ -30676,7 +30906,7 @@ Scalar.PLAIN = "PLAIN";
 Scalar.QUOTE_DOUBLE = "QUOTE_DOUBLE";
 Scalar.QUOTE_SINGLE = "QUOTE_SINGLE";
 
-// node_modules/yaml/browser/dist/doc/createNode.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/doc/createNode.js
 var defaultTagPrefix = "tag:yaml.org,2002:";
 function findTagObject(value, tagName, tags3) {
   if (tagName) {
@@ -30742,7 +30972,7 @@ function createNode(value, tagName, ctx) {
   return node;
 }
 
-// node_modules/yaml/browser/dist/nodes/Collection.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/Collection.js
 function collectionFromPath(schema4, path, value) {
   let v = value;
   for (let i = path.length - 1; i >= 0; --i) {
@@ -30874,7 +31104,7 @@ var Collection = class extends NodeBase {
   }
 };
 
-// node_modules/yaml/browser/dist/stringify/stringifyComment.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/stringifyComment.js
 var stringifyComment = (str) => str.replace(/^(?!$)(?: $)?/gm, "#");
 function indentComment(comment2, indent2) {
   if (/^\n+$/.test(comment2))
@@ -30883,18 +31113,18 @@ function indentComment(comment2, indent2) {
 }
 var lineComment2 = (str, indent2, comment2) => str.endsWith("\n") ? indentComment(comment2, indent2) : comment2.includes("\n") ? "\n" + indentComment(comment2, indent2) : (str.endsWith(" ") ? "" : " ") + comment2;
 
-// node_modules/yaml/browser/dist/stringify/foldFlowLines.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/foldFlowLines.js
 var FOLD_FLOW = "flow";
 var FOLD_BLOCK = "block";
 var FOLD_QUOTED = "quoted";
-function foldFlowLines(text2, indent2, mode = "flow", { indentAtStart, lineWidth = 80, minContentWidth = 20, onFold, onOverflow } = {}) {
+function foldFlowLines(text3, indent2, mode = "flow", { indentAtStart, lineWidth = 80, minContentWidth = 20, onFold, onOverflow } = {}) {
   if (!lineWidth || lineWidth < 0)
-    return text2;
+    return text3;
   if (lineWidth < minContentWidth)
     minContentWidth = 0;
   const endStep = Math.max(1 + minContentWidth, 1 + lineWidth - indent2.length);
-  if (text2.length <= endStep)
-    return text2;
+  if (text3.length <= endStep)
+    return text3;
   const folds = [];
   const escapedFolds = {};
   let end = lineWidth - indent2.length;
@@ -30911,14 +31141,14 @@ function foldFlowLines(text2, indent2, mode = "flow", { indentAtStart, lineWidth
   let escStart = -1;
   let escEnd = -1;
   if (mode === FOLD_BLOCK) {
-    i = consumeMoreIndentedLines(text2, i, indent2.length);
+    i = consumeMoreIndentedLines(text3, i, indent2.length);
     if (i !== -1)
       end = i + endStep;
   }
-  for (let ch; ch = text2[i += 1]; ) {
+  for (let ch; ch = text3[i += 1]; ) {
     if (mode === FOLD_QUOTED && ch === "\\") {
       escStart = i;
-      switch (text2[i + 1]) {
+      switch (text3[i + 1]) {
         case "x":
           i += 3;
           break;
@@ -30935,12 +31165,12 @@ function foldFlowLines(text2, indent2, mode = "flow", { indentAtStart, lineWidth
     }
     if (ch === "\n") {
       if (mode === FOLD_BLOCK)
-        i = consumeMoreIndentedLines(text2, i, indent2.length);
+        i = consumeMoreIndentedLines(text3, i, indent2.length);
       end = i + indent2.length + endStep;
       split = void 0;
     } else {
       if (ch === " " && prev && prev !== " " && prev !== "\n" && prev !== "	") {
-        const next = text2[i + 1];
+        const next = text3[i + 1];
         if (next && next !== " " && next !== "\n" && next !== "	")
           split = i;
       }
@@ -30952,12 +31182,12 @@ function foldFlowLines(text2, indent2, mode = "flow", { indentAtStart, lineWidth
         } else if (mode === FOLD_QUOTED) {
           while (prev === " " || prev === "	") {
             prev = ch;
-            ch = text2[i += 1];
+            ch = text3[i += 1];
             overflow = true;
           }
           const j = i > escEnd + 1 ? i - 2 : escStart - 1;
           if (escapedFolds[j])
-            return text2;
+            return text3;
           folds.push(j);
           escapedFolds[j] = true;
           end = j + endStep;
@@ -30972,45 +31202,45 @@ function foldFlowLines(text2, indent2, mode = "flow", { indentAtStart, lineWidth
   if (overflow && onOverflow)
     onOverflow();
   if (folds.length === 0)
-    return text2;
+    return text3;
   if (onFold)
     onFold();
-  let res = text2.slice(0, folds[0]);
+  let res = text3.slice(0, folds[0]);
   for (let i2 = 0; i2 < folds.length; ++i2) {
     const fold = folds[i2];
-    const end2 = folds[i2 + 1] || text2.length;
+    const end2 = folds[i2 + 1] || text3.length;
     if (fold === 0)
       res = `
-${indent2}${text2.slice(0, end2)}`;
+${indent2}${text3.slice(0, end2)}`;
     else {
       if (mode === FOLD_QUOTED && escapedFolds[fold])
-        res += `${text2[fold]}\\`;
+        res += `${text3[fold]}\\`;
       res += `
-${indent2}${text2.slice(fold + 1, end2)}`;
+${indent2}${text3.slice(fold + 1, end2)}`;
     }
   }
   return res;
 }
-function consumeMoreIndentedLines(text2, i, indent2) {
+function consumeMoreIndentedLines(text3, i, indent2) {
   let end = i;
   let start = i + 1;
-  let ch = text2[start];
+  let ch = text3[start];
   while (ch === " " || ch === "	") {
     if (i < start + indent2) {
-      ch = text2[++i];
+      ch = text3[++i];
     } else {
       do {
-        ch = text2[++i];
+        ch = text3[++i];
       } while (ch && ch !== "\n");
       end = i;
       start = i + 1;
-      ch = text2[start];
+      ch = text3[start];
     }
   }
   return end;
 }
 
-// node_modules/yaml/browser/dist/stringify/stringifyString.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/stringifyString.js
 var getFoldOptions = (ctx, isBlock2) => ({
   indentAtStart: isBlock2 ? ctx.indent.length : ctx.indentAtStart,
   lineWidth: ctx.options.lineWidth,
@@ -31285,7 +31515,7 @@ function stringifyString(item, ctx, onComment, onChompKeep) {
   return res;
 }
 
-// node_modules/yaml/browser/dist/stringify/stringify.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/stringify.js
 function createStringifyContext(doc2, options) {
   const opt = Object.assign({
     blockQuote: true,
@@ -31398,7 +31628,7 @@ function stringify(item, ctx, onComment, onChompKeep) {
 ${ctx.indent}${str}`;
 }
 
-// node_modules/yaml/browser/dist/stringify/stringifyPair.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/stringifyPair.js
 function stringifyPair({ key: key2, value }, ctx, onComment, onChompKeep) {
   const { allNullValues, doc: doc2, indent: indent2, indentStep, options: { commentString, indentSeq, simpleKeys } } = ctx;
   let keyComment = isNode(key2) && key2.comment || null;
@@ -31521,14 +31751,14 @@ ${ctx.indent}`;
   return str;
 }
 
-// node_modules/yaml/browser/dist/log.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/log.js
 function warn(logLevel, warning) {
   if (logLevel === "debug" || logLevel === "warn") {
     console.warn(warning);
   }
 }
 
-// node_modules/yaml/browser/dist/schema/yaml-1.1/merge.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/merge.js
 var MERGE_KEY = "<<";
 var merge = {
   identify: (value) => value === MERGE_KEY || typeof value === "symbol" && value.description === MERGE_KEY,
@@ -31578,7 +31808,7 @@ function resolveAliasValue(ctx, value) {
   return ctx && isAlias(value) ? value.resolve(ctx.doc, ctx) : value;
 }
 
-// node_modules/yaml/browser/dist/nodes/addPairToJSMap.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/addPairToJSMap.js
 function addPairToJSMap(ctx, map2, { key: key2, value }) {
   if (isNode(key2) && key2.addToJSMap)
     key2.addToJSMap(ctx, map2, value);
@@ -31631,7 +31861,7 @@ function stringifyKey(key2, jsKey, ctx) {
   return JSON.stringify(jsKey);
 }
 
-// node_modules/yaml/browser/dist/nodes/Pair.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/Pair.js
 function createPair(key2, value, ctx) {
   const k = createNode(key2, void 0, ctx);
   const v = createNode(value, void 0, ctx);
@@ -31660,7 +31890,7 @@ var Pair = class _Pair {
   }
 };
 
-// node_modules/yaml/browser/dist/stringify/stringifyCollection.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/stringifyCollection.js
 function stringifyCollection(collection, ctx, options) {
   const flow = ctx.inFlow ?? collection.flow;
   const stringify4 = flow ? stringifyFlowCollection : stringifyBlockCollection;
@@ -31802,7 +32032,7 @@ function addCommentBefore({ indent: indent2, options: { commentString } }, lines
   }
 }
 
-// node_modules/yaml/browser/dist/nodes/YAMLMap.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/YAMLMap.js
 function findPair(items, key2) {
   const k = isScalar(key2) ? key2.value : key2;
   for (const it of items) {
@@ -31933,7 +32163,7 @@ var YAMLMap = class extends Collection {
   }
 };
 
-// node_modules/yaml/browser/dist/schema/common/map.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/common/map.js
 var map = {
   collection: "map",
   default: true,
@@ -31947,7 +32177,7 @@ var map = {
   createNode: (schema4, obj, ctx) => YAMLMap.from(schema4, obj, ctx)
 };
 
-// node_modules/yaml/browser/dist/nodes/YAMLSeq.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/YAMLSeq.js
 var YAMLSeq = class extends Collection {
   static get tagName() {
     return "tag:yaml.org,2002:seq";
@@ -32051,7 +32281,7 @@ function asItemIndex(key2) {
   return typeof idx === "number" && Number.isInteger(idx) && idx >= 0 ? idx : null;
 }
 
-// node_modules/yaml/browser/dist/schema/common/seq.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/common/seq.js
 var seq = {
   collection: "seq",
   default: true,
@@ -32065,7 +32295,7 @@ var seq = {
   createNode: (schema4, obj, ctx) => YAMLSeq.from(schema4, obj, ctx)
 };
 
-// node_modules/yaml/browser/dist/schema/common/string.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/common/string.js
 var string2 = {
   identify: (value) => typeof value === "string",
   default: true,
@@ -32077,7 +32307,7 @@ var string2 = {
   }
 };
 
-// node_modules/yaml/browser/dist/schema/common/null.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/common/null.js
 var nullTag = {
   identify: (value) => value == null,
   createNode: () => new Scalar(null),
@@ -32088,7 +32318,7 @@ var nullTag = {
   stringify: ({ source }, ctx) => typeof source === "string" && nullTag.test.test(source) ? source : ctx.options.nullStr
 };
 
-// node_modules/yaml/browser/dist/schema/core/bool.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/core/bool.js
 var boolTag = {
   identify: (value) => typeof value === "boolean",
   default: true,
@@ -32105,7 +32335,7 @@ var boolTag = {
   }
 };
 
-// node_modules/yaml/browser/dist/stringify/stringifyNumber.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/stringifyNumber.js
 function stringifyNumber({ format, minFractionDigits, tag, value }) {
   if (typeof value === "bigint")
     return String(value);
@@ -32126,7 +32356,7 @@ function stringifyNumber({ format, minFractionDigits, tag, value }) {
   return n;
 }
 
-// node_modules/yaml/browser/dist/schema/core/float.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/core/float.js
 var floatNaN = {
   identify: (value) => typeof value === "number",
   default: true,
@@ -32162,7 +32392,7 @@ var float = {
   stringify: stringifyNumber
 };
 
-// node_modules/yaml/browser/dist/schema/core/int.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/core/int.js
 var intIdentify = (value) => typeof value === "bigint" || Number.isInteger(value);
 var intResolve = (str, offset, radix, { intAsBigInt }) => intAsBigInt ? BigInt(str) : parseInt(str.substring(offset), radix);
 function intStringify(node, radix, prefix) {
@@ -32198,7 +32428,7 @@ var intHex = {
   stringify: (node) => intStringify(node, 16, "0x")
 };
 
-// node_modules/yaml/browser/dist/schema/core/schema.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/core/schema.js
 var schema = [
   map,
   seq,
@@ -32213,7 +32443,7 @@ var schema = [
   float
 ];
 
-// node_modules/yaml/browser/dist/schema/json/schema.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/json/schema.js
 function intIdentify2(value) {
   return typeof value === "bigint" || Number.isInteger(value);
 }
@@ -32271,7 +32501,7 @@ var jsonError = {
 };
 var schema2 = [map, seq].concat(jsonScalars, jsonError);
 
-// node_modules/yaml/browser/dist/schema/yaml-1.1/binary.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/binary.js
 var binary = {
   identify: (value) => value instanceof Uint8Array,
   // Buffer inherits from Uint8Array
@@ -32324,7 +32554,7 @@ var binary = {
   }
 };
 
-// node_modules/yaml/browser/dist/schema/yaml-1.1/pairs.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/pairs.js
 function resolvePairs(seq2, onError) {
   if (isSeq(seq2)) {
     for (let i = 0; i < seq2.items.length; ++i) {
@@ -32390,7 +32620,7 @@ var pairs = {
   createNode: createPairs
 };
 
-// node_modules/yaml/browser/dist/schema/yaml-1.1/omap.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/omap.js
 var YAMLOMap = class _YAMLOMap extends YAMLSeq {
   constructor() {
     super();
@@ -32456,7 +32686,7 @@ var omap = {
   createNode: (schema4, iterable, ctx) => YAMLOMap.from(schema4, iterable, ctx)
 };
 
-// node_modules/yaml/browser/dist/schema/yaml-1.1/bool.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/bool.js
 function boolStringify({ value, source }, ctx) {
   const boolObj = value ? trueTag : falseTag;
   if (source && boolObj.test.test(source))
@@ -32480,7 +32710,7 @@ var falseTag = {
   stringify: boolStringify
 };
 
-// node_modules/yaml/browser/dist/schema/yaml-1.1/float.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/float.js
 var floatNaN2 = {
   identify: (value) => typeof value === "number",
   default: true,
@@ -32519,7 +32749,7 @@ var float2 = {
   stringify: stringifyNumber
 };
 
-// node_modules/yaml/browser/dist/schema/yaml-1.1/int.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/int.js
 var intIdentify3 = (value) => typeof value === "bigint" || Number.isInteger(value);
 function intResolve2(str, offset, radix, { intAsBigInt }) {
   const sign = str[0];
@@ -32588,7 +32818,7 @@ var intHex2 = {
   stringify: (node) => intStringify2(node, 16, "0x")
 };
 
-// node_modules/yaml/browser/dist/schema/yaml-1.1/set.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/set.js
 var YAMLSet = class _YAMLSet extends YAMLMap {
   constructor(schema4) {
     super(schema4);
@@ -32667,7 +32897,7 @@ var set = {
   }
 };
 
-// node_modules/yaml/browser/dist/schema/yaml-1.1/timestamp.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/timestamp.js
 function parseSexagesimal(str, asBigInt) {
   const sign = str[0];
   const parts = sign === "-" || sign === "+" ? str.substring(1) : str;
@@ -32746,7 +32976,7 @@ var timestamp = {
   stringify: ({ value }) => value?.toISOString().replace(/(T00:00:00)?\.000Z$/, "") ?? ""
 };
 
-// node_modules/yaml/browser/dist/schema/yaml-1.1/schema.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/schema.js
 var schema3 = [
   map,
   seq,
@@ -32771,7 +33001,7 @@ var schema3 = [
   timestamp
 ];
 
-// node_modules/yaml/browser/dist/schema/tags.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/tags.js
 var schemas = /* @__PURE__ */ new Map([
   ["core", schema],
   ["failsafe", [map, seq, string2]],
@@ -32842,7 +33072,7 @@ function getTags(customTags, schemaName, addMergeTag) {
   }, []);
 }
 
-// node_modules/yaml/browser/dist/schema/Schema.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/Schema.js
 var sortMapEntriesByKey = (a2, b) => a2.key < b.key ? -1 : a2.key > b.key ? 1 : 0;
 var Schema2 = class _Schema {
   constructor({ compat, customTags, merge: merge2, resolveKnownTags, schema: schema4, sortMapEntries, toStringDefaults }) {
@@ -32863,7 +33093,7 @@ var Schema2 = class _Schema {
   }
 };
 
-// node_modules/yaml/browser/dist/stringify/stringifyDocument.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/stringifyDocument.js
 function stringifyDocument(doc2, options) {
   const lines = [];
   let hasDirectives = options.directives === true;
@@ -32934,7 +33164,7 @@ function stringifyDocument(doc2, options) {
   return lines.join("\n") + "\n";
 }
 
-// node_modules/yaml/browser/dist/doc/Document.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/doc/Document.js
 var Document = class _Document {
   constructor(value, replacer, options) {
     this.commentBefore = null;
@@ -33226,7 +33456,7 @@ function assertCollection(contents) {
   throw new Error("Expected a YAML collection as document contents");
 }
 
-// node_modules/yaml/browser/dist/errors.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/errors.js
 var YAMLError = class extends Error {
   constructor(name2, pos, code, message2) {
     super();
@@ -33282,7 +33512,7 @@ ${pointer}
   }
 };
 
-// node_modules/yaml/browser/dist/compose/resolve-props.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/resolve-props.js
 function resolveProps(tokens, { flow, indicator, next, offset, onError, parentIndent, startOnNewline }) {
   let spaceBefore = false;
   let atNewline = startOnNewline;
@@ -33410,7 +33640,7 @@ function resolveProps(tokens, { flow, indicator, next, offset, onError, parentIn
   };
 }
 
-// node_modules/yaml/browser/dist/compose/util-contains-newline.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/util-contains-newline.js
 function containsNewline(key2) {
   if (!key2)
     return null;
@@ -33446,7 +33676,7 @@ function containsNewline(key2) {
   }
 }
 
-// node_modules/yaml/browser/dist/compose/util-flow-indent-check.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/util-flow-indent-check.js
 function flowIndentCheck(indent2, fc, onError) {
   if (fc?.type === "flow-collection") {
     const end = fc.end[0];
@@ -33457,7 +33687,7 @@ function flowIndentCheck(indent2, fc, onError) {
   }
 }
 
-// node_modules/yaml/browser/dist/compose/util-map-includes.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/util-map-includes.js
 function mapIncludes(ctx, items, search) {
   const { uniqueKeys } = ctx.options;
   if (uniqueKeys === false)
@@ -33466,7 +33696,7 @@ function mapIncludes(ctx, items, search) {
   return items.some((pair2) => isEqual(pair2.key, search));
 }
 
-// node_modules/yaml/browser/dist/compose/resolve-block-map.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/resolve-block-map.js
 var startColMsg = "All mapping items must start at the same column";
 function resolveBlockMap({ composeNode: composeNode2, composeEmptyNode: composeEmptyNode2 }, ctx, bm, onError, tag) {
   const NodeClass = tag?.nodeClass ?? YAMLMap;
@@ -33562,7 +33792,7 @@ function resolveBlockMap({ composeNode: composeNode2, composeEmptyNode: composeE
   return map2;
 }
 
-// node_modules/yaml/browser/dist/compose/resolve-block-seq.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/resolve-block-seq.js
 function resolveBlockSeq({ composeNode: composeNode2, composeEmptyNode: composeEmptyNode2 }, ctx, bs, onError, tag) {
   const NodeClass = tag?.nodeClass ?? YAMLSeq;
   const seq2 = new NodeClass(ctx.schema);
@@ -33604,7 +33834,7 @@ function resolveBlockSeq({ composeNode: composeNode2, composeEmptyNode: composeE
   return seq2;
 }
 
-// node_modules/yaml/browser/dist/compose/resolve-end.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/resolve-end.js
 function resolveEnd(end, offset, reqSpace, onError) {
   let comment2 = "";
   if (end) {
@@ -33641,7 +33871,7 @@ function resolveEnd(end, offset, reqSpace, onError) {
   return { comment: comment2, offset };
 }
 
-// node_modules/yaml/browser/dist/compose/resolve-flow-collection.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/resolve-flow-collection.js
 var blockMsg = "Block collections are not allowed within flow collections";
 var isBlock = (token) => token && (token.type === "block-map" || token.type === "block-seq");
 function resolveFlowCollection({ composeNode: composeNode2, composeEmptyNode: composeEmptyNode2 }, ctx, fc, onError, tag) {
@@ -33821,7 +34051,7 @@ function resolveFlowCollection({ composeNode: composeNode2, composeEmptyNode: co
   return coll;
 }
 
-// node_modules/yaml/browser/dist/compose/compose-collection.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/compose-collection.js
 function resolveCollection(CN2, ctx, token, onError, tagName, tag) {
   const coll = token.type === "block-map" ? resolveBlockMap(CN2, ctx, token, onError, tag) : token.type === "block-seq" ? resolveBlockSeq(CN2, ctx, token, onError, tag) : resolveFlowCollection(CN2, ctx, token, onError, tag);
   const Coll = coll.constructor;
@@ -33873,7 +34103,7 @@ function composeCollection(CN2, ctx, token, props, onError) {
   return node;
 }
 
-// node_modules/yaml/browser/dist/compose/resolve-block-scalar.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/resolve-block-scalar.js
 function resolveBlockScalar(ctx, scalar, onError) {
   const start = scalar.offset;
   const header = parseBlockScalarHeader(scalar, ctx.options.strict, onError);
@@ -34049,7 +34279,7 @@ function splitLines(source) {
   return lines;
 }
 
-// node_modules/yaml/browser/dist/compose/resolve-flow-scalar.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/resolve-flow-scalar.js
 function resolveFlowScalar(scalar, strict, onError) {
   const { offset, type, source, end } = scalar;
   let _type;
@@ -34262,7 +34492,7 @@ function parseCharCode(source, offset, length, onError) {
   }
 }
 
-// node_modules/yaml/browser/dist/compose/compose-scalar.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/compose-scalar.js
 function composeScalar(ctx, token, tagToken, onError) {
   const { value, type, comment: comment2, range } = token.type === "block-scalar" ? resolveBlockScalar(ctx, token, onError) : resolveFlowScalar(token, ctx.options.strict, onError);
   const tagName = tagToken ? ctx.directives.tagName(tagToken.source, (msg) => onError(tagToken, "TAG_RESOLVE_FAILED", msg)) : null;
@@ -34333,7 +34563,7 @@ function findScalarTagByTest({ atKey, directives, schema: schema4 }, value, toke
   return tag;
 }
 
-// node_modules/yaml/browser/dist/compose/util-empty-scalar-position.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/util-empty-scalar-position.js
 function emptyScalarPosition(offset, before, pos) {
   if (before) {
     pos ?? (pos = before.length);
@@ -34357,7 +34587,7 @@ function emptyScalarPosition(offset, before, pos) {
   return offset;
 }
 
-// node_modules/yaml/browser/dist/compose/compose-node.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/compose-node.js
 var CN = { composeNode, composeEmptyNode };
 function composeNode(ctx, token, props, onError) {
   const atKey = ctx.atKey;
@@ -34450,7 +34680,7 @@ function composeAlias({ options }, { offset, source, end }, onError) {
   return alias;
 }
 
-// node_modules/yaml/browser/dist/compose/compose-doc.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/compose-doc.js
 function composeDoc(options, directives, { offset, start, value, end }, onError) {
   const opts = Object.assign({ _directives: directives }, options);
   const doc2 = new Document(void 0, opts);
@@ -34483,7 +34713,7 @@ function composeDoc(options, directives, { offset, start, value, end }, onError)
   return doc2;
 }
 
-// node_modules/yaml/browser/dist/compose/composer.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/composer.js
 function getErrorPos(src) {
   if (typeof src === "number")
     return [src, src + 1];
@@ -34676,7 +34906,7 @@ ${end.comment}` : end.comment;
   }
 };
 
-// node_modules/yaml/browser/dist/parse/cst-visit.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/parse/cst-visit.js
 var BREAK2 = Symbol("break visit");
 var SKIP2 = Symbol("skip children");
 var REMOVE2 = Symbol("remove item");
@@ -34732,7 +34962,7 @@ function _visit(path, item, visitor) {
   return typeof ctrl === "function" ? ctrl(item, path) : ctrl;
 }
 
-// node_modules/yaml/browser/dist/parse/cst.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/parse/cst.js
 var BOM = "\uFEFF";
 var DOCUMENT = "";
 var FLOW_END = "";
@@ -34797,7 +35027,7 @@ function tokenType(source) {
   return null;
 }
 
-// node_modules/yaml/browser/dist/parse/lexer.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/parse/lexer.js
 function isEmpty(ch) {
   switch (ch) {
     case void 0:
@@ -35379,7 +35609,7 @@ var Lexer = class {
   }
 };
 
-// node_modules/yaml/browser/dist/parse/line-counter.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/parse/line-counter.js
 var LineCounter = class {
   constructor() {
     this.lineStarts = [];
@@ -35404,7 +35634,7 @@ var LineCounter = class {
   }
 };
 
-// node_modules/yaml/browser/dist/parse/parser.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/parse/parser.js
 function includesToken(list, type) {
   for (let i = 0; i < list.length; ++i)
     if (list[i].type === type)
@@ -36267,7 +36497,7 @@ var Parser2 = class {
   }
 };
 
-// node_modules/yaml/browser/dist/public-api.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/public-api.js
 function parseOptions(options) {
   const prettyErrors = options.prettyErrors !== false;
   const lineCounter = options.lineCounter || prettyErrors && new LineCounter() || null;
@@ -36603,7 +36833,7 @@ function orderChoices(q, random = Math.random) {
   if (q.definition.type === "ordering" && q.definition.shuffle && ids.every((id3, i) => id3 === q.definition.correct[i])) ids.push(ids.shift());
   return ids;
 }
-function makeAttempt(q, response, order2, mode, context, started, id3, course = null) {
+function makeAttempt(q, response, order2, mode, context2, started, id3, course = null) {
   validateCourseContext(course);
   return structuredClone({
     version: 1,
@@ -36611,7 +36841,7 @@ function makeAttempt(q, response, order2, mode, context, started, id3, course = 
     questionId: q.definition.id,
     started,
     finished: (/* @__PURE__ */ new Date()).toISOString(),
-    context,
+    context: context2,
     course,
     mode,
     question: q,
@@ -36719,10 +36949,10 @@ function validateSelfAssessment(q, r) {
 }
 
 // src/cloze-render.ts
-var blankMarkers = (text2) => [...text2.matchAll(/\{\{blank:([\w-]+)\}\}/g)].map((m) => m[1]);
-function clozeMarkdown(text2) {
-  let result = text2;
-  for (const q of [...equations(text2)].reverse()) {
+var blankMarkers = (text3) => [...text3.matchAll(/\{\{blank:([\w-]+)\}\}/g)].map((m) => m[1]);
+function clozeMarkdown(text3) {
+  let result = text3;
+  for (const q of [...equations(text3)].reverse()) {
     const body = q.raw.replace(/\{\{blank:([\w-]+)\}\}/g, (_, id3) => `\\class{study-math-slot-${id3}}{\\boxed{\\phantom{000000000000}}}`);
     result = result.slice(0, q.from) + body + result.slice(q.to);
   }
@@ -36863,27 +37093,27 @@ async function tableReview(app, host, q, response, result, owner, includePrompt 
 
 // src/code-review-model.ts
 function filledReview(source, values2) {
-  let text2 = "", at = 0;
+  let text3 = "", at = 0;
   const ranges = [];
   for (const [i, m] of codeMarkers(source).entries()) {
-    text2 += source.slice(at, m.from);
+    text3 += source.slice(at, m.from);
     const value = values2[m.id]?.trim() ? values2[m.id] : `\u25A2 ${i + 1}`;
-    const from = text2.length;
-    text2 += value;
-    ranges.push({ from, to: text2.length, label: `Blank ${i + 1}` });
+    const from = text3.length;
+    text3 += value;
+    ranges.push({ from, to: text3.length, label: `Blank ${i + 1}` });
     at = m.to;
   }
-  return { text: text2 + source.slice(at), ranges };
+  return { text: text3 + source.slice(at), ranges };
 }
 
 // src/code-render.ts
-var import_obsidian4 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 
 // src/code-highlight-source.ts
 function highlightSkeleton(source) {
-  let text2 = source;
-  for (const marker of codeMarkers(source).reverse()) text2 = text2.slice(0, marker.from) + "x".repeat(marker.to - marker.from) + text2.slice(marker.to);
-  return text2;
+  let text3 = source;
+  for (const marker of codeMarkers(source).reverse()) text3 = text3.slice(0, marker.from) + "x".repeat(marker.to - marker.from) + text3.slice(marker.to);
+  return text3;
 }
 function answerHighlightContext(source, id3) {
   const marker = codeMarkers(source).find((m) => m.id === id3), masked = highlightSkeleton(source);
@@ -36903,11 +37133,11 @@ async function renderCode(parent, code, blank, options = {}) {
     pre.tabIndex = 0;
     pre.setAttribute("aria-label", options.label ?? "Code");
   }
-  const prism = await (0, import_obsidian4.loadPrism)(), grammar = prism.languages[code.language];
+  const prism = await (0, import_obsidian6.loadPrism)(), grammar = prism.languages[code.language];
   if (grammar) root.innerHTML = prism.highlight(options.static ? code.source : highlightSkeleton(code.source), grammar, code.language);
   else root.textContent = code.source;
   const split = (node) => {
-    if (node.nodeType === 3) return (node.textContent ?? "").split("\n").map((text2) => [node.ownerDocument.createTextNode(text2)]);
+    if (node.nodeType === 3) return (node.textContent ?? "").split("\n").map((text3) => [node.ownerDocument.createTextNode(text3)]);
     const rows2 = [[]];
     for (const child of Array.from(node.childNodes)) {
       const parts = split(child);
@@ -36957,7 +37187,7 @@ async function renderCode(parent, code, blank, options = {}) {
     const host = doc2.createElement("span");
     host.className = "study-code-slot";
     range.insertNode(host);
-    blank(host, m.id, grammar ? ((text2) => prism.tokenize(text2, grammar)) : void 0);
+    blank(host, m.id, grammar ? ((text3) => prism.tokenize(text3, grammar)) : void 0);
   }
   parent.append(panel);
   return pre;
@@ -36965,8 +37195,8 @@ async function renderCode(parent, code, blank, options = {}) {
 
 // src/code-review.ts
 async function filledCode(host, q, values2, label) {
-  const { text: text2, ranges } = filledReview(q.definition.code.source, values2);
-  const pre = await renderCode(host, { language: q.definition.code.language, source: text2 }, () => {
+  const { text: text3, ranges } = filledReview(q.definition.code.source, values2);
+  const pre = await renderCode(host, { language: q.definition.code.language, source: text3 }, () => {
   }, { static: true, label });
   const walker = pre.ownerDocument.createTreeWalker(pre.querySelector("code"), 4);
   const nodes = [];
@@ -37147,7 +37377,7 @@ function codeDocument(s) {
     starts.push(offset);
     offset += line.length + 1;
   }
-  const text2 = s.lines.join("\n");
+  const text3 = s.lines.join("\n");
   const fragments = [];
   for (let i = 0; i < s.lines.length; i++) {
     if (s.line_numbers[i] === null) continue;
@@ -37155,7 +37385,7 @@ function codeDocument(s) {
     while (i + 1 < s.lines.length && s.line_numbers[i + 1] !== null && s.line_numbers[i + 1] === s.line_numbers[i] + 1) i++;
     fragments.push({ from: starts[first], to: starts[i] + s.lines[i].length, first, last: i });
   }
-  return { text: text2, starts, fragments };
+  return { text: text3, starts, fragments };
 }
 function codeRange(s, from, to) {
   const d = codeDocument(s), f = d.fragments.find((f2) => from >= f2.from && to <= f2.to);
@@ -37165,9 +37395,9 @@ function codeRange(s, from, to) {
   return { d, f, line: s.line_numbers[first], endLine: s.line_numbers[last], column: from - d.starts[first], endColumn: to - d.starts[last] };
 }
 async function makeCodeAnchor(s, raw, from, to, purpose) {
-  const text2 = codeDocument(s).text;
+  const text3 = codeDocument(s).text;
   if (purpose === "practice-blank") {
-    const selected = text2.slice(from, to);
+    const selected = text3.slice(from, to);
     from += selected.length - selected.trimStart().length;
     to -= selected.length - selected.trimEnd().length;
   }
@@ -37182,7 +37412,7 @@ async function makeCodeAnchor(s, raw, from, to, purpose) {
     start = from;
     end = to;
   }
-  const context = source ?? r.d.text;
+  const context2 = source ?? r.d.text;
   if (purpose === "practice-blank" && r.d.text.slice(from, to).includes("	")) throw Error("Select code without tabs for an answerable practice blank.");
   return {
     version: 1,
@@ -37196,8 +37426,8 @@ async function makeCodeAnchor(s, raw, from, to, purpose) {
     endColumn: r.endColumn,
     offset: from,
     quote: r.d.text.slice(from, to),
-    before: context.slice(Math.max(source === void 0 ? r.f.from : 0, start - 100), start),
-    after: context.slice(end, Math.min(source === void 0 ? r.f.to : context.length, end + 100)),
+    before: context2.slice(Math.max(source === void 0 ? r.f.from : 0, start - 100), start),
+    after: context2.slice(end, Math.min(source === void 0 ? r.f.to : context2.length, end + 100)),
     ...source === void 0 ? {} : { sourceContext: true, sourceHash: await codeHash(source) },
     snapshotHash: await codeSnapshotHash(s),
     signature: JSON.stringify(s.signature)
@@ -37250,7 +37480,7 @@ function codeLanguage(path) {
   if (/\.(cpp|cc|cxx|c|h|hpp)$/i.test(path)) return "cpp";
   throw Error("Practice questions currently support Python, Bash, Wolfram and C/C++ code. Comments support any text excerpt.");
 }
-function buildCodeQuestion(s, hash4, marks2, context) {
+function buildCodeQuestion(s, hash4, marks2, context2) {
   const d = codeDocument(s);
   if (!marks2.length || new Set(marks2.map((m) => m.id)).size !== marks2.length) throw Error("Choose one or more distinct practice blanks.");
   const ranges = marks2.flatMap((c) => {
@@ -37271,12 +37501,12 @@ function buildCodeQuestion(s, hash4, marks2, context) {
       return !hit;
     }))) throw Error("The full source no longer matches these fragments. Refresh first.");
     const touched = d.fragments.filter((f) => ranges.some((r) => r.from >= f.from && r.to <= f.to));
-    const bounded = context ?? { fromLine: s.line_numbers[touched[0].first], toLine: s.line_numbers[touched.at(-1).last] };
+    const bounded = context2 ?? { fromLine: s.line_numbers[touched[0].first], toLine: s.line_numbers[touched.at(-1).last] };
     return buildCodeQuestion(expanded, "", marks2, bounded);
   }
   let from = fragment.from, to = fragment.to;
-  if (context) {
-    const first = s.line_numbers.indexOf(context.fromLine), last = s.line_numbers.indexOf(context.toLine);
+  if (context2) {
+    const first = s.line_numbers.indexOf(context2.fromLine), last = s.line_numbers.indexOf(context2.toLine);
     if (first < fragment.first || last > fragment.last || last < first) throw Error("Question context must be within the same continuous excerpt.");
     from = d.starts[first];
     to = d.starts[last] + s.lines[last].length;
@@ -37494,14 +37724,14 @@ function semanticGlyph(tex) {
   }
   const normalize = (s) => s.replace(/\s+/g, "").replace(/\\(?:left|right|displaystyle|textstyle|scriptstyle|scriptscriptstyle)\b/g, "").replace(/\\[,;!:]/g, "").replace(/([_^])\{([A-Za-z0-9])\}/g, "$1$2").replace(/\^\{\\prime\}|\^\\prime\b/g, "'");
   let normalized2 = "", last = 0;
-  const text2 = /\\(?:text|mbox|operatorname)\b\s*/g;
+  const text3 = /\\(?:text|mbox|operatorname)\b\s*/g;
   let hit;
-  while (hit = text2.exec(out)) {
-    const body = group(out, text2.lastIndex);
+  while (hit = text3.exec(out)) {
+    const body = group(out, text3.lastIndex);
     if (!body) continue;
     normalized2 += normalize(out.slice(last, hit.index)) + out.slice(hit.index, body.to);
     last = body.to;
-    text2.lastIndex = body.to;
+    text3.lastIndex = body.to;
   }
   return normalized2 + normalize(out.slice(last));
 }
@@ -37557,16 +37787,16 @@ var smallCache2 = /* @__PURE__ */ new Map();
 function project(source, cuts) {
   if (!cuts.length) return null;
   cuts.sort((a2, b) => a2.from - b.from);
-  let last = 0, text2 = "";
+  let last = 0, text3 = "";
   const gaps = [];
   for (const cut of cuts) {
     if (cut.from < last) continue;
-    text2 += source.slice(last, cut.from);
-    gaps.push({ at: text2.length, from: cut.from, to: cut.to, removed: cut.to - cut.from, kind: cut.kind });
+    text3 += source.slice(last, cut.from);
+    gaps.push({ at: text3.length, from: cut.from, to: cut.to, removed: cut.to - cut.from, kind: cut.kind });
     last = cut.to;
   }
-  text2 += source.slice(last);
-  return { text: text2, toRaw(pos, side) {
+  text3 += source.slice(last);
+  return { text: text3, toRaw(pos, side) {
     let offset = 0;
     for (const gap of gaps) {
       if (gap.at > pos) break;
@@ -37634,32 +37864,32 @@ function ordinaryAnchor(source, anchor, range) {
   return next;
 }
 function isSymbolRegistrySection(source) {
-  const text2 = source.trim();
-  if (!text2.startsWith("%% study-symbols")) return false;
+  const text3 = source.trim();
+  if (!text3.startsWith("%% study-symbols")) return false;
   try {
-    const block = registryBlock(text2);
-    return !!block && block.from === 0 && block.to === text2.length;
+    const block = registryBlock(text3);
+    return !!block && block.from === 0 && block.to === text3.length;
   } catch {
     return false;
   }
 }
 
 // src/review-model.ts
-function locateQuote(text2, a2) {
-  const p = symbolTextProjection(text2);
-  if (!p) return locateRawQuote(text2, a2);
+function locateQuote(text3, a2) {
+  const p = symbolTextProjection(text3);
+  if (!p) return locateRawQuote(text3, a2);
   const hit = locateRawQuote(p.text, a2);
   return hit && { from: p.toRaw(hit.from, -1), to: p.toRaw(hit.to, 1) };
 }
-function locateRawQuote(text2, a2) {
+function locateRawQuote(text3, a2) {
   if (!a2.quote) return;
   const hits = [];
   let at = 0;
-  while ((at = text2.indexOf(a2.quote, at)) >= 0) {
+  while ((at = text3.indexOf(a2.quote, at)) >= 0) {
     hits.push(at);
     at += Math.max(1, a2.quote.length);
   }
-  const contextual = hits.filter((i) => (!a2.before || text2.slice(Math.max(0, i - a2.before.length), i) === a2.before) && (!a2.after || text2.slice(i + a2.quote.length, i + a2.quote.length + a2.after.length) === a2.after));
+  const contextual = hits.filter((i) => (!a2.before || text3.slice(Math.max(0, i - a2.before.length), i) === a2.before) && (!a2.after || text3.slice(i + a2.quote.length, i + a2.quote.length + a2.after.length) === a2.after));
   const candidates = contextual.length ? contextual : hits;
   if (candidates.length !== 1) return;
   return { from: candidates[0], to: candidates[0] + a2.quote.length };
@@ -37667,10 +37897,10 @@ function locateRawQuote(text2, a2) {
 function safeColor(color) {
   return /^#[0-9a-f]{6}$/i.test(color) ? color : "#55aa77";
 }
-function anchorRanges(text2) {
+function anchorRanges(text3) {
   const ranges = [];
   let offset = 0, fence = "";
-  for (const line of text2.split("\n")) {
+  for (const line of text3.split("\n")) {
     const f = /^\s*(`{3,}|~{3,})/.exec(line);
     if (f) {
       if (!fence) fence = f[1][0];
@@ -37774,28 +38004,28 @@ function underlineBackground(comments, dark, highlight2) {
 
 // src/math-anchor-location.ts
 var equationCache = /* @__PURE__ */ new Map();
-function indexedEquations(text2) {
-  let qs = equationCache.get(text2);
+function indexedEquations(text3) {
+  let qs = equationCache.get(text3);
   if (!qs) {
-    qs = equations(text2);
-    equationCache.set(text2, qs);
+    qs = equations(text3);
+    equationCache.set(text3, qs);
     if (equationCache.size > 2) equationCache.delete(equationCache.keys().next().value);
   }
   return qs;
 }
-function locateMarginAnchor(text2, a2) {
-  const p = symbolTextProjection(text2);
-  if (!p) return locateRawMarginAnchor(text2, a2);
+function locateMarginAnchor(text3, a2) {
+  const p = symbolTextProjection(text3);
+  if (!p) return locateRawMarginAnchor(text3, a2);
   const hit = locateRawMarginAnchor(p.text, a2);
   return hit && { from: p.toRaw(hit.from, -1), to: p.toRaw(hit.to, 1) };
 }
-function locateRawMarginAnchor(text2, a2) {
-  const exact = locateRawQuote(text2, a2);
+function locateRawMarginAnchor(text3, a2) {
+  const exact = locateRawQuote(text3, a2);
   if (exact || a2.kind !== "math") return exact;
   const before = a2.before.trimEnd(), after = a2.after.trimStart();
   if (!before && !after) return;
-  const candidates = indexedEquations(text2).filter((q) => {
-    const left = text2.slice(0, q.from).trimEnd(), right = text2.slice(q.to).trimStart();
+  const candidates = indexedEquations(text3).filter((q) => {
+    const left = text3.slice(0, q.from).trimEnd(), right = text3.slice(q.to).trimStart();
     return (before ? left.endsWith(before) : left === "") && (after ? right.startsWith(after) : right === "");
   });
   if (candidates.length === 1) return { from: candidates[0].from, to: candidates[0].to };
@@ -37818,37 +38048,37 @@ function projectReadingAnchor(a2, source) {
     if (cache3.size > 2) cache3.delete(cache3.keys().next().value);
   }
   const prose = (from, to) => {
-    let text2 = "", at = from;
+    let text3 = "", at = from;
     for (const q of qs) {
       if (q.to <= from) continue;
       if (q.from >= to) break;
-      text2 += source.slice(at, Math.max(at, q.from));
+      text3 += source.slice(at, Math.max(at, q.from));
       at = Math.min(to, q.to);
     }
-    return text2 + source.slice(at, to);
+    return text3 + source.slice(at, to);
   };
   const before = (end) => {
-    let text2 = "";
+    let text3 = "";
     for (let i = qs.length - 1; i >= 0; i--) {
       const q = qs[i];
       if (q.from >= end) continue;
       const start = Math.min(end, q.to);
-      text2 = source.slice(Math.max(start, end - (48 - text2.length)), end) + text2;
-      if (text2.length === 48) return text2;
+      text3 = source.slice(Math.max(start, end - (48 - text3.length)), end) + text3;
+      if (text3.length === 48) return text3;
       end = Math.min(end, q.from);
     }
-    return source.slice(Math.max(0, end - (48 - text2.length)), end) + text2;
+    return source.slice(Math.max(0, end - (48 - text3.length)), end) + text3;
   };
   const after = (start) => {
-    let text2 = "";
+    let text3 = "";
     for (const q of qs) {
       if (q.to <= start) continue;
       const end = Math.max(start, q.from);
-      text2 += source.slice(start, Math.min(end, start + 48 - text2.length));
-      if (text2.length === 48) return text2;
+      text3 += source.slice(start, Math.min(end, start + 48 - text3.length));
+      if (text3.length === 48) return text3;
       start = Math.max(start, q.to);
     }
-    return text2 + source.slice(start, start + 48 - text2.length);
+    return text3 + source.slice(start, start + 48 - text3.length);
   };
   const renderedQuote2 = prose(hit.from, hit.to);
   const result = renderedQuote2.trim() ? [{ ...a2, renderedQuote: renderedQuote2, renderedBefore: before(hit.from), renderedAfter: after(hit.to) }] : [];
@@ -38035,12 +38265,12 @@ function partFromSource(math2, body, from, to) {
   let failed = false;
   const ranges = /* @__PURE__ */ new Map();
   const canon = (s) => {
-    let text2 = "", positions = [];
+    let text3 = "", positions = [];
     for (let i = 0; i < s.length; i++) if (!/[\s{}]/.test(s[i])) {
-      text2 += s[i];
+      text3 += s[i];
       positions.push(i);
     }
-    return { text: text2, positions };
+    return { text: text3, positions };
   };
   const visit3 = (parent, start, end) => {
     const children = semanticNodes(parent).filter((n) => semanticParent(n) === parent);
@@ -38085,6 +38315,181 @@ function partFromSource(math2, body, from, to) {
   return nodes.length && valid ? describePart(math2, nodes) : void 0;
 }
 
+// src/sync-hash.ts
+function sha256(text3) {
+  const bytes = new TextEncoder().encode(text3), size = Math.ceil((bytes.length + 9) / 64) * 64;
+  const data2 = new Uint8Array(size);
+  data2.set(bytes);
+  data2[bytes.length] = 128;
+  const view = new DataView(data2.buffer);
+  view.setUint32(size - 8, Math.floor(bytes.length / 536870912));
+  view.setUint32(size - 4, bytes.length * 8);
+  const k = [1116352408, 1899447441, 3049323471, 3921009573, 961987163, 1508970993, 2453635748, 2870763221, 3624381080, 310598401, 607225278, 1426881987, 1925078388, 2162078206, 2614888103, 3248222580, 3835390401, 4022224774, 264347078, 604807628, 770255983, 1249150122, 1555081692, 1996064986, 2554220882, 2821834349, 2952996808, 3210313671, 3336571891, 3584528711, 113926993, 338241895, 666307205, 773529912, 1294757372, 1396182291, 1695183700, 1986661051, 2177026350, 2456956037, 2730485921, 2820302411, 3259730800, 3345764771, 3516065817, 3600352804, 4094571909, 275423344, 430227734, 506948616, 659060556, 883997877, 958139571, 1322822218, 1537002063, 1747873779, 1955562222, 2024104815, 2227730452, 2361852424, 2428436474, 2756734187, 3204031479, 3329325298];
+  const h = new Uint32Array([1779033703, 3144134277, 1013904242, 2773480762, 1359893119, 2600822924, 528734635, 1541459225]), w = new Uint32Array(64);
+  const ro = (n, b) => n >>> b | n << 32 - b;
+  for (let offset = 0; offset < size; offset += 64) {
+    for (let i = 0; i < 16; i++) w[i] = view.getUint32(offset + i * 4);
+    for (let i = 16; i < 64; i++) {
+      const x = w[i - 15], y = w[i - 2];
+      w[i] = w[i - 16] + (ro(x, 7) ^ ro(x, 18) ^ x >>> 3) + w[i - 7] + (ro(y, 17) ^ ro(y, 19) ^ y >>> 10);
+    }
+    let [a2, b, c, d, e, f, g, j] = h;
+    for (let i = 0; i < 64; i++) {
+      const t1 = j + (ro(e, 6) ^ ro(e, 11) ^ ro(e, 25)) + (e & f ^ ~e & g) + k[i] + w[i] >>> 0, t2 = (ro(a2, 2) ^ ro(a2, 13) ^ ro(a2, 22)) + (a2 & b ^ a2 & c ^ b & c) >>> 0;
+      j = g;
+      g = f;
+      f = e;
+      e = d + t1 >>> 0;
+      d = c;
+      c = b;
+      b = a2;
+      a2 = t1 + t2 >>> 0;
+    }
+    [a2, b, c, d, e, f, g, j].forEach((v, i) => {
+      h[i] = h[i] + v >>> 0;
+    });
+  }
+  return Array.from(h, (x) => x.toString(16).padStart(8, "0")).join("");
+}
+
+// src/review-merge.ts
+function canonical(value) {
+  return Array.isArray(value) ? value.map(canonical) : value && typeof value === "object" ? Object.fromEntries(Object.keys(value).sort().map((k) => [k, canonical(value[k])])) : value;
+}
+var equalReview = (a2, b) => JSON.stringify(canonical(a2)) === JSON.stringify(canonical(b));
+var digest = (value) => sha256(JSON.stringify(canonical(value)));
+var snapshot = (value) => value === void 0 ? { present: false } : { present: true, value };
+function validate2(value) {
+  if (value?.version !== 1 || !Array.isArray(value.comments) || !Array.isArray(value.questions)) throw Error("Review file has an invalid structure. The file was preserved.");
+}
+function mergeReviewData(base2, local, remote) {
+  [base2, local, remote].forEach(validate2);
+  const conflicts2 = [];
+  const existing = /* @__PURE__ */ new Map();
+  for (const c of [...local.syncConflicts ?? [], ...remote.syncConflicts ?? []]) {
+    const b = (base2.syncConflicts ?? []).find((x) => x.id === c.id);
+    const l = (local.syncConflicts ?? []).find((x) => x.id === c.id);
+    const r = (remote.syncConflicts ?? []).find((x) => x.id === c.id);
+    if (b && (!l && equalReview(b, r) || !r && equalReview(b, l))) continue;
+    existing.set(c.id, c);
+  }
+  function choose(b, l, r, section, key2) {
+    if (equalReview(l, r)) return l;
+    if (equalReview(b, l)) return r;
+    if (equalReview(b, r)) return l;
+    const detail = { section, key: key2, base: snapshot(b), local: snapshot(l), remote: snapshot(r) };
+    const provenance = (doc2, value) => {
+      const origin = doc2.syncOrigins?.[originKey(section, key2)];
+      return origin?.hash === digest(snapshot(value)) ? origin : void 0;
+    };
+    const origins2 = { local: provenance(local, l), remote: provenance(remote, r) };
+    conflicts2.push({ id: digest(detail), ...detail, local: { ...detail.local, ...origins2.local ? { provenance: origins2.local } : {} }, remote: { ...detail.remote, ...origins2.remote ? { provenance: origins2.remote } : {} } });
+    return r;
+  }
+  const result = {};
+  const omit = /* @__PURE__ */ new Set(["comments", "questions", "palettes", "syncConflicts", "syncOrigins"]);
+  for (const key2 of /* @__PURE__ */ new Set([...Object.keys(base2), ...Object.keys(local), ...Object.keys(remote)])) {
+    if (omit.has(key2)) continue;
+    const value = choose(base2[key2], local[key2], remote[key2], "field", key2);
+    if (value !== void 0) result[key2] = value;
+  }
+  for (const section of ["comments", "questions"]) {
+    const identity = (x) => section === "comments" && typeof x?.id === "string" ? x.id : section === "questions" && typeof x?.questionId === "string" ? JSON.stringify([x.questionId, x.path, x.context]) : "unknown:" + digest(x);
+    const group2 = (rows) => {
+      const m = /* @__PURE__ */ new Map();
+      for (const row of rows) {
+        const k = identity(row);
+        m.set(k, [...m.get(k) ?? [], row]);
+      }
+      return m;
+    };
+    const b = group2(base2[section]), l = group2(local[section]), r = group2(remote[section]);
+    const output = [];
+    for (const key2 of /* @__PURE__ */ new Set([...r.keys(), ...l.keys(), ...b.keys()])) {
+      const n = conflicts2.length, values2 = choose(b.get(key2), l.get(key2), r.get(key2), section, key2);
+      output.push(...values2 ?? []);
+      if (section === "comments" && conflicts2.length > n) {
+        const conflict = conflicts2[conflicts2.length - 1];
+        for (const row of l.get(key2) ?? []) if (!output.some((x) => equalReview(x, row)))
+          output.push({ ...row, id: key2 + "-sync-" + digest([conflict.id, row]), conflictOf: key2, syncConflictId: conflict.id });
+      }
+    }
+    result[section] = output;
+  }
+  if (base2.palettes || local.palettes || remote.palettes) {
+    result.palettes = {};
+    for (const style of /* @__PURE__ */ new Set([...Object.keys(base2.palettes ?? {}), ...Object.keys(local.palettes ?? {}), ...Object.keys(remote.palettes ?? {})])) {
+      const value = choose(base2.palettes?.[style], local.palettes?.[style], remote.palettes?.[style], "palettes", style);
+      if (value !== void 0) result.palettes[style] = value;
+    }
+  }
+  for (const c of conflicts2) existing.set(c.id, c);
+  result.comments = result.comments.filter((c, i, all) => !c.syncConflictId || all.findIndex((x) => equalReview(x, c)) === i);
+  const origins = {};
+  for (const doc2 of [base2, local, remote]) for (const [key2, origin] of Object.entries(doc2.syncOrigins ?? {})) {
+    if (origin?.hash === digest(snapshot(originValue(result, key2)))) origins[key2] = origin;
+  }
+  if (Object.keys(origins).length) result.syncOrigins = origins;
+  if (existing.size) result.syncConflicts = [...existing.values()].sort((a2, b) => a2.id.localeCompare(b.id));
+  return result;
+}
+function resolveReviewConflict(review, id3, side) {
+  const result = JSON.parse(JSON.stringify(review));
+  const conflict = result.syncConflicts?.find((x) => x.id === id3);
+  if (!conflict) throw Error("This conflict changed. Refresh before choosing a version.");
+  const chosen = conflict[side];
+  if (conflict.section === "comments" || conflict.section === "questions") {
+    const identity = (x) => conflict.section === "comments" ? x.id : JSON.stringify([x.questionId, x.path, x.context]);
+    result[conflict.section] = result[conflict.section].filter((x) => identity(x) !== conflict.key && x.syncConflictId !== id3);
+    if (chosen.present) result[conflict.section].push(...chosen.value);
+  } else {
+    const object2 = conflict.section === "palettes" ? result.palettes ??= {} : result;
+    if (chosen.present) object2[conflict.key] = chosen.value;
+    else delete object2[conflict.key];
+  }
+  const origin = chosen.provenance;
+  const key2 = originKey(conflict.section, conflict.key);
+  if (origin) result.syncOrigins = { ...result.syncOrigins, [key2]: origin };
+  else if (result.syncOrigins) delete result.syncOrigins[key2];
+  result.syncConflicts = result.syncConflicts.filter((x) => x.id !== id3);
+  if (!result.syncConflicts.length) delete result.syncConflicts;
+  return result;
+}
+var originKey = (section, key2) => JSON.stringify([section, key2]);
+function originValue(doc2, key2) {
+  let section, id3;
+  try {
+    [section, id3] = JSON.parse(key2);
+  } catch {
+    return void 0;
+  }
+  if (section === "comments") {
+    const rows = doc2.comments.filter((r) => r.id === id3);
+    return rows.length ? rows : void 0;
+  }
+  if (section === "questions") {
+    const rows = doc2.questions.filter((r) => JSON.stringify([r.questionId, r.path, r.context]) === id3);
+    return rows.length ? rows : void 0;
+  }
+  return section === "palettes" ? doc2.palettes?.[id3] : doc2[id3];
+}
+function stampReviewChanges(base2, local, host, at) {
+  if (!host) return local;
+  const keys2 = /* @__PURE__ */ new Set();
+  for (const doc2 of [base2, local]) {
+    for (const r of doc2.comments) keys2.add(originKey("comments", r.id));
+    for (const r of doc2.questions) keys2.add(originKey("questions", JSON.stringify([r.questionId, r.path, r.context])));
+    for (const key2 of Object.keys(doc2.palettes ?? {})) keys2.add(originKey("palettes", key2));
+    for (const key2 of Object.keys(doc2)) if (!["comments", "questions", "palettes", "syncOrigins", "syncConflicts"].includes(key2)) keys2.add(originKey("field", key2));
+  }
+  const origins = { ...local.syncOrigins };
+  for (const key2 of keys2) {
+    const value = originValue(local, key2);
+    if (!equalReview(originValue(base2, key2), value) && !(local.syncOrigins?.[key2]?.hash === digest(snapshot(value)) && !equalReview(base2.syncOrigins?.[key2], local.syncOrigins?.[key2]))) origins[key2] = { host, at, hash: digest(snapshot(value)) };
+  }
+  return { ...local, ...Object.keys(origins).length ? { syncOrigins: origins } : {} };
+}
+
 // src/margin-model.ts
 function excerpts(c) {
   return c.code ? [] : c.anchors ?? (c.quote ? [{ id: c.id, path: c.path, quote: c.quote, before: c.before, after: c.after }] : []);
@@ -38106,41 +38511,6 @@ function sanitizedReview(raw) {
   if (raw?.version !== 1 || !Array.isArray(raw.comments) || !Array.isArray(raw.questions)) throw Error("Review file has an invalid structure. The file was preserved.");
   return { ...raw, comments: raw.comments.filter(validComment), questions: raw.questions.filter((q) => q && ["questionId", "path", "title", "context", "updated"].every((k) => typeof q[k] === "string") && typeof q.remove === "boolean") };
 }
-function canonical(x) {
-  return Array.isArray(x) ? x.map(canonical) : x && typeof x === "object" ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, canonical(x[k])])) : x;
-}
-var same = (a2, b) => JSON.stringify(canonical(a2)) === JSON.stringify(canonical(b));
-function mergeReview(base2, local, remote) {
-  if (remote?.version !== 1 || !Array.isArray(remote.comments) || !Array.isArray(remote.questions)) throw Error("Review file has an invalid structure. The file was preserved.");
-  const merged = { ...remote };
-  if (local.paletteSpectrumVersion) merged.paletteSpectrumVersion = local.paletteSpectrumVersion;
-  for (const key2 of ["comments", "questions"]) {
-    const id3 = (x) => key2 === "comments" ? validComment(x) ? x.id : "invalid:" + JSON.stringify(x) : JSON.stringify([x?.questionId, x?.path, x?.context]);
-    const b = new Map((base2[key2] ?? []).map((x) => [id3(x), x])), l = new Map(local[key2].map((x) => [id3(x), x])), r = new Map(remote[key2].map((x) => [id3(x), x]));
-    for (const k of /* @__PURE__ */ new Set([...b.keys(), ...l.keys()])) {
-      if (same(b.get(k), l.get(k))) continue;
-      if (!same(b.get(k), r.get(k)) && !same(l.get(k), r.get(k))) {
-        if (key2 === "comments") {
-          const localRecord = l.get(k);
-          if (localRecord) {
-            const copy = { ...localRecord, id: crypto.randomUUID(), conflictOf: k };
-            r.set(copy.id, copy);
-          }
-          continue;
-        }
-        continue;
-      }
-      if (l.has(k)) r.set(k, l.get(k));
-      else r.delete(k);
-    }
-    merged[key2] = [...r.values()];
-  }
-  if (!same(base2.palette, local.palette) && same(base2.palette, remote.palette)) merged.palette = local.palette;
-  for (const style of ["highlight", "underline", "text", "sticky"]) {
-    if (!same(base2.palettes?.[style], local.palettes?.[style]) && same(base2.palettes?.[style], remote.palettes?.[style])) merged.palettes = { ...merged.palettes, [style]: local.palettes?.[style] };
-  }
-  return merged;
-}
 
 // src/comment-marks.ts
 function commentSegments(ranges) {
@@ -38151,19 +38521,19 @@ function commentSegments(ranges) {
     return comments.length ? [{ from, to, comments }] : [];
   });
 }
-function renderedQuote(text2, a2) {
+function renderedQuote(text3, a2) {
   if (!a2.quote) return;
   const hits = [];
   let i = 0;
-  while ((i = text2.indexOf(a2.quote, i)) >= 0) {
+  while ((i = text3.indexOf(a2.quote, i)) >= 0) {
     hits.push(i);
     i += a2.quote.length;
   }
   const matches = hits.filter((at) => {
-    const before = text2.slice(Math.max(0, at - a2.before.length), at), after = text2.slice(at + a2.quote.length, at + a2.quote.length + a2.after.length);
+    const before = text3.slice(Math.max(0, at - a2.before.length), at), after = text3.slice(at + a2.quote.length, at + a2.quote.length + a2.after.length);
     return a2.before.endsWith(before) && a2.after.startsWith(after);
   });
-  return matches.length === 1 ? { from: matches[0], to: matches[0] + a2.quote.length } : locateQuote(text2, a2);
+  return matches.length === 1 ? { from: matches[0], to: matches[0] + a2.quote.length } : locateQuote(text3, a2);
 }
 function markAttributes(comments) {
   const first = comments[0], texts = comments.filter((c) => c.markStyle === "text"), highlights = comments.filter((c) => !c.markStyle || c.markStyle === "highlight");
@@ -38175,16 +38545,16 @@ function markClass(comments) {
 }
 
 // src/margin-location.ts
-function marginLocation(text2, a2) {
-  const p = symbolTextProjection(text2);
-  if (!p) return rawMarginLocation(text2, a2);
+function marginLocation(text3, a2) {
+  const p = symbolTextProjection(text3);
+  if (!p) return rawMarginLocation(text3, a2);
   const hit = rawMarginLocation(p.text, a2);
   return hit && { from: p.toRaw(hit.from, -1), to: p.toRaw(hit.to, 1) };
 }
-function rawMarginLocation(text2, a2) {
-  if (!a2.sectionSource) return locateRawMarginAnchor(text2, a2);
-  const section = a2.sectionSource, base2 = text2.indexOf(section);
-  if (base2 < 0 || text2.indexOf(section, base2 + 1) >= 0) return;
+function rawMarginLocation(text3, a2) {
+  if (!a2.sectionSource) return locateRawMarginAnchor(text3, a2);
+  const section = a2.sectionSource, base2 = text3.indexOf(section);
+  if (base2 < 0 || text3.indexOf(section, base2 + 1) >= 0) return;
   const positions = [];
   let prose = "", at = 0;
   for (const q of equations(section)) {
@@ -38201,34 +38571,34 @@ function rawMarginLocation(text2, a2) {
   const hit = renderedQuote(prose, { quote: a2.renderedQuote ?? a2.quote, before: a2.renderedBefore ?? a2.before, after: a2.renderedAfter ?? a2.after });
   if (hit) return { from: base2 + positions[hit.from], to: base2 + positions[hit.to - 1] + 1 };
 }
-function marginSortOffset(text2, a2) {
-  const precise = marginLocation(text2, a2);
+function marginSortOffset(text3, a2) {
+  const precise = marginLocation(text3, a2);
   if (precise) return precise.from;
   if (a2.sectionSource) {
-    const at = text2.indexOf(a2.sectionSource);
-    if (at >= 0 && text2.indexOf(a2.sectionSource, at + 1) < 0) return at;
+    const at = text3.indexOf(a2.sectionSource);
+    if (at >= 0 && text3.indexOf(a2.sectionSource, at + 1) < 0) return at;
   }
   return Infinity;
 }
 
 // src/resize-projection.ts
 function resizeProjection(source) {
-  let text2 = "", at = 0;
+  let text3 = "", at = 0;
   const boundaries = [0];
   for (const q of equations(source)) {
     for (; at < q.from; at++) {
-      text2 += source[at];
+      text3 += source[at];
       boundaries.push(at + 1);
     }
-    text2 += "\uFFFC";
+    text3 += "\uFFFC";
     boundaries.push(q.to);
     at = q.to;
   }
   for (; at < source.length; at++) {
-    text2 += source[at];
+    text3 += source[at];
     boundaries.push(at + 1);
   }
-  return { text: text2, boundaries };
+  return { text: text3, boundaries };
 }
 var inlineParser = parser.configure([Strikethrough, Table, TaskList, Autolink]);
 var inlineCache = /* @__PURE__ */ new Map();
@@ -38403,12 +38773,12 @@ function placementOf(c) {
   return c?.kind === "sticky" && validPlacement(p) ? p : void 0;
 }
 var blockCache = /* @__PURE__ */ new Map();
-function sourceBlocks(text2) {
-  const cached = blockCache.get(text2);
+function sourceBlocks(text3) {
+  const cached = blockCache.get(text3);
   if (cached) return cached;
   const blocks = [];
   let offset = 0, fence = "", math2 = false, start = -1, end = 0, lineNo = 0, front = false;
-  const lines = text2.split("\n");
+  const lines = text3.split("\n");
   for (const line of lines) {
     const from = offset, to = offset + line.length;
     offset = to + 1;
@@ -38447,29 +38817,29 @@ function sourceBlocks(text2) {
   }
   if (start >= 0) blocks.push({ from: start, to: end });
   if (blockCache.size >= 4) blockCache.delete(blockCache.keys().next().value);
-  blockCache.set(text2, blocks);
+  blockCache.set(text3, blocks);
   return blocks;
 }
-function selectionEndsOnLineBreak(text2, from, to) {
-  return from < to && text2[to - 1] === "\n";
+function selectionEndsOnLineBreak(text3, from, to) {
+  return from < to && text3[to - 1] === "\n";
 }
-function placementFor(text2, from, to) {
-  return placementAt(text2, Math.max(from, to));
+function placementFor(text3, from, to) {
+  return placementAt(text3, Math.max(from, to));
 }
 var mathCache = /* @__PURE__ */ new Map();
-function stickyBoundary(text2, offset) {
-  if (!Number.isInteger(offset) || offset < 0 || offset > text2.length) return { offset, reason: "Invalid text position." };
-  if (offset > 0 && offset < text2.length && /[\uD800-\uDBFF]/.test(text2[offset - 1]) && /[\uDC00-\uDFFF]/.test(text2[offset])) return { offset, reason: "Place the Post-it beside the complete character." };
-  const context = markdownContext(text2), excluded = context.excluded.find((b) => offset > b.from && offset < b.to);
+function stickyBoundary(text3, offset) {
+  if (!Number.isInteger(offset) || offset < 0 || offset > text3.length) return { offset, reason: "Invalid text position." };
+  if (offset > 0 && offset < text3.length && /[\uD800-\uDBFF]/.test(text3[offset - 1]) && /[\uDC00-\uDFFF]/.test(text3[offset])) return { offset, reason: "Place the Post-it beside the complete character." };
+  const context2 = markdownContext(text3), excluded = context2.excluded.find((b) => offset > b.from && offset < b.to);
   if (excluded) return { offset, reason: "Place the Post-it outside code or frontmatter." };
-  let qs = mathCache.get(text2);
+  let qs = mathCache.get(text3);
   if (!qs) {
-    qs = equations(text2);
-    mathCache.set(text2, qs);
+    qs = equations(text3);
+    mathCache.set(text3, qs);
     if (mathCache.size > 4) mathCache.delete(mathCache.keys().next().value);
   }
   if (qs.some((q) => offset > q.from && offset < q.to)) return { offset, reason: "Place the Post-it before or after the equation." };
-  const block = placementContext(text2, offset), p = block.projection;
+  const block = placementContext(text3, offset), p = block.projection;
   let at = offset - block.from;
   if (block.table) return { offset, reason: "Post-its inside table cells are not supported yet." };
   for (const prefix of p.prefixes) if (at >= prefix.from && at <= prefix.to) at = prefix.to;
@@ -38481,74 +38851,74 @@ function stickyBoundary(text2, offset) {
     if (!p.blocked.some((b) => ["formatting delimiter", "escape", "block identifier", "hard break"].includes(b.reason) && (b.from === at || b.to === at))) return { offset, reason: "Place the Post-it at a visible text boundary." };
     at = right?.from ?? left?.to ?? at;
   }
-  const point = block.from + at, lineStart = text2.lastIndexOf("\n", Math.max(0, point - 1)) + 1, lineEnd2 = text2.indexOf("\n", point);
-  if (!text2.slice(lineStart, lineEnd2 < 0 ? text2.length : lineEnd2).trim() || !p.units.some((u2) => u2.from === at || u2.to === at)) return { offset, reason: "Place the Post-it at a visible text boundary." };
+  const point = block.from + at, lineStart = text3.lastIndexOf("\n", Math.max(0, point - 1)) + 1, lineEnd2 = text3.indexOf("\n", point);
+  if (!text3.slice(lineStart, lineEnd2 < 0 ? text3.length : lineEnd2).trim() || !p.units.some((u2) => u2.from === at || u2.to === at)) return { offset, reason: "Place the Post-it at a visible text boundary." };
   return { offset: point };
 }
-function placementContext(text2, offset) {
-  const context = markdownContext(text2);
-  let node = context.tree.topNode.firstChild;
+function placementContext(text3, offset) {
+  const context2 = markdownContext(text3);
+  let node = context2.tree.topNode.firstChild;
   while (node && node.to < offset) node = node.nextSibling;
   const from = node && node.from <= offset ? node.from : offset, to = node && node.from <= offset ? node.to : offset;
-  const source = text2.slice(from, to), projection = inlineProjection(source);
+  const source = text3.slice(from, to), projection = inlineProjection(source);
   const table = projection.blocked.some((b) => b.reason === "table" && offset - from >= b.from && offset - from <= b.to);
   return { from, to, projection, table };
 }
-function pointQuote(text2, p) {
-  const projected = symbolTextProjection(text2);
-  if (!projected) return rawPointQuote(text2, p);
+function pointQuote(text3, p) {
+  const projected = symbolTextProjection(text3);
+  if (!projected) return rawPointQuote(text3, p);
   const hit = rawPointQuote(projected.text, p);
   return hit && { from: projected.toRaw(hit.from, -1), to: projected.toRaw(hit.to, 1) };
 }
-function rawPointQuote(text2, p) {
+function rawPointQuote(text3, p) {
   const hits = [], matches = [];
   let at = -1;
-  while ((at = text2.indexOf(p.quote, at + 1)) >= 0) {
+  while ((at = text3.indexOf(p.quote, at + 1)) >= 0) {
     hits.push(at);
-    if ((!p.before || text2.slice(Math.max(0, at - p.before.length), at) === p.before) && (!p.after || text2.slice(at + p.quote.length, at + p.quote.length + p.after.length) === p.after)) matches.push(at);
+    if ((!p.before || text3.slice(Math.max(0, at - p.before.length), at) === p.before) && (!p.after || text3.slice(at + p.quote.length, at + p.quote.length + p.after.length) === p.after)) matches.push(at);
   }
   const candidates = matches.length ? matches : hits;
   return candidates.length === 1 ? { from: candidates[0], to: candidates[0] + p.quote.length } : void 0;
 }
-function placementAt(text2, offset) {
-  const projected = symbolTextProjection(text2);
+function placementAt(text3, offset) {
+  const projected = symbolTextProjection(text3);
   if (projected) {
     offset = projected.toProjected(offset);
-    text2 = projected.text;
+    text3 = projected.text;
   }
-  const checked = stickyBoundary(text2, offset);
+  const checked = stickyBoundary(text3, offset);
   if (checked.reason) return;
   offset = checked.offset;
-  const lineStart = text2.lastIndexOf("\n", Math.max(0, offset - 1)) + 1, lineEnd2 = text2.indexOf("\n", offset), end = lineEnd2 < 0 ? text2.length : lineEnd2;
-  const block = placementContext(text2, offset), visible = block.projection.units.filter((u2) => u2.char.trim() && block.from + u2.from >= lineStart);
+  const lineStart = text3.lastIndexOf("\n", Math.max(0, offset - 1)) + 1, lineEnd2 = text3.indexOf("\n", offset), end = lineEnd2 < 0 ? text3.length : lineEnd2;
+  const block = placementContext(text3, offset), visible = block.projection.units.filter((u2) => u2.char.trim() && block.from + u2.from >= lineStart);
   const startEdge = !visible.some((u2) => block.from + u2.to <= offset), edge2 = startEdge ? "start" : "end";
   const available = startEdge ? end - offset : offset - lineStart;
   if (available < 1) return;
   for (let n = Math.min(160, available); ; n = Math.min(available, n * 2)) {
     const from = startEdge ? offset : offset - n, to = startEdge ? offset + n : offset;
-    const p = { quote: text2.slice(from, to), before: text2.slice(Math.max(0, from - CONTEXT), from), after: text2.slice(to, to + CONTEXT), edge: edge2 };
-    if (p.quote.trim() && pointQuote(text2, p)?.from === from) return p;
+    const p = { quote: text3.slice(from, to), before: text3.slice(Math.max(0, from - CONTEXT), from), after: text3.slice(to, to + CONTEXT), edge: edge2 };
+    if (p.quote.trim() && pointQuote(text3, p)?.from === from) return p;
     if (n === available) return;
   }
 }
-function locatePlacement(text2, p) {
-  const hit = p.edge ? pointQuote(text2, p) : locateQuote(text2, p);
+function locatePlacement(text3, p) {
+  const hit = p.edge ? pointQuote(text3, p) : locateQuote(text3, p);
   return p.edge === "start" ? hit?.from : hit?.to;
 }
 function endInRange(end, from, to, edge2) {
   return edge2 === "start" ? end >= from && end < to : end > from && end <= to;
 }
 var cache4 = /* @__PURE__ */ new Map();
-function cachedPlacementEnd(path, text2, p) {
+function cachedPlacementEnd(path, text3, p) {
   let entry = cache4.get(path);
-  if (entry?.text !== text2) {
-    entry = { text: text2, hits: /* @__PURE__ */ new Map() };
+  if (entry?.text !== text3) {
+    entry = { text: text3, hits: /* @__PURE__ */ new Map() };
     cache4.delete(path);
     cache4.set(path, entry);
     if (cache4.size > 6) cache4.delete(cache4.keys().next().value);
   }
   const key2 = JSON.stringify([p.quote, p.before, p.after, p.edge]);
-  if (!entry.hits.has(key2)) entry.hits.set(key2, locatePlacement(text2, p));
+  if (!entry.hits.has(key2)) entry.hits.set(key2, locatePlacement(text3, p));
   return entry.hits.get(key2);
 }
 function placementMatcher(placements) {
@@ -38563,22 +38933,22 @@ function placementMatcher(placements) {
   });
   const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const regex = groups.size ? new RegExp([...groups.keys()].map(escape).join("|"), "g") : void 0;
-  return (text2) => {
-    const projected = symbolTextProjection(text2);
-    if (projected) text2 = projected.text;
+  return (text3) => {
+    const projected = symbolTextProjection(text3);
+    if (projected) text3 = projected.text;
     const counts = new Uint32Array(placements.length), contexts2 = new Uint32Array(placements.length), hits = new Float64Array(placements.length), matches = new Float64Array(placements.length);
     if (regex) {
       regex.lastIndex = 0;
       let m;
-      while (m = regex.exec(text2)) {
+      while (m = regex.exec(text3)) {
         const at = m.index;
         regex.lastIndex = at + 1;
-        for (const length of lengths) for (const i of groups.get(text2.slice(at, at + length)) ?? []) {
+        for (const length of lengths) for (const i of groups.get(text3.slice(at, at + length)) ?? []) {
           const p = placements[i];
-          if (!text2.startsWith(p.quote, at)) continue;
+          if (!text3.startsWith(p.quote, at)) continue;
           counts[i]++;
           hits[i] = at;
-          if ((!p.before || text2.slice(Math.max(0, at - p.before.length), at) === p.before) && (!p.after || text2.slice(at + p.quote.length, at + p.quote.length + p.after.length) === p.after)) {
+          if ((!p.before || text3.slice(Math.max(0, at - p.before.length), at) === p.before) && (!p.after || text3.slice(at + p.quote.length, at + p.quote.length + p.after.length) === p.after)) {
             contexts2[i]++;
             matches[i] = at;
           }
@@ -38594,10 +38964,10 @@ function placementMatcher(placements) {
   };
 }
 var matchers = /* @__PURE__ */ new Map();
-function primePlacements(path, text2, placements) {
+function primePlacements(path, text3, placements) {
   let entry = cache4.get(path);
-  if (entry?.text !== text2) {
-    entry = { text: text2, hits: /* @__PURE__ */ new Map() };
+  if (entry?.text !== text3) {
+    entry = { text: text3, hits: /* @__PURE__ */ new Map() };
     cache4.delete(path);
     cache4.set(path, entry);
     if (cache4.size > 6) cache4.delete(cache4.keys().next().value);
@@ -38612,25 +38982,25 @@ function primePlacements(path, text2, placements) {
     matchers.set(path, matcher2);
     if (matchers.size > 6) matchers.delete(matchers.keys().next().value);
   }
-  matcher2.run(text2).forEach((end, i) => {
+  matcher2.run(text3).forEach((end, i) => {
     const p = fresh[i];
     entry.hits.set(JSON.stringify([p.quote, p.before, p.after, p.edge]), end);
   });
 }
-function placementLookup(path, text2, placements) {
-  primePlacements(path, text2, placements);
+function placementLookup(path, text3, placements) {
+  primePlacements(path, text3, placements);
   const entry = cache4.get(path);
   return (p) => {
     const key2 = JSON.stringify([p.quote, p.before, p.after, p.edge]);
-    if (!entry.hits.has(key2)) entry.hits.set(key2, locatePlacement(text2, p));
+    if (!entry.hits.has(key2)) entry.hits.set(key2, locatePlacement(text3, p));
     return entry.hits.get(key2);
   };
 }
-function embeddedStickyStarts(text2, id3) {
+function embeddedStickyStarts(text3, id3) {
   const hits = [];
   let offset = 0, open;
   let front = false, lineNumber = 0;
-  for (const raw of text2.split("\n")) {
+  for (const raw of text3.split("\n")) {
     const line = raw.replace(/\r$/, ""), start = offset;
     offset += raw.length + 1;
     if (lineNumber++ === 0 && line.trim() === "---") {
@@ -38707,19 +39077,19 @@ function annotationSearchText(query) {
 }
 
 // src/figure-study-api.ts
-var import_obsidian8 = require("obsidian");
+var import_obsidian10 = require("obsidian");
 
 // src/figure-study-modal.ts
-var import_obsidian6 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 
 // src/diagram-render.ts
-var import_obsidian5 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 function position(el, r) {
   Object.assign(el.style, { left: `${r.x * 100}%`, top: `${r.y * 100}%`, width: `${r.width * 100}%`, height: `${r.height * 100}%` });
 }
 function diagramImage(app, image, path) {
   const file = app.metadataCache.getFirstLinkpathDest(image, path) ?? app.vault.getAbstractFileByPath(image);
-  if (!(file instanceof import_obsidian5.TFile) || !["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(file.extension.toLowerCase())) throw Error(`Diagram image unavailable: ${image}`);
+  if (!(file instanceof import_obsidian7.TFile) || !["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(file.extension.toLowerCase())) throw Error(`Diagram image unavailable: ${image}`);
   return file;
 }
 function renderDiagram(app, parent, d, path, label, allowMissing = false) {
@@ -38801,15 +39171,15 @@ function renderDiagram(app, parent, d, path, label, allowMissing = false) {
 var FULL = [0, 0, 1, 1];
 var clone2 = (v) => JSON.parse(JSON.stringify(v));
 var clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-var FigureStudyModal = class extends import_obsidian6.Modal {
-  constructor(app, api, request, snapshot) {
+var FigureStudyModal = class extends import_obsidian8.Modal {
+  constructor(app, api, request, snapshot2) {
     super(app);
     this.api = api;
     this.request = request;
-    this.snapshot = snapshot;
-    this.check(snapshot);
-    this.regions = clone2(snapshot.groups[0]?.study?.figure?.regions ?? []);
-    this.comment = snapshot.groups[0]?.comment ?? "";
+    this.snapshot = snapshot2;
+    this.check(snapshot2);
+    this.regions = clone2(snapshot2.groups[0]?.study?.figure?.regions ?? []);
+    this.comment = snapshot2.groups[0]?.comment ?? "";
   }
   regions;
   comment;
@@ -38844,8 +39214,8 @@ var FigureStudyModal = class extends import_obsidian6.Modal {
   onOpen() {
     this.titleEl.setText("Figure blanks");
     this.modalEl.addClass("study-figure-modal");
-    const tools = this.contentEl.createDiv("study-actions"), tool = (text2, run) => {
-      const b = tools.createEl("button", { text: text2 });
+    const tools = this.contentEl.createDiv("study-actions"), tool = (text3, run) => {
+      const b = tools.createEl("button", { text: text3 });
       b.onclick = () => {
         if (!this.failed) run();
       };
@@ -38860,7 +39230,7 @@ var FigureStudyModal = class extends import_obsidian6.Modal {
     tool("Arrow", () => {
       const r = this.regions.find((r2) => r2.id === this.selected);
       if (!r) {
-        new import_obsidian6.Notice("Select a blank first.");
+        new import_obsidian8.Notice("Select a blank first.");
         return;
       }
       this.toggleArrow(r);
@@ -38930,7 +39300,7 @@ var FigureStudyModal = class extends import_obsidian6.Modal {
       clearTimeout(this.timer);
       this.timer = void 0;
     }
-    new import_obsidian6.Notice("Figure blanks were not saved: " + String(e), 12e3);
+    new import_obsidian8.Notice("Figure blanks were not saved: " + String(e), 12e3);
     if (this.closed) return;
     this.lock(true);
     this.status.setText("Not saved: " + String(e) + " Editing is paused.");
@@ -38997,8 +39367,8 @@ var FigureStudyModal = class extends import_obsidian6.Modal {
       el.setAttribute("aria-label", `Blank ${this.regions.length > 1 ? blankReference(i) : ""}${outside ? ", outside the crop" : ""}`);
       el.title = outside ? "Outside the current crop: move it inside the outline or remove it" : "Drag to move; arrows to nudge; Delete to remove; right-click for colour and arrow";
       if (outside) el.style.borderColor = "#d94444";
-      const swatch = el.createSpan({ attr: { "aria-hidden": "true" } });
-      Object.assign(swatch.style, { position: "absolute", right: "2px", top: "2px", width: "10px", height: "10px", background: r.color, border: "1px solid #0008" });
+      const swatch2 = el.createSpan({ attr: { "aria-hidden": "true" } });
+      Object.assign(swatch2.style, { position: "absolute", right: "2px", top: "2px", width: "10px", height: "10px", background: r.color, border: "1px solid #0008" });
       el.onpointerdown = (e) => this.drag(e, stage, r, "move");
       el.oncontextmenu = (e) => {
         e.preventDefault();
@@ -39074,14 +39444,14 @@ var FigureStudyModal = class extends import_obsidian6.Modal {
   menu(r, x, y) {
     if (this.failed) return;
     this.selected = r.id;
-    const m = new import_obsidian6.Menu(), set2 = (color) => {
+    const m = new import_obsidian8.Menu(), set2 = (color) => {
       r.color = color;
       this.save();
       this.draw();
     };
     m.addItem((i) => i.setTitle("Cover colour: sample from image").setIcon("pipette").onClick(() => void this.sample(r).then((c) => {
       if (c && !this.failed && !this.closed && this.regions.includes(r)) set2(c);
-      else if (!c) new import_obsidian6.Notice("Could not sample this image; choose a colour instead.");
+      else if (!c) new import_obsidian8.Notice("Could not sample this image; choose a colour instead.");
     })));
     m.addItem((i) => i.setTitle("Cover colour: white").setChecked(r.color.toLowerCase() === "#ffffff").onClick(() => set2("#ffffff")));
     m.addItem((i) => i.setTitle("Cover colour: black").setChecked(r.color.toLowerCase() === "#000000").onClick(() => set2("#000000")));
@@ -39103,7 +39473,7 @@ var FigureStudyModal = class extends import_obsidian6.Modal {
   image() {
     this.pixels ??= (async () => {
       const file = this.app.vault.getAbstractFileByPath(this.snapshot.imagePath);
-      if (!(file instanceof import_obsidian6.TFile)) return;
+      if (!(file instanceof import_obsidian8.TFile)) return;
       const blob = new Blob([await this.app.vault.readBinary(file)], { type: file.extension.toLowerCase() === "svg" ? "image/svg+xml" : "image/" + (file.extension.toLowerCase() === "jpg" ? "jpeg" : file.extension.toLowerCase()) }), url = URL.createObjectURL(blob);
       try {
         const img = new Image();
@@ -39225,7 +39595,7 @@ var FigureStudyModal = class extends import_obsidian6.Modal {
 };
 
 // src/study-practice-links.ts
-var import_obsidian7 = require("obsidian");
+var import_obsidian9 = require("obsidian");
 
 // src/reading-lifecycle.ts
 function readingChildren(plugin2) {
@@ -39323,19 +39693,19 @@ function sourceTables(source) {
 // src/vocabulary-practice.ts
 var SECTION = /\b(vocabulary|vocab|key terms|important terms|glossary)\b/i;
 var DEFAULT_TYPES = ["definition", "def", "defn", "vocab", "vocabulary", "term", "key-term"];
-function fnv(text2) {
+function fnv(text3) {
   let h = 2166136261;
-  for (let i = 0; i < text2.length; i++) {
-    h ^= text2.charCodeAt(i);
+  for (let i = 0; i < text3.length; i++) {
+    h ^= text3.charCodeAt(i);
     h = Math.imul(h, 16777619) >>> 0;
   }
   return h.toString(16).padStart(8, "0");
 }
-function slug(text2) {
-  return plain(text2).normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+function slug(text3) {
+  return plain(text3).normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
 }
-function plain(text2) {
-  return text2.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, "$2").replace(/\[\[([^\]]+)\]\]/g, "$1").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/(\*\*|__)(.+?)\1/g, "$2").replace(/(^|[^\w*])[*_]([^*_]+)[*_](?![\w*])/g, "$1$2").replace(/`([^`]+)`/g, "$1").replace(/\s+/g, " ").trim();
+function plain(text3) {
+  return text3.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, "$2").replace(/\[\[([^\]]+)\]\]/g, "$1").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/(\*\*|__)(.+?)\1/g, "$2").replace(/(^|[^\w*])[*_]([^*_]+)[*_](?![\w*])/g, "$1$2").replace(/`([^`]+)`/g, "$1").replace(/\s+/g, " ").trim();
 }
 function stripNumbering(title) {
   const t2 = title.trim();
@@ -39402,21 +39772,21 @@ function discoverVocabulary(source, types2 = DEFAULT_TYPES) {
   }
   return entries;
 }
-function maskTerm(text2, term) {
+function maskTerm(text3, term) {
   const t2 = plain(term);
-  if (t2.length < 3 || t2.includes("$")) return text2;
-  const skip = [...equations(text2).map((q) => [q.from, q.to]), ...[...text2.matchAll(/`[^`\n]*`/g)].map((m) => [m.index, m.index + m[0].length])].sort((a2, b) => a2[0] - b[0]);
+  if (t2.length < 3 || t2.includes("$")) return text3;
+  const skip = [...equations(text3).map((q) => [q.from, q.to]), ...[...text3.matchAll(/`[^`\n]*`/g)].map((m) => [m.index, m.index + m[0].length])].sort((a2, b) => a2[0] - b[0]);
   const pattern = new RegExp(`(?<![\\p{L}\\p{N}])${t2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\p{L}\\p{N}])`, "giu");
   let out = "", pos = 0;
-  for (const [a2, b] of [...skip, [text2.length, text2.length]]) {
+  for (const [a2, b] of [...skip, [text3.length, text3.length]]) {
     if (a2 < pos) continue;
-    out += text2.slice(pos, a2).replace(pattern, "_____") + text2.slice(a2, b);
+    out += text3.slice(pos, a2).replace(pattern, "_____") + text3.slice(a2, b);
     pos = b;
   }
   return out;
 }
-function excerpt(text2, limit = 60) {
-  const p = plain(text2.split("\n").find((l) => l.trim()) ?? "");
+function excerpt(text3, limit = 60) {
+  const p = plain(text3.split("\n").find((l) => l.trim()) ?? "");
   return p.length > limit ? p.slice(0, limit - 1).trimEnd() + "\u2026" : p;
 }
 function buildCloze(definition, cloze) {
@@ -39507,8 +39877,8 @@ function calloutSection(view, widget) {
 }
 
 // src/table-caption.ts
-function withoutStudyPlacements(text2) {
-  return text2.replace(/^([ \t]*(?:>[ \t]*)*)```study-sticky[ \t]*\n[ \t]*(?:>[ \t]*)*[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}[ \t]*\n\1```[ \t]*(?=\n|$)/gim, "");
+function withoutStudyPlacements(text3) {
+  return text3.replace(/^([ \t]*(?:>[ \t]*)*)```study-sticky[ \t]*\n[ \t]*(?:>[ \t]*)*[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}[ \t]*\n\1```[ \t]*(?=\n|$)/gim, "");
 }
 var quotePrefix = (line) => /^[ \t]*(?:>[ \t]*)*/.exec(line)[0];
 var quoteDepth = (line) => (quotePrefix(line).match(/>/g) ?? []).length;
@@ -39525,8 +39895,8 @@ function captionTable(source, tables, hit) {
     return withoutStudyPlacements(gap).split("\n").every((l) => !l.slice(quotePrefix(l).length).trim());
   };
   if (start > 0) {
-    const previous = source.slice(source.lastIndexOf("\n", start - 2) + 1, start - 1), text2 = previous.slice(quotePrefix(previous).length).trim();
-    if (text2 && !(depth2 > 0 && quoteDepth(previous) === depth2 && /^\[![\w-]+(?:\|[^\]\r\n]*)?\][+-]?(?:\s|$)/.test(text2))) return;
+    const previous = source.slice(source.lastIndexOf("\n", start - 2) + 1, start - 1), text3 = previous.slice(quotePrefix(previous).length).trim();
+    if (text3 && !(depth2 > 0 && quoteDepth(previous) === depth2 && /^\[![\w-]+(?:\|[^\]\r\n]*)?\][+-]?(?:\s|$)/.test(text3))) return;
   }
   const table = tables.find((t2) => t2.from > end);
   if (!table || quoteDepth(table.source.split("\n")[0]) !== depth2 || !blankGap(source.slice(end, table.from))) return;
@@ -39623,11 +39993,11 @@ function noteModel(source) {
     }
     return lo;
   };
-  const text2 = (n) => source.slice(lines[n], (lines[n + 1] ?? source.length + 1) - 1).replace(/\r$/, "");
+  const text3 = (n) => source.slice(lines[n], (lines[n + 1] ?? source.length + 1) - 1).replace(/\r$/, "");
   const headings = [];
   let fence = "", exercise, last = 0;
   for (let n = 0; n < lines.length; n++) {
-    const t2 = text2(n);
+    const t2 = text3(n);
     if (t2.trim()) last = n;
     const f = /^\s*(`{3,}|~{3,})/.exec(t2);
     if (f) {
@@ -39740,7 +40110,7 @@ function registerStudyPracticeLinks(plugin2, store, all, open) {
     derived.set(path, next);
     return { m, ...next };
   };
-  const launch = (qs, title) => void open(qs.map((q) => q.definition.id), title).catch((e) => new import_obsidian7.Notice(String(e)));
+  const launch = (qs, title) => void open(qs.map((q) => q.definition.id), title).catch((e) => new import_obsidian9.Notice(String(e)));
   const tableFooter = (table, items) => {
     const existing = table.querySelector(":scope > .study-table-practice-footer");
     if (!items?.length) {
@@ -39845,7 +40215,7 @@ function registerStudyPracticeLinks(plugin2, store, all, open) {
   });
   for (const event of ["create", "delete", "rename"]) plugin2.registerEvent(plugin2.app.vault.on(event, refresh));
   plugin2.registerEvent(plugin2.app.vault.on("modify", (file) => {
-    if (file instanceof import_obsidian7.TFile && bankPaths.has(file.path)) refresh();
+    if (file instanceof import_obsidian9.TFile && bankPaths.has(file.path)) refresh();
   }));
   refresh();
   plugin2.registerEvent(plugin2.app.workspace.on("css-change", () => {
@@ -39855,15 +40225,15 @@ function registerStudyPracticeLinks(plugin2, store, all, open) {
     plugin2.app.workspace.iterateAllLeaves((l) => l.view.editor?.cm?.dispatch({}));
   }));
   plugin2.addCommand({ id: "test-yourself-note", name: "Test Yourself! \u2014 current chapter", callback: () => {
-    const v = plugin2.app.workspace.getActiveViewOfType(import_obsidian7.MarkdownView);
+    const v = plugin2.app.workspace.getActiveViewOfType(import_obsidian9.MarkdownView);
     if (!v?.file) return;
     const qs = linked.get(v.file.path) ?? [];
     if (qs.length) launch(qs, "Test Yourself!");
-    else new import_obsidian7.Notice("No prepared practice questions are linked to this note yet.");
+    else new import_obsidian9.Notice("No prepared practice questions are linked to this note yet.");
   } });
   plugin2.registerMarkdownPostProcessor((el, ctx) => {
     if (el.closest(".study-card,.study-margin-pane,.study-comment-editor,.study-test-yourself")) return;
-    const owner = ownReading(new import_obsidian7.MarkdownRenderChild(el));
+    const owner = ownReading(new import_obsidian9.MarkdownRenderChild(el));
     ctx.addChild(owner);
     const render = () => {
       el.querySelectorAll(".study-quick-practice-link,.study-table-practice-footer,.study-callout-practice-footer").forEach((n) => n.remove());
@@ -39933,7 +40303,7 @@ function registerStudyPracticeLinks(plugin2, store, all, open) {
       a2.href = "#";
       a2.onclick = (e) => {
         e.preventDefault();
-        void open(this.ids, this.title).catch((err) => new import_obsidian7.Notice(String(err)));
+        void open(this.ids, this.title).catch((err) => new import_obsidian9.Notice(String(err)));
       };
       return node;
     }
@@ -39980,7 +40350,7 @@ function registerStudyPracticeLinks(plugin2, store, all, open) {
     }
     update(u2) {
       if (u2.docChanged || u2.viewportChanged || u2.geometryChanged || this.revision !== revision) this.scheduleTables(u2.view);
-      const path = u2.state.field(import_obsidian7.editorInfoField, false)?.file?.path ?? "", live = u2.state.field(import_obsidian7.editorLivePreviewField, false), wasLive = u2.startState.field(import_obsidian7.editorLivePreviewField, false);
+      const path = u2.state.field(import_obsidian9.editorInfoField, false)?.file?.path ?? "", live = u2.state.field(import_obsidian9.editorLivePreviewField, false), wasLive = u2.startState.field(import_obsidian9.editorLivePreviewField, false);
       if (this.revision !== revision || path !== this.path || live !== wasLive) {
         this.build(u2.view);
         this.scheduleTables(u2.view);
@@ -39995,7 +40365,7 @@ function registerStudyPracticeLinks(plugin2, store, all, open) {
       this.frame = requestAnimationFrame(() => {
         this.frame = 0;
         if (this.destroyed || view.dom.closest(".table-cell-wrapper,.cm-table-widget")) return;
-        const state = view.state, path = state.field(import_obsidian7.editorInfoField, false)?.file?.path ?? "", live = state.field(import_obsidian7.editorLivePreviewField, false);
+        const state = view.state, path = state.field(import_obsidian9.editorInfoField, false)?.file?.path ?? "", live = state.field(import_obsidian9.editorLivePreviewField, false);
         const { m, tables, callouts: callouts2 } = views(path, this.noteSource(view));
         let changed = false;
         for (const widget of view.contentDOM.querySelectorAll(".cm-table-widget")) {
@@ -40027,9 +40397,9 @@ function registerStudyPracticeLinks(plugin2, store, all, open) {
     build(view) {
       const state = view.state;
       this.revision = revision;
-      this.path = state.field(import_obsidian7.editorInfoField, false)?.file?.path ?? "";
+      this.path = state.field(import_obsidian9.editorInfoField, false)?.file?.path ?? "";
       const qs = linked.get(this.path);
-      if (view.dom.closest(".table-cell-wrapper,.cm-table-widget") || !this.path || !state.field(import_obsidian7.editorLivePreviewField, false) || !qs?.length) {
+      if (view.dom.closest(".table-cell-wrapper,.cm-table-widget") || !this.path || !state.field(import_obsidian9.editorLivePreviewField, false) || !qs?.length) {
         this.decorations = import_view10.Decoration.none;
         return;
       }
@@ -40054,22 +40424,22 @@ function registerStudyPracticeLinks(plugin2, store, all, open) {
 
 // src/figure-study-api.ts
 var clone3 = (v) => JSON.parse(JSON.stringify(v));
-var digest = async (bytes) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)), (b) => b.toString(16).padStart(2, "0")).join("");
+var digest2 = async (bytes) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)), (b) => b.toString(16).padStart(2, "0")).join("");
 var FigureStudyApi = class {
   constructor(plugin2, api, bank, practice) {
     this.plugin = plugin2;
     this.api = api;
     this.bank = bank;
     this.practice = practice;
-    api.figureHooks = { located: (text2, c) => {
+    api.figureHooks = { located: (text3, c) => {
       try {
-        this.resolve(text2, { path: c.path, ...c.study.figure });
+        this.resolve(text3, { path: c.path, ...c.study.figure });
         return true;
       } catch {
         return false;
       }
-    }, check: async (text2, c) => {
-      const f = c.study.figure, r = this.resolve(text2, { path: c.path, ...f }), image = await this.image(r.panelPath, c.path);
+    }, check: async (text3, c) => {
+      const f = c.study.figure, r = this.resolve(text3, { path: c.path, ...f }), image = await this.image(r.panelPath, c.path);
       if (image.file.path !== f.imagePath || image.hash !== f.imageHash || image.width !== f.naturalWidth || image.height !== f.naturalHeight) throw Error("Figure image changed. Review and redraw its study regions.");
       return JSON.stringify([r, image.hash]);
     }, variant: (v, records) => this.validateVariant(v, records) };
@@ -40100,27 +40470,27 @@ var FigureStudyApi = class {
   stopped = false;
   metadataCache = /* @__PURE__ */ new Map();
   practiceCache;
-  resolve(text2, r) {
+  resolve(text3, r) {
     if (this.stopped) throw Error("Reopen the figure tools.");
     const bridge = this.plugin.app.plugins.plugins["slide-studio"]?.scientificStudyBridge;
     if (bridge?.version !== 1) throw Error("Update and enable Slide Studio to use figure study marks.");
-    return bridge.resolve(text2, r.figureId, r.panelPath, r.panelOccurrence);
+    return bridge.resolve(text3, r.figureId, r.panelPath, r.panelOccurrence);
   }
   async source(path) {
     const app = this.plugin.app, f = app.vault.getAbstractFileByPath(path);
-    if (!(f instanceof import_obsidian8.TFile) || f.extension !== "md") throw Error("Save this figure in a note first.");
-    const text2 = await app.vault.read(f);
+    if (!(f instanceof import_obsidian10.TFile) || f.extension !== "md") throw Error("Save this figure in a note first.");
+    const text3 = await app.vault.read(f);
     for (const leaf of app.workspace.getLeavesOfType("markdown")) {
       const v = leaf.view;
-      if (v instanceof import_obsidian8.MarkdownView && v.file?.path === path && v.getMode() === "source" && v.editor.getValue() !== text2) throw Error("Wait for this note to finish saving.");
+      if (v instanceof import_obsidian10.MarkdownView && v.file?.path === path && v.getMode() === "source" && v.editor.getValue() !== text3) throw Error("Wait for this note to finish saving.");
     }
-    return text2;
+    return text3;
   }
   async image(path, note) {
     const app = this.plugin.app, file = app.vault.getAbstractFileByPath(path) ?? app.metadataCache.getFirstLinkpathDest(path, note);
-    if (!(file instanceof import_obsidian8.TFile) || !["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(file.extension.toLowerCase())) throw Error("Choose a supported local image.");
+    if (!(file instanceof import_obsidian10.TFile) || !["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(file.extension.toLowerCase())) throw Error("Choose a supported local image.");
     const ext = file.extension.toLowerCase();
-    const stamp = [file.path, file.stat.mtime, file.stat.size].join("|"), bytes = await app.vault.readBinary(file), hash4 = await digest(bytes);
+    const stamp = [file.path, file.stat.mtime, file.stat.size].join("|"), bytes = await app.vault.readBinary(file), hash4 = await digest2(bytes);
     const dimensions = await new Promise((resolve, reject) => {
       const img = new Image(), url = URL.createObjectURL(new Blob([bytes], { type: ext === "svg" ? "image/svg+xml" : `image/${ext === "jpg" ? "jpeg" : ext}` }));
       const timeout = setTimeout(() => {
@@ -40149,7 +40519,7 @@ var FigureStudyApi = class {
   }
   async metadata(path, note) {
     const file = this.plugin.app.vault.getAbstractFileByPath(path) ?? this.plugin.app.metadataCache.getFirstLinkpathDest(path, note);
-    if (!(file instanceof import_obsidian8.TFile)) throw Error("Image is missing.");
+    if (!(file instanceof import_obsidian10.TFile)) throw Error("Image is missing.");
     const key2 = [file.path, file.stat.mtime, file.stat.size].join("|");
     return this.metadataCache.get(key2) ?? this.image(path, note);
   }
@@ -40169,31 +40539,31 @@ var FigureStudyApi = class {
   }
   async open(request) {
     try {
-      const snapshot = await this.inspect(request);
-      new FigureStudyModal(this.plugin.app, this, request, snapshot).open();
+      const snapshot2 = await this.inspect(request);
+      new FigureStudyModal(this.plugin.app, this, request, snapshot2).open();
     } catch (e) {
-      new import_obsidian8.Notice(String(e));
+      new import_obsidian10.Notice(String(e));
     }
   }
-  async save(request, snapshot, regions, comment2) {
+  async save(request, snapshot2, regions, comment2) {
     const source = await this.source(request.path), r = this.resolve(source, request);
     const unchanged = async () => {
       const now2 = await this.source(request.path), at = this.resolve(now2, request);
-      return now2.slice(at.from, at.to) === snapshot.source.slice(snapshot.resolved.from, snapshot.resolved.to);
+      return now2.slice(at.from, at.to) === snapshot2.source.slice(snapshot2.resolved.from, snapshot2.resolved.to);
     };
     if (!await unchanged()) throw Error("The figure changed. Reopen Add blanks before saving.");
-    const image = await this.metadata(snapshot.imagePath, request.path);
-    if (image.hash !== snapshot.imageHash) throw Error("The image changed. Reopen Add blanks.");
-    const before = snapshot.groups;
+    const image = await this.metadata(snapshot2.imagePath, request.path);
+    if (image.hash !== snapshot2.imageHash) throw Error("The image changed. Reopen Add blanks.");
+    const before = snapshot2.groups;
     if (before.length > 1) throw Error("Multiple active figure groups need review before editing.");
-    const old = before[0], now = (/* @__PURE__ */ new Date()).toISOString(), figure = { figureId: request.figureId, panelPath: request.panelPath, panelOccurrence: request.panelOccurrence, imagePath: snapshot.imagePath, imageHash: image.hash, naturalWidth: image.width, naturalHeight: image.height, regions: clone3(regions) };
+    const old = before[0], now = (/* @__PURE__ */ new Date()).toISOString(), figure = { figureId: request.figureId, panelPath: request.panelPath, panelOccurrence: request.panelOccurrence, imagePath: snapshot2.imagePath, imageHash: image.hash, naturalWidth: image.width, naturalHeight: image.height, regions: clone3(regions) };
     const c = { ...old ?? {}, id: old?.id ?? crypto.randomUUID(), path: request.path, quote: "", before: "", after: "", anchors: [], comment: comment2, color: "#3578a8", darkColor: "#a6d9ff", intent: "Figure blanks", markStyle: "highlight", resolved: false, updated: now, study: { version: 1, rule: "figure", figure } };
     if (regions.length) {
       if (!validComment(c)) throw Error("Invalid figure regions.");
     } else if (!old) return;
     else Object.assign(c, { study: old.study, deletedAt: now, resolved: true });
     await this.api.store.applyStudyEdits(before, [c], async (all) => {
-      if (!await unchanged() || (await this.metadata(snapshot.imagePath, request.path)).hash !== image.hash) throw Error("Figure changed while saving.");
+      if (!await unchanged() || (await this.metadata(snapshot2.imagePath, request.path)).hash !== image.hash) throw Error("Figure changed while saving.");
       if (all.some((n) => n.path === request.path && n.id !== old?.id && n.study?.figure && figureKey(n.study.figure) === figureKey(request) && !n.deletedAt && !n.resolved)) throw Error("Another figure study group was created. Reopen Add blanks.");
     });
     return clone3(c);
@@ -40203,8 +40573,8 @@ var FigureStudyApi = class {
     await this.api.store.refresh();
     const c = this.api.store.data.comments.find((c2) => c2.id === id3 && c2.path === path && !c2.deletedAt && !c2.resolved), f = c?.study?.figure;
     if (!c || !f) throw Error("Choose an active figure study annotation.");
-    const text2 = await this.source(path), resolved = this.resolve(text2, { path, ...f });
-    await this.api.figureHooks.check(text2, c);
+    const text3 = await this.source(path), resolved = this.resolve(text3, { path, ...f });
+    await this.api.figureHooks.check(text3, c);
     const prepared = [];
     if (!variants.length || f.regions.some((r) => !variants.some((v) => !v.regionIds || v.regionIds.includes(r.id)))) throw Error("Include every marked region in at least one question version before consuming the study annotation.");
     for (const v of variants) {
@@ -40219,7 +40589,7 @@ var FigureStudyApi = class {
         if (!await this.plugin.app.vault.adapter.exists(prefix)) await this.plugin.app.vault.createFolder(prefix);
       }
       if (!await this.plugin.app.vault.adapter.exists(dest)) await this.plugin.app.vault.createBinary(dest, image.bytes);
-      if (await digest(await this.plugin.app.vault.adapter.readBinary(dest)) !== image.hash) throw Error("Practice image snapshot differs. Marks retained.");
+      if (await digest2(await this.plugin.app.vault.adapter.readBinary(dest)) !== image.hash) throw Error("Practice image snapshot differs. Marks retained.");
       prepared.push({ key: v.key, directiveIds: [id3], surface: "figure", target: figureKey(f), prompt: v.prompt, explanation: v.explanation, definition: { concepts: [], type: "diagram", title: v.title, answers: v.answers, diagram: buildFigureDiagram({ ...f, regions: v.regionIds ? f.regions.filter((r) => v.regionIds.includes(r.id)) : f.regions }, resolved.crop, dest, resolved.title || "Figure to label", v.mathIds, f.regions.map((r) => r.id)) } });
     }
     const result = await this.api.preview(path, prepared);
@@ -40234,7 +40604,7 @@ var FigureStudyApi = class {
     const ids = d.labels.map((l) => l.id);
     if (!ids.length || ids.some((id3) => !f.regions.some((r2) => r2.id === id3))) throw Error("Unknown figure region.");
     const expected = buildFigureDiagram({ ...f, regions: f.regions.filter((r2) => ids.includes(r2.id)) }, r.crop, d.image, d.alt, d.labels.filter((l) => l.math).map((l) => l.id), f.regions.map((r2) => r2.id));
-    if (!same(d.covers, expected.covers) || !same(d.labels, expected.labels) || !same(d.crop, expected.crop) || v.target !== figureKey(f)) throw Error("Question geometry must match the drawn blanks and arrows exactly.");
+    if (!equalReview(d.covers, expected.covers) || !equalReview(d.labels, expected.labels) || !equalReview(d.crop, expected.crop) || v.target !== figureKey(f)) throw Error("Question geometry must match the drawn blanks and arrows exactly.");
   }
   mount(owner, frame, request) {
     let disposed = false, generation = 0, imagePath = "", numbersShown = this.api.store.visibility.annotationNumbers !== false;
@@ -40247,7 +40617,7 @@ var FigureStudyApi = class {
       numbersShown = this.api.store.visibility.annotationNumbers !== false;
       try {
         const note = this.plugin.app.vault.getAbstractFileByPath(request.path);
-        if (!(note instanceof import_obsidian8.TFile)) return;
+        if (!(note instanceof import_obsidian10.TFile)) return;
         const source = await this.plugin.app.vault.cachedRead(note), r = this.resolve(source, request), key2 = figureKey(request), image = await this.metadata(r.panelPath, request.path);
         if (disposed || seq2 !== generation) return;
         imagePath = image.file.path;
@@ -40331,7 +40701,7 @@ var FigureStudyApi = class {
 };
 
 // src/difficulty-ui.ts
-var import_obsidian9 = require("obsidian");
+var import_obsidian11 = require("obsidian");
 
 // src/difficulty-edit.ts
 function replaceDifficultyRank(raw, path, id3, expected, rank) {
@@ -40357,13 +40727,13 @@ function replaceDifficultyRank(raw, path, id3, expected, rank) {
 // src/difficulty-ui.ts
 async function editDifficultyRank(app, q, done) {
   const file = app.vault.getAbstractFileByPath(q.path);
-  if (!(file instanceof import_obsidian9.TFile)) throw Error("Question no longer exists.");
+  if (!(file instanceof import_obsidian11.TFile)) throw Error("Question no longer exists.");
   const current = parseQuestion(await app.vault.read(file), file.path);
   if (current.definition.id !== q.definition.id) throw Error("Question identity changed. Refresh the outline.");
-  const modal = new import_obsidian9.Modal(app);
+  const modal = new import_obsidian11.Modal(app);
   modal.titleEl.setText(current.definition.title);
   let input, busy = false;
-  new import_obsidian9.Setting(modal.contentEl).setName("Difficulty rank").setDesc("1 = easiest. Blank removes the rank.").addText((t2) => {
+  new import_obsidian11.Setting(modal.contentEl).setName("Difficulty rank").setDesc("1 = easiest. Blank removes the rank.").addText((t2) => {
     input = t2.inputEl;
     input.inputMode = "numeric";
     input.setAttribute("aria-label", "Difficulty rank");
@@ -40390,7 +40760,7 @@ async function editDifficultyRank(app, q, done) {
       if (error.textContent) input.focus();
     }
   };
-  new import_obsidian9.Setting(modal.contentEl).addButton((b) => b.setButtonText("Save").setCta().onClick(() => void save()));
+  new import_obsidian11.Setting(modal.contentEl).addButton((b) => b.setButtonText("Save").setCta().onClick(() => void save()));
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.isComposing) {
       e.preventDefault();
@@ -40403,7 +40773,7 @@ async function editDifficultyRank(app, q, done) {
 }
 
 // src/source-reveal.ts
-var import_obsidian10 = require("obsidian");
+var import_obsidian12 = require("obsidian");
 
 // src/margin-source-leaf.ts
 function marginSourceLeaf(workspace, path) {
@@ -40426,8 +40796,8 @@ var SourceRevealer = class {
   timers = /* @__PURE__ */ new Map();
   async reveal(path, source, from, to = from, select = false) {
     const app = this.plugin.app, file = app.vault.getAbstractFileByPath(path);
-    if (!(file instanceof import_obsidian10.TFile)) {
-      new import_obsidian10.Notice("The source note is unavailable.");
+    if (!(file instanceof import_obsidian12.TFile)) {
+      new import_obsidian12.Notice("The source note is unavailable.");
       return;
     }
     const existing = marginSourceLeaf(app.workspace, path), leaf = existing ?? app.workspace.getLeaf("tab");
@@ -40437,7 +40807,7 @@ var SourceRevealer = class {
     const view = leaf.view;
     if (view.getMode() === "source") {
       if (view.editor.getValue() !== source) {
-        new import_obsidian10.Notice("The note changed. Try the source link again.");
+        new import_obsidian12.Notice("The note changed. Try the source link again.");
         return;
       }
       const start = view.editor.offsetToPos(from), end = view.editor.offsetToPos(to);
@@ -40470,7 +40840,7 @@ function sourceRevealer(plugin2) {
 }
 
 // src/practice-outline.ts
-var import_obsidian11 = require("obsidian");
+var import_obsidian13 = require("obsidian");
 
 // src/study-inventory.ts
 var activeStudyRecord = (c) => !c.deletedAt && !c.resolved && !isConsumed(c) && (isStudyMark(c) || !!c.code);
@@ -40491,8 +40861,8 @@ function codeGroupSource(c, embeds2) {
     candidates: targets.map((e) => key("code", c.path, e.raw))
   };
 }
-function groupStudyRecords(path, text2, records, embeds2) {
-  const groups = /* @__PURE__ */ new Map(), tables = records.some((c) => c.path === path && c.study && !c.code && !c.study.figure) ? sourceTables(text2) : [];
+function groupStudyRecords(path, text3, records, embeds2) {
+  const groups = /* @__PURE__ */ new Map(), tables = records.some((c) => c.path === path && c.study && !c.code && !c.study.figure) ? sourceTables(text3) : [];
   const tableId = (t2) => key("table", path, t2.from, t2.key);
   const add2 = (group2, member) => {
     let g = groups.get(group2.id);
@@ -40518,14 +40888,14 @@ function groupStudyRecords(path, text2, records, embeds2) {
       add2({ id: key("figure", path, f.figureId, f.panelPath, f.panelOccurrence), kind: "figure-panel", label: "Figure blanks", source: { path, target: f.figureId }, warnings: [] }, member);
       continue;
     }
-    member.locations = excerpts(c).map((a2) => marginLocation(text2, a2) ?? null);
+    member.locations = excerpts(c).map((a2) => marginLocation(text3, a2) ?? null);
     member.located = member.locations.length > 0 && member.locations.every(Boolean);
     const loc = member.locations.filter((a2) => !!a2);
     const exact = tables.filter((t2) => member.located && loc.length > 0 && loc.every((a2) => a2.from >= t2.from && a2.to <= t2.to));
     const adjacent = !exact.length && member.located ? tables.filter((t2) => loc.every((a2) => {
       if (a2.from >= t2.from && a2.to <= t2.to) return true;
-      if (a2.to <= t2.from) return adjacentParagraph(text2.slice(a2.to, t2.from), "before", a2.to === 0 || text2[a2.to - 1] === "\n");
-      if (a2.from >= t2.to) return adjacentParagraph(text2.slice(t2.to, a2.from), "after");
+      if (a2.to <= t2.from) return adjacentParagraph(text3.slice(a2.to, t2.from), "before", a2.to === 0 || text3[a2.to - 1] === "\n");
+      if (a2.from >= t2.to) return adjacentParagraph(text3.slice(t2.to, a2.from), "after");
       return false;
     })) : [];
     const candidates = exact.length ? exact : adjacent;
@@ -40540,7 +40910,7 @@ function groupStudyRecords(path, text2, records, embeds2) {
         member.candidates = candidates.map(tableId);
       } else if (member.located) member.relation = "standalone";
       if (!member.located) {
-        const partial = tables.filter((t2) => loc.some((a2) => a2.from >= t2.from && a2.to <= t2.to || a2.to <= t2.from && adjacentParagraph(text2.slice(a2.to, t2.from), "before", a2.to === 0 || text2[a2.to - 1] === "\n") || a2.from >= t2.to && adjacentParagraph(text2.slice(t2.to, a2.from), "after")));
+        const partial = tables.filter((t2) => loc.some((a2) => a2.from >= t2.from && a2.to <= t2.to || a2.to <= t2.from && adjacentParagraph(text3.slice(a2.to, t2.from), "before", a2.to === 0 || text3[a2.to - 1] === "\n") || a2.from >= t2.to && adjacentParagraph(text3.slice(t2.to, a2.from), "after")));
         const savedKeys = excerpts(c).flatMap((a2) => a2.table ? [a2.table.key] : []), byKey = tables.filter((t2) => savedKeys.includes(t2.key));
         const possible = partial.length ? partial : byKey.length ? byKey : c.study?.rule === "table" || savedKeys.length ? tables : [];
         if (possible.length) member.candidates = possible.map(tableId);
@@ -40570,9 +40940,9 @@ function adjacentParagraph(gap, side, startsLine = false) {
 }
 var codeEmbedsReady = (bridge) => typeof bridge?.annotationEmbeds === "function" && bridge.ready !== false;
 var labelCache = /* @__PURE__ */ new WeakMap();
-async function loadCodeEmbeds(bridge, text2) {
+async function loadCodeEmbeds(bridge, text3) {
   if (!bridge?.annotationEmbeds) return [];
-  const embeds2 = await bridge.annotationEmbeds(text2);
+  const embeds2 = await bridge.annotationEmbeds(text3);
   let labels = labelCache.get(bridge);
   if (!labels) {
     labels = /* @__PURE__ */ new Map();
@@ -40596,33 +40966,33 @@ async function loadCodeEmbeds(bridge, text2) {
   return embeds2;
 }
 var embedCache = /* @__PURE__ */ new WeakMap();
-function readCodeEmbeds(bridge, text2) {
+function readCodeEmbeds(bridge, text3) {
   if (!codeEmbedsReady(bridge)) return Promise.resolve([]);
   let cache5 = embedCache.get(bridge);
   if (!cache5) {
     cache5 = /* @__PURE__ */ new Map();
     embedCache.set(bridge, cache5);
   }
-  const hit = cache5.get(text2);
+  const hit = cache5.get(text3);
   if (hit) return hit;
   if (cache5.size >= 4) cache5.delete(cache5.keys().next().value);
-  const task = loadCodeEmbeds(bridge, text2).catch((e) => {
-    cache5.delete(text2);
+  const task = loadCodeEmbeds(bridge, text3).catch((e) => {
+    cache5.delete(text3);
     throw e;
   });
-  cache5.set(text2, task);
+  cache5.set(text3, task);
   return task;
 }
-async function studyInventory(path, text2, records, bridge) {
+async function studyInventory(path, text3, records, bridge) {
   const warnings = [];
   let embeds2 = [];
   if (!codeEmbedsReady(bridge)) warnings.push("Code Links is not ready; code groups are incomplete.");
   try {
-    embeds2 = await readCodeEmbeds(bridge, text2);
+    embeds2 = await readCodeEmbeds(bridge, text3);
   } catch (e) {
     warnings.push("Code embeds unavailable: " + String(e));
   }
-  const groups = groupStudyRecords(path, text2, JSON.parse(JSON.stringify(records.filter((c) => c.path === path && activeStudyRecord(c)))), embeds2);
+  const groups = groupStudyRecords(path, text3, JSON.parse(JSON.stringify(records.filter((c) => c.path === path && activeStudyRecord(c)))), embeds2);
   for (const g of groups) if (g.kind === "code-block" && g.source.raw) {
     try {
       const s = await bridge.readExcerpt(g.source.raw), hash4 = await codeSnapshotHash(s);
@@ -40786,15 +41156,15 @@ function registerPracticeOutline(plugin2, links, open) {
   const folds = /* @__PURE__ */ new Map();
   const follow = (leaf) => {
     const view = leaf?.view;
-    if (view instanceof import_obsidian11.MarkdownView && view.file) path = view.file.path;
+    if (view instanceof import_obsidian13.MarkdownView && view.file) path = view.file.path;
   };
   follow(plugin2.app.workspace.activeLeaf);
   if (!path) follow(plugin2.app.workspace.getMostRecentLeaf());
   plugin2.registerEvent(plugin2.app.workspace.on("active-leaf-change", follow));
   plugin2.registerEvent(plugin2.app.workspace.on("study-practice-source", (p) => {
-    if (plugin2.app.vault.getAbstractFileByPath(p) instanceof import_obsidian11.TFile) path = p;
+    if (plugin2.app.vault.getAbstractFileByPath(p) instanceof import_obsidian13.TFile) path = p;
   }));
-  class Outline extends import_obsidian11.ItemView {
+  class Outline extends import_obsidian13.ItemView {
     query;
     filter;
     title;
@@ -40830,7 +41200,7 @@ function registerPracticeOutline(plugin2, links, open) {
       this.query.oninput = () => this.filterRows();
       this.filter = tools.createEl("select", { attr: { "aria-label": "Practice type" } });
       this.filter.createEl("option", { value: "", text: "All types" });
-      for (const [value, text2] of Object.entries(names)) this.filter.createEl("option", { value, text: text2 });
+      for (const [value, text3] of Object.entries(names)) this.filter.createEl("option", { value, text: text3 });
       this.filter.onchange = () => this.filterRows();
       this.list = this.contentEl.createDiv("study-practice-outline-list");
       this.empty = this.contentEl.createDiv("study-practice-outline-empty");
@@ -40890,18 +41260,18 @@ function registerPracticeOutline(plugin2, links, open) {
     }
     async source(p) {
       const f = this.app.vault.getAbstractFileByPath(p);
-      if (!(f instanceof import_obsidian11.TFile)) return "";
+      if (!(f instanceof import_obsidian13.TFile)) return "";
       const v = marginSourceLeaf(this.app.workspace, p)?.view;
       return v?.getMode() === "source" ? v.editor.getValue() : this.app.vault.cachedRead(f);
     }
     async refresh() {
       const turn = ++this.generation, p = path, source = await this.source(p);
       if (this.stopped || turn !== this.generation) return;
-      const snapshot = links.snapshot(p, source), key2 = JSON.stringify([p, snapshot.revision, source]);
+      const snapshot2 = links.snapshot(p, source), key2 = JSON.stringify([p, snapshot2.revision, source]);
       const bridge = this.app.plugins.plugins["code-links"];
       if (key2 === this.cache && bridge === this.bridge) return;
       let embeds2 = [], complete = true, codeWarning = "Code Links is not ready";
-      if (snapshot.questions.some((q) => q.definition.studySource?.surface === "code")) try {
+      if (snapshot2.questions.some((q) => q.definition.studySource?.surface === "code")) try {
         embeds2 = await this.embedCache.read(bridge, p, source);
         complete = codeEmbedsReady(bridge);
       } catch {
@@ -40915,7 +41285,7 @@ function registerPracticeOutline(plugin2, links, open) {
         const f = c.study.figure;
         return b.resolve(source, f.figureId, f.panelPath, f.panelOccurrence);
       };
-      this.groups = practiceGroups(snapshot, embeds2, figure);
+      this.groups = practiceGroups(snapshot2, embeds2, figure);
       if (!complete) {
         for (const g of this.groups) if (g.kind === "code" && g.from === void 0) g.warning = codeWarning;
       }
@@ -40935,11 +41305,11 @@ function registerPracticeOutline(plugin2, links, open) {
       this.render();
       this.filterRows();
     }
-    practice(host, ids, title, text2 = "Test Yourself!") {
-      const a2 = host.createEl("a", { text: text2, href: "#", attr: { "aria-label": "Test Yourself! \xB7 " + title } });
+    practice(host, ids, title, text3 = "Test Yourself!") {
+      const a2 = host.createEl("a", { text: text3, href: "#", attr: { "aria-label": "Test Yourself! \xB7 " + title } });
       a2.onclick = (e) => {
         e.preventDefault();
-        void open(ids, title).catch((e2) => new import_obsidian11.Notice(String(e2)));
+        void open(ids, title).catch((e2) => new import_obsidian13.Notice(String(e2)));
       };
       return a2;
     }
@@ -40970,7 +41340,7 @@ function registerPracticeOutline(plugin2, links, open) {
             a2.onclick = (e) => {
               e.preventDefault();
               e.stopPropagation();
-              void this.jump(g.sectionKey, true).catch((e2) => new import_obsidian11.Notice(String(e2)));
+              void this.jump(g.sectionKey, true).catch((e2) => new import_obsidian13.Notice(String(e2)));
             };
           } else summary.setText(g.section);
           section.createDiv("study-practice-section-items");
@@ -40990,7 +41360,7 @@ function registerPracticeOutline(plugin2, links, open) {
             number2.setAttribute("role", "link");
             number2.setAttribute("aria-label", `Practice ${g.number} \xB7 go to source`);
             number2.title = "Go to source";
-            number2.onclick = () => void this.jump(g.id).catch((e) => new import_obsidian11.Notice(String(e)));
+            number2.onclick = () => void this.jump(g.id).catch((e) => new import_obsidian13.Notice(String(e)));
             number2.onkeydown = (e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
@@ -40998,7 +41368,7 @@ function registerPracticeOutline(plugin2, links, open) {
               }
             };
             el.onclick = (e) => {
-              if (!e.target.closest("a,button,input,select,summary,details,.study-practice-number")) void this.jump(g.id).catch((e2) => new import_obsidian11.Notice(String(e2)));
+              if (!e.target.closest("a,button,input,select,summary,details,.study-practice-number")) void this.jump(g.id).catch((e2) => new import_obsidian13.Notice(String(e2)));
             };
           }
           const body = el.createDiv("study-practice-entry-body");
@@ -41008,7 +41378,7 @@ function registerPracticeOutline(plugin2, links, open) {
             a2.title = "Go to source";
             a2.onclick = (e) => {
               e.preventDefault();
-              void this.jump(g.id).catch((e2) => new import_obsidian11.Notice(String(e2)));
+              void this.jump(g.id).catch((e2) => new import_obsidian13.Notice(String(e2)));
             };
           } else heading2.createSpan({ text: g.label });
           const meta2 = body.createDiv("study-practice-entry-meta");
@@ -41036,10 +41406,10 @@ function registerPracticeOutline(plugin2, links, open) {
                 event.preventDefault();
                 event.stopPropagation();
                 const rect = link.getBoundingClientRect();
-                new import_obsidian11.Menu().addItem((item) => item.setTitle("Set difficulty rank\u2026").onClick(() => void editDifficultyRank(this.app, q, () => {
+                new import_obsidian13.Menu().addItem((item) => item.setTitle("Set difficulty rank\u2026").onClick(() => void editDifficultyRank(this.app, q, () => {
                   this.rankFocus = q.definition.id;
                   this.schedule();
-                }).catch((e) => new import_obsidian11.Notice(String(e))))).showAtPosition({ x: "clientX" in event && event.clientX ? event.clientX : rect.left, y: "clientY" in event && event.clientY ? event.clientY : rect.bottom });
+                }).catch((e) => new import_obsidian13.Notice(String(e))))).showAtPosition({ x: "clientX" in event && event.clientX ? event.clientX : rect.left, y: "clientY" in event && event.clientY ? event.clientY : rect.bottom });
               };
               link.oncontextmenu = menu;
               link.onkeydown = (e) => {
@@ -41080,12 +41450,12 @@ function registerPracticeOutline(plugin2, links, open) {
       const p = this.shownPath;
       await this.refresh();
       if (p !== this.shownPath || await this.source(p) !== this.renderedSource) {
-        new import_obsidian11.Notice("The note is still changing. Try the source link again.");
+        new import_obsidian13.Notice("The note is still changing. Try the source link again.");
         return;
       }
       const g = this.groups.find((g2) => section ? g2.sectionKey === id3 : g2.id === id3);
       if (g?.from === void 0) {
-        new import_obsidian11.Notice("The source changed or is unavailable.");
+        new import_obsidian13.Notice("The source changed or is unavailable.");
         return;
       }
       await revealer.reveal(p, this.renderedSource, section ? g.sectionFrom ?? g.from : g.from);
@@ -41162,13 +41532,13 @@ async function undoStudyCombine(store, id3) {
 }
 
 // src/study-directive-api.ts
-var import_obsidian15 = require("obsidian");
+var import_obsidian17 = require("obsidian");
 
 // src/group-editor.ts
-var import_obsidian13 = require("obsidian");
+var import_obsidian15 = require("obsidian");
 
 // src/workspace-panel.ts
-var import_obsidian12 = require("obsidian");
+var import_obsidian14 = require("obsidian");
 var VIEW2 = "study-studio-workspace";
 var restorers = /* @__PURE__ */ new WeakMap();
 function registerPanelRestorer(app, kind, restore) {
@@ -41180,12 +41550,12 @@ function registerPanelRestorer(app, kind, restore) {
   map2.set(kind, restore);
 }
 var panels2 = /* @__PURE__ */ new WeakMap();
-var StudioPanel = class extends import_obsidian12.Component {
+var StudioPanel = class extends import_obsidian14.Component {
   constructor(app, restoration) {
     super();
     this.app = app;
     this.restoration = restoration;
-    this.scope = new import_obsidian12.Scope(app.scope);
+    this.scope = new import_obsidian14.Scope(app.scope);
   }
   modalEl = createDiv("study-workspace-panel");
   titleEl = this.modalEl.createEl("h1");
@@ -41201,7 +41571,7 @@ var StudioPanel = class extends import_obsidian12.Component {
   open() {
     const registry = panels2.get(this.app);
     if (!registry) {
-      new import_obsidian12.Notice("Study Studio workspace is unavailable.");
+      new import_obsidian14.Notice("Study Studio workspace is unavailable.");
       return;
     }
     if (this.leaf) {
@@ -41215,7 +41585,7 @@ var StudioPanel = class extends import_obsidian12.Component {
       (error) => {
         registry.delete(this.id);
         this.leaf = void 0;
-        new import_obsidian12.Notice(String(error));
+        new import_obsidian14.Notice(String(error));
       }
     );
   }
@@ -41240,7 +41610,7 @@ var StudioPanel = class extends import_obsidian12.Component {
     this.leaf = void 0;
   }
 };
-var StudioView = class extends import_obsidian12.ItemView {
+var StudioView = class extends import_obsidian14.ItemView {
   panel;
   id = "";
   getViewType() {
@@ -41309,8 +41679,8 @@ function registerStudioWorkspace(plugin2) {
 function signature(q) {
   return JSON.stringify([q.definition, q.prompt, q.explanation]);
 }
-function draftKey(context, id3) {
-  return JSON.stringify([context, id3]);
+function draftKey(context2, id3) {
+  return JSON.stringify([context2, id3]);
 }
 function restoreDraft(value, q) {
   const d = value;
@@ -41349,25 +41719,25 @@ function noteQuestionIds(source) {
   }
   return [...new Set(ids)];
 }
-function practiceResetKeys(context, ids, drafts, completions) {
-  const targets = new Set(ids.map((id3) => draftKey(context, id3)));
+function practiceResetKeys(context2, ids, drafts, completions) {
+  const targets = new Set(ids.map((id3) => draftKey(context2, id3)));
   return [.../* @__PURE__ */ new Set([...Object.keys(drafts), ...Object.keys(completions)])].filter((key2) => targets.has(key2));
 }
 
 // src/note-authoring.ts
-function embeds(text2) {
+function embeds(text3) {
   const out = [];
   let offset = 0, open;
-  for (const line of text2.split(/(?<=\n)/)) {
+  for (const line of text3.split(/(?<=\n)/)) {
     const value = line.replace(/\r?\n$/, ""), m = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(value);
     if (m) {
       if (!open) open = { start: offset, mark: m[1][0], length: m[1].length, type: m[2].trim(), body: offset + line.length };
       else if (m[1][0] === open.mark && m[1].length >= open.length && !m[2].trim()) {
         if (open.type === "study" || open.type === "study-group") {
-          const body = text2.slice(open.body, offset).trim(), group2 = open.type === "study-group";
+          const body = text3.slice(open.body, offset).trim(), group2 = open.type === "study-group";
           const g = group2 ? parseGroup(body) : { title: body, questions: [body], prompt: void 0 };
           if (!g.questions.every((id3) => /^[\w-]+$/.test(id3))) throw Error("Invalid question ID.");
-          out.push({ start: open.start, end: offset + value.length, raw: text2.slice(open.start, offset + value.length), title: g.title, prompt: g.prompt, ids: g.questions, group: group2 });
+          out.push({ start: open.start, end: offset + value.length, raw: text3.slice(open.start, offset + value.length), title: g.title, prompt: g.prompt, ids: g.questions, group: group2 });
         }
         open = void 0;
       }
@@ -41384,20 +41754,20 @@ ${stringify3({ title, ...prompt ? { prompt } : {}, questions: ids }, { defaultSt
 ${ids[0]}
 \`\`\``;
 }
-function replaceEmbed(text2, embed, replacement) {
-  if (text2.slice(embed.start, embed.end) !== embed.raw) throw Error("The note changed. Reopen its question controls.");
-  return text2.slice(0, embed.start) + replacement + text2.slice(embed.end);
+function replaceEmbed(text3, embed, replacement) {
+  if (text3.slice(embed.start, embed.end) !== embed.raw) throw Error("The note changed. Reopen its question controls.");
+  return text3.slice(0, embed.start) + replacement + text3.slice(embed.end);
 }
-function removeMember(text2, embed, id3) {
+function removeMember(text3, embed, id3) {
   const ids = embed.ids.filter((x) => x !== id3);
-  return replaceEmbed(text2, embed, ids.length ? embedSource(ids, embed.group ? embed.title : void 0, embed.prompt) : embed.prompt ?? "");
+  return replaceEmbed(text3, embed, ids.length ? embedSource(ids, embed.group ? embed.title : void 0, embed.prompt) : embed.prompt ?? "");
 }
-function moveToGroup(text2, source, id3, target) {
+function moveToGroup(text3, source, id3, target) {
   if (source.start === target.start) throw Error("Choose a different group.");
   if (target.ids.includes(id3)) throw Error("That group already contains this question.");
   const changes = [{ e: source, s: source.ids.filter((x) => x !== id3) }, { e: target, s: [...target.ids, id3] }].sort((a2, b) => b.e.start - a2.e.start);
-  for (const { e, s } of changes) text2 = replaceEmbed(text2, e, s.length ? embedSource(s, e.group ? e.title : void 0, e.prompt) : e.prompt ?? "");
-  return text2;
+  for (const { e, s } of changes) text3 = replaceEmbed(text3, e, s.length ? embedSource(s, e.group ? e.title : void 0, e.prompt) : e.prompt ?? "");
+  return text3;
 }
 function chapterConfig(raw) {
   const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(raw), p = m ? parse(m[1])?.studyChapter : void 0;
@@ -41405,10 +41775,10 @@ function chapterConfig(raw) {
   validatePlacements([p], [p.courseId]);
   return p;
 }
-function scopeQuestions(bank, scope, context) {
+function scopeQuestions(bank, scope, context2) {
   if (scope === "all") return bank;
-  if (!context) return [];
-  return bank.filter((q) => scope === "course" ? q.definition.courseIds?.includes(context.courseId) : q.definition.chapters?.some((p) => p.courseId === context.courseId && p.chapterId === context.chapterId));
+  if (!context2) return [];
+  return bank.filter((q) => scope === "course" ? q.definition.courseIds?.includes(context2.courseId) : q.definition.chapters?.some((p) => p.courseId === context2.courseId && p.chapterId === context2.chapterId));
 }
 
 // src/group-editor.ts
@@ -41432,7 +41802,7 @@ var GroupEditor = class extends StudioPanel {
     const selected = [...this.initial.questions], members = this.contentEl.createDiv(), actions = this.contentEl.createDiv("study-actions");
     const create = () => {
       if (busy || !this.tools) return;
-      const menu = new import_obsidian13.Menu();
+      const menu = new import_obsidian15.Menu();
       kinds.forEach(([kind, label], i) => menu.addItem((item) => item.setTitle(`${i + 1} \xB7 ${label}`).onClick(() => this.tools.create(kind, (q) => {
         if (!this.contentEl.isConnected) return;
         const old = this.bank.findIndex((x) => x.definition.id === q.definition.id);
@@ -41449,13 +41819,13 @@ var GroupEditor = class extends StudioPanel {
     actions.createEl("button", { text: "New question \xB7 Alt+Enter" }).onclick = create;
     const browse = this.contentEl.createEl("details"), summary = browse.createEl("summary", { text: "Add existing questions" }), browser2 = browse.createDiv();
     const scope = browser2.createEl("select", { attr: { "aria-label": "Question scope" } });
-    for (const [value, text2] of [["chapter", "Current chapter"], ["course", "Current course"], ["all", "All courses"]]) {
-      const o = scope.createEl("option", { value, text: text2 });
+    for (const [value, text3] of [["chapter", "Current chapter"], ["course", "Current course"], ["all", "All courses"]]) {
+      const o = scope.createEl("option", { value, text: text3 });
       o.disabled = value === "chapter" ? !this.placement?.chapterId : value === "course" && !this.placement;
     }
     scope.value = this.placement?.chapterId ? "chapter" : this.placement ? "course" : "all";
     const search = browser2.createEl("input", { type: "search", attr: { placeholder: "Search titles, prompts, or concepts", "aria-label": "Search existing questions" } }), choices = browser2.createDiv(), nav2 = browser2.createDiv("study-actions");
-    let memberOwner = new import_obsidian13.Component(), bankOwner = new import_obsidian13.Component();
+    let memberOwner = new import_obsidian15.Component(), bankOwner = new import_obsidian15.Component();
     this.addChild(memberOwner);
     this.addChild(bankOwner);
     const preview = (host, q, owner) => {
@@ -41474,7 +41844,7 @@ var GroupEditor = class extends StudioPanel {
     };
     const renderMembers = () => {
       this.removeChild(memberOwner);
-      memberOwner = new import_obsidian13.Component();
+      memberOwner = new import_obsidian15.Component();
       this.addChild(memberOwner);
       members.empty();
       members.createEl("h3", { text: `Questions (${selected.length})` });
@@ -41497,7 +41867,7 @@ var GroupEditor = class extends StudioPanel {
         const menu = (e) => {
           e.preventDefault();
           e.stopPropagation();
-          const m = new import_obsidian13.Menu().addItem((x) => x.setTitle("1 \xB7 Move up").setDisabled(i === 0).onClick(() => move(-1))).addItem((x) => x.setTitle("2 \xB7 Move down").setDisabled(i === selected.length - 1).onClick(() => move(1))).addItem((x) => x.setTitle("3 \xB7 Remove from group").onClick(() => {
+          const m = new import_obsidian15.Menu().addItem((x) => x.setTitle("1 \xB7 Move up").setDisabled(i === 0).onClick(() => move(-1))).addItem((x) => x.setTitle("2 \xB7 Move down").setDisabled(i === selected.length - 1).onClick(() => move(1))).addItem((x) => x.setTitle("3 \xB7 Remove from group").onClick(() => {
             selected.splice(i, 1);
             renderMembers();
             renderBank();
@@ -41517,7 +41887,7 @@ var GroupEditor = class extends StudioPanel {
     };
     const renderBank = () => {
       this.removeChild(bankOwner);
-      bankOwner = new import_obsidian13.Component();
+      bankOwner = new import_obsidian15.Component();
       this.addChild(bankOwner);
       choices.empty();
       nav2.empty();
@@ -41572,7 +41942,7 @@ var GroupEditor = class extends StudioPanel {
     const save = async () => {
       if (busy || saving) return;
       if (!title.value.trim()) {
-        new import_obsidian13.Notice("Enter a group title.");
+        new import_obsidian15.Notice("Enter a group title.");
         title.focus();
         return;
       }
@@ -41581,7 +41951,7 @@ var GroupEditor = class extends StudioPanel {
         await this.saveGroup({ title: title.value.trim(), prompt, questions: selected });
         this.close();
       } catch (e) {
-        new import_obsidian13.Notice(String(e));
+        new import_obsidian15.Notice(String(e));
       } finally {
         saving = false;
       }
@@ -41607,7 +41977,7 @@ var GroupEditor = class extends StudioPanel {
 };
 async function editGroup(app, path, bank, line, title, tools) {
   const file = app.vault.getAbstractFileByPath(path);
-  if (!(file instanceof import_obsidian13.TFile)) throw Error("Group note is unavailable.");
+  if (!(file instanceof import_obsidian15.TFile)) throw Error("Group note is unavailable.");
   const raw = await app.vault.read(file), matches = embeds(raw).filter((b) => b.group && b.title === title), block = matches.find((b) => line !== void 0 && raw.slice(0, b.start).split("\n").length - 1 === line) ?? (matches.length === 1 ? matches[0] : void 0);
   if (!block) throw Error("Group changed. Reopen its controls.");
   const destination = await chapterDestination(app, file);
@@ -41617,14 +41987,14 @@ async function editGroup(app, path, bank, line, title, tools) {
       if (found.length !== 1) throw Error("Group changed or has duplicate copies. Reopen its controls.");
       return replaceEmbed(current, found[0], embedSource(group2.questions, group2.title, group2.prompt));
     });
-    const leaf = app.workspace.getLeavesOfType("markdown").find((leaf2) => leaf2.view instanceof import_obsidian13.MarkdownView && leaf2.view.file?.path === path);
+    const leaf = app.workspace.getLeavesOfType("markdown").find((leaf2) => leaf2.view instanceof import_obsidian15.MarkdownView && leaf2.view.file?.path === path);
     if (leaf) await app.workspace.revealLeaf(leaf);
   }, destination.scope, tools).open();
 }
 
 // src/note-authoring-ui.ts
-var import_obsidian14 = require("obsidian");
-var Pick = class extends import_obsidian14.FuzzySuggestModal {
+var import_obsidian16 = require("obsidian");
+var Pick = class extends import_obsidian16.FuzzySuggestModal {
   constructor(app, items, label, choose, title) {
     super(app);
     this.items = items;
@@ -41642,7 +42012,7 @@ var Pick = class extends import_obsidian14.FuzzySuggestModal {
     this.choose(v);
   }
 };
-var ScopedQuestionPicker = class extends import_obsidian14.FuzzySuggestModal {
+var ScopedQuestionPicker = class extends import_obsidian16.FuzzySuggestModal {
   constructor(app, bank, placement, choose, title) {
     super(app);
     this.bank = bank;
@@ -41653,8 +42023,8 @@ var ScopedQuestionPicker = class extends import_obsidian14.FuzzySuggestModal {
     this.emptyStateText = "No questions in this scope. Change scope to reuse a question elsewhere.";
     const label = this.modalEl.createEl("label", { text: "Search in ", cls: "study-picker-scope" }), select = label.createEl("select", { attr: { "aria-label": "Question scope" } });
     this.inputEl.parentElement?.after(label);
-    for (const [id3, text2] of [["chapter", "Current chapter"], ["course", "Current course"], ["all", "All courses"]]) {
-      const o = select.createEl("option", { value: id3, text: text2 });
+    for (const [id3, text3] of [["chapter", "Current chapter"], ["course", "Current course"], ["all", "All courses"]]) {
+      const o = select.createEl("option", { value: id3, text: text3 });
       o.disabled = id3 === "chapter" ? !placement?.chapterId : id3 === "course" && !placement;
     }
     select.value = this.level;
@@ -41693,12 +42063,12 @@ async function chapterDestination(app, source) {
   while (folder) {
     const base2 = folder.path === "/" ? "" : folder.path + "/";
     const file = app.vault.getAbstractFileByPath(base2 + "Chapter.md");
-    if (file instanceof import_obsidian14.TFile) {
+    if (file instanceof import_obsidian16.TFile) {
       const placement = chapterConfig(await app.vault.read(file));
       if (placement) return { folder: base2 + "Questions", placement, scope: placement };
     }
     const courseFile = app.vault.getAbstractFileByPath(base2 + "Course.md");
-    if (courseFile instanceof import_obsidian14.TFile) {
+    if (courseFile instanceof import_obsidian16.TFile) {
       const raw = await app.vault.read(courseFile);
       if (/^studyCourse:/m.test(raw)) {
         const course = parseCourse(raw);
@@ -41710,8 +42080,8 @@ async function chapterDestination(app, source) {
   return { folder: "Study Studio/Questions", placement: void 0, scope: void 0 };
 }
 async function manageNote(app, bank, edit, onlyId, sourcePath) {
-  const view = app.workspace.getActiveViewOfType(import_obsidian14.MarkdownView), file = sourcePath ? app.vault.getAbstractFileByPath(sourcePath) : view?.file;
-  if (!(file instanceof import_obsidian14.TFile)) throw Error("Open a note with study questions first.");
+  const view = app.workspace.getActiveViewOfType(import_obsidian16.MarkdownView), file = sourcePath ? app.vault.getAbstractFileByPath(sourcePath) : view?.file;
+  if (!(file instanceof import_obsidian16.TFile)) throw Error("Open a note with study questions first.");
   const destination = await chapterDestination(app, file);
   const editor = view?.file === file && view.getMode() === "source" ? view.editor : void 0;
   const raw = editor ? editor.getValue() : await app.vault.read(file), blocks = embeds(raw), titles = new Map(bank.map((q) => [q.definition.id, q.definition.title]));
@@ -41724,9 +42094,9 @@ async function manageNote(app, bank, edit, onlyId, sourcePath) {
       return next;
     });
   };
-  const run = (action) => void Promise.resolve().then(action).catch((e) => new import_obsidian14.Notice(String(e)));
+  const run = (action) => void Promise.resolve().then(action).catch((e) => new import_obsidian16.Notice(String(e)));
   const nameGroup = (value, save) => {
-    const modal = new import_obsidian14.Modal(app);
+    const modal = new import_obsidian16.Modal(app);
     modal.titleEl.setText("Group title");
     const input = modal.contentEl.createEl("input", { type: "text", attr: { "aria-label": "Group title" } });
     input.value = value;
@@ -41752,7 +42122,7 @@ async function manageNote(app, bank, edit, onlyId, sourcePath) {
       actions.push({ label: "Move question into a group", act: () => {
         const targets = blocks.filter((e) => e.group && e.start !== b.start);
         if (!targets.length) {
-          new import_obsidian14.Notice("No other groups. Use Make a group first.");
+          new import_obsidian16.Notice("No other groups. Use Make a group first.");
           return;
         }
         new Pick(app, targets, (e) => e.title, (target) => run(() => commit(moveToGroup(raw, b, id3, target))), "Choose destination group").open();
@@ -41770,8 +42140,8 @@ async function manageNote(app, bank, edit, onlyId, sourcePath) {
 
 // src/study-directive-api.ts
 var clone4 = (x) => JSON.parse(JSON.stringify(x));
-function overlaps(text2, a2, b) {
-  const x = marginLocation(text2, a2), y = marginLocation(text2, b);
+function overlaps(text3, a2, b) {
+  const x = marginLocation(text3, a2), y = marginLocation(text3, b);
   if (!x || !y || x.from >= y.to || y.from >= x.to) return false;
   if (a2.part && b.part) return a2.part.nodes.some((n) => b.part.nodes.some((m) => JSON.stringify(n) === JSON.stringify(m)));
   return true;
@@ -41793,21 +42163,21 @@ var StudyDirectiveApi = class {
   async source(path) {
     if (this.stopped) throw Error("Reacquire the study API.");
     const f = this.store.app.vault.getAbstractFileByPath(path);
-    if (!(f instanceof import_obsidian15.TFile) || f.extension !== "md") throw Error("Source note not found.");
-    const text2 = await this.store.app.vault.read(f);
+    if (!(f instanceof import_obsidian17.TFile) || f.extension !== "md") throw Error("Source note not found.");
+    const text3 = await this.store.app.vault.read(f);
     for (const l of this.store.app.workspace.getLeavesOfType("markdown")) {
       const v = l.view;
-      if (v instanceof import_obsidian15.MarkdownView && v.file?.path === path && v.getMode() === "source" && v.editor.getValue() !== text2) throw Error("Wait for the source note to finish saving.");
+      if (v instanceof import_obsidian17.MarkdownView && v.file?.path === path && v.getMode() === "source" && v.editor.getValue() !== text3) throw Error("Wait for the source note to finish saving.");
     }
-    return { f, text: text2 };
+    return { f, text: text3 };
   }
-  async requireLocated(text2, c) {
+  async requireLocated(text3, c) {
     if (c.study?.figure) {
       if (!this.figureHooks) throw Error("Figure tools unavailable.");
-      return this.figureHooks.check(text2, c);
+      return this.figureHooks.check(text3, c);
     }
     if (!c.code) {
-      if (!this.located(text2, c)) throw Error("A study fragment moved or is ambiguous.");
+      if (!this.located(text3, c)) throw Error("A study fragment moved or is ambiguous.");
       return;
     }
     const bridge = this.store.app.plugins.plugins["code-links"];
@@ -41816,35 +42186,35 @@ var StudyDirectiveApi = class {
     if (codeFragments(c.code).some((a2) => !locateCode(a2, s, hash4))) throw Error("A code fragment moved. Refresh and prepare again.");
     return JSON.stringify([s.source_text, s.signature, s.lines, s.line_numbers]);
   }
-  located(text2, c) {
-    if (c.study?.figure) return this.figureHooks?.located(text2, c) ?? false;
-    return excerpts(c).length > 0 && excerpts(c).every((a2) => !!marginLocation(text2, a2));
+  located(text3, c) {
+    if (c.study?.figure) return this.figureHooks?.located(text3, c) ?? false;
+    return excerpts(c).length > 0 && excerpts(c).every((a2) => !!marginLocation(text3, a2));
   }
   async undoCombine(id3) {
     return undoStudyCombine(this.store, id3);
   }
   async inventory(path) {
-    const { text: text2 } = await this.source(path);
+    const { text: text3 } = await this.source(path);
     await this.store.refresh();
-    return studyInventory(path, text2, this.store.data.comments, this.store.app.plugins.plugins["code-links"]);
+    return studyInventory(path, text3, this.store.data.comments, this.store.app.plugins.plugins["code-links"]);
   }
   inventorySignature(path) {
     return JSON.stringify(this.store.data.comments.filter((c) => c.path === path && activeStudyRecord(c)));
   }
   async inspect(path) {
-    const { text: text2 } = await this.source(path);
+    const { text: text3 } = await this.source(path);
     await this.store.refresh();
-    return { path, source: text2, hash: await codeHash(text2), vocabulary: discoverVocabulary(text2), tables: sourceTables(text2), directives: clone4(this.store.data.comments.filter((c) => c.study && c.path === path && !c.deletedAt).map((c) => ({ ...c, located: this.located(text2, c), fragments: excerpts(c).map((a2) => ({ ...a2, location: marginLocation(text2, a2), selectedLatex: a2.part?.nodes.map((n) => n.latex) })) }))) };
+    return { path, source: text3, hash: await codeHash(text3), vocabulary: discoverVocabulary(text3), tables: sourceTables(text3), directives: clone4(this.store.data.comments.filter((c) => c.study && c.path === path && !c.deletedAt).map((c) => ({ ...c, located: this.located(text3, c), fragments: excerpts(c).map((a2) => ({ ...a2, location: marginLocation(text3, a2), selectedLatex: a2.part?.nodes.map((n) => n.latex) })) }))) };
   }
   async previewVocabulary(path, cloze = {}) {
-    const { text: text2 } = await this.source(path), entries = discoverVocabulary(text2), missing = missingCloze(entries, cloze);
+    const { text: text3 } = await this.source(path), entries = discoverVocabulary(text3), missing = missingCloze(entries, cloze);
     if (missing.length) throw Error("Prepare cloze blanks for every vocabulary entry first: " + missing.join(", "));
     await this.store.refresh();
     for (const entry of entries) for (const id3 of cloze[entry.key]?.directiveIds ?? []) {
       if (this.store.data.comments.find((c2) => c2.id === id3)?.study?.consumed) throw Error("This vocabulary study mark has already been used. Reuse its existing questions or prepare a new cloze without that consumed ID: " + id3);
       const c = this.store.data.comments.find((c2) => c2.id === id3 && c2.path === path && c2.study?.rule === "text" && !c2.deletedAt && !c2.resolved);
       if (!c || !excerpts(c).every((a2) => {
-        const at = marginLocation(text2, a2);
+        const at = marginLocation(text3, a2);
         return !!at && at.from >= entry.from && at.to <= entry.to;
       })) throw Error("Vocabulary study mark does not belong to this definition: " + id3);
     }
@@ -41852,16 +42222,16 @@ var StudyDirectiveApi = class {
     return { ...plan2, entries: entries.length };
   }
   async create(path, expected, anchors, rule, comment2 = "") {
-    const { text: text2 } = await this.source(path);
-    if (text2 !== expected) throw Error("Note changed. Select the passage again.");
+    const { text: text3 } = await this.source(path);
+    if (text3 !== expected) throw Error("Note changed. Select the passage again.");
     if (!["text", "table", "question"].includes(rule) || !anchors.length || anchors.length > 128 || anchors.some((a2) => a2.path !== path) || typeof comment2 !== "string") throw Error("Select between 1 and 128 fragments in this note.");
     const c = withExcerpts({ id: crypto.randomUUID(), path, quote: "", before: "", after: "", comment: comment2, ...studyPalette[rule], markStyle: "highlight", study: { version: 1, rule }, updated: (/* @__PURE__ */ new Date()).toISOString(), resolved: false }, clone4(anchors));
-    if (!validComment(c) || !this.located(text2, c)) throw Error("A fragment cannot be anchored unambiguously. Select its full cell or a longer passage.");
+    if (!validComment(c) || !this.located(text3, c)) throw Error("A fragment cannot be anchored unambiguously. Select its full cell or a longer passage.");
     await this.store.applyStudyEdits([], [c], async (comments) => {
-      if ((await this.source(path)).text !== text2) throw Error("Note changed while saving.");
+      if ((await this.source(path)).text !== text3) throw Error("Note changed while saving.");
       if (rule !== "question") {
-        if (anchors.some((a2, i) => anchors.slice(i + 1).some((b) => overlaps(text2, a2, b)))) throw Error("Blank fragments in one group must not overlap.");
-        if (comments.some((n) => n.path === path && !n.deletedAt && !n.resolved && n.study?.rule === rule && excerpts(n).some((a2) => anchors.some((b) => overlaps(text2, a2, b))))) throw Error("This passage already has a study blank of that type. Use its existing group or select a separate fragment.");
+        if (anchors.some((a2, i) => anchors.slice(i + 1).some((b) => overlaps(text3, a2, b)))) throw Error("Blank fragments in one group must not overlap.");
+        if (comments.some((n) => n.path === path && !n.deletedAt && !n.resolved && n.study?.rule === rule && excerpts(n).some((a2) => anchors.some((b) => overlaps(text3, a2, b))))) throw Error("This passage already has a study blank of that type. Use its existing group or select a separate fragment.");
       }
     });
     return clone4(c);
@@ -41870,13 +42240,13 @@ var StudyDirectiveApi = class {
     await this.store.refresh();
     const found = this.store.data.comments.find((c) => c.id === id3);
     if (!found) throw Error("Study annotation not found.");
-    const before = clone4(found), after = withStudyType(before, type), { text: text2 } = await this.source(before.path), anchors = excerpts(after);
+    const before = clone4(found), after = withStudyType(before, type), { text: text3 } = await this.source(before.path), anchors = excerpts(after);
     if (before.code) throw Error("Use the code annotation API for code groups.");
     await this.store.applyStudyEdits([before], [after], async (comments) => {
-      if ((await this.source(before.path)).text !== text2 || !this.located(text2, after)) throw Error("The source changed. Refresh the note first.");
+      if ((await this.source(before.path)).text !== text3 || !this.located(text3, after)) throw Error("The source changed. Refresh the note first.");
       if (type !== "question") {
-        if (anchors.some((a2, i) => anchors.slice(i + 1).some((b) => overlaps(text2, a2, b)))) throw Error("Blank fragments in one group must not overlap.");
-        if (comments.some((c) => c.id !== id3 && c.path === before.path && !c.deletedAt && !c.resolved && c.study?.rule === type && excerpts(c).some((a2) => anchors.some((b) => overlaps(text2, a2, b))))) throw Error("This passage already has a study blank of that type.");
+        if (anchors.some((a2, i) => anchors.slice(i + 1).some((b) => overlaps(text3, a2, b)))) throw Error("Blank fragments in one group must not overlap.");
+        if (comments.some((c) => c.id !== id3 && c.path === before.path && !c.deletedAt && !c.resolved && c.study?.rule === type && excerpts(c).some((a2) => anchors.some((b) => overlaps(text3, a2, b))))) throw Error("This passage already has a study blank of that type.");
       }
     });
     return clone4(after);
@@ -41888,30 +42258,30 @@ var StudyDirectiveApi = class {
     const records = clone4(before), first = records[0];
     if (records.some((c) => c.path !== first.path || c.study.rule !== first.study.rule)) throw Error("Combine the same study type within one note.");
     if (records.some((c) => c.study?.figure)) throw Error("Edit figure regions together in Add blanks.");
-    const { text: text2 } = await this.source(first.path), anchors = records.flatMap(excerpts);
-    if (anchors.length > 128 || records.some((c) => !this.located(text2, c))) throw Error("A group changed or exceeds 128 fragments.");
+    const { text: text3 } = await this.source(first.path), anchors = records.flatMap(excerpts);
+    if (anchors.length > 128 || records.some((c) => !this.located(text3, c))) throw Error("A group changed or exceeds 128 fragments.");
     const now = (/* @__PURE__ */ new Date()).toISOString(), combined = withExcerpts({ ...first, id: crypto.randomUUID(), comment: records.map((c) => c.comment.trim()).filter(Boolean).join("\n\n"), updated: now }, anchors);
     const after = [...records.map((c) => ({ ...c, combinedInto: combined.id, deletedAt: now, deletedWasResolved: c.resolved, resolved: true, updated: now })), combined];
     await this.store.applyStudyEdits(records, after, async () => {
-      if ((await this.source(first.path)).text !== text2) throw Error("Note changed.");
+      if ((await this.source(first.path)).text !== text3) throw Error("Note changed.");
     });
     return clone4(combined);
   }
   async preview(path, variants, options = {}) {
     if (!variants.length || variants.length > 500 || new Set(variants.map((v) => v.key)).size !== variants.length) throw Error("Supply 1\u2013500 variants with distinct keys.");
-    const { f, text: text2 } = await this.source(path);
+    const { f, text: text3 } = await this.source(path);
     await this.store.refresh();
     const inventorySignature = this.inventorySignature(path);
     const ids = [...new Set(variants.flatMap((v) => v.directiveIds))], before = clone4(ids.map((id3) => {
       const c = this.store.data.comments.find((c2) => c2.id === id3 && c2.path === path && (c2.study || c2.code?.purpose === "question") && !c2.deletedAt && !c2.resolved && !c2.conflictOf);
-      if (!c || !c.code && !this.located(text2, c) || this.store.annotationBusy(id3)) throw Error("Study group changed, is ambiguous, or has an open draft: " + id3);
+      if (!c || !c.code && !this.located(text3, c) || this.store.annotationBusy(id3)) throw Error("Study group changed, is ambiguous, or has an open draft: " + id3);
       return c;
     }));
-    const inventory = await studyInventory(path, text2, this.store.data.comments, this.store.app.plugins.plugins["code-links"]);
+    const inventory = await studyInventory(path, text3, this.store.data.comments, this.store.app.plugins.plugins["code-links"]);
     const accounting = accountForInstructions(inventory.groups, ids, options.instructions);
     if (accounting.related.some((m) => this.store.annotationBusy(m.id))) throw Error("Finish editing related instructions before preparing.");
     const codeSources = {};
-    for (const c of before) codeSources[c.id] = await this.requireLocated(text2, c);
+    for (const c of before) codeSources[c.id] = await this.requireLocated(text3, c);
     const destination = await chapterDestination(this.store.app, f), questions = [];
     for (const v of variants) {
       if (!v.key.trim() || !Array.isArray(v.directiveIds) || v.directiveIds.some((id4) => !ids.includes(id4))) throw Error("Invalid variant.");
@@ -41938,7 +42308,7 @@ var StudyDirectiveApi = class {
     if (inventorySignature !== this.inventorySignature(path)) throw Error("Study instructions changed during preparation; prepare again.");
     if (accounting.related.some((m) => this.store.annotationBusy(m.id))) throw Error("Finish editing related instructions before preparing.");
     const token = crypto.randomUUID();
-    this.plans.set(token, { codeSources, path, source: text2, before, after, questions, inventory: inventorySignature, instructionIds: accounting.instructionIds, deferredIds: accounting.deferredIds, expires: Date.now() + 6e5 });
+    this.plans.set(token, { codeSources, path, source: text3, before, after, questions, inventory: inventorySignature, instructionIds: accounting.instructionIds, deferredIds: accounting.deferredIds, expires: Date.now() + 6e5 });
     return { token, questions: clone4(questions), consumedIds: ids, priorVariants, ...accounting };
   }
   async apply(token) {
@@ -41959,17 +42329,17 @@ var StudyDirectiveApi = class {
     const verify = async () => {
       for (const q of p.questions) {
         const f = v.getAbstractFileByPath(q.path);
-        if (!(f instanceof import_obsidian15.TFile) || await v.read(f) !== q.raw) throw Error("A generated question differs or is missing: " + q.path);
+        if (!(f instanceof import_obsidian17.TFile) || await v.read(f) !== q.raw) throw Error("A generated question differs or is missing: " + q.path);
         parseQuestion(q.raw, q.path);
       }
     };
     const receipt = { questionIds: p.questions.map((q) => q.definition.id), paths: p.questions.map((q) => q.path), consumedIds: p.before.map((c) => c.id), instructionIds: p.instructionIds, deferredIds: p.deferredIds };
-    if (p.before.length && p.after.every((c) => same(c, this.store.data.comments.find((n) => n.id === c.id)))) {
+    if (p.before.length && p.after.every((c) => equalReview(c, this.store.data.comments.find((n) => n.id === c.id)))) {
       await verify();
       return { ...receipt, alreadyApplied: true };
     }
     await check3();
-    for (const c of p.before) if (this.store.annotationBusy(c.id) || !same(c, this.store.data.comments.find((n) => n.id === c.id))) throw Error("Study group changed; prepare again.");
+    for (const c of p.before) if (this.store.annotationBusy(c.id) || !equalReview(c, this.store.data.comments.find((n) => n.id === c.id))) throw Error("Study group changed; prepare again.");
     for (const q of p.questions) {
       let prefix = "";
       for (const part of q.path.split("/").slice(0, -1)) {
@@ -41995,7 +42365,7 @@ var StudyDirectiveApi = class {
 };
 
 // src/visibility-controls.ts
-var import_obsidian16 = require("obsidian");
+var import_obsidian18 = require("obsidian");
 
 // src/annotation-visibility.ts
 function readVisibility(raw) {
@@ -42045,7 +42415,7 @@ var VisibilityControls = class {
     const actions = this.el.createDiv("study-visibility-actions");
     for (const [label, show] of [["Hide all", false], ["Show all", true]]) {
       const b = actions.createEl("button", { text: label, attr: { type: "button" } });
-      b.onclick = () => void store.showAllAnnotations(show).catch((e) => new import_obsidian16.Notice(String(e)));
+      b.onclick = () => void store.showAllAnnotations(show).catch((e) => new import_obsidian18.Notice(String(e)));
     }
     this.rows = this.el.createDiv("study-visibility-types");
     this.rows.setAttribute("role", "group");
@@ -42081,7 +42451,7 @@ var VisibilityControls = class {
         }
         const b = this.rows.createEl("button", { text: entry.meaning || "Uncategorized", cls: "study-visibility-type", attr: { type: "button", "aria-label": `Show ${label}: ${entry.meaning || "Uncategorized"}` } });
         b.dataset.visibilityKey = entry.key;
-        b.onclick = () => void this.store.toggleVisibleType(entry.key).catch((e) => new import_obsidian16.Notice(String(e)));
+        b.onclick = () => void this.store.toggleVisibleType(entry.key).catch((e) => new import_obsidian18.Notice(String(e)));
         this.buttons.set(entry.key, b);
       }
       if (key2) this.buttons.get(key2)?.focus({ preventScroll: true });
@@ -42093,13 +42463,13 @@ var VisibilityControls = class {
       const b = this.buttons.get(e.key);
       if (b.getAttribute("aria-pressed") !== String(visible)) b.setAttribute("aria-pressed", String(visible));
     }
-    const text2 = shown ? `${shown} of ${entries.length} types shown` : "All annotations hidden";
-    if (this.status.textContent !== text2) this.status.setText(text2);
+    const text3 = shown ? `${shown} of ${entries.length} types shown` : "All annotations hidden";
+    if (this.status.textContent !== text3) this.status.setText(text3);
   }
 };
 
 // src/study-palette.ts
-var import_obsidian17 = require("obsidian");
+var import_obsidian19 = require("obsidian");
 
 // src/palette-position.ts
 function palettePosition(x, y, width, height, viewportWidth, viewportHeight, headerBottom = 40) {
@@ -42146,13 +42516,13 @@ var StudyPalette = class {
     const serial = ++this.serial;
     this.context = void 0;
     try {
-      const context = this.fixed ?? await this.capture(doc2);
+      const context2 = this.fixed ?? await this.capture(doc2);
       if (serial !== this.serial || !this.el) return;
-      this.context = context;
-      if (context) this.index = Math.max(0, context.choices.findIndex((c) => c.type === context.selected));
+      this.context = context2;
+      if (context2) this.index = Math.max(0, context2.choices.findIndex((c) => c.type === context2.selected));
       this.render();
     } catch (e) {
-      if (serial === this.serial && !quiet) new import_obsidian17.Notice(String(e));
+      if (serial === this.serial && !quiet) new import_obsidian19.Notice(String(e));
     }
   }
   open(doc2, fixed) {
@@ -42170,7 +42540,7 @@ var StudyPalette = class {
       head.tabIndex = 0;
       head.setAttribute("aria-label", "Move study palette");
       const close = head.createEl("button", { cls: "clickable-icon", attr: { "aria-label": "Close study annotation palette" } });
-      (0, import_obsidian17.setIcon)(close, "x");
+      (0, import_obsidian19.setIcon)(close, "x");
       close.onclick = () => this.close(true);
       el.createDiv("study-type-swatches");
       el.createDiv({ cls: "study-palette-meaning", text: "Select text or code, then choose a study type." }).setAttribute("aria-live", "polite");
@@ -42320,7 +42690,7 @@ var StudyPalette = class {
       this.context = void 0;
       this.el?.querySelector(".study-palette-meaning")?.setText("Saved. Select the next passage.");
     } catch (e) {
-      new import_obsidian17.Notice(String(e));
+      new import_obsidian19.Notice(String(e));
     } finally {
       this.busy = false;
       this.render();
@@ -42329,7 +42699,7 @@ var StudyPalette = class {
 };
 
 // src/regular-selection.ts
-var import_obsidian18 = require("obsidian");
+var import_obsidian20 = require("obsidian");
 function regularMark(c) {
   return !c.study && !c.code && !c.questionId && c.kind !== "sticky" && !c.deletedAt && !c.resolved && !c.conflictOf;
 }
@@ -42355,20 +42725,20 @@ var RegularSelectionApi = class {
   }
   async source(path) {
     const file = this.store.app.vault.getAbstractFileByPath(path);
-    if (!(file instanceof import_obsidian18.TFile)) throw Error("Source note missing.");
-    const text2 = await this.store.app.vault.read(file);
+    if (!(file instanceof import_obsidian20.TFile)) throw Error("Source note missing.");
+    const text3 = await this.store.app.vault.read(file);
     for (const l of this.store.app.workspace.getLeavesOfType("markdown")) {
       const v = l.view;
-      if (v instanceof import_obsidian18.MarkdownView && v.file?.path === path && v.getMode() === "source" && v.editor.getValue() !== text2) throw Error("Wait for the note to finish saving.");
+      if (v instanceof import_obsidian20.MarkdownView && v.file?.path === path && v.getMode() === "source" && v.editor.getValue() !== text3) throw Error("Wait for the note to finish saving.");
     }
-    return text2;
+    return text3;
   }
   async create(path, expected, anchors, style, p, editing = false) {
     if (style === "sticky" || !anchors.length || anchors.length > 128) throw Error("Select note fragments first.");
     const c = withExcerpts({ id: crypto.randomUUID(), path, quote: "", before: "", after: "", comment: "", markStyle: style, color: p.color, darkColor: p.darkColor, intent: p.meaning, updated: (/* @__PURE__ */ new Date()).toISOString(), resolved: false }, JSON.parse(JSON.stringify(anchors)));
     await this.store.applyRegularEdits([], [c], async () => {
-      const text2 = await this.source(path);
-      if (text2 !== expected || anchors.some((a2) => a2.path !== path || !marginLocation(text2, a2))) throw Error("Selection changed. Select the fragments again.");
+      const text3 = await this.source(path);
+      if (text3 !== expected || anchors.some((a2) => a2.path !== path || !marginLocation(text3, a2))) throw Error("Selection changed. Select the fragments again.");
     });
     this.store.warnHidden(c);
     await this.store.openMargin?.(c, editing);
@@ -42379,9 +42749,9 @@ var RegularSelectionApi = class {
     await this.store.refresh();
     const records = JSON.parse(JSON.stringify([...new Set(ids)].map((id3) => this.store.data.comments.find((c) => c.id === id3))));
     if (records.some((c) => !c)) throw Error("Annotation no longer exists.");
-    const text2 = await this.source(records[0].path), combined = combinedRegular(records, text2), stamp = (/* @__PURE__ */ new Date()).toISOString();
+    const text3 = await this.source(records[0].path), combined = combinedRegular(records, text3), stamp = (/* @__PURE__ */ new Date()).toISOString();
     await this.store.applyRegularEdits(records, [...records.map((c) => ({ ...c, combinedInto: combined.id, deletedAt: stamp, deletedWasResolved: c.resolved, resolved: true, updated: stamp })), combined], async () => {
-      if (await this.source(combined.path) !== text2) throw Error("Note changed while combining.");
+      if (await this.source(combined.path) !== text3) throw Error("Note changed while combining.");
     });
     return combined;
   }
@@ -42413,7 +42783,7 @@ function selectionChoice(value) {
 }
 
 // src/menu-groups.ts
-var import_obsidian19 = require("obsidian");
+var import_obsidian21 = require("obsidian");
 function menuGroup(menu, key2, title, icon, section = key2 === "insert" ? "insert" : key2 === "annotation-visibility" ? "view" : key2.startsWith("mark-") ? "selection" : "action") {
   menu.setUseNativeMenu(false);
   const symbol = Symbol.for("research-studio.menu." + key2), host = menu;
@@ -42424,7 +42794,7 @@ function menuGroup(menu, key2, title, icon, section = key2 === "insert" ? "inser
     const native = item;
     if (typeof native.setSubmenu === "function") child = native.setSubmenu();
     else {
-      child = new import_obsidian19.Menu();
+      child = new import_obsidian21.Menu();
       item.onClick((event) => {
         const target = event.target, box = target?.getBoundingClientRect();
         child.showAtPosition({ x: box?.right ?? 100, y: box?.top ?? 100 });
@@ -42464,7 +42834,7 @@ function appearanceItems(menu, c, palette, change) {
 }
 
 // src/study-type-menu.ts
-var import_obsidian20 = require("obsidian");
+var import_obsidian22 = require("obsidian");
 function studyTypeItems(menu, c, change, app, doc2) {
   const choices = studyTypeChoices(c);
   if (!choices.length) return;
@@ -42472,30 +42842,30 @@ function studyTypeItems(menu, c, change, app, doc2) {
   if (palette) menu.addItem((i) => i.setTitle("Study annotation palette\u2026").setIcon("palette").onClick(() => palette.open(doc2 ?? app.workspace.activeLeaf?.view.containerEl.ownerDocument ?? document, { path: c.path, description: "Change this study annotation", selected: currentStudyType(c), choices: choices.map((x) => ({ ...x, ...x.type === "question" || x.type === "table" || x.type === "text" ? studyPalette[x.type] : x.type === "form" ? { color: "#d94444", darkColor: "#ff6868" } : { color: "#e2b714", darkColor: "#ffe066" } })), apply: change })));
   const sub = menuGroup(menu, "study-type-" + c.id, "Change study type", "highlighter");
   for (const { type, label } of choices) sub.addItem((i) => i.setTitle(label).setChecked(type === currentStudyType(c)).onClick(() => {
-    void Promise.resolve().then(() => change(type)).catch((e) => new import_obsidian20.Notice(String(e)));
+    void Promise.resolve().then(() => change(type)).catch((e) => new import_obsidian22.Notice(String(e)));
   }));
 }
 
 // src/study-selection.ts
-var import_obsidian23 = require("obsidian");
+var import_obsidian25 = require("obsidian");
 
 // src/margin-anchors.ts
 var import_view11 = require("@codemirror/view");
-var import_obsidian21 = require("obsidian");
-var import_obsidian22 = require("obsidian");
+var import_obsidian23 = require("obsidian");
+var import_obsidian24 = require("obsidian");
 
 // src/resize-dom.ts
 function resizeDOM(p, postit = false) {
   const points = [], aliases = /* @__PURE__ */ new Map(), mathOffsets = /* @__PURE__ */ new Map(), formulas = [];
-  let text2 = "", afterBreak = false;
+  let text3 = "", afterBreak = false;
   const alias = (node, offset) => {
     let map2 = aliases.get(node);
     if (!map2) aliases.set(node, map2 = /* @__PURE__ */ new Map());
-    map2.set(offset, text2.length);
+    map2.set(offset, text3.length);
   };
   const point = (node, offset) => {
     alias(node, offset);
-    points[text2.length] = { node, offset };
+    points[text3.length] = { node, offset };
   };
   const walk = (node) => {
     if (node.nodeType === 1) {
@@ -42505,7 +42875,7 @@ function resizeDOM(p, postit = false) {
       if (postit && el.matches("a,code,img,.internal-embed")) {
         const parent = node.parentNode, index2 = [...parent.childNodes].indexOf(node);
         point(parent, index2);
-        text2 += el.matches("a") ? "\uFFF9" : el.matches("code") ? "\uFFFA" : "\uFFFB";
+        text3 += el.matches("a") ? "\uFFF9" : el.matches("code") ? "\uFFFA" : "\uFFFB";
         point(parent, index2 + 1);
         return;
       }
@@ -42515,11 +42885,11 @@ function resizeDOM(p, postit = false) {
         point(parent, index2);
         if (el.matches(".math")) {
           afterBreak = false;
-          mathOffsets.set(el, text2.length);
+          mathOffsets.set(el, text3.length);
           formulas.push(el.querySelector("mjx-math")?.getAttribute("data-latex") ?? el.textContent ?? "");
-          text2 += "\uFFFC";
+          text3 += "\uFFFC";
         } else {
-          text2 += "\n";
+          text3 += "\n";
           afterBreak = true;
         }
         point(parent, index2 + 1);
@@ -42533,7 +42903,7 @@ function resizeDOM(p, postit = false) {
       for (let i = 0; i < skip; i++) alias(t2, i + 1);
       for (let i = skip; i < t2.length; i++) {
         point(t2, i);
-        text2 += t2.data[i];
+        text3 += t2.data[i];
       }
       point(t2, t2.length);
       return;
@@ -42546,19 +42916,19 @@ function resizeDOM(p, postit = false) {
     }
   };
   walk(p);
-  return { text: text2, points, mathOffsets, fingerprint: JSON.stringify(formulas), offset: (node, offset) => aliases.get(node)?.get(offset) };
+  return { text: text3, points, mathOffsets, fingerprint: JSON.stringify(formulas), offset: (node, offset) => aliases.get(node)?.get(offset) };
 }
 
 // src/margin-anchors.ts
 var contexts = /* @__PURE__ */ new WeakMap();
 var sourceIndexes = /* @__PURE__ */ new Map();
-function index(path, text2) {
+function index(path, text3) {
   let value = sourceIndexes.get(path);
-  if (value?.text !== text2) {
+  if (value?.text !== text3) {
     const lines = [0];
     let at = -1;
-    while ((at = text2.indexOf("\n", at + 1)) >= 0) lines.push(at + 1);
-    value = { text: text2, lines, hits: /* @__PURE__ */ new Map() };
+    while ((at = text3.indexOf("\n", at + 1)) >= 0) lines.push(at + 1);
+    value = { text: text3, lines, hits: /* @__PURE__ */ new Map() };
     sourceIndexes.set(path, value);
     if (sourceIndexes.size > 4) sourceIndexes.delete(sourceIndexes.keys().next().value);
   }
@@ -42567,7 +42937,7 @@ function index(path, text2) {
 function liveCalloutContext(root) {
   const widget = root.closest(".cm-callout"), editor = widget?.closest(".cm-editor");
   if (!widget || !editor || root.closest('.markdown-embed,.canvas-node,.study-card,.study-margin-pane,[data-code-links-host]:not([data-code-links-host="protected"])')) return;
-  const view = import_view11.EditorView.findFromDOM(editor), path = view?.state.field(import_obsidian21.editorInfoField, false)?.file?.path;
+  const view = import_view11.EditorView.findFromDOM(editor), path = view?.state.field(import_obsidian23.editorInfoField, false)?.file?.path;
   if (!view || !path) return;
   const info = calloutSection(view, widget);
   if (info) return { path, info };
@@ -42582,25 +42952,25 @@ function registerReadingContext(el, path, ctx) {
 function sectionContext(root) {
   let el = root;
   while (el) {
-    const context = contexts.get(el), info = context?.info();
-    if (context && info) return { context, info, el };
+    const context2 = contexts.get(el), info = context2?.info();
+    if (context2 && info) return { context: context2, info, el };
     const live = liveCalloutContext(el);
-    if (live && (!context || context.path() === live.path)) return { context: { path: () => live.path, info: () => live.info }, info: live.info, el };
+    if (live && (!context2 || context2.path() === live.path)) return { context: { path: () => live.path, info: () => live.info }, info: live.info, el };
     el = el.parentElement?.closest("[data-study-comment-section]") ?? null;
   }
 }
 function ownedText(root) {
   const walker = root.ownerDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  let n, text2 = "";
-  while (n = walker.nextNode()) if (n.parentElement?.closest("[data-study-comment-section]") === root && !n.parentElement.closest('.code-links-panel,[data-code-links-host]:not([data-code-links-host="protected"]),code,pre,mjx-container,.math,.study-reference-gutter,button,input,textarea')) text2 += n.textContent ?? "";
-  return text2;
+  let n, text3 = "";
+  while (n = walker.nextNode()) if (n.parentElement?.closest("[data-study-comment-section]") === root && !n.parentElement.closest('.code-links-panel,[data-code-links-host]:not([data-code-links-host="protected"]),code,pre,mjx-container,.math,.study-reference-gutter,button,input,textarea')) text3 += n.textContent ?? "";
+  return text3;
 }
 function readingAnchorApplies(root, a2, knownInfo) {
   const registered = contexts.get(root), found = knownInfo && registered ? { context: registered, info: knownInfo, el: root } : sectionContext(root);
   if (!found) return false;
-  const { context, info, el } = found;
+  const { context: context2, info, el } = found;
   if (el !== root && !a2.sectionSource) return false;
-  const entry = index(context.path(), info.text), from = entry.lines[info.lineStart] ?? 0, to = entry.lines[info.lineEnd + 1] ?? info.text.length;
+  const entry = index(context2.path(), info.text), from = entry.lines[info.lineStart] ?? 0, to = entry.lines[info.lineEnd + 1] ?? info.text.length;
   if (a2.sectionSource) {
     const section = info.text.slice(from, to);
     return (symbolTextProjection(section)?.text ?? section).trimEnd() === a2.sectionSource.trimEnd() && (!a2.renderedRoot || a2.renderedRoot === ownedText(root));
@@ -42623,7 +42993,7 @@ function editorExcerpts(raw, from, to, path) {
       if (part) return [{ id: crypto.randomUUID(), path, quote: inside2.raw, before: raw.slice(Math.max(0, inside2.from - 48), inside2.from), after: raw.slice(inside2.to, inside2.to + 48), kind: "math", part, renderedQuote: "$" + part.nodes.map((n) => n.latex).join(" ") + "$" }];
     } catch {
     }
-    new import_obsidian22.Notice("Select this part in rendered math, then right-click to add a note.");
+    new import_obsidian24.Notice("Select this part in rendered math, then right-click to add a note.");
     return [];
   }
   const result = [];
@@ -42669,10 +43039,10 @@ function readingExcerpts(selection, path) {
     while (node = walker.nextNode()) {
       const parent = node.parentElement;
       if (parent?.closest("[data-study-comment-section]") !== root || parent.closest('.code-links-panel,[data-code-links-host]:not([data-code-links-host="protected"]),code,pre,mjx-container,.math,.study-reference-gutter,button,input,textarea')) continue;
-      const text2 = node.textContent ?? "";
+      const text3 = node.textContent ?? "";
       if (range.intersectsNode(node)) {
-        const start = node === range.startContainer ? range.startOffset : 0, end = node === range.endContainer ? range.endOffset : text2.length;
-        const piece = text2.slice(start, end);
+        const start = node === range.startContainer ? range.startOffset : 0, end = node === range.endContainer ? range.endOffset : text3.length;
+        const piece = text3.slice(start, end);
         if (piece) {
           if (first < 0) first = raw.length + start;
           last = raw.length + end;
@@ -42680,7 +43050,7 @@ function readingExcerpts(selection, path) {
           pieces.push(piece);
         }
       }
-      raw += text2;
+      raw += text3;
     }
     if (selected.trim()) {
       const anchor = sourceAnchor(path, info, selected, raw.slice(Math.max(0, first - 48), first), raw.slice(last, last + 48), pieces);
@@ -42703,7 +43073,7 @@ function readingExcerpts(selection, path) {
   return result;
 }
 function readingMathTargets(root, a2) {
-  const context = contexts.get(root), info = context?.info();
+  const context2 = contexts.get(root), info = context2?.info();
   if (!info) return [];
   const entry = index(a2.path, info.text), offset = entry.lines[info.lineStart] ?? 0, qs = equations(info.text.slice(offset, entry.lines[info.lineEnd + 1] ?? info.text.length));
   const elements = Array.from(root.querySelectorAll(".math")).filter((el) => el.closest("[data-study-comment-section]") === root);
@@ -42881,8 +43251,8 @@ function registerStudySelections(plugin2, api, onStudyContextMenu) {
   const palette = new StudyPalette(plugin2, async (doc2) => {
     const code = plugin2.app.plugins.plugins["code-links"];
     for (const reader of code?.codeReaders ?? []) {
-      const context = reader.studyPaletteContext?.(doc2);
-      if (context) return context;
+      const context2 = reader.studyPaletteContext?.(doc2);
+      if (context2) return context2;
     }
     return captures.get(doc2)?.();
   }, api.store);
@@ -42916,7 +43286,7 @@ function registerStudySelections(plugin2, api, onStudyContextMenu) {
       await plugin2.app.vault.adapter.write(settings, JSON.stringify(last));
       await plugin2.app.vault.adapter.write(studySettings, JSON.stringify(lastStudy));
     });
-    void preferenceWrite.catch(() => new import_obsidian23.Notice("Annotation saved; last choice could not be remembered."));
+    void preferenceWrite.catch(() => new import_obsidian25.Notice("Annotation saved; last choice could not be remembered."));
   };
   store.regularMarkCreated = (path, style, palette2) => {
     if (style !== "sticky") remember(path, { kind: "regular", style, palette: palette2 });
@@ -42934,7 +43304,7 @@ function registerStudySelections(plugin2, api, onStudyContextMenu) {
     store.pendingAnnotationSelection = void 0;
     store.createPendingMark = void 0;
   });
-  const run = (fn) => void fn().catch((e) => new import_obsidian23.Notice(String(e)));
+  const run = (fn) => void fn().catch((e) => new import_obsidian25.Notice(String(e)));
   const attach = (doc2) => {
     if (docs.has(doc2)) return;
     docs.add(doc2);
@@ -42942,7 +43312,7 @@ function registerStudySelections(plugin2, api, onStudyContextMenu) {
     const session = new StudySelectionSession(), groups = /* @__PURE__ */ new Set();
     let ranges = [], down;
     let cancelled = 0, queue = Promise.resolve(), observer, timer, shiftToggle = false;
-    const views = () => plugin2.app.workspace.getLeavesOfType("markdown").map((l) => l.view).filter((v) => v instanceof import_obsidian23.MarkdownView && v.containerEl.ownerDocument === doc2);
+    const views = () => plugin2.app.workspace.getLeavesOfType("markdown").map((l) => l.view).filter((v) => v instanceof import_obsidian25.MarkdownView && v.containerEl.ownerDocument === doc2);
     const viewAt = (node) => views().find((v) => !!node && v.containerEl.contains(node));
     const sourceView = () => views().find((v) => v.file?.path === session.path);
     const cmOf = (view) => view.editor?.cm;
@@ -43119,7 +43489,7 @@ function registerStudySelections(plugin2, api, onStudyContextMenu) {
       for (const p of parts) anchors.push(...anchorsFor2(view, p.range, p.editor));
       const captured = parts.flatMap((p) => p.range ? [p.range] : []);
       if (!anchors.length) {
-        if (!silent) new import_obsidian23.Notice("That selection cannot be anchored. Select note text, a whole equation part, or table cells.");
+        if (!silent) new import_obsidian25.Notice("That selection cannot be anchored. Select note text, a whole equation part, or table cells.");
         return;
       }
       queue = queue.then(async () => {
@@ -43129,14 +43499,14 @@ function registerStudySelections(plugin2, api, onStudyContextMenu) {
         try {
           session.add(path, raw, anchors);
         } catch (e) {
-          new import_obsidian23.Notice(String(e));
+          new import_obsidian25.Notice(String(e));
           return;
         }
         if (!wasActive) stopObserving();
         ranges = wasActive ? [...ranges, ...captured] : captured;
         paint2();
         observe();
-      }).catch((e) => new import_obsidian23.Notice(String(e)));
+      }).catch((e) => new import_obsidian25.Notice(String(e)));
     };
     const cleanFragments = () => session.fragments.map((a2) => {
       const copy = { ...a2 };
@@ -43153,7 +43523,7 @@ function registerStudySelections(plugin2, api, onStudyContextMenu) {
       }
       remember(path, choice);
       if (session.generation === generation) {
-        const view = plugin2.app.workspace.getActiveViewOfType(import_obsidian23.MarkdownView);
+        const view = plugin2.app.workspace.getActiveViewOfType(import_obsidian25.MarkdownView);
         if (view?.getMode() === "source" && view.file?.path === path) view.editor.setCursor(view.editor.getCursor("to"));
         clear();
         doc2.getSelection()?.removeAllRanges();
@@ -43166,7 +43536,7 @@ function registerStudySelections(plugin2, api, onStudyContextMenu) {
     };
     const picker = (x, y) => {
       if (!session.active) return;
-      const choice = selectionChoice(last[session.path]), menu = new import_obsidian23.Menu();
+      const choice = selectionChoice(last[session.path]), menu = new import_obsidian25.Menu();
       const studyLabel = (rule) => rule === "text" ? "Text / math blank \xB7 cyan pattern" : rule === "table" ? "Table blank \xB7 orange pattern" : "General question \xB7 magenta pattern";
       const label = choice.kind === "study" ? studyLabel(choice.rule) : styleNames[choice.style] + " \xB7 " + choice.palette.meaning;
       menu.addItem((i) => i.setSection("selection").setTitle(label + " \xB7 last used").setIcon("highlighter").onClick(() => run(() => choose(choice))));
@@ -43230,7 +43600,7 @@ function registerStudySelections(plugin2, api, onStudyContextMenu) {
         const readers = plugin2.app.plugins.plugins["code-links"]?.codeReaders ?? [];
         if ([...readers].some((reader) => reader.host?.contains(range.startContainer) && reader.host.contains(range.endContainer))) return;
         if (excluded(range.startContainer, view) || excluded(range.endContainer, view) || crossesExcluded(range, view)) {
-          new import_obsidian23.Notice("Selections cannot include code excerpts or embedded editors. Select the text on each side separately.");
+          new import_obsidian25.Notice("Selections cannot include code excerpts or embedded editors. Select the text on each side separately.");
           return;
         }
         const parts = [];
@@ -43257,11 +43627,11 @@ function registerStudySelections(plugin2, api, onStudyContextMenu) {
       }
       paintGroups();
     };
-    const context = (e) => {
+    const context2 = (e) => {
       const target = e.target instanceof win.Element ? e.target : null;
       if (!target || target.closest(".study-margin-pane,.study-margin-note,.code-links-panel,.code-links-code,[data-image-owner],.ss-scientific")) return;
       if (viewAt(target) && !target.closest("img,a")) {
-        const m = import_obsidian23.Menu.forEvent(e);
+        const m = import_obsidian25.Menu.forEvent(e);
         onStudyContextMenu?.(m, e);
         m.__studyPalette = true;
         m.addItem((i) => i.setSection("selection").setTitle("Study annotation palette\u2026").setIcon("palette").onClick(() => palette.open(doc2)));
@@ -43269,7 +43639,7 @@ function registerStudySelections(plugin2, api, onStudyContextMenu) {
       const undo2 = idsAt(target).filter((id3) => store.data.comments.some((n) => n.combinedInto === id3)), actions = contextActions({ pending: viewAt(target)?.file?.path === session.path ? session.fragments.length : 0, groups: groups.size, undo: undo2 });
       const ids = idsAt(target);
       if (!actions.length && !ids.length) return;
-      const menu = import_obsidian23.Menu.forEvent(e);
+      const menu = import_obsidian25.Menu.forEvent(e);
       for (const id3 of ids) {
         const c = store.data.comments.find((c2) => c2.id === id3);
         if (c) studyTypeItems(menu, c, (type) => run(() => store.changeStudyType(id3, type)));
@@ -43299,7 +43669,7 @@ function registerStudySelections(plugin2, api, onStudyContextMenu) {
     const openPicker = (checking) => {
       const target = doc2.activeElement;
       if (target && (target.closest(EXCLUDED) || target.closest(".cm-editor") && !views().some((v) => cmOf(v)?.dom === target.closest(".cm-editor")))) return false;
-      const active = plugin2.app.workspace.getActiveViewOfType(import_obsidian23.MarkdownView);
+      const active = plugin2.app.workspace.getActiveViewOfType(import_obsidian25.MarkdownView);
       const sel = doc2.getSelection(), range = sel?.rangeCount && !sel.isCollapsed ? sel.getRangeAt(0) : void 0;
       const view = range ? viewAt(range.startContainer) : active;
       if (!view?.file || view.containerEl.ownerDocument !== doc2) return false;
@@ -43320,7 +43690,7 @@ function registerStudySelections(plugin2, api, onStudyContextMenu) {
     captures.set(doc2, async () => {
       await queue;
       const sel = doc2.getSelection(), range = sel?.rangeCount && !sel.isCollapsed ? sel.getRangeAt(0) : void 0;
-      const view = range ? viewAt(range.startContainer) : plugin2.app.workspace.getActiveViewOfType(import_obsidian23.MarkdownView);
+      const view = range ? viewAt(range.startContainer) : plugin2.app.workspace.getActiveViewOfType(import_obsidian25.MarkdownView);
       if (!view?.file || view.containerEl.ownerDocument !== doc2) return;
       const editor = view.getMode() === "source" && (!range || editorMode(view, range)) ? editorRanges(view) : void 0;
       if (range && (!view.containerEl.contains(range.endContainer) || excluded(range.startContainer, view) || excluded(range.endContainer, view) || crossesExcluded(range, view))) return;
@@ -43361,7 +43731,7 @@ function registerStudySelections(plugin2, api, onStudyContextMenu) {
     doc2.addEventListener("mouseup", onUp, true);
     doc2.addEventListener("click", click, true);
     doc2.addEventListener("keydown", key2, true);
-    doc2.addEventListener("contextmenu", context, true);
+    doc2.addEventListener("contextmenu", context2, true);
     plugin2.register(() => {
       clear();
       clearGroups();
@@ -43369,7 +43739,7 @@ function registerStudySelections(plugin2, api, onStudyContextMenu) {
       handlers2.delete(doc2);
       captures.delete(doc2);
       pending.delete(doc2);
-      for (const [name2, fn] of [["mousedown", onDown], ["mouseup", onUp], ["click", click], ["keydown", key2], ["contextmenu", context]]) doc2.removeEventListener(name2, fn, true);
+      for (const [name2, fn] of [["mousedown", onDown], ["mouseup", onUp], ["click", click], ["keydown", key2], ["contextmenu", context2]]) doc2.removeEventListener(name2, fn, true);
     });
   };
   plugin2.addCommand({ id: "study-selection-picker", name: "Annotate selected fragments", hotkeys: [{ modifiers: ["Mod", "Shift"], key: "B" }], checkCallback: (checking) => {
@@ -43409,16 +43779,16 @@ function answerContext(source, id3, answers) {
   const width = widths.length ? widths.sort((a2, b) => widths.filter((x) => x === b).length - widths.filter((x) => x === a2).length || Math.abs(a2 - 4) - Math.abs(b - 4))[0] : 4;
   return { before, after, unit: " ".repeat(Math.max(1, Math.min(8, width))) };
 }
-function answerIndent(language2, context) {
-  const lang = writtenLanguage(language2), unit2 = indentUnit.of(context.unit);
+function answerIndent(language2, context2) {
+  const lang = writtenLanguage(language2), unit2 = indentUnit.of(context2.unit);
   return [unit2, indentService.of((cx, pos) => {
-    const prefix = context.before.length;
-    const state = EditorState.create({ doc: context.before + cx.state.doc.toString() + context.after, extensions: [lang ?? [], unit2] });
+    const prefix = context2.before.length;
+    const state = EditorState.create({ doc: context2.before + cx.state.doc.toString() + context2.after, extensions: [lang ?? [], unit2] });
     const breakAt = cx.simulatedBreak;
     if (!ensureSyntaxTree(state, prefix + pos, 100)) return null;
     const desired = getIndentation(new IndentContext(state, breakAt === null ? {} : { simulateBreak: prefix + breakAt }), prefix + pos);
     if (desired !== null && breakAt === null && cx.state.doc.lineAt(pos).number === 1) {
-      const leading = context.before.slice(context.before.lastIndexOf("\n") + 1);
+      const leading = context2.before.slice(context2.before.lastIndexOf("\n") + 1);
       if (/\S/.test(leading)) return null;
       const relative = desired - cx.countColumn(leading, leading.length);
       return relative >= 0 ? relative : null;
@@ -43428,8 +43798,8 @@ function answerIndent(language2, context) {
 }
 
 // src/code-answer-highlight.ts
-function answerHighlights(value, context, tokenize2) {
-  const start = context.before.length, end = start + value.length, ranges = [];
+function answerHighlights(value, context2, tokenize2) {
+  const start = context2.before.length, end = start + value.length, ranges = [];
   let offset = 0;
   const visit3 = (token, parents) => {
     if (typeof token === "string") {
@@ -43441,7 +43811,7 @@ function answerHighlights(value, context, tokenize2) {
       for (const child of Array.isArray(token.content) ? token.content : [token.content]) visit3(child, classes);
     }
   };
-  for (const token of tokenize2(context.before + value + context.after)) visit3(token, []);
+  for (const token of tokenize2(context2.before + value + context2.after)) visit3(token, []);
   return ranges;
 }
 
@@ -43458,14 +43828,14 @@ var highlight = HighlightStyle.define([
 ]);
 var drawnSelection = drawSelection();
 var answerTheme = EditorView.theme({ "&": { fontSize: "inherit", minWidth: "12ch", maxWidth: "100%" }, ".cm-content": { fontFamily: "var(--font-monospace)", padding: "4px 6px", minHeight: "1.6em" }, ".cm-line": { padding: "0" }, ".cm-scroller": { overflow: "auto", maxHeight: "24em" }, "&.cm-focused": { outline: "none" } });
-function codeAnswerEditor(host, language2, value, label, owner, changed, context = { before: "", after: "", unit: "    " }, tokenize2, paintContext = context) {
+function codeAnswerEditor(host, language2, value, label, owner, changed, context2 = { before: "", after: "", unit: "    " }, tokenize2, paintContext = context2) {
   const surface = host.createSpan({ cls: "study-code-answer-editor" }), editable2 = new Compartment(), selectionDrawing = new Compartment();
   let locked = false, quiet = false;
   const lang = writtenLanguage(language2);
   const paint2 = (state) => Decoration.set(answerHighlights(state.doc.toString(), paintContext, tokenize2).map((r) => Decoration.mark({ class: r.class }).range(r.from, r.to)), true);
   const contextual = tokenize2 ? StateField.define({ create: paint2, update: (marks2, tr) => tr.docChanged ? paint2(tr.state) : marks2, provide: (field) => EditorView.decorations.from(field) }) : syntaxHighlighting(highlight);
   const view = new EditorView({ parent: surface, root: host.ownerDocument, state: EditorState.create({ doc: value, extensions: [
-    answerIndent(language2, context),
+    answerIndent(language2, context2),
     lang ?? [],
     contextual,
     history(),
@@ -43489,10 +43859,10 @@ function codeAnswerEditor(host, language2, value, label, owner, changed, context
   owner.register(() => view.destroy());
   return { get value() {
     return view.state.doc.toString();
-  }, setValue(text2) {
+  }, setValue(text3) {
     quiet = true;
     try {
-      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text2 } });
+      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text3 } });
     } finally {
       quiet = false;
     }
@@ -43507,7 +43877,7 @@ function codeAnswerEditor(host, language2, value, label, owner, changed, context
 }
 
 // src/test-yourself.ts
-var import_obsidian24 = require("obsidian");
+var import_obsidian26 = require("obsidian");
 
 // src/test-yourself-model.ts
 var RecallQueue = class {
@@ -43625,7 +43995,7 @@ function testYourself(app, questions, title, card, random = Math.random) {
     if (retired) return;
     const turn = ++generation;
     if (owner) panel.removeChild(owner);
-    owner = panel.addChild(new import_obsidian24.Component());
+    owner = panel.addChild(new import_obsidian26.Component());
     body.empty();
     actions.empty();
     panel.modalEl.closest(".study-workspace-view")?.scrollTo({ top: 0 });
@@ -43833,7 +44203,7 @@ async function sourceImpact(store, bridge, source) {
 }
 
 // src/code-annotation-api.ts
-var import_obsidian25 = require("obsidian");
+var import_obsidian27 = require("obsidian");
 var clone6 = (x) => JSON.parse(JSON.stringify(x));
 var snapshotKey = (s) => JSON.stringify([s.path, s.link.target, s.lines, s.line_numbers, s.signature]);
 var CodeAnnotationApi = class {
@@ -43864,13 +44234,13 @@ var CodeAnnotationApi = class {
   }
   async note(path) {
     const f = this.store.app.vault.getAbstractFileByPath(path);
-    if (!(f instanceof import_obsidian25.TFile) || f.extension !== "md") throw Error("Source note not found.");
-    const text2 = await this.store.app.vault.read(f);
+    if (!(f instanceof import_obsidian27.TFile) || f.extension !== "md") throw Error("Source note not found.");
+    const text3 = await this.store.app.vault.read(f);
     for (const l of this.store.app.workspace.getLeavesOfType("markdown")) {
       const v = l.view;
-      if (v instanceof import_obsidian25.MarkdownView && v.file?.path === path && v.getMode() === "source" && v.editor.getValue() !== text2) throw Error("Wait for the note to finish saving.");
+      if (v instanceof import_obsidian27.MarkdownView && v.file?.path === path && v.getMode() === "source" && v.editor.getValue() !== text3) throw Error("Wait for the note to finish saving.");
     }
-    return { f, text: text2 };
+    return { f, text: text3 };
   }
   async read(scope) {
     const note = await this.note(scope.path);
@@ -43901,7 +44271,7 @@ var CodeAnnotationApi = class {
       return { marks: [], questionIds: [] };
     }
     const file = this.store.app.vault.getAbstractFileByPath(path);
-    if (file instanceof import_obsidian25.TFile) {
+    if (file instanceof import_obsidian27.TFile) {
       try {
         this.noteEmbeds.set(path, await readCodeEmbeds(this.bridge(), await this.store.app.vault.cachedRead(file)));
         if (this.noteEmbeds.size > 8) this.noteEmbeds.delete(this.noteEmbeds.keys().next().value);
@@ -43931,7 +44301,7 @@ var CodeAnnotationApi = class {
     const saved = records.filter((c) => !raw || c.code?.raw === raw).flatMap((c) => c.code?.consumed ? (c.code.consumed.questionIds ?? [c.code.consumed.questionId]).map((questionId) => ({ ...c.code.consumed, questionId })) : []);
     const questionIds = [...new Set((await Promise.all(saved.map(async (c) => {
       try {
-        return this.findQuestion ? await this.findQuestion(c.questionId) ? c.questionId : void 0 : this.store.app.vault.getAbstractFileByPath(c.questionPath) instanceof import_obsidian25.TFile ? c.questionId : void 0;
+        return this.findQuestion ? await this.findQuestion(c.questionId) ? c.questionId : void 0 : this.store.app.vault.getAbstractFileByPath(c.questionPath) instanceof import_obsidian27.TFile ? c.questionId : void 0;
       } catch {
         return void 0;
       }
@@ -43951,13 +44321,13 @@ var CodeAnnotationApi = class {
     return sourceImpact(this.store, this.bridge(), source);
   }
   async inspect(path) {
-    const { text: text2 } = await this.note(path);
+    const { text: text3 } = await this.note(path);
     await this.store.refresh();
-    const embeds2 = await this.bridge().annotationEmbeds(text2);
+    const embeds2 = await this.bridge().annotationEmbeds(text3);
     return Promise.all(embeds2.map(async (e) => {
       try {
-        const snapshot = await this.bridge().readExcerpt(e.raw);
-        return { ...e, snapshot, ...await this.resolve(path, snapshot) };
+        const snapshot2 = await this.bridge().readExcerpt(e.raw);
+        return { ...e, snapshot: snapshot2, ...await this.resolve(path, snapshot2) };
       } catch (error) {
         return { ...e, error: String(error) };
       }
@@ -44060,11 +44430,11 @@ var CodeAnnotationApi = class {
     try {
       await this.bridge().revealCode(c.path, c.id, c.code?.raw);
     } catch (e) {
-      new import_obsidian25.Notice(String(e));
+      new import_obsidian27.Notice(String(e));
     }
   }
   addMenu(menu, scope, s, selection, ids, stale) {
-    const run = (fn) => void fn().catch((e) => new import_obsidian25.Notice(String(e)));
+    const run = (fn) => void fn().catch((e) => new import_obsidian27.Notice(String(e)));
     if (selection && selection.to > selection.from) {
       const create = async (purpose, appearance, editing = false) => {
         const c = await this.create(scope, s, selection.from, selection.to, purpose, appearance);
@@ -44091,7 +44461,7 @@ var CodeAnnotationApi = class {
         try {
           const p = await this.previewQuestion(scope);
           await this.applyQuestion(p.token);
-          new import_obsidian25.Notice("Practice question saved. Only its study marks were consumed.");
+          new import_obsidian27.Notice("Practice question saved. Only its study marks were consumed.");
         } catch (e) {
           if (e?.related) throw Error("This block has other study instructions. Include them when authoring its questions, or explicitly defer them. All marks were kept.");
           throw e;
@@ -44100,9 +44470,9 @@ var CodeAnnotationApi = class {
   }
   async inventory(path) {
     this.check();
-    const { text: text2 } = await this.note(path);
+    const { text: text3 } = await this.note(path);
     await this.store.refresh();
-    return studyInventory(path, text2, this.store.data.comments, this.bridge());
+    return studyInventory(path, text3, this.store.data.comments, this.bridge());
   }
   inventorySignature(path) {
     return JSON.stringify(this.store.data.comments.filter((c) => c.path === path && activeStudyRecord(c)));
@@ -44153,7 +44523,7 @@ var CodeAnnotationApi = class {
     let outputWarning;
     let question3 = parseQuestion(raw, `${destination.folder}/Question-${id3}.md`);
     const existing = this.store.app.vault.getAbstractFileByPath(question3.path);
-    if (existing instanceof import_obsidian25.TFile) {
+    if (existing instanceof import_obsidian27.TFile) {
       const saved = parseQuestion(await this.store.app.vault.read(existing), question3.path);
       const expected = question3.definition;
       if (saved.definition.id !== id3 || saved.definition.type !== "code" || expected.type !== "code" || JSON.stringify(saved.definition.code) !== JSON.stringify(expected.code) || JSON.stringify(saved.definition.answers) !== JSON.stringify(expected.answers)) throw Error("Existing question has different code or answers: " + question3.path);
@@ -44191,25 +44561,25 @@ var CodeAnnotationApi = class {
     const receipt = () => ({ questionId: p.question.definition.id, path: p.question.path, consumedIds: p.before.map((c) => c.id), instructionIds: p.instructionIds, deferredIds: p.deferredIds });
     const verifyFile = async () => {
       const file2 = v.getAbstractFileByPath(p.question.path);
-      if (!(file2 instanceof import_obsidian25.TFile)) throw Error("Question file is missing; marks were preserved.");
+      if (!(file2 instanceof import_obsidian27.TFile)) throw Error("Question file is missing; marks were preserved.");
       const raw = await v.read(file2);
       parseQuestion(raw, p.question.path);
       if (raw !== p.question.raw) throw Error("An existing question differs from this plan: " + p.question.path + ". Reuse or repair it; marks were preserved.");
       return file2;
     };
-    if (p.after.every((c) => same(c, this.store.data.comments.find((n) => n.id === c.id)))) {
+    if (p.after.every((c) => equalReview(c, this.store.data.comments.find((n) => n.id === c.id)))) {
       await verifyFile();
       return { ...receipt(), alreadyApplied: true };
     }
-    const validate2 = async () => {
+    const validate3 = async () => {
       this.check();
       if ([...p.instructionIds, ...p.deferredIds].some((id3) => this.store.annotationBusy(id3))) throw Error("Related instructions have an open draft; prepare again.");
       if (this.inventorySignature(p.scope.path) !== p.inventory) throw Error("Study instructions changed; prepare again.");
       const { s, note } = await this.read(p.scope);
       if (snapshotKey(s) !== p.snapshot || note.text !== p.note) throw Error("Code or note changed; prepare again.");
     };
-    await validate2();
-    for (const c of p.before) if (this.store.annotationBusy(c.id) || !same(c, this.store.data.comments.find((n) => n.id === c.id))) throw Error("A mark changed or has an open draft; prepare again.");
+    await validate3();
+    for (const c of p.before) if (this.store.annotationBusy(c.id) || !equalReview(c, this.store.data.comments.find((n) => n.id === c.id))) throw Error("A mark changed or has an open draft; prepare again.");
     const folder = p.question.path.slice(0, p.question.path.lastIndexOf("/"));
     let prefix = "";
     for (const part of folder.split("/")) {
@@ -44220,7 +44590,7 @@ var CodeAnnotationApi = class {
     const file = await verifyFile();
     await this.index(file);
     await this.store.applyCodeEdits(p.before, p.after, async () => {
-      await validate2();
+      await validate3();
       await verifyFile();
     });
     return receipt();
@@ -44230,7 +44600,7 @@ var CodeAnnotationApi = class {
     this.check();
     const q = await this.findQuestion?.(id3);
     if (!q?.definition.code?.grading) throw Error("Choose a Python question with grading rules.");
-    const { f, text: text2 } = await this.note(q.path), question3 = parseQuestion(text2, q.path), code = question3.definition.code;
+    const { f, text: text3 } = await this.note(q.path), question3 = parseQuestion(text3, q.path), code = question3.definition.code;
     if (options.source !== void 0) code.source = options.source;
     if (options.reference) {
       for (const [field, value] of Object.entries(options.reference)) {
@@ -44258,19 +44628,19 @@ var CodeAnnotationApi = class {
     const token = crypto.randomUUID();
     for (const [key2, p] of this.gradingPlans) if (p.expires < Date.now()) this.gradingPlans.delete(key2);
     if (this.gradingPlans.size >= 20) this.gradingPlans.delete(this.gradingPlans.keys().next().value);
-    this.gradingPlans.set(token, { before: text2, question: question3, expires: Date.now() + 6e5 });
+    this.gradingPlans.set(token, { before: text3, question: question3, expires: Date.now() + 6e5 });
     return { token, question: clone6(question3), ...outputWarning ? { outputWarning } : {} };
   }
   async applyGrading(token) {
     this.check();
     const plan2 = this.gradingPlans.get(token);
     if (!plan2 || plan2.expires < Date.now()) throw Error("Unknown or expired grading plan.");
-    const { f, text: text2 } = await this.note(plan2.question.path);
-    if (text2 === plan2.question.raw) {
+    const { f, text: text3 } = await this.note(plan2.question.path);
+    if (text3 === plan2.question.raw) {
       await this.index(f);
       return { path: f.path, alreadyApplied: true };
     }
-    if (text2 !== plan2.before) throw Error("Question changed. Prepare the checks again.");
+    if (text3 !== plan2.before) throw Error("Question changed. Prepare the checks again.");
     await this.store.app.vault.process(f, (current) => {
       if (current !== plan2.before) throw Error("Question changed.");
       return plan2.question.raw;
@@ -44285,7 +44655,7 @@ var CodeAnnotationApi = class {
 };
 
 // src/annotation-api.ts
-var import_obsidian26 = require("obsidian");
+var import_obsidian28 = require("obsidian");
 
 // src/annotation-edit.ts
 function validateAnnotationPatch(p) {
@@ -44339,11 +44709,11 @@ var AnnotationApi = class {
   async source(path) {
     this.check();
     const f = this.store.app.vault.getAbstractFileByPath(path);
-    if (!(f instanceof import_obsidian26.TFile) || f.extension !== "md") throw Error("Markdown paper not found: " + path);
+    if (!(f instanceof import_obsidian28.TFile) || f.extension !== "md") throw Error("Markdown paper not found: " + path);
     const source = await this.store.app.vault.read(f);
     for (const leaf of this.store.app.workspace.getLeavesOfType("markdown")) {
       const view = leaf.view;
-      if (view instanceof import_obsidian26.MarkdownView && view.file?.path === path && view.getMode() === "source" && view.editor.getValue() !== source) throw Error("Paper has unsaved editor changes; wait for save and retry.");
+      if (view instanceof import_obsidian28.MarkdownView && view.file?.path === path && view.getMode() === "source" && view.editor.getValue() !== source) throw Error("Paper has unsaved editor changes; wait for save and retry.");
     }
     return source;
   }
@@ -44383,11 +44753,11 @@ var AnnotationApi = class {
     if (this.hasDraft(before.id)) throw Error("Annotation has an draft or active editor; finish that edit first.");
     patch = clone7(patch);
     if (patch.palette !== void 0) {
-      const style = patch.markStyle ?? styleOf(before), swatch = this.store.paletteFor(style).find((p) => p.meaning === patch.palette);
-      if (!swatch) throw Error("Palette meaning not found for this style.");
+      const style = patch.markStyle ?? styleOf(before), swatch2 = this.store.paletteFor(style).find((p) => p.meaning === patch.palette);
+      if (!swatch2) throw Error("Palette meaning not found for this style.");
       if (["color", "darkColor", "intent"].some((k) => k in patch)) throw Error("Use palette or custom appearance fields, not both.");
-      patch = { ...patch, color: swatch.color, darkColor: swatch.darkColor, intent: swatch.meaning };
-      if (!swatch.darkColor) delete patch.darkColor;
+      patch = { ...patch, color: swatch2.color, darkColor: swatch2.darkColor, intent: swatch2.meaning };
+      if (!swatch2.darkColor) delete patch.darkColor;
     }
     let after = appearancePatch(before, patch);
     const sources = /* @__PURE__ */ new Map();
@@ -44397,7 +44767,7 @@ var AnnotationApi = class {
       const source = sources.get(ref.path);
       const ranges = patch.selections.map((t2) => exactSelection(source, t2));
       for (let i = 0; i < ranges.length; i++) for (let j = 0; j < i; j++) if (ranges[i].from < ranges[j].to && ranges[j].from < ranges[i].to) throw Error("Selections overlap.");
-      await (0, import_obsidian26.loadMathJax)();
+      await (0, import_obsidian28.loadMathJax)();
       const anchors = ranges.flatMap((r) => {
         const a2 = editorExcerpts(source, r.from, r.to, ref.path);
         if (!a2.length) throw Error("Selection cannot be represented safely.");
@@ -44424,15 +44794,15 @@ var AnnotationApi = class {
     if (!plan2 || plan2.expires < Date.now()) throw Error("Unknown or expired plan; preview again.");
     this.plans.delete(token);
     const after = { ...plan2.after, updated: (/* @__PURE__ */ new Date()).toISOString() };
-    const validate2 = async () => {
+    const validate3 = async () => {
       this.check();
       if (this.hasDraft(plan2.before.id)) throw Error("Annotation has an draft or active editor.");
       for (const [path, source] of plan2.sources) if (await this.source(path) !== source) throw Error("Paper changed; preview again.");
       if (this.hasDraft(plan2.before.id)) throw Error("Annotation gained an draft or active editor.");
     };
-    await this.store.applyAnnotationEdit(plan2.before, after, validate2);
+    await this.store.applyAnnotationEdit(plan2.before, after, validate3);
     const current = this.store.data.comments.find((c) => c.id === after.id);
-    const undoToken = same(current, after) ? this.remember({ ...plan2, before: clone7(current), after: plan2.before, expires: Date.now() + 10 * 60 * 1e3 }) : null;
+    const undoToken = equalReview(current, after) ? this.remember({ ...plan2, before: clone7(current), after: plan2.before, expires: Date.now() + 10 * 60 * 1e3 }) : null;
     return { applied: true, id: after.id, undoToken, annotation: await this.get({ path: plan2.path, id: after.id }) };
   }
 };
@@ -44441,7 +44811,7 @@ function clonePlan(p) {
 }
 
 // src/symbols/system.ts
-var import_obsidian30 = require("obsidian");
+var import_obsidian32 = require("obsidian");
 var import_view14 = require("@codemirror/view");
 
 // src/symbols/document.ts
@@ -44559,7 +44929,7 @@ function symbolProjection(doc2) {
 }
 
 // src/symbols/registry-widget.ts
-var import_obsidian27 = require("obsidian");
+var import_obsidian29 = require("obsidian");
 var import_state13 = require("@codemirror/state");
 var import_view13 = require("@codemirror/view");
 var reveal = import_state13.StateEffect.define();
@@ -44593,7 +44963,7 @@ var RegistryWidget = class extends import_view13.WidgetType {
 };
 function decorations2(state, shown) {
   const block = state.field(symbolDocumentField).block;
-  if (!block || shown || !state.field(import_obsidian27.editorLivePreviewField, false)) return import_view13.Decoration.none;
+  if (!block || shown || !state.field(import_obsidian29.editorLivePreviewField, false)) return import_view13.Decoration.none;
   return import_view13.Decoration.set([import_view13.Decoration.replace({ block: true, widget: new RegistryWidget(Object.keys(block.data.defs).length, Object.keys(block.data.occ).length) }).range(block.from, block.to)]);
 }
 var registryDecorationField = import_state13.StateField.define({
@@ -44603,7 +44973,7 @@ var registryDecorationField = import_state13.StateField.define({
     for (const effect of tr.effects) if (effect.is(reveal)) shown = effect.value;
     const block = tr.state.field(symbolDocumentField).block;
     if (shown && tr.selection && block && !tr.state.selection.ranges.some((s) => s.from <= block.to && s.to >= block.from)) shown = false;
-    if (!tr.docChanged && !tr.selection && !tr.effects.length && tr.startState.field(import_obsidian27.editorLivePreviewField, false) === tr.state.field(import_obsidian27.editorLivePreviewField, false)) return value;
+    if (!tr.docChanged && !tr.selection && !tr.effects.length && tr.startState.field(import_obsidian29.editorLivePreviewField, false) === tr.state.field(import_obsidian29.editorLivePreviewField, false)) return value;
     return { shown, decorations: decorations2(tr.state, shown) };
   },
   provide: (field) => [import_view13.EditorView.decorations.from(field, (v) => v.decorations), import_view13.EditorView.atomicRanges.of((view) => view.state.field(field).decorations)]
@@ -44616,7 +44986,7 @@ function revealSymbolRegistry(view) {
 }
 var lastProtectedNotice = 0;
 var protectSymbolRegistry = import_state13.EditorState.transactionFilter.of((tr) => {
-  if (!tr.docChanged || tr.isUserEvent("input.symbols") || tr.isUserEvent("undo") || tr.isUserEvent("redo") || !tr.startState.field(import_obsidian27.editorLivePreviewField, false) || tr.startState.field(registryDecorationField, false)?.shown) return tr;
+  if (!tr.docChanged || tr.isUserEvent("input.symbols") || tr.isUserEvent("undo") || tr.isUserEvent("redo") || !tr.startState.field(import_obsidian29.editorLivePreviewField, false) || tr.startState.field(registryDecorationField, false)?.shown) return tr;
   const block = tr.startState.field(symbolDocumentField, false)?.block;
   if (!block) return tr;
   let intersects = false;
@@ -44627,16 +44997,16 @@ var protectSymbolRegistry = import_state13.EditorState.transactionFilter.of((tr)
   if (tr.newDoc.toString().includes(tr.startState.doc.sliceString(block.from, block.to))) return tr;
   if (Date.now() - lastProtectedNotice > 2e3) {
     lastProtectedNotice = Date.now();
-    queueMicrotask(() => new import_obsidian27.Notice("Symbol records were preserved. Click the Symbols bar to edit their source, or delete definitions in the Symbols panel."));
+    queueMicrotask(() => new import_obsidian29.Notice("Symbol records were preserved. Click the Symbols bar to edit their source, or delete definitions in the Symbols panel."));
   }
   return [];
 });
 
 // src/symbols/api.ts
-var import_obsidian29 = require("obsidian");
+var import_obsidian31 = require("obsidian");
 
 // src/symbols/layout.ts
-var import_obsidian28 = require("obsidian");
+var import_obsidian30 = require("obsidian");
 var ALL = ["scriptlevel", "displaystyle", "mathvariant", "mathcolor"];
 var OP = ["form", "lspace", "rspace", "stretchy", "largeop", "movablelimits", "symmetric", "fence", "separator", "accent"];
 function stable(value) {
@@ -44675,7 +45045,7 @@ function alignRows(before, after) {
 }
 async function verifyTagLayout(tex, id3, display) {
   if (markers(tex).filter((m) => m.id === id3).length !== 1) throw Error("The new symbol marker is not unique.");
-  await (0, import_obsidian28.loadMathJax)();
+  await (0, import_obsidian30.loadMathJax)();
   const mj = window.MathJax, doc2 = mj?.startup?.document;
   if (!doc2?.options?.MathItem || typeof doc2.outputJax?.getBBox !== "function") throw Error("This renderer cannot yet verify symbol tagging. The equation has not been changed.");
   const convert = (source) => {
@@ -44722,7 +45092,7 @@ var SymbolApi = class {
     if (path && this.plugin.app.plugins?.plugins?.["image-gallery"]?.library?.isProtected(path)) throw Error("This is a protected source. Add symbols to a working copy.");
   }
   view(path) {
-    return this.plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian29.MarkdownView && v.file?.path === path && v.getMode() === "source");
+    return this.plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian31.MarkdownView && v.file?.path === path && v.getMode() === "source");
   }
   async source(path) {
     this.check(path);
@@ -44730,15 +45100,15 @@ var SymbolApi = class {
     const view = this.view(path);
     if (view) return view.editor.getValue();
     const file = this.plugin.app.vault.getAbstractFileByPath(path);
-    if (!(file instanceof import_obsidian29.TFile) || file.extension !== "md") throw Error("Markdown note not found.");
+    if (!(file instanceof import_obsidian31.TFile) || file.extension !== "md") throw Error("Markdown note not found.");
     return this.plugin.app.vault.read(file);
   }
   session(source, path) {
     this.check(path);
     symbolStats.apiCalls++;
-    const snapshot = scanSymbols(source);
-    if (snapshot.error) throw Error(snapshot.error);
-    return { ...clone(symbolProjection(snapshot).data), usedIds: snapshot.marks.map((m) => m.id), version: 1 };
+    const snapshot2 = scanSymbols(source);
+    if (snapshot2.error) throw Error(snapshot2.error);
+    return { ...clone(symbolProjection(snapshot2).data), usedIds: snapshot2.marks.map((m) => m.id), version: 1 };
   }
   async list(path) {
     symbolStats.apiCalls++;
@@ -44839,18 +45209,18 @@ var SymbolApi = class {
         next = applyEdits(next, [registryEdit(next, block, data2)]);
       } else if (op.type === "removeDefinition") {
         if (!Object.hasOwn(data2.defs, op.id)) throw Error("Definition not found.");
-        const snapshot = scanSymbols(next);
-        if (snapshot.error) throw Error(snapshot.error);
+        const snapshot2 = scanSymbols(next);
+        if (snapshot2.error) throw Error(snapshot2.error);
         const ids = new Set(Object.entries(data2.occ).filter(([, o]) => o.def === op.id).map(([id3]) => id3));
-        const edits2 = snapshot.marks.filter((m) => ids.has(m.id)).map((m) => ({ from: m.from, to: m.to, insert: m.body }));
+        const edits2 = snapshot2.marks.filter((m) => ids.has(m.id)).map((m) => ({ from: m.from, to: m.to, insert: m.body }));
         for (const id3 of ids) delete data2.occ[id3];
         delete data2.defs[op.id];
         edits2.push(registryEdit(next, block, data2));
         next = applyEdits(next, edits2);
       } else if (op.type === "clear") {
-        const snapshot = scanSymbols(next);
-        if (snapshot.error) throw Error(snapshot.error);
-        const edits2 = snapshot.marks.map((m) => ({ from: m.from, to: m.to, insert: m.body }));
+        const snapshot2 = scanSymbols(next);
+        if (snapshot2.error) throw Error(snapshot2.error);
+        const edits2 = snapshot2.marks.map((m) => ({ from: m.from, to: m.to, insert: m.body }));
         if (block) edits2.push({ from: block.from, to: block.to, insert: "" });
         next = applyEdits(next, edits2);
       } else if (op.type === "define") {
@@ -44862,9 +45232,9 @@ var SymbolApi = class {
         if (!hits.length || hits.length > 1 && op.occurrence === void 0) throw Error("Symbol target is missing or ambiguous; provide its zero-based occurrence.");
         const at = hits[op.occurrence ?? 0];
         if (at === void 0) throw Error("Symbol occurrence not found.");
-        const snapshot = scanSymbols(next);
-        if (snapshot.error) throw Error(snapshot.error);
-        const id3 = freshId([...Object.keys(data2.occ), ...snapshot.marks.map((m) => m.id)]), defId = typeof op.definition === "string" ? op.definition : "d-" + freshId(Object.keys(data2.defs).map((k) => k.slice(2)));
+        const snapshot2 = scanSymbols(next);
+        if (snapshot2.error) throw Error(snapshot2.error);
+        const id3 = freshId([...Object.keys(data2.occ), ...snapshot2.marks.map((m) => m.id)]), defId = typeof op.definition === "string" ? op.definition : "d-" + freshId(Object.keys(data2.defs).map((k) => k.slice(2)));
         const raw = q.raw.slice(0, q.bodyFrom - q.from + at) + wrapSymbol(id3, op.target) + q.raw.slice(q.bodyFrom - q.from + at + op.target.length);
         const edits2 = await this.planEquationSave(path, next, q.from, q.to, q.raw, raw, { pending: [{ id: id3, def: defId, ...typeof op.definition === "string" ? {} : { definition: op.definition } }], decisions: {} });
         next = applyEdits(next, edits2);
@@ -44896,7 +45266,7 @@ var SymbolApi = class {
       cm.dispatch(transaction);
     } else {
       const file = this.plugin.app.vault.getAbstractFileByPath(plan2.path);
-      if (!(file instanceof import_obsidian29.TFile)) throw Error("Note no longer exists.");
+      if (!(file instanceof import_obsidian31.TFile)) throw Error("Note no longer exists.");
       await this.plugin.app.vault.process(file, (current) => {
         this.check(plan2.path);
         if (current !== plan2.source) throw Error("The note changed; preview again.");
@@ -44915,7 +45285,7 @@ var VIEW3 = "study-symbols";
 var message = (e) => e instanceof Error ? e.message : String(e);
 function math(host, tex) {
   try {
-    host.append((0, import_obsidian30.renderMath)(tex, false));
+    host.append((0, import_obsidian32.renderMath)(tex, false));
   } catch {
     host.setText(tex);
   }
@@ -44942,7 +45312,7 @@ var SymbolSystem = class {
         if (!tag || target.closest(".math-studio-host") || doc2.getSelection()?.toString()) return;
         const id3 = Array.from(tag.classList).find((c) => /^mjx-ss-o-[0-9a-z]{10}$/.test(c))?.slice(9);
         if (!id3) return;
-        const path = tag.dataset.studySymbolPath ?? plugin2.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian30.MarkdownView && v.contentEl.contains(tag))?.getState().file;
+        const path = tag.dataset.studySymbolPath ?? plugin2.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian32.MarkdownView && v.contentEl.contains(tag))?.getState().file;
         if (typeof path === "string") void this.snapshot(path).then((doc3) => this.open(path, doc3.block?.data.occ[id3]?.def));
       };
       doc2.addEventListener("click", click);
@@ -44994,16 +45364,16 @@ var SymbolSystem = class {
         const before = update.startState.field(symbolDocumentField), after = update.state.field(symbolDocumentField);
         if (after.dirty) return;
         if (before.block?.data === after.block?.data && before.error === after.error && before.dirty === after.dirty && before.marks.length === after.marks.length && before.marks.every((m, i) => m.id === after.marks[i].id && m.body === after.marks[i].body)) return;
-        const path = update.state.field(import_obsidian30.editorInfoField, false)?.file?.path;
+        const path = update.state.field(import_obsidian32.editorInfoField, false)?.file?.path;
         if (path) system.changed(path);
       }
     })]);
     plugin2.registerEvent(plugin2.app.workspace.on("active-leaf-change", (leaf) => {
-      if (leaf?.view instanceof import_obsidian30.MarkdownView && leaf.view.file) for (const pane of this.panes) pane.show(leaf.view.file.path);
+      if (leaf?.view instanceof import_obsidian32.MarkdownView && leaf.view.file) for (const pane of this.panes) pane.show(leaf.view.file.path);
     }));
     plugin2.registerEvent(plugin2.app.vault.on("modify", (file) => {
-      if (!(file instanceof import_obsidian30.TFile) || file.extension !== "md") return;
-      const editable2 = plugin2.app.workspace.getLeavesOfType("markdown").some((l) => l.view instanceof import_obsidian30.MarkdownView && l.view.file?.path === file.path && l.view.getMode() === "source");
+      if (!(file instanceof import_obsidian32.TFile) || file.extension !== "md") return;
+      const editable2 = plugin2.app.workspace.getLeavesOfType("markdown").some((l) => l.view instanceof import_obsidian32.MarkdownView && l.view.file?.path === file.path && l.view.getMode() === "source");
       if (!editable2) this.changed(file.path);
     }));
     plugin2.addCommand({ id: "show-symbol-registry-source", name: "Show symbol registry source", editorCallback: (editor) => {
@@ -45045,12 +45415,12 @@ var SymbolSystem = class {
             }
           }
           if (!entries.length) el.createEl("p", { text: "No symbols defined in this note." });
-          (0, import_obsidian30.finishRenderMath)();
+          (0, import_obsidian32.finishRenderMath)();
         } catch (e) {
           if (!disposed) el.setText(message(e));
         }
       };
-      const child = new import_obsidian30.MarkdownRenderChild(el);
+      const child = new import_obsidian32.MarkdownRenderChild(el);
       ctx.addChild(child);
       child.register(() => {
         disposed = true;
@@ -45077,7 +45447,7 @@ var SymbolSystem = class {
   async snapshot(path) {
     for (const leaf of this.plugin.app.workspace.getLeavesOfType("markdown")) {
       const view = leaf.view;
-      if (view instanceof import_obsidian30.MarkdownView && view.file?.path === path && view.getMode() === "source") {
+      if (view instanceof import_obsidian32.MarkdownView && view.file?.path === path && view.getMode() === "source") {
         const state = view.editor.cm?.state;
         if (state?.field(symbolDocumentField, false)) {
           if (state.field(symbolDocumentField).dirty) {
@@ -45089,14 +45459,14 @@ var SymbolSystem = class {
       }
     }
     const file = this.plugin.app.vault.getAbstractFileByPath(path);
-    if (!(file instanceof import_obsidian30.TFile)) throw Error("Note not found.");
+    if (!(file instanceof import_obsidian32.TFile)) throw Error("Note not found.");
     symbolStats.fullTextReads++;
     return scanSymbols(await this.plugin.app.vault.cachedRead(file));
   }
   async open(path, id3) {
     const file = path ?? this.plugin.app.workspace.getActiveFile()?.path;
     if (!file) {
-      new import_obsidian30.Notice("Open a note first.");
+      new import_obsidian32.Notice("Open a note first.");
       return;
     }
     const leaf = this.plugin.app.workspace.getLeavesOfType(VIEW3)[0] ?? this.plugin.app.workspace.getRightLeaf(false);
@@ -45109,11 +45479,11 @@ var SymbolSystem = class {
   async jump(path, id3, index2 = 0) {
     const doc2 = await this.snapshot(path), hit = doc2.marks.filter((m) => m.id === id3)[index2];
     if (!hit) {
-      new import_obsidian30.Notice("This occurrence is currently missing. Its definition is retained.");
+      new import_obsidian32.Notice("This occurrence is currently missing. Its definition is retained.");
       return;
     }
     const file = this.plugin.app.vault.getAbstractFileByPath(path);
-    if (!(file instanceof import_obsidian30.TFile)) return;
+    if (!(file instanceof import_obsidian32.TFile)) return;
     const leaf = this.plugin.app.workspace.getLeaf(false);
     await leaf.openFile(file, { state: { mode: "source" } });
     const view = leaf.view;
@@ -45128,21 +45498,21 @@ async function registerSymbolSystem(plugin2) {
     const saved = JSON.parse(await plugin2.app.vault.adapter.read(path));
     enabled = saved.enabled !== false;
   }
-  class SymbolSettings extends import_obsidian30.PluginSettingTab {
+  class SymbolSettings extends import_obsidian32.PluginSettingTab {
     display() {
       this.containerEl.empty();
       this.containerEl.createEl("h2", { text: "Symbol annotations" });
-      new import_obsidian30.Setting(this.containerEl).setName("Enable symbol definitions").setDesc("Portable symbol tags and their generated tables. Reload Study Studio to apply this setting.").addToggle((t2) => t2.setValue(enabled).onChange(async (value) => {
+      new import_obsidian32.Setting(this.containerEl).setName("Enable symbol definitions").setDesc("Portable symbol tags and their generated tables. Reload Study Studio to apply this setting.").addToggle((t2) => t2.setValue(enabled).onChange(async (value) => {
         enabled = value;
         await plugin2.app.vault.adapter.write(path, JSON.stringify({ enabled }, null, 2));
-        new import_obsidian30.Notice("Reload Study Studio to apply the symbol setting.");
+        new import_obsidian32.Notice("Reload Study Studio to apply the symbol setting.");
       }));
     }
   }
   plugin2.addSettingTab(new SymbolSettings(plugin2.app, plugin2));
   return enabled ? new SymbolSystem(plugin2) : void 0;
 }
-var SymbolsView = class extends import_obsidian30.ItemView {
+var SymbolsView = class extends import_obsidian32.ItemView {
   constructor(leaf, system) {
     super(leaf);
     this.system = system;
@@ -45218,7 +45588,7 @@ var SymbolsView = class extends import_obsidian30.ItemView {
         for (const d of items.slice(0, 100)) this.row(rows, d);
         if (items.length > 100) rows.createEl("p", { text: "Showing 100 definitions. Narrow the search to find the rest." });
         if (!items.length) rows.createEl("p", { text: projection.definitions.length ? "No matching definitions." : "Select a symbol in Math Studio and choose Tag symbol. Its definition and generated table will stay together." });
-        (0, import_obsidian30.finishRenderMath)();
+        (0, import_obsidian32.finishRenderMath)();
       };
       search.oninput = renderRows;
       renderRows();
@@ -45336,7 +45706,7 @@ var SymbolsView = class extends import_obsidian30.ItemView {
 };
 
 // src/reference-gutters.ts
-var import_obsidian31 = require("obsidian");
+var import_obsidian33 = require("obsidian");
 
 // src/reading-readiness.ts
 var cachedText = "";
@@ -45378,7 +45748,7 @@ function registerReferenceGutters(plugin2, store) {
   });
   plugin2.registerEvent(plugin2.app.vault.on("modify", (file) => schedule(file.path)));
   const previews = /* @__PURE__ */ new Map();
-  class Section extends import_obsidian31.MarkdownRenderChild {
+  class Section extends import_obsidian33.MarkdownRenderChild {
     constructor(el, ctx) {
       super(el);
       this.ctx = ctx;
@@ -45542,9 +45912,9 @@ var MarginViewport = class {
       if (regions.length) plans.push({ e, regions });
     }
     for (const { e, regions } of plans) for (const { el, height } of regions) {
-      const fragment = el.ownerDocument.createDocumentFragment(), text2 = el.textContent ?? "", style = el.style.cssText;
+      const fragment = el.ownerDocument.createDocumentFragment(), text3 = el.textContent ?? "", style = el.style.cssText;
       while (el.firstChild) fragment.append(el.firstChild);
-      el.textContent = text2;
+      el.textContent = text3;
       el.classList.add("study-margin-deferred");
       el.style.height = height + "px";
       el.style.minHeight = height + "px";
@@ -45563,42 +45933,42 @@ var MarginViewport = class {
 };
 
 // src/annotation-search.ts
-function orderedScripts(text2) {
+function orderedScripts(text3) {
   const argument = (start) => {
-    if (text2[start] === "{") {
+    if (text3[start] === "{") {
       let end2 = start + 1, depth2 = 1;
-      while (end2 < text2.length && depth2) {
-        if (text2[end2] === "{") depth2++;
-        if (text2[end2] === "}") depth2--;
+      while (end2 < text3.length && depth2) {
+        if (text3[end2] === "{") depth2++;
+        if (text3[end2] === "}") depth2--;
         end2++;
       }
-      return { value: "{" + orderedScripts(text2.slice(start + 1, depth2 ? end2 : end2 - 1)) + "}", end: end2 };
+      return { value: "{" + orderedScripts(text3.slice(start + 1, depth2 ? end2 : end2 - 1)) + "}", end: end2 };
     }
-    const command2 = /^\\[a-zA-Z]+/.exec(text2.slice(start));
-    const end = start + (command2?.[0].length ?? (start < text2.length ? 1 : 0));
-    return { value: "{" + text2.slice(start, end) + "}", end };
+    const command2 = /^\\[a-zA-Z]+/.exec(text3.slice(start));
+    const end = start + (command2?.[0].length ?? (start < text3.length ? 1 : 0));
+    return { value: "{" + text3.slice(start, end) + "}", end };
   };
   let result = "", i = 0;
-  while (i < text2.length) {
-    if (text2[i] === "^" || text2[i] === "_") {
-      const marker = text2[i++], first = argument(i);
+  while (i < text3.length) {
+    if (text3[i] === "^" || text3[i] === "_") {
+      const marker = text3[i++], first = argument(i);
       i = first.end;
-      if (text2[i] === (marker === "^" ? "_" : "^")) {
+      if (text3[i] === (marker === "^" ? "_" : "^")) {
         i++;
         const second = argument(i);
         i = second.end;
         result += marker === "_" ? "_" + first.value + "^" + second.value : "_" + second.value + "^" + first.value;
       } else result += marker + first.value;
-    } else if (text2[i] === "{") {
+    } else if (text3[i] === "{") {
       const group2 = argument(i);
       result += group2.value;
       i = group2.end;
-    } else result += text2[i++];
+    } else result += text3[i++];
   }
   return result;
 }
-function normalizeSearchMath(text2) {
-  const simplified = text2.replace(/\\(?:mathrm|mathbf|mathit|mathsf|mathtt|operatorname)\b/g, "").replace(/\\(?:left|right)\b/g, "").replace(/\\prime\b|[′’]/g, "'").replace(/\\(?:[,;!: ]|quad\b|qquad\b)/g, "").replace(/\\[()[\]]/g, "").replace(/[$\s]/g, "");
+function normalizeSearchMath(text3) {
+  const simplified = text3.replace(/\\(?:mathrm|mathbf|mathit|mathsf|mathtt|operatorname)\b/g, "").replace(/\\(?:left|right)\b/g, "").replace(/\\prime\b|[′’]/g, "'").replace(/\\(?:[,;!: ]|quad\b|qquad\b)/g, "").replace(/\\[()[\]]/g, "").replace(/[$\s]/g, "");
   return orderedScripts(simplified).replace(/[{}]/g, "").toLocaleLowerCase();
 }
 function annotationMatchesSearch(c, rawQuery) {
@@ -45703,11 +46073,11 @@ function extendAnnotation(source, existing, selection) {
 }
 
 // src/margin-view.ts
-var import_obsidian32 = require("obsidian");
+var import_obsidian34 = require("obsidian");
 var VIEW4 = "study-margin-notes";
 function recentMarkdownPath(app) {
-  const active = app.workspace.getActiveViewOfType(import_obsidian32.MarkdownView), recent = app.workspace.getMostRecentLeaf()?.view, file = app.workspace.getActiveFile();
-  return active?.file?.path ?? (recent instanceof import_obsidian32.MarkdownView ? recent.file?.path : void 0) ?? (file?.extension === "md" ? file.path : void 0) ?? app.workspace.getLeavesOfType("markdown").find((l) => l.view instanceof import_obsidian32.MarkdownView && l.view.file)?.view?.file?.path;
+  const active = app.workspace.getActiveViewOfType(import_obsidian34.MarkdownView), recent = app.workspace.getMostRecentLeaf()?.view, file = app.workspace.getActiveFile();
+  return active?.file?.path ?? (recent instanceof import_obsidian34.MarkdownView ? recent.file?.path : void 0) ?? (file?.extension === "md" ? file.path : void 0) ?? app.workspace.getLeavesOfType("markdown").find((l) => l.view instanceof import_obsidian34.MarkdownView && l.view.file)?.view?.file?.path;
 }
 var MarginNotes = class {
   constructor(plugin2, store) {
@@ -45716,6 +46086,14 @@ var MarginNotes = class {
     this.revealer = sourceRevealer(plugin2);
   }
   stackExpanded = /* @__PURE__ */ new Map();
+  draftBases = /* @__PURE__ */ new Map();
+  beginDraft(c) {
+    if (!this.draftBases.has(c.id)) {
+      const saved = this.store.data.comments.find((x) => x.id === c.id);
+      this.draftBases.set(c.id, saved ? JSON.parse(JSON.stringify(saved)) : null);
+    }
+    this.drafts.set(c.id, c);
+  }
   drafts = /* @__PURE__ */ new Map();
   selected = "";
   file = "";
@@ -45733,10 +46111,14 @@ var MarginNotes = class {
     if (await this.plugin.app.vault.adapter.exists(this.draftPath)) {
       try {
         const raw = JSON.parse(await this.plugin.app.vault.adapter.read(this.draftPath));
-        for (const d of raw.drafts ?? []) if (validComment(d)) this.drafts.set(d.id, d);
+        for (const d of raw.drafts ?? []) if (validComment(d)) {
+          this.drafts.set(d.id, d);
+          const base2 = raw.bases?.[d.id];
+          this.draftBases.set(d.id, validComment(base2) ? base2 : null);
+        }
       } catch {
         this.draftStorageBlocked = true;
-        new import_obsidian32.Notice("Margin drafts could not be read. The original draft file was preserved.");
+        new import_obsidian34.Notice("Margin drafts could not be read. The original draft file was preserved.");
       }
     }
   }
@@ -45749,10 +46131,10 @@ var MarginNotes = class {
   }
   flush() {
     if (this.draftStorageBlocked) return;
-    const raw = JSON.stringify({ version: 1, drafts: [...this.drafts.values()] }, null, 2);
+    const raw = JSON.stringify({ version: 1, drafts: [...this.drafts.values()], bases: Object.fromEntries([...this.draftBases].filter(([id3]) => this.drafts.has(id3))) }, null, 2);
     this.pending = this.pending.catch(() => {
     }).then(() => this.plugin.app.vault.adapter.write(this.draftPath, raw));
-    void this.pending.catch((e) => new import_obsidian32.Notice("Margin draft could not be saved: " + String(e)));
+    void this.pending.catch((e) => new import_obsidian34.Notice("Margin draft could not be saved: " + String(e)));
   }
   async open(anchor, editing = false, flash = false) {
     const app = this.plugin.app;
@@ -45763,7 +46145,8 @@ var MarginNotes = class {
       this.selected = c.id;
       if (!saved) this.store.warnHidden(c);
       if ((!saved || editing) && !this.drafts.has(c.id)) {
-        this.drafts.set(c.id, { ...c, anchors: excerpts(c).map((a2) => ({ ...a2 })) });
+        this.draftBases.set(c.id, saved ? JSON.parse(JSON.stringify(saved)) : null);
+        this.beginDraft({ ...c, anchors: excerpts(c).map((a2) => ({ ...a2 })) });
         this.persist();
       }
     }
@@ -45779,27 +46162,27 @@ var MarginNotes = class {
   add(anchors) {
     const c = this.drafts.get(this.selected) ?? this.store.data.comments.find((c2) => c2.id === this.selected);
     if (!c) {
-      new import_obsidian32.Notice("Select a margin note before adding another excerpt.");
+      new import_obsidian34.Notice("Select a margin note before adding another excerpt.");
       void this.open();
       return;
     }
     if (c.code || c.study) {
-      new import_obsidian32.Notice("Code annotations accept code selections only.");
+      new import_obsidian34.Notice("Code annotations accept code selections only.");
       return;
     }
     const next = excerpts(c).map((a2) => ({ ...a2 }));
     for (const a2 of anchors) if (!next.some((x) => x.path === a2.path && x.quote === a2.quote && x.before === a2.before && x.after === a2.after)) next.push(a2);
-    this.drafts.set(c.id, withExcerpts({ ...c }, next));
+    this.beginDraft(withExcerpts({ ...c }, next));
     this.persist();
     void this.open(this.drafts.get(c.id));
   }
-  async resize(id3, snapshot, source, from, to) {
+  async resize(id3, snapshot2, source, from, to) {
     try {
       const c = this.store.data.comments.find((c2) => c2.id === id3);
-      if (!c || c.code || c.study || JSON.stringify(c) !== snapshot || this.drafts.has(id3)) throw Error("The annotation changed or has an unsaved draft. Finish that edit before resizing.");
+      if (!c || c.code || c.study || JSON.stringify(c) !== snapshot2 || this.drafts.has(id3)) throw Error("The annotation changed or has an unsaved draft. Finish that edit before resizing.");
       const file = this.plugin.app.vault.getAbstractFileByPath(excerpts(c)[0]?.path ?? c.path);
-      if (!(file instanceof import_obsidian32.TFile) || await this.plugin.app.vault.read(file) !== source) throw Error("The paper changed while dragging. Select the annotation again.");
-      if (JSON.stringify(this.store.data.comments.find((c2) => c2.id === id3)) !== snapshot || this.drafts.has(id3)) throw Error("The annotation changed while dragging.");
+      if (!(file instanceof import_obsidian34.TFile) || await this.plugin.app.vault.read(file) !== source) throw Error("The paper changed while dragging. Select the annotation again.");
+      if (JSON.stringify(this.store.data.comments.find((c2) => c2.id === id3)) !== snapshot2 || this.drafts.has(id3)) throw Error("The annotation changed while dragging.");
       const next = withExcerpts({ ...c }, resizePlainAnnotation(source, excerpts(c), from, to));
       const saved = { ...next, updated: (/* @__PURE__ */ new Date()).toISOString() }, index2 = this.store.data.comments.findIndex((c2) => c2.id === id3);
       this.store.data.comments[index2] = saved;
@@ -45808,50 +46191,49 @@ var MarginNotes = class {
       } catch (error) {
         try {
           const disk = JSON.parse(await this.plugin.app.vault.adapter.read(`${this.plugin.app.vault.configDir}/study-studio-review.json`)).comments.find((x) => x.id === id3), current = this.store.data.comments.findIndex((c2) => c2.id === id3);
-          if (JSON.stringify(disk) === snapshot && current >= 0 && JSON.stringify(this.store.data.comments[current]) === JSON.stringify(saved)) this.store.data.comments[current] = c;
+          if (JSON.stringify(disk) === snapshot2 && current >= 0 && JSON.stringify(this.store.data.comments[current]) === JSON.stringify(saved)) this.store.data.comments[current] = c;
         } catch {
         }
         throw error;
       }
-      new import_obsidian32.Notice("Annotation resized.");
+      new import_obsidian34.Notice("Annotation resized.");
     } catch (e) {
-      new import_obsidian32.Notice(String(e));
+      new import_obsidian34.Notice(String(e));
     }
   }
   async extend(anchors) {
     const c = this.drafts.get(this.selected) ?? this.store.data.comments.find((c2) => c2.id === this.selected);
     if (!c || c.code || c.study || c.kind === "sticky" || c.deletedAt || c.resolved) {
-      new import_obsidian32.Notice("Select an active highlight, underline or text-color annotation in the margin first.");
+      new import_obsidian34.Notice("Select an active highlight, underline or text-color annotation in the margin first.");
       return;
     }
     try {
       const path = anchors[0]?.path, file = this.plugin.app.vault.getAbstractFileByPath(path ?? "");
-      if (!(file instanceof import_obsidian32.TFile)) throw Error("The selected source is unavailable.");
-      const snapshot = JSON.stringify(c), source = await this.plugin.app.vault.read(file);
+      if (!(file instanceof import_obsidian34.TFile)) throw Error("The selected source is unavailable.");
+      const snapshot2 = JSON.stringify(c), source = await this.plugin.app.vault.read(file);
       const current = this.drafts.get(c.id) ?? this.store.data.comments.find((x) => x.id === c.id);
-      if (JSON.stringify(current) !== snapshot) throw Error("The annotation changed while extending it. Please select the passage again.");
-      const opened = this.plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view).filter((v) => v instanceof import_obsidian32.MarkdownView && v.file?.path === path);
+      if (JSON.stringify(current) !== snapshot2) throw Error("The annotation changed while extending it. Please select the passage again.");
+      const opened = this.plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view).filter((v) => v instanceof import_obsidian34.MarkdownView && v.file?.path === path);
       if (opened.some((v) => v.getMode() === "source" && v.editor.getValue() !== source)) throw Error("Wait for the source note to save before extending its annotation.");
       const next = extendAnnotation(source, excerpts(c), anchors);
       const draft = withExcerpts({ ...c }, next);
-      this.drafts.set(c.id, draft);
+      this.beginDraft(draft);
       this.persist();
       await this.save(draft);
       await this.open(draft);
-      new import_obsidian32.Notice("Annotation extended.");
+      new import_obsidian34.Notice("Annotation extended.");
     } catch (e) {
-      new import_obsidian32.Notice(String(e));
+      new import_obsidian34.Notice(String(e));
     }
   }
   async save(d) {
-    const old = this.store.data.comments.find((c) => c.id === d.id);
-    const marks2 = (c) => JSON.stringify([excerpts(c), c.color, c.darkColor, c.resolved, c.markStyle, c.intent]);
-    const annotations = !old || marks2(old) !== marks2(d);
-    const snapshot = JSON.stringify(d), saved = { ...JSON.parse(snapshot), updated: (/* @__PURE__ */ new Date()).toISOString() }, i = this.store.data.comments.findIndex((c) => c.id === d.id);
-    if (i < 0) this.store.data.comments.push(saved);
-    else this.store.data.comments[i] = saved;
-    await this.store.save({ paths: commentPaths(saved), commentIds: /* @__PURE__ */ new Set([d.id]), annotations });
-    if (JSON.stringify(this.drafts.get(d.id)) === snapshot) this.drafts.delete(d.id);
+    const snapshot2 = JSON.stringify(d), saved = { ...JSON.parse(snapshot2), updated: (/* @__PURE__ */ new Date()).toISOString() };
+    const base2 = this.draftBases.get(d.id) ?? void 0;
+    await this.store.saveCommentDraft(base2, saved);
+    this.draftBases.set(d.id, JSON.parse(JSON.stringify(saved)));
+    if (JSON.stringify(this.drafts.get(d.id)) === snapshot2) {
+      this.drafts.delete(d.id);
+    }
     this.persist();
   }
   /** Numbers and post-it icons navigate through the current saved/draft record. */
@@ -45877,14 +46259,14 @@ var MarginNotes = class {
       return;
     }
     const app = this.plugin.app, file = app.vault.getAbstractFileByPath(c.path);
-    if (!(file instanceof import_obsidian32.TFile)) {
-      new import_obsidian32.Notice("The source note is unavailable.");
+    if (!(file instanceof import_obsidian34.TFile)) {
+      new import_obsidian34.Notice("The source note is unavailable.");
       return;
     }
     const existing = marginSourceLeaf(app.workspace, c.path), opened = existing?.view;
     const raw = opened?.getMode() === "source" ? opened.editor.getValue() : await app.vault.cachedRead(file), hits = embeddedStickyStarts(raw, c.id);
     if (hits.length !== 1) {
-      new import_obsidian32.Notice(hits.length ? "This post-it appears more than once in the source note." : "The post-it placement is no longer in the source note.");
+      new import_obsidian34.Notice(hits.length ? "This post-it appears more than once in the source note." : "The post-it placement is no longer in the source note.");
       return;
     }
     await this.revealer.reveal(c.path, raw, hits[0], hits[0], true);
@@ -45892,34 +46274,34 @@ var MarginNotes = class {
   /** Sidecar post-its open at their placement without selecting or editing source text. */
   async jumpPlacement(path, p) {
     const app = this.plugin.app, file = app.vault.getAbstractFileByPath(path);
-    if (!(file instanceof import_obsidian32.TFile)) {
-      new import_obsidian32.Notice("The source note is unavailable.");
+    if (!(file instanceof import_obsidian34.TFile)) {
+      new import_obsidian34.Notice("The source note is unavailable.");
       return;
     }
     const existing = marginSourceLeaf(app.workspace, path), opened = existing?.view;
     const raw = opened?.getMode() === "source" ? opened.editor.getValue() : await app.vault.cachedRead(file), end = locatePlacement(raw, p);
     if (end === void 0) {
-      new import_obsidian32.Notice("The post-it placement has changed or is ambiguous. The note remains in the margin.");
+      new import_obsidian34.Notice("The post-it placement has changed or is ambiguous. The note remains in the margin.");
       return;
     }
     await this.revealer.reveal(path, raw, end, end, true);
   }
   async jump(a2) {
     const app = this.plugin.app, file = app.vault.getAbstractFileByPath(a2.path);
-    if (!(file instanceof import_obsidian32.TFile)) {
-      new import_obsidian32.Notice("The source note is unavailable.");
+    if (!(file instanceof import_obsidian34.TFile)) {
+      new import_obsidian34.Notice("The source note is unavailable.");
       return;
     }
     const opened = marginSourceLeaf(app.workspace, a2.path)?.view;
     const raw = opened?.getMode() === "source" ? opened.editor.getValue() : await app.vault.cachedRead(file), at = marginLocation(raw, a2);
     if (!at) {
-      new import_obsidian32.Notice("The excerpt has changed or is ambiguous. Its saved quotation remains in the margin note.");
+      new import_obsidian34.Notice("The excerpt has changed or is ambiguous. Its saved quotation remains in the margin note.");
       return;
     }
     await this.revealer.reveal(a2.path, raw, at.from, at.to, true);
   }
 };
-var MarginView = class extends import_obsidian32.ItemView {
+var MarginView = class extends import_obsidian34.ItemView {
   constructor(leaf, notes) {
     super(leaf);
     this.notes = notes;
@@ -45963,13 +46345,13 @@ var MarginView = class extends import_obsidian32.ItemView {
       while (this.sourceAgain && !this.closed) {
         this.sourceAgain = false;
         const path = this.notes.file, file = this.app.vault.getAbstractFileByPath(path);
-        if (!(file instanceof import_obsidian32.TFile)) continue;
-        const opened = marginSourceLeaf(this.app.workspace, path)?.view, text2 = opened?.getMode() === "source" ? opened.editor.getValue() : await this.app.vault.cachedRead(file);
-        const bridge = this.app.plugins.plugins["code-links"], epoch = this.bridgeEpoch, same2 = path === this.sourcePath && text2 === this.sourceText;
-        if (path !== this.notes.file || same2 && bridge === this.sourceBridge && this.embedsComplete) continue;
-        let embeds2 = same2 ? this.codeEmbeds : [], complete = false;
+        if (!(file instanceof import_obsidian34.TFile)) continue;
+        const opened = marginSourceLeaf(this.app.workspace, path)?.view, text3 = opened?.getMode() === "source" ? opened.editor.getValue() : await this.app.vault.cachedRead(file);
+        const bridge = this.app.plugins.plugins["code-links"], epoch = this.bridgeEpoch, same = path === this.sourcePath && text3 === this.sourceText;
+        if (path !== this.notes.file || same && bridge === this.sourceBridge && this.embedsComplete) continue;
+        let embeds2 = same ? this.codeEmbeds : [], complete = false;
         if (codeEmbedsReady(bridge)) try {
-          embeds2 = await readCodeEmbeds(bridge, text2);
+          embeds2 = await readCodeEmbeds(bridge, text3);
           complete = true;
         } catch {
         }
@@ -45979,7 +46361,7 @@ var MarginView = class extends import_obsidian32.ItemView {
         this.sourceBridge = bridge;
         this.sourceRevision++;
         this.sourcePath = path;
-        this.sourceText = text2;
+        this.sourceText = text3;
         this.positions.clear();
         this.update();
       }
@@ -46060,7 +46442,7 @@ var MarginView = class extends import_obsidian32.ItemView {
     this.visibilityLink = this.contentEl.createEl("a", { cls: "study-margin-ordinary-toggle", href: "#" });
     this.visibilityLink.onclick = (e) => {
       e.preventDefault();
-      void this.notes.store.setVisibility({ ...this.notes.store.visibility, hideOrdinary: !this.notes.store.visibility.hideOrdinary }).catch((e2) => new import_obsidian32.Notice(String(e2)));
+      void this.notes.store.setVisibility({ ...this.notes.store.visibility, hideOrdinary: !this.notes.store.visibility.hideOrdinary }).catch((e2) => new import_obsidian34.Notice(String(e2)));
     };
     const visibility = new VisibilityControls(this.contentEl, this.notes.store);
     this.register(() => visibility.destroy());
@@ -46074,7 +46456,7 @@ var MarginView = class extends import_obsidian32.ItemView {
         if (card) {
           this.select(card.dataset.marginId);
           this.focusSelected(true);
-        } else new import_obsidian32.Notice("No annotation with that number in this note.");
+        } else new import_obsidian34.Notice("No annotation with that number in this note.");
       }
     };
     this.filter = this.toolbar.createEl("select", { attr: { "aria-label": "Filter margin note type" } });
@@ -46106,7 +46488,7 @@ var MarginView = class extends import_obsidian32.ItemView {
       if (this.closed) return;
       this.bridgeEpoch++;
       this.embedsComplete = false;
-      void this.source().catch((e) => new import_obsidian32.Notice(String(e)));
+      void this.source().catch((e) => new import_obsidian34.Notice(String(e)));
     };
     this.registerEvent(this.app.workspace.on("code-links-ready", ready));
     this.app.workspace.onLayoutReady(ready);
@@ -46117,10 +46499,10 @@ var MarginView = class extends import_obsidian32.ItemView {
       if (file?.extension === "md") {
         this.notes.file = file.path;
         this.update();
-        void this.source().catch((e) => new import_obsidian32.Notice("Could not read annotation source: " + String(e)));
+        void this.source().catch((e) => new import_obsidian34.Notice("Could not read annotation source: " + String(e)));
       }
     }));
-    this.registerDomEvent(this.contentEl.ownerDocument.defaultView, "focus", () => void this.notes.store.refresh().catch((e) => new import_obsidian32.Notice(String(e))));
+    this.registerDomEvent(this.contentEl.ownerDocument.defaultView, "focus", () => void this.notes.store.refresh().catch((e) => new import_obsidian34.Notice(String(e))));
     this.contentEl.addEventListener("keydown", (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
         e.preventDefault();
@@ -46132,10 +46514,10 @@ var MarginView = class extends import_obsidian32.ItemView {
         this.query.focus();
       }
     });
-    const refreshSource = () => void this.source().catch((e) => new import_obsidian32.Notice("Could not read annotation source: " + String(e)));
+    const refreshSource = () => void this.source().catch((e) => new import_obsidian34.Notice("Could not read annotation source: " + String(e)));
     this.registerEvent(this.app.workspace.on("active-leaf-change", (leaf) => {
       const view = leaf?.view;
-      if (view instanceof import_obsidian32.MarkdownView && view.file) {
+      if (view instanceof import_obsidian34.MarkdownView && view.file) {
         if (view.file.path !== this.notes.file) {
           this.notes.file = view.file.path;
           this.update();
@@ -46148,10 +46530,10 @@ var MarginView = class extends import_obsidian32.ItemView {
       if (view.file?.path === this.notes.file) refreshSource();
     }));
     this.registerEvent(this.app.vault.on("modify", (file) => {
-      if (file.path === this.notes.file) void this.source().catch((e) => new import_obsidian32.Notice("Could not read annotation source: " + String(e)));
+      if (file.path === this.notes.file) void this.source().catch((e) => new import_obsidian34.Notice("Could not read annotation source: " + String(e)));
     }));
     this.update();
-    void this.source().catch((e) => new import_obsidian32.Notice("Could not read annotation source: " + String(e)));
+    void this.source().catch((e) => new import_obsidian34.Notice("Could not read annotation source: " + String(e)));
   }
   async onClose() {
     this.closed = true;
@@ -46184,10 +46566,10 @@ var MarginView = class extends import_obsidian32.ItemView {
   draft(id3) {
     let d = this.notes.drafts.get(id3);
     if (!d) {
-      const c = this.current(id3);
+      const c = this.notes.draftBases.get(id3) ?? this.current(id3);
       if (!c) return;
       d = JSON.parse(JSON.stringify(c));
-      this.notes.drafts.set(id3, d);
+      this.notes.beginDraft(d);
     }
     return d;
   }
@@ -46219,21 +46601,22 @@ var MarginView = class extends import_obsidian32.ItemView {
     } catch (e) {
       failed = true;
       this.cards.get(id3)?.status.setText("Save failed \xB7 draft kept");
-      new import_obsidian32.Notice(String(e));
+      new import_obsidian34.Notice(String(e));
     } finally {
       this.saving.delete(id3);
       if (!failed && this.notes.drafts.has(id3) && this.cards.has(id3)) this.schedule(id3);
     }
   }
   paneMenu(e) {
-    const menu = new import_obsidian32.Menu();
+    const menu = new import_obsidian34.Menu();
     this.notes.store.addVisibilityMenu(menu, { x: e.clientX, y: e.clientY });
+    if (this.notes.file) this.notes.store.addClearEmptyMenu(menu, this.notes.file);
     menu.addItem((i) => i.setTitle("New margin note").setIcon("plus").onClick(() => {
       if (this.notes.file) void this.notes.open({ path: this.notes.file, quote: "", before: "", after: "" });
     })).addItem((i) => i.setTitle(this.showResolved ? "Hide resolved notes" : "Show resolved notes").onClick(() => {
       this.showResolved = !this.showResolved;
       this.update();
-    })).addItem((i) => i.setTitle("Undo last note deletion").setIcon("undo").onClick(() => void this.restoreNote())).addItem((i) => i.setTitle("Refresh notes from disk").setIcon("refresh-cw").onClick(() => void this.notes.store.refresh().catch((e2) => new import_obsidian32.Notice(String(e2))))).addItem((i) => i.setTitle("Color meanings\u2026").onClick(() => {
+    })).addItem((i) => i.setTitle("Undo last note deletion").setIcon("undo").onClick(() => void this.restoreNote())).addItem((i) => i.setTitle("Refresh notes from disk").setIcon("refresh-cw").onClick(() => void this.notes.store.refresh().catch((e2) => new import_obsidian34.Notice(String(e2))))).addItem((i) => i.setTitle("Color meanings\u2026").onClick(() => {
       this.app.setting.open();
       this.app.setting.openTabById("study-studio");
     })).addItem((i) => i.setTitle("Hide margin").onClick(() => this.leaf.detach())).showAtPosition({ x: e.clientX, y: e.clientY });
@@ -46242,6 +46625,7 @@ var MarginView = class extends import_obsidian32.ItemView {
     try {
       await this.commit(id3);
       while (this.saving.has(id3)) await new Promise((r) => setTimeout(r, 20));
+      if (this.notes.drafts.has(id3)) throw Error("Finish or resolve the kept draft before deleting this note.");
       const c = this.current(id3);
       if (!c) return;
       const removed = { ...c, deletedAt: (/* @__PURE__ */ new Date()).toISOString(), deletedWasResolved: c.resolved, resolved: true };
@@ -46249,6 +46633,7 @@ var MarginView = class extends import_obsidian32.ItemView {
       if (timer) clearTimeout(timer);
       this.saveTimers.delete(id3);
       this.notes.drafts.delete(id3);
+      this.notes.draftBases.delete(id3);
       this.notes.persist();
       const index2 = this.notes.store.data.comments.findIndex((c2) => c2.id === id3);
       if (index2 < 0) this.notes.store.data.comments.push(removed);
@@ -46261,14 +46646,14 @@ var MarginView = class extends import_obsidian32.ItemView {
       undo2.textContent = "Undo";
       undo2.href = "#";
       fragment.append(undo2);
-      const notice = new import_obsidian32.Notice(fragment, 1e4);
+      const notice = new import_obsidian34.Notice(fragment, 1e4);
       undo2.onclick = (e) => {
         e.preventDefault();
         void this.restoreNote(id3);
         notice.hide();
       };
     } catch (e) {
-      new import_obsidian32.Notice("Could not delete note: " + String(e));
+      new import_obsidian34.Notice("Could not delete note: " + String(e));
     }
   }
   async restoreNote(id3) {
@@ -46304,21 +46689,27 @@ var MarginView = class extends import_obsidian32.ItemView {
     this.select(id3);
     const c = this.current(id3);
     if (!c) return;
-    const menu = import_obsidian32.Menu.forEvent(e);
+    const menu = import_obsidian34.Menu.forEvent(e);
     this.notes.store.addVisibilityMenu(menu, { x: e.clientX, y: e.clientY });
+    this.notes.store.addClearEmptyMenu(menu, this.notes.file || c.path);
     for (const a2 of excerpts(c)) menu.addItem((i) => i.setTitle("Go to: " + (a2.renderedQuote ?? a2.quote).slice(0, 55)).setIcon("arrow-up-right").onClick(() => void this.notes.jump(a2)));
     if (c.kind === "sticky") menu.addItem((i) => i.setTitle("Go to post-it").setIcon("arrow-up-right").onClick(() => void this.notes.jumpNote(c.id)));
     if (c.code) menu.addItem((i) => i.setTitle("Go to code").onClick(() => void this.notes.jumpNote(c.id)));
+    if (!c.study && (!c.code || c.code.purpose === "comment")) menu.addItem((i) => i.setTitle("Insert table\u2026").setIcon("table").setDisabled(this.busyEditors.has(id3)).onClick(() => {
+      const atEnd = !card?.editor || card.editor.previewing;
+      this.beginEditor(id3, false);
+      this.cards.get(id3)?.editor?.insertTable(atEnd);
+    }));
     studyTypeItems(menu, c, (type) => this.notes.store.changeStudyType?.(id3, type), this.app, this.containerEl.ownerDocument);
     if (!c.study && (!c.code || c.code.purpose === "comment")) appearanceItems(menu, c, (s) => this.notes.store.paletteFor(s), (patch) => void this.changeAppearance(id3, patch));
-    if (!this.notes.store.isAnnotationVisible(c)) menu.addItem((i) => i.setTitle("Show " + styleNames[styleOf(c)] + " \xB7 " + c.intent + " in main note").setIcon("eye").onClick(() => void this.notes.store.showAnnotation(c).catch((e2) => new import_obsidian32.Notice(String(e2)))));
+    if (!this.notes.store.isAnnotationVisible(c)) menu.addItem((i) => i.setTitle("Show " + styleNames[styleOf(c)] + " \xB7 " + c.intent + " in main note").setIcon("eye").onClick(() => void this.notes.store.showAnnotation(c).catch((e2) => new import_obsidian34.Notice(String(e2)))));
     menu.addItem((i) => i.setTitle("Delete note").setIcon("trash-2").onClick(() => void this.deleteNote(id3)));
     menu.addItem((i) => i.setTitle(c.resolved ? "Reopen note" : "Resolve note").onClick(() => {
       this.draft(id3).resolved = !c.resolved;
       this.schedule(id3);
     }));
     if (this.notes.drafts.has(id3)) menu.addItem((i) => i.setTitle("Discard unsaved changes\u2026").onClick(() => {
-      const modal = new import_obsidian32.Modal(this.app);
+      const modal = new import_obsidian34.Modal(this.app);
       modal.titleEl.setText("Discard unsaved changes?");
       modal.contentEl.createEl("p", { text: "The saved note will remain." });
       modal.contentEl.createEl("button", { text: "Keep writing" }).onclick = () => modal.close();
@@ -46327,6 +46718,7 @@ var MarginView = class extends import_obsidian32.ItemView {
         if (t2) clearTimeout(t2);
         this.saveTimers.delete(id3);
         this.notes.drafts.delete(id3);
+        this.notes.draftBases.delete(id3);
         this.notes.persist();
         const card2 = this.cards.get(id3);
         if (card2) {
@@ -46546,12 +46938,12 @@ var MarginView = class extends import_obsidian32.ItemView {
     h.oncontextmenu = (e) => {
       e.preventDefault();
       e.stopPropagation();
-      new import_obsidian32.Menu().addItem((i) => i.setTitle(g.kind === "code-block" ? "Go to code" : "Go to source").setIcon(g.kind === "code-block" ? "code" : "arrow-up-right").onClick(() => {
+      new import_obsidian34.Menu().addItem((i) => i.setTitle(g.kind === "code-block" ? "Go to code" : "Go to source").setIcon(g.kind === "code-block" ? "code" : "arrow-up-right").onClick(() => {
         const id3 = [...this.memberStacks].find(([, group2]) => group2 === g.id)?.[0];
         if (id3) void this.notes.jumpNote(id3);
       })).showAtPosition({ x: e.clientX, y: e.clientY });
     };
-    this.stackOwners.set(g.id, this.addChild(new import_obsidian32.Component()));
+    this.stackOwners.set(g.id, this.addChild(new import_obsidian34.Component()));
     this.stackHeaders.set(g.id, h);
     return h;
   }
@@ -46581,6 +46973,7 @@ var MarginView = class extends import_obsidian32.ItemView {
     for (const [otherId, other] of this.cards) if (otherId !== id3 && other.editor && !other.editor.previewing) other.editor.showPreview();
     const card = this.cards.get(id3), c = this.current(id3);
     if (!card || !c) return;
+    if ((!card.editor || card.editor.previewing) && !this.notes.drafts.has(id3)) this.notes.draftBases.set(id3, JSON.parse(JSON.stringify(c)));
     this.viewport?.restore(card.el);
     if (!card.editor) {
       const body = card.el.querySelector(".study-margin-body");
@@ -46630,7 +47023,7 @@ var MarginView = class extends import_obsidian32.ItemView {
   }
   createNote(c) {
     const renders = [];
-    const owner = this.addChild(new import_obsidian32.Component()), el = this.contentEl.ownerDocument.createElement("article");
+    const owner = this.addChild(new import_obsidian34.Component()), el = this.contentEl.ownerDocument.createElement("article");
     el.className = "study-margin-note";
     el.addEventListener("animationend", (e) => {
       if (e.animationName === "study-margin-locate") el.classList.remove("study-navigation-flash");
@@ -46763,7 +47156,7 @@ var MarginView = class extends import_obsidian32.ItemView {
     show.onclick = (e) => {
       e.stopPropagation();
       const current = this.current(c.id);
-      if (current) void this.notes.store.showAnnotation(current).catch((e2) => new import_obsidian32.Notice(String(e2)));
+      if (current) void this.notes.store.showAnnotation(current).catch((e2) => new import_obsidian34.Notice(String(e2)));
     };
     const status = top2.createSpan({ cls: "study-margin-save-status", text: this.notes.drafts.has(c.id) ? "draft" : "" });
     status.setAttribute("aria-live", "polite");
@@ -46794,7 +47187,7 @@ var MarginView = class extends import_obsidian32.ItemView {
     });
     void Promise.all(renders).then(() => {
       if (alive && !this.closed) this.viewport?.track(el, () => this.notes.selected === c.id || !!this.cards.get(c.id)?.editor || this.notes.drafts.has(c.id) || this.saving.has(c.id) || this.saveTimers.has(c.id) || this.busyEditors.has(c.id));
-    }).catch((e) => new import_obsidian32.Notice("Could not render margin note: " + String(e)));
+    }).catch((e) => new import_obsidian34.Notice("Could not render margin note: " + String(e)));
     return { el, owner, signature: JSON.stringify(c), status };
   }
 };
@@ -46845,12 +47238,12 @@ async function registerMarginNotes(plugin2, store) {
     store.resizeMargin = void 0;
   });
   plugin2.addCommand({ id: "open-margin-notes", name: "Open margin notes", callback: () => void notes.open() });
-  plugin2.addCommand({ id: "refresh-margin-notes", name: "Refresh margin notes from disk", callback: () => void store.refresh().catch((e) => new import_obsidian32.Notice(String(e))) });
+  plugin2.addCommand({ id: "refresh-margin-notes", name: "Refresh margin notes from disk", callback: () => void store.refresh().catch((e) => new import_obsidian34.Notice(String(e))) });
   return notes;
 }
 
 // src/vault-window-identity.ts
-var import_obsidian33 = require("obsidian");
+var import_obsidian35 = require("obsidian");
 
 // src/vault-window-title.ts
 function vaultWindowTitle(vault, title) {
@@ -46869,7 +47262,7 @@ function vaultWindowTitle(vault, title) {
 
 // src/vault-window-identity.ts
 function registerVaultWindowIdentity(plugin2) {
-  if (!import_obsidian33.Platform.isDesktopApp) return;
+  if (!import_obsidian35.Platform.isDesktopApp) return;
   const identity = plugin2.addStatusBarItem();
   identity.addClass("study-vault-identity");
   identity.setText(plugin2.app.vault.getName());
@@ -46940,10 +47333,10 @@ function practiceLink(vault, set2) {
 
 // src/practice-session.ts
 var PRACTICE_SESSIONS = "Study Studio/Practice sessions";
-var practiceSessionPath = (context) => `${PRACTICE_SESSIONS}/${encodeURIComponent(context)}.json`;
-function freezePractice(context, title, course, review, attempts, finished = (/* @__PURE__ */ new Date()).toISOString()) {
-  if (!attempts.length || new Set(attempts.map((a2) => a2.questionId)).size !== attempts.length || attempts.some((a2) => a2.context !== context || a2.mode !== "attempt" || !a2.grade || a2.grade.pending)) throw Error("Every question must be checked and graded before freezing this session.");
-  return structuredClone({ version: 1, kind: "practice-session", context, title, course, finished, review, attempts });
+var practiceSessionPath = (context2) => `${PRACTICE_SESSIONS}/${encodeURIComponent(context2)}.json`;
+function freezePractice(context2, title, course, review, attempts, finished = (/* @__PURE__ */ new Date()).toISOString()) {
+  if (!attempts.length || new Set(attempts.map((a2) => a2.questionId)).size !== attempts.length || attempts.some((a2) => a2.context !== context2 || a2.mode !== "attempt" || !a2.grade || a2.grade.pending)) throw Error("Every question must be checked and graded before freezing this session.");
+  return structuredClone({ version: 1, kind: "practice-session", context: context2, title, course, finished, review, attempts });
 }
 function parsePracticeSession(raw) {
   const s = JSON.parse(raw);
@@ -47017,10 +47410,10 @@ function historyChart(parent, title, days, mode) {
   svg.setAttribute("role", "img");
   svg.setAttribute("aria-label", `${title}. ${days.length} active days. Exact values are in the data table below.`);
   panel.append(svg);
-  const el = (tag, attrs, text2) => {
+  const el = (tag, attrs, text3) => {
     const n = document.createElementNS(ns, tag);
     for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
-    if (text2) n.textContent = text2;
+    if (text3) n.textContent = text3;
     svg.append(n);
     return n;
   };
@@ -47333,7 +47726,7 @@ async function recordedResponse(app, record, questionId, frozen, provided) {
   const root = view.contentEl;
   root.empty();
   root.addClass("study-response-review");
-  const render = (text2, host, q) => RichMarkdown.render(app, text2, host, q.path, view);
+  const render = (text3, host, q) => RichMarkdown.render(app, text3, host, q.path, view);
   const scored2 = entries.filter((e) => e.result && !e.result.pending), earned = scored2.reduce((n, e) => n + e.result.earned, 0), possible = scored2.reduce((n, e) => n + e.result.possible, 0), pending = entries.filter((e) => e.result?.pending).length;
   const status = (e) => !e.result ? "Unscored" : e.result.pending ? "Pending" : e.result.earned === e.result.possible ? "Correct" : e.result.earned === 0 ? "Incorrect" : "Partial";
   if (frozen) {
@@ -47487,8 +47880,8 @@ function shuffledPractice(questions, random = Math.random) {
 }
 
 // src/vocabulary.ts
-var import_obsidian34 = require("obsidian");
-var AddVocabulary = class extends import_obsidian34.Modal {
+var import_obsidian36 = require("obsidian");
+var AddVocabulary = class extends import_obsidian36.Modal {
   constructor(app, courseId, onSaved) {
     super(app);
     this.courseId = courseId;
@@ -47498,10 +47891,10 @@ var AddVocabulary = class extends import_obsidian34.Modal {
     this.titleEl.setText("Add vocabulary");
     let term = "", meaning = "", categories = "", alternatives2 = "";
     this.contentEl.createEl("p", { text: "Describe one meaning clearly. This creates an editable vocabulary note and a linked typed-recall question. Include the article in the term if you want it required." });
-    new import_obsidian34.Setting(this.contentEl).setName("French term or expression").addText((t2) => t2.onChange((v) => term = v));
-    new import_obsidian34.Setting(this.contentEl).setName("Meaning and context").addText((t2) => t2.onChange((v) => meaning = v));
-    new import_obsidian34.Setting(this.contentEl).setName("Categories").setDesc("Comma-separated; create any category you need.").addText((t2) => t2.onChange((v) => categories = v));
-    new import_obsidian34.Setting(this.contentEl).setName("Other accepted French answers").setDesc("Optional, one complete alternative per line.").addTextArea((t2) => t2.onChange((v) => alternatives2 = v));
+    new import_obsidian36.Setting(this.contentEl).setName("French term or expression").addText((t2) => t2.onChange((v) => term = v));
+    new import_obsidian36.Setting(this.contentEl).setName("Meaning and context").addText((t2) => t2.onChange((v) => meaning = v));
+    new import_obsidian36.Setting(this.contentEl).setName("Categories").setDesc("Comma-separated; create any category you need.").addText((t2) => t2.onChange((v) => categories = v));
+    new import_obsidian36.Setting(this.contentEl).setName("Other accepted French answers").setDesc("Optional, one complete alternative per line.").addTextArea((t2) => t2.onChange((v) => alternatives2 = v));
     const error = this.contentEl.createEl("p", { cls: "study-error", attr: { role: "alert" } });
     let saving = false;
     const save = async () => {
@@ -47540,14 +47933,14 @@ ${meaning.trim()}
         }
         this.close();
         this.onSaved();
-        new import_obsidian34.Notice("Vocabulary and recall question saved.");
+        new import_obsidian36.Notice("Vocabulary and recall question saved.");
       } catch (e) {
         error.setText(`Could not save: ${e}`);
       } finally {
         saving = false;
       }
     };
-    new import_obsidian34.Setting(this.contentEl).addButton((b) => b.setButtonText("Save \xB7 Ctrl+Enter").setCta().onClick(() => void save()));
+    new import_obsidian36.Setting(this.contentEl).addButton((b) => b.setButtonText("Save \xB7 Ctrl+Enter").setCta().onClick(() => void save()));
     this.contentEl.addEventListener("keydown", (e) => {
       if (e.ctrlKey && e.key === "Enter") {
         e.preventDefault();
@@ -47563,7 +47956,7 @@ ${meaning.trim()}
 };
 
 // src/learning-ui.ts
-var import_obsidian35 = require("obsidian");
+var import_obsidian37 = require("obsidian");
 
 // src/history-model.ts
 function parseAttempt(raw) {
@@ -47693,7 +48086,7 @@ async function learningView(app, bank, courseId, practice, initial = "review", p
     });
     calendarWrites.set(app, write);
     return write.catch((e) => {
-      new import_obsidian35.Notice(`Calendar could not be saved: ${e}`);
+      new import_obsidian37.Notice(`Calendar could not be saved: ${e}`);
     });
   };
   const draw = async () => {
@@ -47895,7 +48288,7 @@ function attemptColumnLabel(column, count2) {
 }
 
 // src/chapter-home.ts
-var import_obsidian36 = require("obsidian");
+var import_obsidian38 = require("obsidian");
 function registerChapterHome(plugin2, navigate) {
   plugin2.registerMarkdownCodeBlockProcessor("study-chapter-home", (_source, el, ctx) => {
     const file = plugin2.app.vault.getAbstractFileByPath(ctx.sourcePath);
@@ -47908,10 +48301,10 @@ function registerChapterHome(plugin2, navigate) {
     const actions = root.createDiv("study-chapter-home-actions");
     const action = (label, icon, detail, run) => {
       const b = actions.createEl("button");
-      (0, import_obsidian36.setIcon)(b.createSpan("study-chapter-action-icon"), icon);
-      const text2 = b.createSpan();
-      text2.createEl("strong", { text: label });
-      text2.createEl("small", { text: detail });
+      (0, import_obsidian38.setIcon)(b.createSpan("study-chapter-action-icon"), icon);
+      const text3 = b.createSpan();
+      text3.createEl("strong", { text: label });
+      text3.createEl("small", { text: detail });
       b.onclick = run;
     };
     action("Practice", "pencil", "Practice sets and attempt scores", () => navigate.practice(chapter.courseId, chapter.chapterId));
@@ -47927,7 +48320,7 @@ function registerChapterHome(plugin2, navigate) {
         card.style.setProperty("--part-color", ["#507b98", "#786494", "#4b8177", "#966958"][i % 4]);
         const cover = card.createDiv("study-part-cover");
         cover.createSpan({ text: String(p.number ?? i + 1).padStart(2, "0") });
-        (0, import_obsidian36.setIcon)(cover.createSpan(), "book-open");
+        (0, import_obsidian38.setIcon)(cover.createSpan(), "book-open");
         const body = card.createDiv("study-part-body");
         body.createEl("small", { text: `PART ${p.number ?? i + 1}` });
         body.createEl("strong", { text: p.title });
@@ -48014,7 +48407,7 @@ function practiceSetRuns(questions, history2, courseId, snapshots = []) {
     list.push(row);
     runs.set(row.practiceContext, list);
   }
-  for (const snapshot of snapshots) if (snapshot.course?.id === courseId && snapshot.context.startsWith("practice-set:") && snapshot.attempts.some((a2) => ids.has(a2.questionId)) && !runs.has(snapshot.context)) runs.set(snapshot.context, []);
+  for (const snapshot2 of snapshots) if (snapshot2.course?.id === courseId && snapshot2.context.startsWith("practice-set:") && snapshot2.attempts.some((a2) => ids.has(a2.questionId)) && !runs.has(snapshot2.context)) runs.set(snapshot2.context, []);
   return [...runs].map(([id3, rows]) => {
     const frozen = snapshots.find((s) => s.context === id3);
     if (frozen) return { id: id3, date: frozen.finished, earned: frozen.attempts.reduce((n, a2) => n + a2.grade.earned, 0), possible: frozen.attempts.reduce((n, a2) => n + a2.grade.possible, 0), pending: 0, coverage: frozen.attempts.length, total: frozen.attempts.length, rows, frozen };
@@ -48027,10 +48420,10 @@ function practiceSetRuns(questions, history2, courseId, snapshots = []) {
 }
 
 // src/study-home.ts
-var import_obsidian38 = require("obsidian");
+var import_obsidian40 = require("obsidian");
 
 // src/course-ui.ts
-var import_obsidian37 = require("obsidian");
+var import_obsidian39 = require("obsidian");
 var ROOT = "Study Studio/Courses";
 async function courses(app) {
   const files = app.vault.getMarkdownFiles().filter((f) => f.path.startsWith(ROOT + "/") || app.metadataCache.getFileCache(f)?.frontmatter?.studyCourse);
@@ -48060,7 +48453,7 @@ async function manageCourses(app) {
       await manageCourses(app);
     })().catch((e) => {
       create.disabled = false;
-      new import_obsidian37.Notice(String(e));
+      new import_obsidian39.Notice(String(e));
     });
   };
   for (const { course, file } of entries) {
@@ -48078,8 +48471,8 @@ async function manageCourses(app) {
           return replaceProperty(raw, "studyCourse", { ...current, title: input.value.trim() });
         });
         course.title = input.value.trim();
-        new import_obsidian37.Notice("Course title saved. Historical course labels remain unchanged.");
-      })().catch((e) => new import_obsidian37.Notice(String(e))).finally(() => save.disabled = false);
+        new import_obsidian39.Notice("Course title saved. Historical course labels remain unchanged.");
+      })().catch((e) => new import_obsidian39.Notice(String(e))).finally(() => save.disabled = false);
     };
   }
   if (!entries.length) panel.contentEl.createEl("p", { text: "No courses yet. Existing questions and history remain unassigned." });
@@ -48090,7 +48483,7 @@ async function assignCourses(app, file) {
   const key2 = front?.study ? "study" : front?.studyExam ? "studyExam" : void 0;
   if (!key2) throw Error("Open a question or exam source note first.");
   const definition = key2 === "study" ? parseQuestion(original, file.path).definition : parseExam(original), entries = await courses(app), selected = new Set(definition.courseIds ?? []);
-  const modal = new import_obsidian37.Modal(app);
+  const modal = new import_obsidian39.Modal(app);
   modal.titleEl.setText(`Courses \xB7 ${definition.title}`);
   modal.contentEl.createEl("p", { text: "Membership affects future study choices, not past history. No selection means unassigned. Reopen any already-open editors/cards after saving." });
   const options = new Map(entries.map((e) => [e.course.id, e.course.title]));
@@ -48112,10 +48505,10 @@ async function assignCourses(app, file) {
       return replaceProperty(raw, key2, { ...definition, courseIds, ..."chapters" in definition ? { chapters: definition.chapters?.filter((p) => courseIds.includes(p.courseId)) } : {} });
     }).then(() => {
       modal.close();
-      new import_obsidian37.Notice("Memberships saved. Existing history unchanged.");
+      new import_obsidian39.Notice("Memberships saved. Existing history unchanged.");
     }, (e) => {
       save.disabled = false;
-      new import_obsidian37.Notice(String(e));
+      new import_obsidian39.Notice(String(e));
     });
   };
   modal.open();
@@ -48125,7 +48518,7 @@ async function chooseCourse(app, ids) {
   if ((ids ?? []).some((id3) => !all.some((x) => x.course.id === id3))) throw Error("A course membership references a missing course. Repair it before starting.");
   if (!available.length) return null;
   return new Promise((resolve) => {
-    const modal = new import_obsidian37.Modal(app);
+    const modal = new import_obsidian39.Modal(app);
     let decided = false;
     modal.titleEl.setText("Course for this exam");
     modal.contentEl.createEl("p", { text: "This choice is saved with the session and will not change if memberships change later." });
@@ -48186,13 +48579,13 @@ async function historyView(app) {
       row.createEl("button", { text: "Open original record" }).onclick = () => {
         void (async () => {
           const file = app.vault.getAbstractFileByPath(r.paths[0]);
-          if (!(file instanceof import_obsidian37.TFile)) throw Error("Original record is no longer available.");
+          if (!(file instanceof import_obsidian39.TFile)) throw Error("Original record is no longer available.");
           const raw = await app.vault.read(file), record = new StudioPanel(app);
           record.titleEl.setText("Saved history record");
           record.contentEl.createEl("p", { text: file.path });
           record.contentEl.createEl("pre", { text: raw });
           record.open();
-        })().catch((e) => new import_obsidian37.Notice(String(e)));
+        })().catch((e) => new import_obsidian39.Notice(String(e)));
       };
     }
     if (rows.length > limit) list.createEl("button", { text: "Show 100 more" }).onclick = () => {
@@ -48415,7 +48808,7 @@ function registerStudyHome(plugin2, hooks) {
     const raw = JSON.stringify(prefs);
     writes = writes.catch(() => {
     }).then(() => plugin2.app.vault.adapter.write(prefPath, raw));
-    void writes.catch((e) => new import_obsidian38.Notice(`Could not save Home preferences: ${e}`));
+    void writes.catch((e) => new import_obsidian40.Notice(`Could not save Home preferences: ${e}`));
   };
   let currentCourse = "";
   let opening = false;
@@ -48438,7 +48831,7 @@ function registerStudyHome(plugin2, hooks) {
     }
   };
   registerChapterHome(plugin2, { course: (id3) => void open(id3), practice: (id3, chapter) => void open(id3, "practice", chapter), grades: (id3, chapter) => void dashboard(plugin2.app, hooks.bank, id3, chapter) });
-  class Home extends import_obsidian38.ItemView {
+  class Home extends import_obsidian40.ItemView {
     refreshTimer;
     revision = 0;
     query = "";
@@ -48592,7 +48985,7 @@ function registerStudyHome(plugin2, hooks) {
                   cover.setAttribute("aria-hidden", "true");
                   cover.createSpan({ cls: "study-chapter-number", text: String(c.number ?? index2 + 1).padStart(2, "0") });
                   const emblem = cover.createSpan({ cls: "study-chapter-emblem" });
-                  (0, import_obsidian38.setIcon)(emblem, typeof c.icon === "string" ? c.icon : "book-open");
+                  (0, import_obsidian40.setIcon)(emblem, typeof c.icon === "string" ? c.icon : "book-open");
                   if (typeof c.cover === "string") {
                     const image = this.app.metadataCache.getFirstLinkpathDest(c.cover, f.path);
                     if (image && ["svg", "png", "jpg", "jpeg", "webp"].includes(image.extension)) {
@@ -48613,18 +49006,18 @@ function registerStudyHome(plugin2, hooks) {
                   progress.value = tested;
                   progress.setAttribute("aria-label", "Questions scored");
                   card.onclick = () => openNote(f);
-                  const context = (e) => {
+                  const context2 = (e) => {
                     e.preventDefault();
-                    const menu = new import_obsidian38.Menu();
+                    const menu = new import_obsidian40.Menu();
                     menu.addItem((i) => i.setTitle("Open chapter").onClick(() => openNote(f)));
                     menu.addItem((i) => i.setTitle("Chapter gradebook").onClick(() => void dashboard(this.app, hooks.bank, course.id, c.chapterId)));
                     if (qs.length) menu.addItem((i) => i.setTitle("Practice chapter").onClick(() => hooks.practice(qs)));
                     const r = card.getBoundingClientRect();
                     menu.showAtPosition({ x: "clientX" in e ? e.clientX : r.left, y: "clientY" in e ? e.clientY : r.bottom });
                   };
-                  card.oncontextmenu = context;
+                  card.oncontextmenu = context2;
                   card.onkeydown = (e) => {
-                    if (e.ctrlKey && e.code === "Space") context(e);
+                    if (e.ctrlKey && e.code === "Space") context2(e);
                   };
                 }
                 count2 += items.length;
@@ -48753,7 +49146,7 @@ function registerStudyHome(plugin2, hooks) {
                 count2++;
                 const row = body.createDiv("study-home-destination");
                 row.createEl("strong", { text: exam.title });
-                row.createEl("button", { text: active.some((s) => s.exam.id === exam.id) ? "Start new attempt" : "Start" }).onclick = () => void hooks.start(exam).catch((e) => new import_obsidian38.Notice(String(e)));
+                row.createEl("button", { text: active.some((s) => s.exam.id === exam.id) ? "Start new attempt" : "Start" }).onclick = () => void hooks.start(exam).catch((e) => new import_obsidian40.Notice(String(e)));
               }
               if (!count2) body.createEl("p", { text: "No matching assessments." });
             }
@@ -48817,7 +49210,7 @@ function registerStudyHome(plugin2, hooks) {
             const menu = (e) => {
               e.preventDefault();
               e.stopPropagation();
-              const menu2 = new import_obsidian38.Menu();
+              const menu2 = new import_obsidian40.Menu();
               menu2.addItem((i) => i.setTitle(prefs.pins.includes(course.id) ? "Unpin course" : "Pin course").setIcon("pin").onClick(() => {
                 prefs.pins = prefs.pins.includes(course.id) ? prefs.pins.filter((x) => x !== course.id) : [...prefs.pins, course.id];
                 save();
@@ -48867,7 +49260,7 @@ function registerStudyHome(plugin2, hooks) {
       }
     }
   }
-  class Sidebar extends import_obsidian38.ItemView {
+  class Sidebar extends import_obsidian40.ItemView {
     getViewType() {
       return SIDE;
     }
@@ -48900,7 +49293,7 @@ function registerStudyHome(plugin2, hooks) {
       root.createEl("h4", { text: selected.course.title });
       const action = (label, icon, fn) => {
         const button2 = root.createEl("button");
-        (0, import_obsidian38.setIcon)(button2.createSpan(), icon);
+        (0, import_obsidian40.setIcon)(button2.createSpan(), icon);
         button2.createSpan({ text: label });
         button2.onclick = fn;
       };
@@ -48940,12 +49333,282 @@ function printableQuestion(q, number2) {
 ${body}`;
 }
 
+// src/review-persistence.ts
+function reviewGitDirectory(root) {
+  const fs = require("fs"), path = require("path");
+  let dir = fs.realpathSync(root);
+  for (; ; ) {
+    const marker = path.join(dir, ".git");
+    let stat;
+    try {
+      stat = fs.lstatSync(marker);
+    } catch (e) {
+      if (e.code !== "ENOENT") throw e;
+    }
+    if (stat) {
+      if (stat.isSymbolicLink()) throw Error("Refusing linked Git metadata for annotation writes.");
+      let git = marker;
+      if (!stat.isDirectory()) {
+        const text3 = fs.readFileSync(marker, "utf8").trim();
+        if (!text3.startsWith("gitdir: ")) throw Error("Invalid Git metadata; annotation write deferred.");
+        git = path.resolve(dir, text3.slice(8));
+      }
+      git = fs.realpathSync(git);
+      const common = path.join(git, "commondir");
+      let commonPath;
+      try {
+        commonPath = fs.readFileSync(common, "utf8").trim();
+      } catch (e) {
+        if (e.code !== "ENOENT") throw e;
+      }
+      if (commonPath !== void 0) {
+        if (!commonPath) throw Error("Empty Git common directory");
+        git = fs.realpathSync(path.resolve(git, commonPath));
+      }
+      return git;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) return;
+    dir = parent;
+  }
+}
+function reviewLockDirectory(root) {
+  const path = require("path"), fs = require("fs"), crypto2 = require("crypto");
+  const git = reviewGitDirectory(root);
+  return git ? path.join(git, "vault-sync-review.lock") : path.join(require("os").tmpdir(), "study-studio-review-locks", crypto2.createHash("sha256").update(fs.realpathSync(root)).digest("hex"));
+}
+async function withReviewGuard(root, work) {
+  const fs = require("fs"), path = require("path"), directory = reviewLockDirectory(root), token = require("crypto").randomUUID();
+  await fs.promises.mkdir(path.dirname(directory), { recursive: true });
+  const deadline = Date.now() + 1500;
+  for (; ; ) {
+    try {
+      await fs.promises.mkdir(directory, { mode: 448 });
+      break;
+    } catch (e) {
+      if (e.code !== "EEXIST") throw e;
+      if (Date.now() >= deadline) throw Error("Annotation write is busy or has an unfinished transaction. The edit is kept; retry after recovery.");
+      await new Promise((r) => setTimeout(r, 25));
+    }
+  }
+  const owner = path.join(directory, "owner.json");
+  let owned = false;
+  try {
+    await fs.promises.writeFile(owner, JSON.stringify({ token, pid: process.pid, at: Date.now() }), { flag: "wx", mode: 384 });
+    owned = true;
+    return await work(directory);
+  } finally {
+    if (owned && JSON.parse(await fs.promises.readFile(owner, "utf8")).token === token) {
+      await fs.promises.unlink(owner);
+      await fs.promises.rmdir(directory);
+    }
+  }
+}
+async function nativeReviewUpdate(root, relative, initial, transform) {
+  const fs = require("fs"), path = require("path"), full2 = path.resolve(root, relative), canonical2 = fs.realpathSync(root);
+  if (!full2.startsWith(canonical2 + path.sep) && !full2.startsWith(path.resolve(root) + path.sep)) throw Error("Review path escaped vault.");
+  return withReviewGuard(root, async (directory) => {
+    let latest = initial, mode = 384, exists = false;
+    try {
+      const stat = await fs.promises.lstat(full2);
+      if (!stat.isFile() || stat.isSymbolicLink()) throw Error("Review path is not a regular file.");
+      mode = stat.mode & 511;
+      latest = JSON.parse(await fs.promises.readFile(full2, "utf8"));
+      exists = true;
+    } catch (e) {
+      if (e.code !== "ENOENT") throw e;
+    }
+    const next = transform(latest), text3 = JSON.stringify(next, null, 2);
+    const parent = path.dirname(full2);
+    await fs.promises.mkdir(parent, { recursive: true });
+    if (fs.realpathSync(parent) !== path.join(canonical2, path.dirname(relative))) throw Error("Review parent is linked or outside vault.");
+    const sameVolume = (await fs.promises.stat(directory)).dev === (await fs.promises.stat(parent)).dev;
+    if (!sameVolume && reviewGitDirectory(root)) throw Error("Review transaction staging must be on the vault volume.");
+    const stageParent = sameVolume ? directory : parent;
+    const stage = path.join(stageParent, ".review-" + require("crypto").randomUUID());
+    let handle;
+    try {
+      handle = await fs.promises.open(stage, "wx", mode);
+      await handle.writeFile(text3, "utf8");
+      await handle.sync();
+      await handle.close();
+      handle = void 0;
+      if (exists) await fs.promises.rename(stage, full2);
+      else {
+        await fs.promises.link(stage, full2);
+        await fs.promises.unlink(stage);
+      }
+      const dir = await fs.promises.open(parent, "r");
+      try {
+        await dir.sync();
+      } finally {
+        await dir.close();
+      }
+      return next;
+    } finally {
+      if (handle) await handle.close();
+      try {
+        await fs.promises.unlink(stage);
+      } catch (e) {
+        if (e.code !== "ENOENT") throw e;
+      }
+    }
+  });
+}
+var adapterQueues = /* @__PURE__ */ new WeakMap();
+async function reviewUpdate(app, relative, initial, transform) {
+  const adapter = app.vault.adapter, root = adapter.getBasePath?.();
+  if (root) return nativeReviewUpdate(root, relative, initial, transform);
+  const prior = adapterQueues.get(adapter) ?? Promise.resolve();
+  const write = prior.catch(() => {
+  }).then(async () => {
+    if (!await adapter.exists(relative)) await adapter.write(relative, JSON.stringify(initial));
+    const text3 = await adapter.process(relative, (raw) => JSON.stringify(transform(JSON.parse(raw)), null, 2));
+    return JSON.parse(text3);
+  });
+  adapterQueues.set(adapter, write);
+  return write;
+}
+
+// src/review-conflict-view.ts
+var text2 = (value) => typeof value === "string" ? value : "";
+function conflictRecords(snapshot2) {
+  const values2 = Array.isArray(snapshot2?.value) ? snapshot2.value : [snapshot2?.value];
+  return values2.filter((v) => !!v && typeof v === "object" && !Array.isArray(v));
+}
+function conflictIdentity(snapshot2) {
+  const raw = text2(snapshot2?.provenance?.host).trim();
+  const host = /^m[14]$/i.test(raw) ? raw.toUpperCase() : raw;
+  const at = text2(snapshot2?.provenance?.at).trim();
+  const times = at ? [at] : [...new Set(conflictRecords(snapshot2).map((r) => text2(r.updated)).filter(Boolean))];
+  return { host: host || "Mac unknown", known: !!host, time: times.length ? times.join(" \xB7 ") : "time unavailable" };
+}
+function conflictDeleted(snapshot2) {
+  const rows = conflictRecords(snapshot2);
+  return !snapshot2?.present || rows.length > 0 && rows.every((r) => !!r.deletedAt);
+}
+function conflictButton(conflict, side) {
+  const value = conflict[side], other = conflict[side === "local" ? "remote" : "local"];
+  if (conflictDeleted(value)) return "Keep deleted";
+  const who = conflictIdentity(value), version = who.known ? `${who.host} version` : `version ${side === "local" ? "A" : "B"}`;
+  const rows = conflictRecords(value);
+  if (conflict.section === "questions" && rows.length && rows.every((r) => r.remove === true)) return `Keep excluded question (${version})`;
+  return `${conflictDeleted(other) ? "Restore" : "Keep"} ${version}`;
+}
+function conflictSourceLine(source, record) {
+  const quote = text2(record.quote);
+  if (!quote) return void 0;
+  const hit = locateQuote(source, { quote, before: text2(record.before), after: text2(record.after) });
+  return hit ? source.slice(0, hit.from).split("\n").length : void 0;
+}
+var colorNames = {
+  "#e2b714": "Yellow",
+  "#ffe066": "Yellow",
+  "#398c50": "Green",
+  "#82d99b": "Green",
+  "#2675bd": "Blue",
+  "#8bc9ff": "Blue",
+  "#757575": "Grey",
+  "#bdbdbd": "Grey",
+  "#c94f86": "Pink",
+  "#f3a1c5": "Pink",
+  "#b83b43": "Red",
+  "#ff6b6b": "Red",
+  "#b56720": "Orange",
+  "#ffb86b": "Orange",
+  "#5146a3": "Indigo",
+  "#8c8cff": "Indigo",
+  "#883da8": "Violet",
+  "#d78cf5": "Violet",
+  "#000000": "Black",
+  "#ffffff": "White",
+  "#ff0000": "Red",
+  "#00ff00": "Green",
+  "#0000ff": "Blue",
+  "#ffff00": "Yellow"
+};
+function conflictColor(value) {
+  const raw = text2(value);
+  const hex = /^#[0-9a-f]{6}$/i.test(raw) ? raw.toLowerCase() : void 0;
+  return { hex, label: hex ? `${colorNames[hex] ?? "Custom color"} \xB7 ${hex}` : `Invalid color: ${raw || "missing"}` };
+}
+function swatch(parent, value, label) {
+  const color = conflictColor(value), row = parent.createDiv();
+  if (color.hex) {
+    const chip = row.createSpan();
+    chip.setAttribute("aria-hidden", "true");
+    Object.assign(chip.style, { display: "inline-block", width: "1.1em", height: "1.1em", verticalAlign: "middle", marginRight: ".5em", border: "1px solid var(--text-muted)", backgroundColor: color.hex });
+  }
+  row.createSpan({ text: `${label}: ${color.label}` });
+}
+async function context(app, parent, record, current) {
+  const path = text2(record.path), quote = text2(record.quote);
+  if (record.title) parent.createEl("p", { text: `Question: ${text2(record.title)}` });
+  const location = parent.createEl("p", { text: path || "File unavailable" });
+  if (quote) parent.createEl("blockquote", { text: quote });
+  else if (record.context) parent.createEl("p", { text: `Context: ${text2(record.context)}` });
+  if (!path || !quote) return;
+  try {
+    const source = await app.vault.adapter.read(path);
+    if (!current()) return;
+    const line = conflictSourceLine(source, record);
+    location.setText(`${path} \xB7 ${line === void 0 ? "passage not uniquely located" : `line ${line} in current file`}`);
+  } catch {
+    if (current()) location.setText(`${path} \xB7 current file unavailable`);
+  }
+}
+function renderConflictVersion(app, parent, conflict, side, current, currentHost) {
+  const snapshot2 = conflict[side], identity = conflictIdentity(snapshot2), rows = conflictRecords(snapshot2);
+  const who = identity.known ? identity.host === currentHost ? `This Mac (${identity.host})` : identity.host : `Version ${side === "local" ? "A" : "B"} \xB7 Mac unknown`;
+  const parsed = new Date(identity.time);
+  const when = Number.isFinite(parsed.getTime()) ? parsed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) : identity.time;
+  parent.createEl("h4", { text: who });
+  parent.createEl("p", { text: `Edited ${when}` });
+  if (!snapshot2.present) {
+    parent.createEl("p", { text: `Deleted on ${identity.host}` });
+    const previous = conflictRecords(conflict.base);
+    for (const record of previous) void context(app, parent, record, current);
+    return;
+  }
+  if (conflict.section === "palettes" || conflict.section === "field" && conflict.key === "palette") {
+    parent.createEl("p", { text: `Palette: ${conflict.key}` });
+    if (!rows.length) parent.createEl("p", { text: "Empty palette" });
+    for (const row of rows) {
+      const entry = parent.createDiv();
+      entry.style.marginBottom = ".8em";
+      entry.createEl("strong", { text: text2(row.meaning) || "Meaning not specified" });
+      swatch(entry, row.color, "Color");
+      if (row.darkColor !== void 0) swatch(entry, row.darkColor, "Dark-mode color");
+    }
+    return;
+  }
+  for (const record of rows) {
+    const entry = parent.createDiv();
+    entry.style.marginBottom = "1em";
+    void context(app, entry, record, current);
+    if (record.deletedAt) entry.createEl("p", { text: `Deleted on ${identity.host} \xB7 ${text2(record.deletedAt)}` });
+    if (conflict.section === "questions") entry.createEl("p", { text: record.remove ? "Excluded question (marked for removal)" : "Question included (not marked for removal)" });
+    if (typeof record.comment === "string") {
+      const body = entry.createEl("p", { text: record.comment });
+      body.style.whiteSpace = "pre-wrap";
+    }
+    if (record.intent) entry.createEl("p", { text: `Meaning: ${text2(record.intent)}` });
+    if (record.color !== void 0) swatch(entry, record.color, "Color");
+    if (record.darkColor !== void 0) swatch(entry, record.darkColor, "Dark-mode color");
+    if (record.markStyle) entry.createEl("p", { text: `Style: ${text2(record.markStyle)}` });
+  }
+  if (!rows.length || !["comments", "questions"].includes(conflict.section)) {
+    const body = parent.createEl("pre", { text: JSON.stringify(snapshot2.value, null, 2) ?? "Value unavailable" });
+    body.style.whiteSpace = "pre-wrap";
+  }
+}
+
 // src/empty-annotations.ts
 function emptyAnnotations(comments, path, busy) {
   return comments.filter((c) => !c.deletedAt && !c.code && !c.study && !c.questionId && !c.comment.trim() && commentPaths(c).has(path) && commentPaths(c).size === 1 && !busy(c.id));
 }
 function restoreEmptyAnnotations(comments, removed, busy) {
-  return removed.filter((c) => !c.combinedInto && !c.code?.consumed && !c.study?.consumed && !busy(c.id) && same(comments.find((x) => x.id === c.id), c)).map((c) => {
+  return removed.filter((c) => !c.combinedInto && !c.code?.consumed && !c.study?.consumed && !busy(c.id) && equalReview(comments.find((x) => x.id === c.id), c)).map((c) => {
     const next = { ...c, resolved: c.deletedWasResolved ?? false, updated: (/* @__PURE__ */ new Date()).toISOString() };
     delete next.deletedAt;
     delete next.deletedWasResolved;
@@ -48954,12 +49617,12 @@ function restoreEmptyAnnotations(comments, removed, busy) {
 }
 
 // src/comment-window.ts
-var import_obsidian39 = require("obsidian");
+var import_obsidian41 = require("obsidian");
 function resizeCommentWindow(modal) {
   const box = modal.modalEl;
   let maximized = false, previous = { width: "", height: "" };
   const toggle = box.createEl("button", { cls: "study-comment-maximize", attr: { "aria-label": "Maximize comment", "title": "Maximize comment" } });
-  (0, import_obsidian39.setIcon)(toggle, "maximize");
+  (0, import_obsidian41.setIcon)(toggle, "maximize");
   toggle.onclick = () => {
     maximized = !maximized;
     if (maximized) {
@@ -48973,7 +49636,7 @@ function resizeCommentWindow(modal) {
     box.classList.toggle("is-maximized", maximized);
     toggle.setAttribute("aria-label", maximized ? "Restore comment size" : "Maximize comment");
     toggle.title = maximized ? "Restore comment size" : "Maximize comment";
-    (0, import_obsidian39.setIcon)(toggle, maximized ? "minimize" : "maximize");
+    (0, import_obsidian41.setIcon)(toggle, maximized ? "minimize" : "maximize");
   };
   for (const edge2 of ["n", "s", "e", "w", "ne", "nw", "se", "sw"]) {
     const handle = box.createDiv({ cls: `study-comment-resize study-comment-resize-${edge2}` });
@@ -49001,7 +49664,7 @@ function resizeCommentWindow(modal) {
 }
 
 // src/review.ts
-var import_obsidian40 = require("obsidian");
+var import_obsidian42 = require("obsidian");
 var ReviewStore = class {
   constructor(app) {
     this.app = app;
@@ -49042,6 +49705,17 @@ var ReviewStore = class {
   visibility = readVisibility(null);
   visibilityPending = Promise.resolve();
   visibilityBlocked = false;
+  syncHost = (() => {
+    try {
+      const model = require("os").cpus()[0]?.model ?? "";
+      return /Apple M4/i.test(model) ? "M4" : /Apple M1/i.test(model) ? "M1" : void 0;
+    } catch {
+      return void 0;
+    }
+  })();
+  stamped(value) {
+    return stampReviewChanges(this.baseline ?? value, value, this.syncHost, (/* @__PURE__ */ new Date()).toISOString());
+  }
   get visibilityPath() {
     return `${this.app.vault.configDir}/study-studio-annotation-visibility.json`;
   }
@@ -49050,7 +49724,7 @@ var ReviewStore = class {
   }
   async setVisibility(value) {
     if (this.visibilityBlocked) {
-      new import_obsidian40.Notice("Annotation visibility settings could not be read. The original file has been preserved.");
+      new import_obsidian42.Notice("Annotation visibility settings could not be read. The original file has been preserved.");
       return;
     }
     const next = readVisibility(value);
@@ -49065,7 +49739,7 @@ var ReviewStore = class {
   }
   renameVisibilityType(style, old, next) {
     const before = typeKey(style, old), after = typeKey(style, next);
-    if (this.visibility.hiddenTypes.includes(before) || this.visibility.shownTypes?.includes(before)) void this.setVisibility({ ...this.visibility, hiddenTypes: [.../* @__PURE__ */ new Set([...this.visibility.hiddenTypes, ...this.visibility.hiddenTypes.includes(before) ? [after] : []])], ...this.visibility.shownTypes ? { shownTypes: [.../* @__PURE__ */ new Set([...this.visibility.shownTypes, ...this.visibility.shownTypes.includes(before) ? [after] : []])] } : {} }).catch((e) => new import_obsidian40.Notice(String(e)));
+    if (this.visibility.hiddenTypes.includes(before) || this.visibility.shownTypes?.includes(before)) void this.setVisibility({ ...this.visibility, hiddenTypes: [.../* @__PURE__ */ new Set([...this.visibility.hiddenTypes, ...this.visibility.hiddenTypes.includes(before) ? [after] : []])], ...this.visibility.shownTypes ? { shownTypes: [.../* @__PURE__ */ new Set([...this.visibility.shownTypes, ...this.visibility.shownTypes.includes(before) ? [after] : []])] } : {} }).catch((e) => new import_obsidian42.Notice(String(e)));
   }
   visibilityCatalog() {
     const entries = /* @__PURE__ */ new Map();
@@ -49089,7 +49763,7 @@ var ReviewStore = class {
     return this.setVisibility(visibilityAll(this.visibility, show));
   }
   visibilityMenu(position2) {
-    const menu = new import_obsidian40.Menu();
+    const menu = new import_obsidian42.Menu();
     this.populateVisibility(menu);
     const win = (this.app.workspace.getMostRecentLeaf()?.view.containerEl.ownerDocument ?? document).defaultView;
     menu.showAtPosition(position2 ?? { x: win.innerWidth / 2, y: 120 });
@@ -49100,19 +49774,19 @@ var ReviewStore = class {
       menu.addItem((i) => i.setTitle("Click annotations to show handles (Reading)").setChecked(handles.enabled()).onClick(() => handles.toggle()));
       menu.addSeparator();
     }
-    const change = (value) => void this.setVisibility(value).catch((e) => new import_obsidian40.Notice(String(e)));
+    const change = (value) => void this.setVisibility(value).catch((e) => new import_obsidian42.Notice(String(e)));
     menu.addItem((i) => i.setTitle("Show source line ranges (Reading)").setChecked(this.visibility.sourceLines !== false).onClick(() => change({ ...this.visibility, sourceLines: this.visibility.sourceLines === false })));
     menu.addItem((i) => i.setTitle("Show annotation numbers").setChecked(this.visibility.annotationNumbers !== false).onClick(() => change({ ...this.visibility, annotationNumbers: this.visibility.annotationNumbers === false })));
-    menu.addItem((i) => i.setTitle("Hide all").onClick(() => void this.showAllAnnotations(false).catch((e) => new import_obsidian40.Notice(String(e)))));
+    menu.addItem((i) => i.setTitle("Hide all").onClick(() => void this.showAllAnnotations(false).catch((e) => new import_obsidian42.Notice(String(e)))));
     menu.addItem((i) => i.setTitle("Hide ordinary annotations").setChecked(!!this.visibility.hideOrdinary).onClick(() => change({ ...this.visibility, hideOrdinary: !this.visibility.hideOrdinary })));
     const catalog = this.visibilityCatalog();
     for (const style of annotationStyles) {
       const child = menuGroup(menu, "visibility-" + style, styleNames[style], style === "sticky" ? "sticky-note" : style === "underline" ? "underline" : style === "text" ? "type" : "highlighter");
       for (const p of catalog.filter((e) => e.style === style)) {
-        child.addItem((i) => i.setTitle(swatchTitle(style, p, "Show " + (p.meaning || p.color))).setChecked(annotationVisible(p.mark, this.visibility)).onClick(() => void this.toggleVisibleType(p.key).catch((e) => new import_obsidian40.Notice(String(e)))));
+        child.addItem((i) => i.setTitle(swatchTitle(style, p, "Show " + (p.meaning || p.color))).setChecked(annotationVisible(p.mark, this.visibility)).onClick(() => void this.toggleVisibleType(p.key).catch((e) => new import_obsidian42.Notice(String(e)))));
       }
     }
-    menu.addItem((i) => i.setTitle("Show all").onClick(() => void this.showAllAnnotations(true).catch((e) => new import_obsidian40.Notice(String(e)))));
+    menu.addItem((i) => i.setTitle("Show all").onClick(() => void this.showAllAnnotations(true).catch((e) => new import_obsidian42.Notice(String(e)))));
   }
   addVisibilityMenu(menu, _position) {
     const child = menuGroup(menu, "annotation-visibility", "Annotation visibility", "eye");
@@ -49138,12 +49812,12 @@ var ReviewStore = class {
   addClearEmptyMenu(menu, path) {
     if (menu.__studyClearEmpty) return;
     menu.__studyClearEmpty = true;
-    menu.addItem((i) => i.setSection("selection").setTitle("Clear empty annotations in this note").setIcon("eraser").onClick(() => void this.clearEmptyAnnotations(path).catch((e) => new import_obsidian40.Notice("Could not clear annotations: " + String(e)))));
+    menu.addItem((i) => i.setSection("selection").setTitle("Clear empty annotations in this note").setIcon("eraser").onClick(() => void this.clearEmptyAnnotations(path).catch((e) => new import_obsidian42.Notice("Could not clear annotations: " + String(e)))));
   }
   async clearEmptyAnnotations(path) {
     const removed = await this.emptyAnnotationTransaction(path);
     if (!removed.length) {
-      new import_obsidian40.Notice("No empty annotations to clear.");
+      new import_obsidian42.Notice("No empty annotations to clear.");
       return 0;
     }
     const fragment = document.createDocumentFragment();
@@ -49152,13 +49826,13 @@ var ReviewStore = class {
     undo2.textContent = "Undo";
     undo2.href = "#";
     fragment.append(undo2);
-    const notice = new import_obsidian40.Notice(fragment, 15e3);
+    const notice = new import_obsidian42.Notice(fragment, 15e3);
     undo2.onclick = (e) => {
       e.preventDefault();
       void this.emptyAnnotationTransaction(path, removed).then((restored) => {
         notice.hide();
-        new import_obsidian40.Notice(`Restored ${restored.length} annotations.`);
-      }).catch((e2) => new import_obsidian40.Notice("Could not undo: " + String(e2)));
+        new import_obsidian42.Notice(`Restored ${restored.length} annotations.`);
+      }).catch((e2) => new import_obsidian42.Notice("Could not undo: " + String(e2)));
     };
     return removed.length;
   }
@@ -49166,16 +49840,18 @@ var ReviewStore = class {
     let changed = [];
     const write = this.pending.catch(() => {
     }).then(async () => {
-      const remote = await this.app.vault.adapter.exists(this.path) ? JSON.parse(await this.app.vault.adapter.read(this.path)) : this.baseline;
-      const merged = mergeReview(this.baseline ?? this.data, this.data, remote), stamp = (/* @__PURE__ */ new Date()).toISOString();
-      changed = restore ? restoreEmptyAnnotations(merged.comments, restore, this.annotationBusy) : emptyAnnotations(merged.comments, path, this.annotationBusy).map((c) => ({ ...c, deletedAt: stamp, deletedWasResolved: c.resolved, resolved: true, updated: stamp }));
-      if (!changed.length) return;
-      const replacements = new Map(changed.map((c) => [c.id, c]));
-      const next = { ...merged, comments: merged.comments.map((c) => replacements.get(c.id) ?? c) }, local = JSON.parse(JSON.stringify(this.data));
-      await this.app.vault.adapter.write(this.path, JSON.stringify(next, null, 2));
-      this.data = this.clean(mergeReview(local, this.data, next));
+      let local;
+      const next = await reviewUpdate(this.app, this.path, this.baseline ?? this.data, (remote) => {
+        const merged = mergeReviewData(this.baseline ?? this.data, this.data, remote), stamp = (/* @__PURE__ */ new Date()).toISOString();
+        changed = restore ? restoreEmptyAnnotations(merged.comments, restore, this.annotationBusy) : emptyAnnotations(merged.comments, path, this.annotationBusy).map((c) => ({ ...c, deletedAt: stamp, deletedWasResolved: c.resolved, resolved: true, updated: stamp }));
+        local = JSON.parse(JSON.stringify(this.data));
+        if (!changed.length) return merged;
+        const replacements = new Map(changed.map((c) => [c.id, c]));
+        return stampReviewChanges(merged, { ...merged, comments: merged.comments.map((c) => replacements.get(c.id) ?? c) }, this.syncHost, stamp);
+      });
+      this.data = this.clean(mergeReviewData(local, this.data, next));
       this.baseline = JSON.parse(JSON.stringify(this.clean(next)));
-      this.notify({ paths: /* @__PURE__ */ new Set([path]), commentIds: new Set(changed.map((c) => c.id)), annotations: true });
+      if (changed.length) this.notify({ paths: /* @__PURE__ */ new Set([path]), commentIds: new Set(changed.map((c) => c.id)), annotations: true });
     });
     this.pending = write;
     await write;
@@ -49194,7 +49870,7 @@ var ReviewStore = class {
       await this.openMargin?.(c);
     } catch (e) {
       if (!saved) this.data.comments = this.data.comments.filter((item) => item.id !== c.id);
-      new import_obsidian40.Notice((saved ? "Annotation saved; could not open margin: " : "Could not save annotation: ") + String(e));
+      new import_obsidian42.Notice((saved ? "Annotation saved; could not open margin: " : "Could not save annotation: ") + String(e));
     }
   }
   showAnnotation(c) {
@@ -49204,7 +49880,7 @@ var ReviewStore = class {
     const child = menuGroup(menu, "edit-annotation-" + c.id, "Edit annotation" + (c.intent ? ": " + c.intent : ""), "pencil", "selection");
     if (child.__studyAppearance) return;
     child.__studyAppearance = true;
-    appearanceItems(child, c, (s) => this.paletteFor(s), (patch) => void this.changeAppearance?.(c.id, patch).catch((e) => new import_obsidian40.Notice(String(e))));
+    appearanceItems(child, c, (s) => this.paletteFor(s), (patch) => void this.changeAppearance?.(c.id, patch).catch((e) => new import_obsidian42.Notice(String(e))));
     child.addItem((i) => i.setTitle("Open margin note").setIcon("notebook-pen").onClick(() => this.edit(c)));
   }
   warnHidden(c) {
@@ -49215,10 +49891,10 @@ var ReviewStore = class {
     show.textContent = "Show";
     show.href = "#";
     fragment.append(show);
-    const notice = new import_obsidian40.Notice(fragment, 7e3);
+    const notice = new import_obsidian42.Notice(fragment, 7e3);
     show.onclick = (e) => {
       e.preventDefault();
-      void this.showAnnotation(c).catch((e2) => new import_obsidian40.Notice(String(e2)));
+      void this.showAnnotation(c).catch((e2) => new import_obsidian42.Notice(String(e2)));
       notice.hide();
     };
   }
@@ -49238,7 +49914,7 @@ var ReviewStore = class {
         this.visibility = readVisibility(JSON.parse(await this.app.vault.adapter.read(this.visibilityPath)));
       } catch {
         this.visibilityBlocked = true;
-        new import_obsidian40.Notice("Annotation visibility settings could not be read. All marks are visible; the original file was preserved.");
+        new import_obsidian42.Notice("Annotation visibility settings could not be read. All marks are visible; the original file was preserved.");
       }
     }
     if (await this.app.vault.adapter.exists(this.path)) {
@@ -49260,10 +49936,39 @@ var ReviewStore = class {
     }
   }
   reportedInvalid = "";
+  reportedConflicts = "";
+  conflictNotice;
+  reportConflicts(value) {
+    const ids = (value.syncConflicts ?? []).map((x) => x.id).join(",");
+    if (ids !== this.reportedConflicts) this.conflictNotice?.hide();
+    if (ids && ids !== this.reportedConflicts) {
+      const fragment = document.createDocumentFragment();
+      fragment.append("Annotation sync has competing changes. Both versions are kept. ");
+      const link = document.createElement("a");
+      link.textContent = "Review";
+      link.href = "#";
+      link.onclick = (e) => {
+        e.preventDefault();
+        this.showSyncConflicts();
+      };
+      fragment.append(link);
+      this.conflictNotice = new import_obsidian42.Notice(fragment, 0);
+    }
+    this.reportedConflicts = ids;
+  }
+  showSyncConflicts() {
+    new ReviewConflictModal(this.app, this).open();
+  }
+  async resolveSyncConflict(id3, side) {
+    await this.refresh();
+    this.data = resolveReviewConflict(this.data, id3, side);
+    await this.save(void 0, false);
+  }
   clean(raw) {
+    this.reportConflicts(raw);
     const value = sanitizedReview(raw), invalid = raw.comments.filter((c) => !value.comments.includes(c));
     const signature2 = JSON.stringify(invalid);
-    if (invalid.length && signature2 !== this.reportedInvalid) new import_obsidian40.Notice(`${invalid.length} invalid margin record(s) were left intact in the review file. Other notes remain available.`);
+    if (invalid.length && signature2 !== this.reportedInvalid) new import_obsidian42.Notice(`${invalid.length} invalid margin record(s) were left intact in the review file. Other notes remain available.`);
     this.reportedInvalid = signature2;
     return value;
   }
@@ -49284,22 +49989,20 @@ var ReviewStore = class {
     });
     if (!await this.app.vault.adapter.exists(this.path)) return;
     const remote = JSON.parse(await this.app.vault.adapter.read(this.path));
-    const merged = mergeReview(this.baseline ?? this.data, this.data, remote);
+    const merged = mergeReviewData(this.baseline ?? this.data, this.data, remote);
     if (JSON.stringify(merged) === JSON.stringify(this.data)) return;
     this.data = this.clean(merged);
     this.baseline = JSON.parse(JSON.stringify(this.clean(remote)));
     this.notify();
   }
-  async save(change) {
+  async save(change, stampLocal = true) {
     if (this.data.palettes) this.data.palette = this.data.palettes.highlight;
-    const local = JSON.parse(JSON.stringify(this.data)), base2 = JSON.parse(JSON.stringify(this.baseline ?? this.data));
+    const local = JSON.parse(JSON.stringify(stampLocal ? this.stamped(this.data) : this.data)), base2 = JSON.parse(JSON.stringify(this.baseline ?? this.data));
     const write = this.pending.catch(() => {
     }).then(async () => {
-      const remote = await this.app.vault.adapter.exists(this.path) ? JSON.parse(await this.app.vault.adapter.read(this.path)) : base2;
-      const merged = mergeReview(base2, local, remote);
-      await this.app.vault.adapter.write(this.path, JSON.stringify(merged, null, 2));
+      const merged = await reviewUpdate(this.app, this.path, base2, (remote) => mergeReviewData(base2, local, remote));
       const current = this.data;
-      this.data = this.clean(JSON.stringify(current) === JSON.stringify(local) ? merged : mergeReview(local, current, merged));
+      this.data = this.clean(JSON.stringify(current) === JSON.stringify(local) ? merged : mergeReviewData(local, current, merged));
       this.baseline = JSON.parse(JSON.stringify(this.clean(merged)));
       let actual = change;
       const external = this.clean(merged).comments.filter((c) => JSON.stringify(c) !== JSON.stringify(local.comments.find((x) => x.id === c.id)));
@@ -49310,65 +50013,93 @@ var ReviewStore = class {
     this.pending = write;
     await write;
   }
+  /** A long-lived UI draft keeps the record it opened, even after disk refresh. */
+  async saveCommentDraft(before, after) {
+    if (!validComment(after) || before && before.id !== after.id) throw Error("Invalid annotation draft.");
+    const original = before ? JSON.parse(JSON.stringify(before)) : void 0, candidate = JSON.parse(JSON.stringify(after));
+    const write = this.pending.catch(() => {
+    }).then(async () => {
+      const current = JSON.parse(JSON.stringify(this.data)), base2 = JSON.parse(JSON.stringify(current));
+      base2.comments = base2.comments.filter((c) => c.id !== candidate.id);
+      if (original) base2.comments.push(original);
+      const ours = stampReviewChanges(base2, { ...base2, comments: [...base2.comments.filter((c) => c.id !== candidate.id), candidate] }, this.syncHost, (/* @__PURE__ */ new Date()).toISOString());
+      const merged = await reviewUpdate(this.app, this.path, base2, (latest) => mergeReviewData(base2, ours, latest));
+      this.data = this.clean(mergeReviewData(current, this.data, merged));
+      this.baseline = JSON.parse(JSON.stringify(this.clean(merged)));
+      this.notify();
+      if (merged.syncConflicts?.some((c) => c.section === "comments" && c.key === candidate.id)) throw Error("Competing annotation edits: both versions are kept. Review the conflict before retrying.");
+    });
+    this.pending = write;
+    await write;
+  }
   /** Serialized optimistic edit for local automation; never mutates paper files. */
-  async applyAnnotationEdit(before, after, validate2) {
+  async applyAnnotationEdit(before, after, validate3) {
     if (before.study || after.study) throw Error("Use the study directive API.");
     if (before.code || after.code || !validComment(after) || after.id !== before.id || before.deletedAt || before.questionId) throw Error("Invalid annotation edit.");
     const write = this.pending.catch(() => {
     }).then(async () => {
       const remote = await this.app.vault.adapter.exists(this.path) ? JSON.parse(await this.app.vault.adapter.read(this.path)) : this.baseline;
-      const merged = mergeReview(this.baseline ?? this.data, this.data, remote);
-      if (!same(merged.comments.find((c) => c.id === before.id), before) || !same(this.data.comments.find((c) => c.id === before.id), before)) throw Error("Annotation changed; fetch it and preview again.");
-      await validate2();
-      if (!same(this.data.comments.find((c) => c.id === before.id), before)) throw Error("Annotation changed during validation.");
-      const current = JSON.parse(JSON.stringify(this.data));
-      merged.comments = merged.comments.map((c) => c.id === before.id ? after : c);
-      await this.app.vault.adapter.write(this.path, JSON.stringify(merged, null, 2));
-      this.data = this.clean(mergeReview(current, this.data, merged));
+      const current = JSON.parse(JSON.stringify(this.data)), base2 = mergeReviewData(this.baseline ?? current, current, remote);
+      if (!equalReview(base2.comments.find((c) => c.id === before.id), before) || !equalReview(current.comments.find((c) => c.id === before.id), before)) throw Error("Annotation changed; fetch it and preview again.");
+      const ours = stampReviewChanges(base2, { ...base2, comments: base2.comments.map((c) => c.id === before.id ? after : c) }, this.syncHost, (/* @__PURE__ */ new Date()).toISOString());
+      await validate3();
+      const merged = await reviewUpdate(this.app, this.path, base2, (latest) => {
+        if (this.annotationBusy(before.id)) throw Error("Annotation has an open draft; finish it first.");
+        return mergeReviewData(base2, ours, latest);
+      });
+      this.data = this.clean(mergeReviewData(current, this.data, merged));
       this.baseline = JSON.parse(JSON.stringify(this.clean(merged)));
+      if (merged.syncConflicts?.some((c) => c.section === "comments" && c.key === before.id)) {
+        this.notify();
+        throw Error("Competing annotation edits: both versions are kept. Review the conflict before retrying.");
+      }
       const marks2 = (c) => [excerpts(c), c.color, c.darkColor, c.resolved, c.markStyle, c.intent];
-      const external = merged.comments.filter((c) => c.id !== after.id && !same(current.comments.find((x) => x.id === c.id), c));
-      this.notify(external.length || current.comments.some((c) => !merged.comments.some((x) => x.id === c.id)) ? void 0 : { paths: /* @__PURE__ */ new Set([...commentPaths(before), ...commentPaths(after)]), commentIds: /* @__PURE__ */ new Set([after.id]), annotations: !same(marks2(before), marks2(after)) });
+      const external = merged.comments.filter((c) => c.id !== after.id && !equalReview(current.comments.find((x) => x.id === c.id), c));
+      this.notify(external.length || current.comments.some((c) => !merged.comments.some((x) => x.id === c.id)) ? void 0 : { paths: /* @__PURE__ */ new Set([...commentPaths(before), ...commentPaths(after)]), commentIds: /* @__PURE__ */ new Set([after.id]), annotations: !equalReview(marks2(before), marks2(after)) });
     });
     this.pending = write;
     await write;
   }
   /** Atomic code-record transaction. Never use merge conflict copies to consume directives. */
-  async applyCodeEdits(before, after, validate2) {
+  async applyCodeEdits(before, after, validate3) {
     if (after.some((c) => !c.code) || before.some((c) => !c.code)) throw Error("Expected code records.");
-    return this.applyStudyEdits(before, after, validate2);
+    return this.applyStudyEdits(before, after, validate3);
   }
-  async applyStudyEdits(before, after, validate2) {
+  async applyStudyEdits(before, after, validate3) {
     if (!after.length || new Set(after.map((c) => c.id)).size !== after.length || after.some((c) => !c.code && !c.study || !validComment(c)) || before.some((c) => !c.code && !c.study || !after.some((n) => n.id === c.id))) throw Error("Invalid code annotation transaction.");
-    return this.applyAnnotationBatch(before, after, validate2);
+    return this.applyAnnotationBatch(before, after, validate3);
   }
-  async applyRegularEdits(before, after, validate2) {
+  async applyRegularEdits(before, after, validate3) {
     if (!after.length || new Set(after.map((c) => c.id)).size !== after.length || [...before, ...after].some((c) => c.study || c.code || c.questionId || c.kind === "sticky" || !validComment(c)) || before.some((c) => !after.some((n) => n.id === c.id))) throw Error("Invalid regular annotation transaction.");
-    return this.applyAnnotationBatch(before, after, validate2);
+    return this.applyAnnotationBatch(before, after, validate3);
   }
-  async applyAnnotationBatch(before, after, validate2) {
+  async applyAnnotationBatch(before, after, validate3) {
     const write = this.pending.catch(() => {
     }).then(async () => {
       const remote = await this.app.vault.adapter.exists(this.path) ? JSON.parse(await this.app.vault.adapter.read(this.path)) : this.baseline;
-      const merged = mergeReview(this.baseline ?? this.data, this.data, remote);
-      const check3 = () => {
+      const snapshot2 = mergeReviewData(this.baseline ?? this.data, this.data, remote);
+      const check3 = (value) => {
         for (const next of after) {
           const old = before.find((c) => c.id === next.id);
-          if (!same(merged.comments.find((c) => c.id === next.id), old) || !same(this.data.comments.find((c) => c.id === next.id), old) || this.annotationBusy(next.id)) throw Error("An annotation changed or has an open draft. Finish the edit and prepare again.");
+          if (!equalReview(value.comments.find((c) => c.id === next.id), old) || !equalReview(this.data.comments.find((c) => c.id === next.id), old) || this.annotationBusy(next.id)) throw Error("An annotation changed or has an open draft. Finish the edit and prepare again.");
         }
       };
-      check3();
-      await validate2(merged.comments);
-      check3();
-      const latest = await this.app.vault.adapter.exists(this.path) ? JSON.parse(await this.app.vault.adapter.read(this.path)) : this.baseline;
-      if (!same(latest, remote)) throw Error("Annotations changed on disk; prepare again.");
-      check3();
-      const current = JSON.parse(JSON.stringify(this.data)), replacements = new Map(after.map((c) => [c.id, c]));
-      merged.comments = merged.comments.map((c) => replacements.get(c.id) ?? c);
-      for (const c of after) if (!merged.comments.some((n) => n.id === c.id)) merged.comments.push(c);
-      await this.app.vault.adapter.write(this.path, JSON.stringify(merged, null, 2));
-      this.data = this.clean(mergeReview(current, this.data, merged));
+      check3(snapshot2);
+      const current = JSON.parse(JSON.stringify(this.data)), ours = JSON.parse(JSON.stringify(snapshot2)), replacements = new Map(after.map((c) => [c.id, c]));
+      ours.comments = ours.comments.map((c) => replacements.get(c.id) ?? c);
+      for (const c of after) if (!ours.comments.some((n) => n.id === c.id)) ours.comments.push(c);
+      const stamped = stampReviewChanges(snapshot2, ours, this.syncHost, (/* @__PURE__ */ new Date()).toISOString());
+      await validate3(snapshot2.comments);
+      const merged = await reviewUpdate(this.app, this.path, snapshot2, (latest) => {
+        check3(latest);
+        return mergeReviewData(snapshot2, stamped, latest);
+      });
+      this.data = this.clean(mergeReviewData(current, this.data, merged));
       this.baseline = JSON.parse(JSON.stringify(this.clean(merged)));
+      if (merged.syncConflicts?.some((c) => c.section === "comments" && after.some((x) => x.id === c.key))) {
+        this.notify();
+        throw Error("Competing annotation edits: both versions are kept. Review the conflict before retrying.");
+      }
       this.notify({ paths: new Set(after.map((c) => c.path)), commentIds: new Set(after.map((c) => c.id)), annotations: true });
     });
     this.pending = write;
@@ -49424,7 +50155,7 @@ var ReviewStore = class {
     const content2 = node.ownerDocument.createElement("div");
     content2.className = "markdown-rendered";
     popup.append(content2);
-    const owner = new import_obsidian40.Component();
+    const owner = new import_obsidian42.Component();
     owner.load();
     const rect = node.getBoundingClientRect();
     popup.style.position = "fixed";
@@ -49451,32 +50182,33 @@ var ReviewStore = class {
     node.addEventListener("mouseleave", close, { once: true });
     node.addEventListener("click", close, { once: true });
   }
-  questionMenu(menu, q, host, context) {
-    const review = this.data.questions.find((r) => r.questionId === q.definition.id && r.context === context);
+  questionMenu(menu, q, host, context2) {
+    const review = this.data.questions.find((r) => r.questionId === q.definition.id && r.context === context2);
     const selection = host.ownerDocument.getSelection();
     const quote = selection && host.contains(selection.anchorNode) ? selection.toString() : "";
     menu.addItem((i) => i.setTitle(review?.remove ? "Unmark question for removal" : "Mark question for removal").setIcon("flag").onClick(() => {
-      const item = review ?? { questionId: q.definition.id, path: q.path, title: q.definition.title, context, remove: false, updated: "" };
+      const item = review ?? { questionId: q.definition.id, path: q.path, title: q.definition.title, context: context2, remove: false, updated: "" };
       item.remove = !item.remove;
       item.updated = (/* @__PURE__ */ new Date()).toISOString();
       if (!review) this.data.questions.push(item);
       void this.save({ paths: /* @__PURE__ */ new Set(), commentIds: /* @__PURE__ */ new Set(), annotations: false }).then(() => {
         host.querySelector(".study-review-status")?.remove();
         if (item.remove) host.createSpan({ cls: "study-review-status", text: "Marked for removal" });
-        new import_obsidian40.Notice(item.remove ? "Marked for review. Question and exam remain unchanged." : "Removal mark cleared.");
-      }).catch((e) => new import_obsidian40.Notice(String(e)));
+        new import_obsidian42.Notice(item.remove ? "Marked for review. Question and exam remain unchanged." : "Removal mark cleared.");
+      }).catch((e) => new import_obsidian42.Notice(String(e)));
     }));
-    menu.addItem((i) => i.setTitle(quote ? "Comment on selection\u2026" : "Comment on question\u2026").setIcon("message-square").onClick(() => this.edit({ path: q.path, questionId: q.definition.id, context, quote, before: "", after: "" }, () => this.decorate(host, q.definition.id))));
+    menu.addItem((i) => i.setTitle(quote ? "Comment on selection\u2026" : "Comment on question\u2026").setIcon("message-square").onClick(() => this.edit({ path: q.path, questionId: q.definition.id, context: context2, quote, before: "", after: "" }, () => this.decorate(host, q.definition.id))));
     const comments = this.data.comments.filter((c) => c.questionId === q.definition.id && !c.resolved);
     if (comments.length) menu.addItem((i) => i.setTitle(`Review comments (${comments.length})\u2026`).onClick(() => this.list(q.definition.id)));
   }
   edit(anchor, saved) {
     if (!anchor.questionId && this.openMargin) {
-      void this.openMargin(anchor, false, !!anchor.id).catch((e) => new import_obsidian40.Notice("Could not open margin note: " + String(e)));
+      void this.openMargin(anchor, false, !!anchor.id).catch((e) => new import_obsidian42.Notice("Could not open margin note: " + String(e)));
       return;
     }
+    const editBase = anchor.id ? JSON.parse(JSON.stringify(validComment(anchor) ? anchor : this.data.comments.find((c) => c.id === anchor.id) ?? anchor)) : void 0;
     const draftId = anchor.id ?? crypto.randomUUID();
-    const modal = new import_obsidian40.Modal(this.app);
+    const modal = new import_obsidian42.Modal(this.app);
     modal.modalEl.addClass("study-comment-editor");
     modal.titleEl.setText(anchor.kind === "sticky" ? "Sticky note" : anchor.id ? "Edit comment" : "Add comment");
     if (anchor.quote) modal.contentEl.createEl("blockquote", { text: anchor.quote });
@@ -49499,7 +50231,7 @@ var ReviewStore = class {
       color.value = choices[Number(select.value)].color;
       dark.value = darkCommentColor(choices[Number(select.value)]);
     };
-    const owner = new import_obsidian40.Component();
+    const owner = new import_obsidian42.Component();
     owner.load();
     let busy = false;
     const editor = writtenEditor(this.app, modal.contentEl, anchor.path, anchor.comment ?? "", owner, () => {
@@ -49519,12 +50251,9 @@ var ReviewStore = class {
         return;
       }
       const item = { ...anchor, id: draftId, path: anchor.path, kind: anchor.kind, questionId: anchor.questionId, context: anchor.context, quote: anchor.quote, before: anchor.before, after: anchor.after, comment: editor.value, color: color.value, darkColor: dark.value, intent: choices[Number(select.value)].meaning, updated: (/* @__PURE__ */ new Date()).toISOString(), resolved: anchor.resolved ?? false };
-      const index2 = this.data.comments.findIndex((c) => c.id === item.id);
-      if (index2 < 0) this.data.comments.push(item);
-      else this.data.comments[index2] = item;
       save.disabled = true;
       save.setText("Saving\u2026");
-      void this.save({ paths: /* @__PURE__ */ new Set([item.path]), commentIds: /* @__PURE__ */ new Set([item.id]), annotations: !item.questionId }).then(() => {
+      void this.saveCommentDraft(editBase, item).then(() => {
         modal.close();
         saved?.();
       }).catch((e) => {
@@ -49563,7 +50292,7 @@ var ReviewStore = class {
       void this.openMargin();
       return;
     }
-    const modal = new import_obsidian40.Modal(this.app);
+    const modal = new import_obsidian42.Modal(this.app);
     modal.titleEl.setText("Review queue");
     for (const r of this.data.questions.filter((r2) => r2.remove && (!questionId || r2.questionId === questionId))) {
       const row = modal.contentEl.createDiv();
@@ -49571,13 +50300,13 @@ var ReviewStore = class {
       row.createEl("small", { text: r.context });
       row.createEl("button", { text: "Unmark" }).onclick = () => {
         r.remove = false;
-        void this.save({ paths: /* @__PURE__ */ new Set(), commentIds: /* @__PURE__ */ new Set(), annotations: false }).then(() => row.remove()).catch((e) => new import_obsidian40.Notice(String(e)));
+        void this.save({ paths: /* @__PURE__ */ new Set(), commentIds: /* @__PURE__ */ new Set(), annotations: false }).then(() => row.remove()).catch((e) => new import_obsidian42.Notice(String(e)));
       };
     }
     for (const c of this.data.comments.filter((c2) => !c2.resolved && (!questionId || c2.questionId === questionId))) {
       const row = modal.contentEl.createDiv();
       row.createEl("p", { text: `${c.intent}: ${c.quote || c.questionId || c.path}` });
-      const owner = new import_obsidian40.Component();
+      const owner = new import_obsidian42.Component();
       owner.load();
       const previous = modal.onClose.bind(modal);
       modal.onClose = () => {
@@ -49591,9 +50320,59 @@ var ReviewStore = class {
     modal.open();
   }
 };
+var ReviewConflictModal = class extends import_obsidian42.Modal {
+  constructor(app, store) {
+    super(app);
+    this.store = store;
+  }
+  generation = 0;
+  onOpen() {
+    const generation = ++this.generation, current = () => this.generation === generation;
+    this.contentEl.empty();
+    this.titleEl.setText("Annotation sync conflicts");
+    const conflicts2 = this.store.data.syncConflicts ?? [];
+    if (!conflicts2.length) {
+      this.contentEl.createEl("p", { text: "No competing changes remain." });
+      return;
+    }
+    this.contentEl.createEl("p", { text: `${conflicts2.length} competing change${conflicts2.length === 1 ? "" : "s"}. Choose the version to keep.` });
+    for (const conflict of conflicts2) {
+      const box = this.contentEl.createDiv();
+      box.style.borderBottom = "1px solid var(--background-modifier-border)";
+      box.style.paddingBottom = "1em";
+      box.createEl("h3", { text: conflict.section === "comments" ? "Margin note" : conflict.section === "questions" ? "Question review" : conflict.section === "palettes" ? "Annotation appearance" : "Review preference" });
+      const columns = box.createDiv();
+      Object.assign(columns.style, { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))", gap: "1.2em" });
+      const buttons = [];
+      const error = box.createEl("p", { cls: "study-error", attr: { role: "alert" } });
+      for (const side of ["local", "remote"]) {
+        const version = columns.createDiv();
+        renderConflictVersion(this.app, version, conflict, side, current, this.store.syncHost);
+        const button2 = version.createEl("button", { text: conflictButton(conflict, side) });
+        buttons.push(button2);
+        button2.onclick = () => {
+          buttons.forEach((b) => b.disabled = true);
+          error.setText("");
+          void this.store.resolveSyncConflict(conflict.id, side).then(() => {
+            if (current()) this.onOpen();
+          }).catch((e) => {
+            if (current()) {
+              buttons.forEach((b) => b.disabled = false);
+              error.setText(String(e));
+            }
+          });
+        };
+      }
+    }
+  }
+  onClose() {
+    this.generation++;
+    this.contentEl.empty();
+  }
+};
 
 // src/annotation-handles.ts
-var import_obsidian41 = require("obsidian");
+var import_obsidian43 = require("obsidian");
 function registerAnnotationHandles(plugin2, store) {
   const doc2 = plugin2.app.workspace.containerEl.ownerDocument, win = doc2.defaultView;
   let enabled = true, cleanup;
@@ -49605,7 +50384,7 @@ function registerAnnotationHandles(plugin2, store) {
   const toggle = () => {
     enabled = !enabled;
     close();
-    new import_obsidian41.Notice(enabled ? "Reading annotation handles enabled for this session. Click an annotation to resize it." : "Annotation handles disabled.");
+    new import_obsidian43.Notice(enabled ? "Reading annotation handles enabled for this session. Click an annotation to resize it." : "Annotation handles disabled.");
   };
   store.annotationHandles = { enabled: () => enabled, toggle, open: (mark, id3) => open(mark, void 0, id3) };
   plugin2.register(() => {
@@ -49615,7 +50394,7 @@ function registerAnnotationHandles(plugin2, store) {
   plugin2.register(close);
   const open = (mark, event, chosenId) => {
     const refuse = (message2) => {
-      if (!event) new import_obsidian41.Notice(message2);
+      if (!event) new import_obsidian43.Notice(message2);
     };
     if (!mark.isConnected || !mark.closest(".markdown-preview-view")) {
       refuse("The passage changed. Right-click the annotation again.");
@@ -49633,14 +50412,14 @@ function registerAnnotationHandles(plugin2, store) {
     }
     const c = store.data.comments.find((c2) => c2.id === id3);
     if (c?.study || c?.code) return;
-    const view = plugin2.app.workspace.getActiveViewOfType(import_obsidian41.MarkdownView);
+    const view = plugin2.app.workspace.getActiveViewOfType(import_obsidian43.MarkdownView);
     if (!c || !view?.file || view.getMode() !== "preview" || c.path !== view.file.path || c.deletedAt || c.resolved) {
       refuse("Open this annotation\u2019s note in Reading mode and try again.");
       return;
     }
     const p = mark.closest("p");
     if (!p || p.querySelector("code,img")) {
-      new import_obsidian41.Notice("Dragging does not yet support paragraphs with code or images.");
+      new import_obsidian43.Notice("Dragging does not yet support paragraphs with code or images.");
       return;
     }
     const source = view.editor.getValue(), anchors = excerpts(c), old = anchors.length === 1 ? marginLocation(source, anchors[0]) : void 0;
@@ -49648,15 +50427,15 @@ function registerAnnotationHandles(plugin2, store) {
       if (!old) throw Error("Dragging currently supports one excerpt.");
       resizePlainAnnotation(source, anchors, old.from, old.to);
     } catch (e) {
-      new import_obsidian41.Notice(String(e));
+      new import_obsidian43.Notice(String(e));
       return;
     }
     let mapping = resizeDOM(p);
-    const { text: text2, fingerprint } = mapping;
-    const projection = resizeProjection(source), projectedBase = projection.text.indexOf(text2);
+    const { text: text3, fingerprint } = mapping;
+    const projection = resizeProjection(source), projectedBase = projection.text.indexOf(text3);
     const oldFrom = projection.boundaries.indexOf(old.from), oldTo = projection.boundaries.indexOf(old.to);
-    if (projectedBase < 0 || projection.text.indexOf(text2, projectedBase + 1) >= 0 || oldFrom < projectedBase || oldTo > projectedBase + text2.length || oldTo < 0) {
-      new import_obsidian41.Notice("This rendered paragraph cannot yet be mapped safely for dragging.");
+    if (projectedBase < 0 || projection.text.indexOf(text3, projectedBase + 1) >= 0 || oldFrom < projectedBase || oldTo > projectedBase + text3.length || oldTo < 0) {
+      new import_obsidian43.Notice("This rendered paragraph cannot yet be mapped safely for dragging.");
       return;
     }
     const sourceOffset = (offset) => projection.boundaries[projectedBase + offset];
@@ -49664,7 +50443,7 @@ function registerAnnotationHandles(plugin2, store) {
     event?.stopPropagation();
     close();
     store.closeHoverPreviews();
-    const snapshot = JSON.stringify(c), path = view.file.path;
+    const snapshot2 = JSON.stringify(c), path = view.file.path;
     let from = oldFrom - projectedBase, to = oldTo - projectedBase, drag, moved = false, origin = { x: 0, y: 0 };
     const preview = p.closest(".markdown-preview-view");
     const layer2 = doc2.body.createDiv("study-resize-handles");
@@ -49711,7 +50490,7 @@ function registerAnnotationHandles(plugin2, store) {
         return;
       }
       const next = resizeDOM(p);
-      if (next.text !== text2 || next.fingerprint !== fingerprint) {
+      if (next.text !== text3 || next.fingerprint !== fingerprint) {
         close();
         return;
       }
@@ -49794,7 +50573,7 @@ function registerAnnotationHandles(plugin2, store) {
         e.stopPropagation();
         const changed = moved && (sourceOffset(from) !== old.from || sourceOffset(to) !== old.to), a2 = sourceOffset(from), b = sourceOffset(to);
         close();
-        if (changed) void store.resizeMargin?.(c.id, snapshot, source, a2, b);
+        if (changed) void store.resizeMargin?.(c.id, snapshot2, source, a2, b);
       };
       doc2.addEventListener("pointermove", move, true);
       doc2.addEventListener("pointerup", up, true);
@@ -49850,7 +50629,7 @@ function underlineProseRanges(range, equations3, selections) {
 }
 
 // src/floating-palette.ts
-var import_obsidian42 = require("obsidian");
+var import_obsidian44 = require("obsidian");
 var FloatingPalette = class {
   constructor(plugin2, store, apply2, capture) {
     this.plugin = plugin2;
@@ -49900,7 +50679,7 @@ var FloatingPalette = class {
     }).then(() => this.plugin.app.vault.adapter.write(this.path, raw));
     void this.pending.catch((e) => {
       this.saved = "";
-      new import_obsidian42.Notice("Could not remember palette position: " + String(e));
+      new import_obsidian44.Notice("Could not remember palette position: " + String(e));
     });
   }
   close(restore = false) {
@@ -49914,7 +50693,7 @@ var FloatingPalette = class {
     if (restore) this.returnFocus?.();
   }
   remember() {
-    const view = this.plugin.app.workspace.getActiveViewOfType(import_obsidian42.MarkdownView);
+    const view = this.plugin.app.workspace.getActiveViewOfType(import_obsidian44.MarkdownView);
     if (view) {
       this.returnFocus = () => {
         this.plugin.app.workspace.setActiveLeaf(view.leaf, { focus: true });
@@ -49941,7 +50720,7 @@ var FloatingPalette = class {
   use(p, keyboard = false) {
     void this.apply(this.style, p).then(() => {
       if (keyboard) this.returnFocus?.();
-    }).catch((e) => new import_obsidian42.Notice(String(e)));
+    }).catch((e) => new import_obsidian44.Notice(String(e)));
   }
   open(style, keyboard = false) {
     const doc2 = this.plugin.app.workspace.getMostRecentLeaf()?.view.containerEl.ownerDocument ?? document, win = doc2.defaultView;
@@ -49966,7 +50745,7 @@ var FloatingPalette = class {
     head.setAttribute("aria-label", "Drag to move; arrow keys move when focused");
     head.tabIndex = 0;
     const close = head.createEl("button", { cls: "clickable-icon", attr: { "aria-label": "Close annotation palette" } });
-    (0, import_obsidian42.setIcon)(close, "x");
+    (0, import_obsidian44.setIcon)(close, "x");
     close.onclick = () => this.close(true);
     el.addEventListener("mousedown", (e) => {
       if (e.target.closest(".study-visibility-controls")) return;
@@ -49982,7 +50761,7 @@ var FloatingPalette = class {
     for (const style2 of annotationStyles) {
       const b = types2.createEl("button", { cls: "clickable-icon", attr: { "aria-label": styleNames[style2], "aria-pressed": String(style2 === this.style) } });
       b.dataset.paletteStyle = style2;
-      (0, import_obsidian42.setIcon)(b, icons[style2]);
+      (0, import_obsidian44.setIcon)(b, icons[style2]);
       b.onclick = (e) => this.choose(style2, e.detail === 0);
     }
     el.createDiv("study-palette-colors");
@@ -50058,7 +50837,7 @@ var FloatingPalette = class {
     });
     el.oncontextmenu = (e) => {
       e.preventDefault();
-      new import_obsidian42.Menu().addItem((i) => i.setTitle("Color meanings\u2026").setIcon("palette").onClick(() => {
+      new import_obsidian44.Menu().addItem((i) => i.setTitle("Color meanings\u2026").setIcon("palette").onClick(() => {
         this.plugin.app.setting.open();
         this.plugin.app.setting.openTabById("study-studio");
       })).showAtMouseEvent(e);
@@ -50098,7 +50877,7 @@ var FloatingPalette = class {
 };
 
 // src/math-annotations.ts
-var import_obsidian43 = require("obsidian");
+var import_obsidian45 = require("obsidian");
 var import_view15 = require("@codemirror/view");
 var painted = /* @__PURE__ */ new WeakMap();
 function clearMathMarks(root) {
@@ -50262,7 +51041,7 @@ function liveEquation(view, root, qs) {
   }
 }
 function liveAnchor(view, root) {
-  const info = view.state.field(import_obsidian43.editorInfoField, false), raw = view.state.doc.toString(), q = liveEquation(view, root, equations(raw));
+  const info = view.state.field(import_obsidian45.editorInfoField, false), raw = view.state.doc.toString(), q = liveEquation(view, root, equations(raw));
   if (!info?.file || !q) return;
   return ordinaryAnchor(raw, { id: crypto.randomUUID(), path: info.file.path, quote: q.raw, before: raw.slice(Math.max(0, q.from - 48), q.from), after: raw.slice(q.to, q.to + 48), kind: "math" }, { from: q.from, to: q.to });
 }
@@ -50316,8 +51095,8 @@ function registerMathAnnotations(plugin2, store) {
       });
     };
     paint() {
-      const info = this.view.state.field(import_obsidian43.editorInfoField, false);
-      if (!this.view.state.field(import_obsidian43.editorLivePreviewField, false) || !info?.file) return;
+      const info = this.view.state.field(import_obsidian45.editorInfoField, false);
+      if (!this.view.state.field(import_obsidian45.editorLivePreviewField, false) || !info?.file) return;
       const cs = withUnderlineLanes(store.data.comments.filter((c) => !c.resolved && store.isAnnotationVisible(c) && !c.questionId), this.view.state.doc.toString(), info.file.path).flatMap((c) => excerpts(c).filter((a2) => a2.path === info.file.path && (a2.kind === "math" || c.markStyle === "underline")).map((a2) => ({ ...withExcerptLane(c, a2), excerpt: a2 })));
       if (!cs.length && !this.view.contentDOM.querySelector(".study-math-mark")) return;
       if (this.cachedDoc !== this.view.state.doc) {
@@ -50352,7 +51131,7 @@ function registerMathAnnotations(plugin2, store) {
       const math2 = root.querySelector("mjx-math,.ML__latex");
       if (!math2) return;
       const cm = root.closest(".cm-editor"), view = cm ? import_view15.EditorView.findFromDOM(cm) : void 0;
-      const markdown2 = plugin2.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian43.MarkdownView && v.containerEl.contains(root));
+      const markdown2 = plugin2.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian45.MarkdownView && v.containerEl.contains(root));
       const anchor = view ? liveAnchor(view, root) : markdown2?.file ? readingEquationAnchor(root, markdown2.file.path) : void 0;
       if (!anchor) return;
       const selection = doc2.getSelection(), range = selection && !selection.isCollapsed && selection.rangeCount ? selection.getRangeAt(0) : void 0;
@@ -50368,7 +51147,7 @@ function registerMathAnnotations(plugin2, store) {
       }
       event.studyMarginMenu = true;
       event.preventDefault();
-      const menu = import_obsidian43.Menu.forEvent(event), open = (a2) => store.edit({ path: a2.path, quote: a2.quote, before: a2.before, after: a2.after, anchors: [a2] });
+      const menu = import_obsidian45.Menu.forEvent(event), open = (a2) => store.edit({ path: a2.path, quote: a2.quote, before: a2.before, after: a2.after, anchors: [a2] });
       store.addMarkMenu(menu, { path: chosen.path, quote: chosen.quote, before: chosen.before, after: chosen.after, anchors: [chosen] });
       for (const c of store.data.comments.filter((c2) => noteIds.has(c2.id) && !c2.resolved)) menu.addItem((i) => i.setSection("study-margin").setTitle("Open margin note: " + (c.comment || c.intent).slice(0, 55)).onClick(() => store.edit(c)));
       menu.addItem((i) => i.setSection("study-margin").setTitle(noteIds.size ? selected ? "Add another comment on selection\u2026" : part ? "Add another comment on this symbol\u2026" : "Add another comment on this equation\u2026" : selected ? "Comment on selection\u2026" : part ? "Comment on this symbol\u2026" : "Comment on this equation\u2026").onClick(() => open(chosen)));
@@ -50392,7 +51171,7 @@ function registerMathAnnotations(plugin2, store) {
       event.stopImmediatePropagation();
       if (cs.length === 1) store.edit(cs[0]);
       else {
-        const menu = new import_obsidian43.Menu();
+        const menu = new import_obsidian45.Menu();
         for (const c of cs) menu.addItem((i) => i.setTitle((c.intent || "Note") + ": " + (c.comment || c.quote).slice(0, 70)).onClick(() => store.edit(c)));
         menu.showAtMouseEvent(event);
       }
@@ -50416,17 +51195,17 @@ var ReadingCommentCache = class {
     if (paths) for (const path of paths) this.values.delete(path);
     else this.values.clear();
   }
-  get(path, text2, comments) {
+  get(path, text3, comments) {
     let revisions = this.values.get(path);
     if (!revisions) {
       revisions = /* @__PURE__ */ new Map();
       this.values.set(path, revisions);
       if (this.values.size > 4) this.values.delete(this.values.keys().next().value);
     }
-    let index2 = revisions.get(text2);
+    let index2 = revisions.get(text3);
     if (!index2) {
-      index2 = readingCommentIndex(comments(), text2, path);
-      revisions.set(text2, index2);
+      index2 = readingCommentIndex(comments(), text3, path);
+      revisions.set(text3, index2);
       if (revisions.size > 2) revisions.delete(revisions.keys().next().value);
     }
     return index2;
@@ -50434,8 +51213,8 @@ var ReadingCommentCache = class {
 };
 
 // src/comment-settings.ts
-var import_obsidian44 = require("obsidian");
-var CommentSettings = class extends import_obsidian44.PluginSettingTab {
+var import_obsidian46 = require("obsidian");
+var CommentSettings = class extends import_obsidian46.PluginSettingTab {
   constructor(app, plugin2, store) {
     super(app, plugin2);
     this.store = store;
@@ -50446,17 +51225,17 @@ var CommentSettings = class extends import_obsidian44.PluginSettingTab {
     el.empty();
     el.createEl("h2", { text: "Annotation colors and meanings" });
     el.createEl("p", { text: "Each annotation style has its own color meanings. Existing notes keep their saved meaning and colors." });
-    new import_obsidian44.Setting(el).setName("Annotation style").addDropdown((d) => {
+    new import_obsidian46.Setting(el).setName("Annotation style").addDropdown((d) => {
       for (const style of annotationStyles) d.addOption(style, styleNames[style]);
       d.setValue(this.style).onChange((value) => {
         this.style = value;
         this.display();
       });
     });
-    const persist = () => void this.store.save({ paths: /* @__PURE__ */ new Set(), commentIds: /* @__PURE__ */ new Set(), annotations: false }).catch((e) => new import_obsidian44.Notice(String(e)));
+    const persist = () => void this.store.save({ paths: /* @__PURE__ */ new Set(), commentIds: /* @__PURE__ */ new Set(), annotations: false }).catch((e) => new import_obsidian46.Notice(String(e)));
     const palette = this.store.paletteFor(this.style);
     for (const [index2, entry] of palette.entries()) {
-      const row = new import_obsidian44.Setting(el).setName(`Color ${index2 + 1}`).setDesc("Light \xB7 Dark \xB7 Meaning").addColorPicker((c) => c.setValue(entry.color).onChange((value) => {
+      const row = new import_obsidian46.Setting(el).setName(`Color ${index2 + 1}`).setDesc("Light \xB7 Dark \xB7 Meaning").addColorPicker((c) => c.setValue(entry.color).onChange((value) => {
         entry.color = value;
         persist();
       })).addColorPicker((c) => c.setValue(darkCommentColor(entry)).onChange((value) => {
@@ -50478,7 +51257,7 @@ var CommentSettings = class extends import_obsidian44.PluginSettingTab {
       }));
       row.controlEl.querySelectorAll("input[type=color]").forEach((input, i) => input.setAttribute("aria-label", `${i ? "Dark" : "Light"} color ${index2 + 1}`));
     }
-    new import_obsidian44.Setting(el).addButton((b) => b.setButtonText("Add color").onClick(() => {
+    new import_obsidian46.Setting(el).addButton((b) => b.setButtonText("Add color").onClick(() => {
       palette.push({ color: "#55aa77", meaning: "" });
       persist();
       this.display();
@@ -50491,12 +51270,12 @@ var CommentSettings = class extends import_obsidian44.PluginSettingTab {
 };
 
 // src/annotations.ts
-var import_obsidian47 = require("obsidian");
+var import_obsidian49 = require("obsidian");
 var import_view16 = require("@codemirror/view");
 var import_state15 = require("@codemirror/state");
 
 // src/reading-comments.ts
-var import_obsidian45 = require("obsidian");
+var import_obsidian47 = require("obsidian");
 var sectionSelector = "[data-study-comment-section]";
 var markSelector = "[data-study-reading-comment]";
 function readingMarks(root) {
@@ -50508,12 +51287,12 @@ function hasReadingSelection(root) {
 }
 function readingText(root) {
   const walker = root.ownerDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  let text2 = "", node;
+  let text3 = "", node;
   while (node = walker.nextNode()) {
     const parent = node.parentElement;
-    if (parent?.closest(sectionSelector) === root && !parent.closest('.code-links-panel,[data-code-links-host]:not([data-code-links-host="protected"]),code,pre,mjx-container,.math,.study-reference-gutter,button,input,textarea')) text2 += node.textContent ?? "";
+    if (parent?.closest(sectionSelector) === root && !parent.closest('.code-links-panel,[data-code-links-host]:not([data-code-links-host="protected"]),code,pre,mjx-container,.math,.study-reference-gutter,button,input,textarea')) text3 += node.textContent ?? "";
   }
-  return text2;
+  return text3;
 }
 function paintReadingComments(root, comments, handlers2) {
   const parents = /* @__PURE__ */ new Set();
@@ -50537,7 +51316,7 @@ function paintReadingComments(root, comments, handlers2) {
       handlers2.edit(cs[0]);
       return;
     }
-    const menu = new import_obsidian45.Menu();
+    const menu = new import_obsidian47.Menu();
     for (const c of cs) menu.addItem((item) => item.setTitle((c.intent || "Note") + ": " + (c.comment || c.quote).slice(0, 70)).onClick(() => handlers2.edit(c)));
     const box = mark.getBoundingClientRect();
     menu.showAtPosition({ x: box.left, y: box.bottom });
@@ -50576,8 +51355,8 @@ function paintReadingComments(root, comments, handlers2) {
       if (!cell) return [];
       const contained = nodes.filter((n) => cell.contains(n));
       if (!contained.length) return [];
-      const text2 = contained.map((n) => n.data).join(""), quote = c.excerpt.renderedQuote ?? c.excerpt.quote;
-      const at2 = locateQuote(text2, { quote, before: "", after: "" });
+      const text3 = contained.map((n) => n.data).join(""), quote = c.excerpt.renderedQuote ?? c.excerpt.quote;
+      const at2 = locateQuote(text3, { quote, before: "", after: "" });
       if (!at2) return [];
       let base2 = 0;
       for (const n of nodes) {
@@ -50610,7 +51389,7 @@ function paintReadingComments(root, comments, handlers2) {
 }
 
 // src/anchor-protection.ts
-var import_obsidian46 = require("obsidian");
+var import_obsidian48 = require("obsidian");
 var import_state14 = require("@codemirror/state");
 
 // src/anchor-protection-model.ts
@@ -50625,9 +51404,9 @@ function lostFromRanges(before, after) {
   }
   return lost;
 }
-function anchorRemovalChanges(text2, ids) {
+function anchorRemovalChanges(text3, ids) {
   const selected = new Set(ids);
-  return anchorRanges(text2).filter((a2) => selected.has(a2.id)).map((a2) => ({ from: a2.from, to: a2.to, insert: "" }));
+  return anchorRanges(text3).filter((a2) => selected.has(a2.id)).map((a2) => ({ from: a2.from, to: a2.to, insert: "" }));
 }
 function removalPhrase(ids, all) {
   return all ? `REMOVE ${ids.length} ANCHORS` : `REMOVE ${ids[0]}`;
@@ -50638,7 +51417,7 @@ function changedAnchorIds(tr) {
     if (risky) return;
     const a2 = tr.startState.doc, b = tr.newDoc;
     const old = a2.sliceString(a2.lineAt(fA).from, a2.lineAt(tA).to), next = b.sliceString(b.lineAt(fB).from, b.lineAt(tB).to);
-    risky = [old, next].some((text2) => text2.split("\n").some((line) => /^\s*(`{3,}|~{3,})/.test(line) || /(?:^|\s)\^[A-Za-z0-9-]+\s*$/.test(line)));
+    risky = [old, next].some((text3) => text3.split("\n").some((line) => /^\s*(`{3,}|~{3,})/.test(line) || /(?:^|\s)\^[A-Za-z0-9-]+\s*$/.test(line)));
   });
   return risky ? lostFromRanges(anchorsFor(tr.startState.doc), anchorsFor(tr.newDoc)) : [];
 }
@@ -50661,7 +51440,7 @@ function incoming(plugin2, target, ids) {
   }
   return found.sort((a2, b) => a2.path.localeCompare(b.path) || a2.line - b.line || a2.id.localeCompare(b.id));
 }
-var RemoveAnchorsModal = class extends import_obsidian46.Modal {
+var RemoveAnchorsModal = class extends import_obsidian48.Modal {
   constructor(plugin2, view, file, ids, all) {
     super(plugin2.app);
     this.plugin = plugin2;
@@ -50686,7 +51465,7 @@ var RemoveAnchorsModal = class extends import_obsidian46.Modal {
     else this.contentEl.createEl("p", { text: "References outside this vault or in unindexed content are not included." });
     this.contentEl.createEl("p", { text: `To confirm, type exactly: ${phrase}` });
     let typed = "";
-    const row = new import_obsidian46.Setting(this.contentEl).setName("Confirmation");
+    const row = new import_obsidian48.Setting(this.contentEl).setName("Confirmation");
     let remove2;
     row.addText((t2) => {
       t2.inputEl.setAttribute("aria-label", "Anchor removal confirmation");
@@ -50695,27 +51474,27 @@ var RemoveAnchorsModal = class extends import_obsidian46.Modal {
         if (remove2) remove2.disabled = typed !== phrase;
       });
     });
-    new import_obsidian46.Setting(this.contentEl).addButton((b) => b.setButtonText("Cancel").onClick(() => this.close())).addButton((b) => {
+    new import_obsidian48.Setting(this.contentEl).addButton((b) => b.setButtonText("Cancel").onClick(() => this.close())).addButton((b) => {
       b.setButtonText("Remove anchors").setWarning();
       remove2 = b.buttonEl;
       remove2.disabled = true;
       b.onClick(() => {
         if (typed !== phrase) return;
-        const info = this.view.state.field(import_obsidian46.editorInfoField, false);
+        const info = this.view.state.field(import_obsidian48.editorInfoField, false);
         if (info?.file?.path !== this.file.path || this.view.state.doc.toString() !== before || JSON.stringify(incoming(this.plugin, this.file, this.ids)) !== signature2) {
-          new import_obsidian46.Notice("The note or its references changed. Reopen the removal dialog to review them.");
+          new import_obsidian48.Notice("The note or its references changed. Reopen the removal dialog to review them.");
           this.close();
           return;
         }
         this.view.dispatch({ changes: anchorRemovalChanges(before, this.ids), annotations: approvedRemoval.of(true), userEvent: "input.anchor-removal" });
         this.close();
-        new import_obsidian46.Notice("Anchors removed. Undo restores them.");
+        new import_obsidian48.Notice("Anchors removed. Undo restores them.");
       });
     });
   }
 };
 function requestAnchorRemoval(plugin2, view, ids, all = false) {
-  const file = view.state.field(import_obsidian46.editorInfoField, false)?.file;
+  const file = view.state.field(import_obsidian48.editorInfoField, false)?.file;
   if (!file || !ids.length) return;
   new RemoveAnchorsModal(plugin2, view, file, ids, all).open();
 }
@@ -50723,13 +51502,13 @@ function registerAnchorProtection(plugin2) {
   let lastNotice = 0;
   plugin2.registerEditorExtension(import_state14.EditorState.transactionFilter.of((tr) => {
     if (!tr.docChanged || tr.annotation(approvedRemoval)) return tr;
-    const beforeFile = tr.startState.field(import_obsidian46.editorInfoField, false)?.file;
-    const afterFile = tr.state.field(import_obsidian46.editorInfoField, false)?.file;
+    const beforeFile = tr.startState.field(import_obsidian48.editorInfoField, false)?.file;
+    const afterFile = tr.state.field(import_obsidian48.editorInfoField, false)?.file;
     if (!beforeFile || beforeFile.path !== afterFile?.path) return tr;
     if (!changedAnchorIds(tr).length) return tr;
     if (Date.now() - lastNotice > 2500) {
       lastNotice = Date.now();
-      new import_obsidian46.Notice("Block anchors are protected. Right-click the anchor to remove it, or use \u201CRemove all block anchors from current note\u201D.");
+      new import_obsidian48.Notice("Block anchors are protected. Right-click the anchor to remove it, or use \u201CRemove all block anchors from current note\u201D.");
     }
     return [];
   }));
@@ -50771,14 +51550,14 @@ var AnchorChip = class extends import_view16.WidgetType {
     span.oncontextmenu = (event) => {
       event.preventDefault();
       event.stopPropagation();
-      new import_obsidian47.Menu().addItem((i) => i.setTitle(`Remove block anchor ${this.id}\u2026`).setIcon("unlink").onClick(() => requestAnchorRemoval(this.plugin, view, [this.id]))).showAtMouseEvent(event);
+      new import_obsidian49.Menu().addItem((i) => i.setTitle(`Remove block anchor ${this.id}\u2026`).setIcon("unlink").onClick(() => requestAnchorRemoval(this.plugin, view, [this.id]))).showAtMouseEvent(event);
     };
     return span;
   }
 };
 function stickyButton(container, c, store) {
   const button2 = container.createEl("button", { cls: "study-sticky-note", attr: { "aria-label": c.resolved ? "Open resolved sticky note" : "Open sticky note" } });
-  (0, import_obsidian47.setIcon)(button2, "sticky-note");
+  (0, import_obsidian49.setIcon)(button2, "sticky-note");
   button2.title = c.resolved ? "Resolved sticky note" : "Sticky note";
   button2.classList.toggle("is-resolved", c.resolved);
   button2.style.setProperty("--critique-color", safeColor(c.color));
@@ -50863,11 +51642,11 @@ function registerAnnotations(plugin2, store) {
     }
     return stickyPaths.get(path) ?? [];
   };
-  const located = (path, text2, from, to) => {
+  const located = (path, text3, from, to) => {
     let entry = locations.get(path);
-    if (entry?.text !== text2) {
-      const lookup = placementLookup(path, text2, stickies(path).map((c) => placementOf(c)));
-      entry = { text: text2, items: stickies(path).flatMap((c) => {
+    if (entry?.text !== text3) {
+      const lookup = placementLookup(path, text3, stickies(path).map((c) => placementOf(c)));
+      entry = { text: text3, items: stickies(path).flatMap((c) => {
         const end = lookup(placementOf(c));
         return end === void 0 ? [] : [{ c, end }];
       }).sort((a2, b) => a2.end - b.end || a2.c.id.localeCompare(b.c.id)) };
@@ -50888,14 +51667,14 @@ function registerAnnotations(plugin2, store) {
   const sourceRevisions = /* @__PURE__ */ new Map();
   plugin2.registerEvent(plugin2.app.vault.on("modify", (file) => {
     const comments = stickies(file.path);
-    if (!comments.length || !(file instanceof import_obsidian47.TFile)) return;
+    if (!comments.length || !(file instanceof import_obsidian49.TFile)) return;
     const revision = {};
     sourceRevisions.delete(file.path);
     sourceRevisions.set(file.path, revision);
     if (sourceRevisions.size > 4) sourceRevisions.delete(sourceRevisions.keys().next().value);
-    void plugin2.app.vault.cachedRead(file).then((text2) => {
+    void plugin2.app.vault.cachedRead(file).then((text3) => {
       if (sourceRevisions.get(file.path) !== revision) return;
-      revision.text = text2;
+      revision.text = text3;
       const change = { paths: /* @__PURE__ */ new Set([file.path]), commentIds: new Set(comments.map((c) => c.id)), annotations: true };
       invalidate(change);
       for (const repaint of stickyRepaints) repaint(change);
@@ -50909,7 +51688,7 @@ function registerAnnotations(plugin2, store) {
   plugin2.addSettingTab(new CommentSettings(plugin2.app, plugin2, store));
   const addPlacedSticky = async (path, placement, p = store.paletteFor("sticky")[0]) => {
     if (!placement) {
-      new import_obsidian47.Notice("This position is ambiguous in repeated text. Choose a nearby distinctive passage.");
+      new import_obsidian49.Notice("This position is ambiguous in repeated text. Choose a nearby distinctive passage.");
       return;
     }
     const id3 = crypto.randomUUID(), c = { id: id3, kind: "sticky", path, quote: "", before: "", after: "", comment: "", intent: p?.meaning ?? "", color: p?.color ?? "#e2b714", darkColor: p?.darkColor, updated: (/* @__PURE__ */ new Date()).toISOString(), resolved: false, placement };
@@ -50925,43 +51704,43 @@ function registerAnnotations(plugin2, store) {
         const i = store.data.comments.indexOf(c);
         if (i >= 0) store.data.comments.splice(i, 1);
       }
-      new import_obsidian47.Notice((saved ? "Post-it saved, but its margin could not open: " : "Could not save post-it: ") + String(error));
+      new import_obsidian49.Notice((saved ? "Post-it saved, but its margin could not open: " : "Could not save post-it: ") + String(error));
     }
   };
   const editorPoints = /* @__PURE__ */ new WeakMap();
-  const addSticky = async (editor, path, p = store.paletteFor("sticky")[0], snapshot) => {
+  const addSticky = async (editor, path, p = store.paletteFor("sticky")[0], snapshot2) => {
     const raw = editor.getValue();
-    if (snapshot && snapshot.text !== raw) {
-      new import_obsidian47.Notice("The passage changed. Select the placement again.");
+    if (snapshot2 && snapshot2.text !== raw) {
+      new import_obsidian49.Notice("The passage changed. Select the placement again.");
       return;
     }
-    const offset = snapshot?.offset ?? editor.posToOffset(editor.getCursor("to"));
-    if (snapshot?.selectionFrom !== void 0 && selectionEndsOnLineBreak(raw, snapshot.selectionFrom, offset)) {
-      new import_obsidian47.Notice("The selection ends on a new line. Place the caret at the intended Post-it position.");
+    const offset = snapshot2?.offset ?? editor.posToOffset(editor.getCursor("to"));
+    if (snapshot2?.selectionFrom !== void 0 && selectionEndsOnLineBreak(raw, snapshot2.selectionFrom, offset)) {
+      new import_obsidian49.Notice("The selection ends on a new line. Place the caret at the intended Post-it position.");
       return;
     }
     const checked = stickyBoundary(raw, offset);
     if (checked.reason) {
-      new import_obsidian47.Notice(checked.reason);
+      new import_obsidian49.Notice(checked.reason);
       return;
     }
     await addPlacedSticky(path, placementFor(raw, checked.offset, checked.offset), p);
   };
-  const addStickyReading = async (path, snapshot, p = store.paletteFor("sticky")[0]) => {
+  const addStickyReading = async (path, snapshot2, p = store.paletteFor("sticky")[0]) => {
     try {
       const source = plugin2.app.vault.getAbstractFileByPath(path);
-      if (!(source instanceof import_obsidian47.TFile) || await plugin2.app.vault.read(source) !== snapshot.text) {
-        new import_obsidian47.Notice("The passage changed. Select it again.");
+      if (!(source instanceof import_obsidian49.TFile) || await plugin2.app.vault.read(source) !== snapshot2.text) {
+        new import_obsidian49.Notice("The passage changed. Select it again.");
         return;
       }
-      const checked = stickyBoundary(snapshot.text, snapshot.offset);
+      const checked = stickyBoundary(snapshot2.text, snapshot2.offset);
       if (checked.reason) {
-        new import_obsidian47.Notice(checked.reason);
+        new import_obsidian49.Notice(checked.reason);
         return;
       }
-      await addPlacedSticky(path, placementFor(snapshot.text, checked.offset, checked.offset), p);
+      await addPlacedSticky(path, placementFor(snapshot2.text, checked.offset, checked.offset), p);
     } catch (error) {
-      new import_obsidian47.Notice("Could not place post-it: " + String(error));
+      new import_obsidian49.Notice("Could not place post-it: " + String(error));
     }
   };
   const stickyMenus = /* @__PURE__ */ new WeakSet();
@@ -50971,20 +51750,20 @@ function registerAnnotations(plugin2, store) {
     if (point?.renderedBlock) return;
     stickyMenus.add(menu);
     if (cm) editorPoints.delete(cm);
-    const snapshot = point ?? { text: editor.getValue(), offset: editor.posToOffset(editor.getCursor("to")), selectionFrom: editor.posToOffset(editor.getCursor("from")) }, path = info.file.path;
+    const snapshot2 = point ?? { text: editor.getValue(), offset: editor.posToOffset(editor.getCursor("to")), selectionFrom: editor.posToOffset(editor.getCursor("from")) }, path = info.file.path;
     paletteItems(menuGroup(menu, "mark-sticky", "Post-it", "sticky-note"), "sticky", store.paletteFor("sticky"), (p) => {
       if (info.file?.path !== path) {
-        new import_obsidian47.Notice("The note changed. Select the placement again.");
+        new import_obsidian49.Notice("The note changed. Select the placement again.");
         return;
       }
-      void addSticky(editor, path, p, snapshot);
+      void addSticky(editor, path, p, snapshot2);
     });
   };
   plugin2.registerEvent(plugin2.app.workspace.on("editor-menu", addEditorStickyMenu));
   plugin2.registerMarkdownCodeBlockProcessor("study-sticky", (source, el, ctx) => {
     el.addClass("study-sticky-placement");
     const id3 = source.trim();
-    class Sticky extends import_obsidian47.MarkdownRenderChild {
+    class Sticky extends import_obsidian49.MarkdownRenderChild {
       onload() {
         store.listeners.add(this.render);
         this.register(() => store.listeners.delete(this.render));
@@ -51014,7 +51793,7 @@ function registerAnnotations(plugin2, store) {
     }
   }));
   const currentSelection = () => {
-    const view = plugin2.app.workspace.getActiveViewOfType(import_obsidian47.MarkdownView);
+    const view = plugin2.app.workspace.getActiveViewOfType(import_obsidian49.MarkdownView);
     if (!view?.file) return;
     const path = view.file.path, pending = store.pendingAnnotationSelection?.(path);
     if (pending?.length) {
@@ -51038,18 +51817,18 @@ function registerAnnotations(plugin2, store) {
     return { path, quote: first.quote, before: first.before, after: first.after, anchors };
   };
   for (const style of ["highlight", "underline", "text"]) plugin2.addCommand({ id: "mark-selection-" + style, name: styleNames[style] + " selection\u2026", checkCallback: (checking) => {
-    if (!plugin2.app.workspace.getActiveViewOfType(import_obsidian47.MarkdownView)?.file) return false;
+    if (!plugin2.app.workspace.getActiveViewOfType(import_obsidian49.MarkdownView)?.file) return false;
     if (!checking) palette.open(style, true);
     return true;
   } });
   plugin2.addCommand({ id: "insert-sticky-note", name: "Insert post-it\u2026", checkCallback: (checking) => {
-    if (!plugin2.app.workspace.getActiveViewOfType(import_obsidian47.MarkdownView)?.file) return false;
+    if (!plugin2.app.workspace.getActiveViewOfType(import_obsidian49.MarkdownView)?.file) return false;
     if (!checking) palette.open("sticky", true);
     return true;
   } });
   let captured;
   const capture = () => {
-    const view = plugin2.app.workspace.getActiveViewOfType(import_obsidian47.MarkdownView);
+    const view = plugin2.app.workspace.getActiveViewOfType(import_obsidian49.MarkdownView);
     if (!view?.file) {
       captured = void 0;
       return;
@@ -51099,7 +51878,7 @@ function registerAnnotations(plugin2, store) {
     if (change && !change.annotations) return;
     plugin2.app.workspace.getLeavesOfType("markdown").forEach((leaf) => {
       const view = leaf.view;
-      if (!(view instanceof import_obsidian47.MarkdownView) || change && !change.paths.has(view.file?.path ?? "")) return;
+      if (!(view instanceof import_obsidian49.MarkdownView) || change && !change.paths.has(view.file?.path ?? "")) return;
       const cm = view.editor?.cm;
       cm?.dispatch({ effects: refreshAnnotations.of(null) });
     });
@@ -51141,11 +51920,11 @@ function registerAnnotations(plugin2, store) {
       editorPoints.delete(this.view);
     }
     update(update) {
-      if (update.docChanged || update.selectionSet || update.transactions.some((t2) => t2.effects.some((e) => e.is(refreshAnnotations))) || update.startState.field(import_obsidian47.editorLivePreviewField, false) !== update.state.field(import_obsidian47.editorLivePreviewField, false) || update.startState.field(import_obsidian47.editorInfoField, false)?.file?.path !== update.state.field(import_obsidian47.editorInfoField, false)?.file?.path) this.build();
+      if (update.docChanged || update.selectionSet || update.transactions.some((t2) => t2.effects.some((e) => e.is(refreshAnnotations))) || update.startState.field(import_obsidian49.editorLivePreviewField, false) !== update.state.field(import_obsidian49.editorLivePreviewField, false) || update.startState.field(import_obsidian49.editorInfoField, false)?.file?.path !== update.state.field(import_obsidian49.editorInfoField, false)?.file?.path) this.build();
     }
     build() {
-      const state = this.view.state, info = state.field(import_obsidian47.editorInfoField, false);
-      const live = !!state.field(import_obsidian47.editorLivePreviewField, false);
+      const state = this.view.state, info = state.field(import_obsidian49.editorInfoField, false);
+      const live = !!state.field(import_obsidian49.editorLivePreviewField, false);
       const raw = state.doc.toString(), commentRanges = [], qs = live ? equations(raw) : [], ranges = [], anchors = [];
       for (const c of withUnderlineLanes(store.data.comments.filter((c2) => !c2.resolved && store.isAnnotationVisible(c2) && !c2.questionId), raw, info?.file?.path ?? "")) {
         for (const a2 of excerpts(c).filter((a3) => a3.path === info?.file?.path && !a3.sectionSource && (!live || a3.kind !== "math"))) {
@@ -51182,7 +51961,7 @@ function registerAnnotations(plugin2, store) {
     const node = event.target.closest("[data-critique-id]");
     const ids = (node?.dataset.studyCommentIds ?? node?.dataset.critiqueId ?? "").split(" "), comments = store.data.comments.filter((c) => ids.includes(c.id));
     if (comments.length) {
-      const menu = import_obsidian47.Menu.forEvent(event);
+      const menu = import_obsidian49.Menu.forEvent(event);
       for (const c of comments) store.addAppearanceMenu(menu, c);
     }
     return false;
@@ -51198,12 +51977,12 @@ function registerAnnotations(plugin2, store) {
     let sectionPath = ctx.sourcePath;
     registerReadingContext(el, () => sectionPath, ctx);
     readingOwners.get(el)?.unload();
-    const owner = ownReading(new import_obsidian47.MarkdownRenderChild(el));
+    const owner = ownReading(new import_obsidian49.MarkdownRenderChild(el));
     readingOwners.set(el, owner);
     ctx.addChild(owner);
     owner.registerDomEvent(el, "contextmenu", (event) => {
       if (event.target.closest(".study-card,.study-margin-pane")) return;
-      const menu = import_obsidian47.Menu.forEvent(event), shared = event;
+      const menu = import_obsidian49.Menu.forEvent(event), shared = event;
       event.preventDefault();
       const mark = event.target.closest("[data-study-reading-comment]");
       if (mark) for (const id3 of (mark.dataset.studyCommentIds ?? mark.dataset.studyReadingComment ?? "").split(" ")) {
@@ -51219,7 +51998,7 @@ function registerAnnotations(plugin2, store) {
           menu.addItem((i) => i.setSection("selection").setTitle(title).setIcon("move-horizontal").onClick(() => {
             const current = mark.isConnected ? mark : preview?.isConnected ? [...preview.querySelectorAll("[data-study-reading-comment]")].find((m) => (m.dataset.studyCommentIds ?? m.dataset.studyReadingComment ?? "").split(" ").includes(id3)) : void 0;
             if (!current) {
-              new import_obsidian47.Notice("The passage changed. Right-click the annotation again.");
+              new import_obsidian49.Notice("The passage changed. Right-click the annotation again.");
               return;
             }
             store.annotationHandles?.open(current, id3);
@@ -51239,15 +52018,15 @@ function registerAnnotations(plugin2, store) {
       }
       if (!shared.studyPaletteMenu) {
         shared.studyPaletteMenu = true;
-        const path = sectionPath, snapshot = readingStickyInsertion(selection, path, event);
+        const path = sectionPath, snapshot2 = readingStickyInsertion(selection, path, event);
         if (!stickyMenus.has(menu)) {
           stickyMenus.add(menu);
           paletteItems(menuGroup(menu, "mark-sticky", "Post-it", "sticky-note"), "sticky", store.paletteFor("sticky"), (p) => {
-            if (!snapshot) {
-              new import_obsidian47.Notice("This position could not be mapped exactly. Place the Post-it in ordinary text, outside links, code, or equations.");
+            if (!snapshot2) {
+              new import_obsidian49.Notice("This position could not be mapped exactly. Place the Post-it in ordinary text, outside links, code, or equations.");
               return;
             }
-            void addStickyReading(path, snapshot, p);
+            void addStickyReading(path, snapshot2, p);
           });
         }
         menu.addItem((i) => i.setSection("selection").setTitle("Annotation palette\u2026").setIcon("palette").onClick(() => palette.open()));
@@ -51259,7 +52038,7 @@ function registerAnnotations(plugin2, store) {
       }
     });
     el.dataset.studyCommentSection = "";
-    class ReadingAnnotations extends import_obsidian47.MarkdownRenderChild {
+    class ReadingAnnotations extends import_obsidian49.MarkdownRenderChild {
       pending = false;
       alive = false;
       stopSelection;
@@ -51307,9 +52086,9 @@ function registerAnnotations(plugin2, store) {
         this.readinessAttempt = 0;
         const bounds = readingSectionBounds(section, sectionPath), index2 = readingCache.get(sectionPath, section.text, () => store.data.comments.filter((c) => !c.resolved && store.isAnnotationVisible(c) && !c.questionId && c.kind !== "sticky"));
         const comments = index2.inSection(bounds.from, bounds.to).filter((c) => !c.anchors || readingAnchorApplies(el, c.excerpt, section));
-        const marks2 = [...readingMarks(el), ...el.querySelectorAll("[data-study-math-ids]")], text2 = readingText(el);
-        if (change && !el.querySelector(".study-has-underline,.study-math-underlined") && !marks2.some((m) => (m.dataset.studyMathIds ?? m.dataset.studyCommentIds ?? m.dataset.studyReadingComment ?? "").split(" ").some((id3) => change.commentIds.has(id3))) && !comments.some((c) => change.commentIds.has(c.id) && (c.excerpt.kind === "math" || c.quote && text2.includes(c.quote)))) return;
-        if (!marks2.length && !comments.some((c) => c.excerpt.kind === "math" || c.quote && text2.includes(c.quote))) return;
+        const marks2 = [...readingMarks(el), ...el.querySelectorAll("[data-study-math-ids]")], text3 = readingText(el);
+        if (change && !el.querySelector(".study-has-underline,.study-math-underlined") && !marks2.some((m) => (m.dataset.studyMathIds ?? m.dataset.studyCommentIds ?? m.dataset.studyReadingComment ?? "").split(" ").some((id3) => change.commentIds.has(id3))) && !comments.some((c) => change.commentIds.has(c.id) && (c.excerpt.kind === "math" || c.quote && text3.includes(c.quote)))) return;
+        if (!marks2.length && !comments.some((c) => c.excerpt.kind === "math" || c.quote && text3.includes(c.quote))) return;
         if (hasReadingSelection(el)) {
           this.pending = true;
           if (!this.stopSelection) {
@@ -51334,7 +52113,7 @@ function registerAnnotations(plugin2, store) {
       }
     }
     owner.addChild(ownReading(new ReadingAnnotations(el)));
-    class ReadingStickies extends import_obsidian47.MarkdownRenderChild {
+    class ReadingStickies extends import_obsidian49.MarkdownRenderChild {
       alive = false;
       readinessTimer;
       readinessAttempt = 0;
@@ -51486,7 +52265,7 @@ function registerAnnotations(plugin2, store) {
   return { onStudyContextMenu: (menu, event) => {
     const target = event.target, root = target?.closest?.(".cm-editor");
     if (!root || target?.closest(".cm-embed-block")) return;
-    const cm = import_view16.EditorView.findFromDOM(root), info = cm?.state.field(import_obsidian47.editorInfoField, false);
+    const cm = import_view16.EditorView.findFromDOM(root), info = cm?.state.field(import_obsidian49.editorInfoField, false);
     if (info?.editor) addEditorStickyMenu(menu, info.editor, info);
   } };
 }
@@ -51499,30 +52278,30 @@ function paperSourcePath(app, path) {
 
 // src/citation-anchor.ts
 function citationText(raw) {
-  const text2 = [], starts = [], ends = [];
+  const text3 = [], starts = [], ends = [];
   const ligatures = { "\uFB00": "ff", "\uFB01": "fi", "\uFB02": "fl", "\uFB03": "ffi", "\uFB04": "ffl", "\u2018": "'", "\u2019": "'", "\u201C": '"', "\u201D": '"' };
   for (const part of raw.matchAll(/\P{M}\p{M}*|\p{M}+/gu)) {
     const i = part.index, end = i + part[0].length, character = part[0].normalize("NFC");
     if (character === "\xAD" || character === "\u200B") continue;
     const value = /^\s+$/.test(character) ? " " : ligatures[character] || character;
-    if (value === " " && text2.at(-1) === " ") {
+    if (value === " " && text3.at(-1) === " ") {
       ends[ends.length - 1] = end;
       continue;
     }
     for (let j = 0; j < value.length; j++) {
-      text2.push(value[j]);
+      text3.push(value[j]);
       starts.push(i);
       ends.push(end);
     }
   }
-  return { text: text2.join(""), starts, ends };
+  return { text: text3.join(""), starts, ends };
 }
 function locateCitation(raw, s) {
   const source = citationText(raw), quote = citationText(s.quote || "").text.trim();
   if (!quote) return null;
   const before = citationText(s.before || "").text.trim(), after = citationText(s.after || "").text.trim();
   const word = (c) => /[\p{L}\p{N}\p{M}_]/u.test(c);
-  const all = [], context = [];
+  const all = [], context2 = [];
   let at = -1;
   while ((at = source.text.indexOf(quote, at + 1)) >= 0) {
     const previous = source.text[at - 1] || "", next = source.text[at + quote.length] || "";
@@ -51533,12 +52312,12 @@ function locateCitation(raw, s) {
     all.push(at);
     if (before && !source.text.slice(0, at).trimEnd().endsWith(before)) continue;
     if (after && !source.text.slice(at + quote.length).trimStart().startsWith(after)) continue;
-    context.push(at);
+    context2.push(at);
   }
-  const found = context.length === 1 ? context[0] : all.length === 1 ? all[0] : void 0;
+  const found = context2.length === 1 ? context2[0] : all.length === 1 ? all[0] : void 0;
   if (found === void 0) return null;
   const from = source.starts[found], to = source.ends[found + quote.length - 1];
-  return { from, to, status: context.length !== 1 ? "context-changed" : raw.slice(from, to) === (s.quote || "").trim() ? "exact" : "formatting" };
+  return { from, to, status: context2.length !== 1 ? "context-changed" : raw.slice(from, to) === (s.quote || "").trim() ? "exact" : "formatting" };
 }
 
 // src/citation-table-anchor.ts
@@ -51610,7 +52389,7 @@ var normalized = (s) => s.replace(/\s+/g, " ").trim();
 function sameKeys(a2, b) {
   return a2.length === b.length && [...a2].sort().every((k, i) => k === [...b].sort()[i]);
 }
-async function digest2(data2) {
+async function digest3(data2) {
   const bytes = typeof data2 === "string" ? new TextEncoder().encode(data2) : data2;
   return Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))).map((n) => n.toString(16).padStart(2, "0")).join("");
 }
@@ -51620,9 +52399,9 @@ function tableSources(raw) {
 function renderablePaper(raw) {
   return raw.replace(/([^\n])\n(\|[^\n]+\|\r?\n\|(?:[ \t]*:?-+:?[ \t]*\|)+[ \t]*(?=\r?$))/gm, "$1\n\n$2");
 }
-function linkedEvidence(text2) {
+function linkedEvidence(text3) {
   const matches = [];
-  for (const m of text2.matchAll(/\[([^\]\n]*@[^\]\n]+)\]\s*(\[[^\]\n]*\]\((obsidian:\/\/study-evidence[^)\n]+)\))/g)) {
+  for (const m of text3.matchAll(/\[([^\]\n]*@[^\]\n]+)\]\s*(\[[^\]\n]*\]\((obsidian:\/\/study-evidence[^)\n]+)\))/g)) {
     try {
       const uri = new URL(m[3]), keys2 = [...m[1].matchAll(/@([\w:.+/-]+)/g)].map((x) => x[1]);
       if (!keys2.length || !sameKeys(keys2, (uri.searchParams.get("keys") || "").split("|"))) continue;
@@ -51635,7 +52414,7 @@ function linkedEvidence(text2) {
 }
 
 // src/evidence-links.ts
-var import_obsidian48 = require("obsidian");
+var import_obsidian50 = require("obsidian");
 var import_state16 = require("@codemirror/state");
 var import_view17 = require("@codemirror/view");
 var import_language14 = require("@codemirror/language");
@@ -51716,7 +52495,7 @@ function registerEvidenceLinks(plugin2) {
     toDOM(view) {
       const span = view.dom.ownerDocument.createElement("span");
       span.className = "evidence-citation";
-      span.append((0, import_obsidian48.sanitizeHTMLToDom)(this.html));
+      span.append((0, import_obsidian50.sanitizeHTMLToDom)(this.html));
       span.setAttribute("role", "button");
       span.tabIndex = 0;
       span.setAttribute("aria-label", `Open supporting evidence for citation ${span.textContent}`);
@@ -51737,10 +52516,10 @@ function registerEvidenceLinks(plugin2) {
   }
   const decorate = (view) => {
     const ranges = [];
-    const renderer = plugin2.app.plugins?.plugins?.["obsidian-pandoc-reference-list"], file = view.state.field(import_obsidian48.editorInfoField, false)?.file;
+    const renderer = plugin2.app.plugins?.plugins?.["obsidian-pandoc-reference-list"], file = view.state.field(import_obsidian50.editorInfoField, false)?.file;
     const cache5 = file ? renderer?.bibManager?.getCacheForPath(file.path) : null;
-    const from = view.state.doc.lineAt(view.viewport.from).from, to = view.state.doc.lineAt(view.viewport.to).to, text2 = view.state.doc.sliceString(from, to);
-    const linked = renderer?.settings.renderCitations && view.state.field(import_obsidian48.editorLivePreviewField, false) ? linkedEvidence(text2) : [];
+    const from = view.state.doc.lineAt(view.viewport.from).from, to = view.state.doc.lineAt(view.viewport.to).to, text3 = view.state.doc.sliceString(from, to);
+    const linked = renderer?.settings.renderCitations && view.state.field(import_obsidian50.editorLivePreviewField, false) ? linkedEvidence(text3) : [];
     const replaced = [];
     for (const f of linked) {
       const start = from + f.citeFrom, end = from + f.to;
@@ -51758,7 +52537,7 @@ function registerEvidenceLinks(plugin2) {
       ranges.push(import_view17.Decoration.replace({ widget: new CitationWidget(citation.val, f.href) }).range(start, end));
       replaced.push({ from: start, to: end });
     }
-    for (const match of text2.matchAll(/\[\[([^\]\n]+)\]\]|\[[^\]\n]*\]\((<?[^\n)]+>?)\)/g)) {
+    for (const match of text3.matchAll(/\[\[([^\]\n]+)\]\]|\[[^\]\n]*\]\((<?[^\n)]+>?)\)/g)) {
       const start = from + match.index;
       if (replaced.some((r) => start >= r.from && start < r.to)) continue;
       let code = false;
@@ -51786,7 +52565,7 @@ function registerEvidenceLinks(plugin2) {
 }
 
 // src/evidence-workflow.ts
-var import_obsidian50 = require("obsidian");
+var import_obsidian52 = require("obsidian");
 
 // src/citation-review-report.ts
 function sourceTableLocations(source, tables) {
@@ -51799,10 +52578,10 @@ function sourceTableLocations(source, tables) {
     return { tableNumber: i + 1, fromLine, toLine: fromLine + raw.split("\n").length - 1, raw };
   });
 }
-function fenced(text2, language2) {
-  const longest = Math.max(0, ...Array.from(text2.matchAll(/`+/g), (m) => m[0].length));
+function fenced(text3, language2) {
+  const longest = Math.max(0, ...Array.from(text3.matchAll(/`+/g), (m) => m[0].length));
   const fence = "`".repeat(Math.max(4, longest + 1));
-  return [fence + language2, text2, fence];
+  return [fence + language2, text3, fence];
 }
 function citationCandidates(source, quote) {
   const terms = (s) => new Set(citationText(s).text.toLowerCase().match(/[\p{L}\p{N}]+/gu) || []);
@@ -51878,7 +52657,7 @@ function reviewMarkdown(report, jsonName) {
 }
 
 // src/evidence-reader.ts
-var import_obsidian49 = require("obsidian");
+var import_obsidian51 = require("obsidian");
 var READER = "study-evidence-reader";
 function imageFile(app, source, path) {
   const direct = app.metadataCache.getFirstLinkpathDest(paperSourcePath(app, path), paperSourcePath(app, source));
@@ -51906,7 +52685,7 @@ function paint(el, s) {
   el.style.setProperty("--evidence-dark", s.darkColor || s.color || "#247441");
   el.style.setProperty("--evidence-opacity", String(s.opacity ?? 0.15));
 }
-var EvidenceReader = class extends import_obsidian49.ItemView {
+var EvidenceReader = class extends import_obsidian51.ItemView {
   constructor(leaf, choose, edit, identity) {
     super(leaf);
     this.choose = choose;
@@ -51945,9 +52724,9 @@ var EvidenceReader = class extends import_obsidian49.ItemView {
     const currentSource = await this.app.vault.adapter.read(paperSourcePath(this.app, paper.path));
     if (currentSource !== source) throw Error("Source changed during review. Wait for the viewer to refresh, then export again.");
     const currentRecord = await this.app.vault.adapter.read(identity.file);
-    const report = { schema: "citation-source-review/v1", generatedAt: (/* @__PURE__ */ new Date()).toISOString(), coverage: "current source paper only", identity: { recordPath: identity.file, claimId: identity.id, citekey: paper.citekey, sourcePath: paper.path }, recordSha256: await digest2(identity.raw), sourceSha256: await digest2(source), recordChangedSinceOpen: currentRecord !== identity.raw, totalSelections: paper.selections.length, tableInventory: await Promise.all(sourceTableLocations(source, tableSources(source)).map(async ({ raw, ...location }) => ({ ...location, sha256: await digest2(raw) }))), figureInventory: await Promise.all(paper.selections.filter((s) => s.image).map(async (s) => {
+    const report = { schema: "citation-source-review/v1", generatedAt: (/* @__PURE__ */ new Date()).toISOString(), coverage: "current source paper only", identity: { recordPath: identity.file, claimId: identity.id, citekey: paper.citekey, sourcePath: paper.path }, recordSha256: await digest3(identity.raw), sourceSha256: await digest3(source), recordChangedSinceOpen: currentRecord !== identity.raw, totalSelections: paper.selections.length, tableInventory: await Promise.all(sourceTableLocations(source, tableSources(source)).map(async ({ raw, ...location }) => ({ ...location, sha256: await digest3(raw) }))), figureInventory: await Promise.all(paper.selections.filter((s) => s.image).map(async (s) => {
       const file = imageFile(this.app, paper.path, s.image);
-      return { savedPath: s.image, resolvedPath: file?.path ?? null, sha256: file ? await digest2(await this.app.vault.readBinary(file)) : null };
+      return { savedPath: s.image, resolvedPath: file?.path ?? null, sha256: file ? await digest3(await this.app.vault.readBinary(file)) : null };
     })), issues: reportIssues(source, paper.selections, this.issues) };
     if (generation !== this.generation) throw Error("Viewer changed during export. Try again.");
     const folder = "Citation reviews";
@@ -51956,7 +52735,7 @@ var EvidenceReader = class extends import_obsidian49.ItemView {
     await this.app.vault.create(jsonName, JSON.stringify(report, null, 2) + "\n");
     const note = await this.app.vault.create(stem + ".md", reviewMarkdown(report, jsonName));
     await this.app.workspace.getLeaf("tab").openFile(note);
-    new import_obsidian49.Notice("Citation review saved as Markdown and JSON.");
+    new import_obsidian51.Notice("Citation review saved as Markdown and JSON.");
   }
   scheduleRefresh() {
     clearTimeout(this.refreshTimer);
@@ -51981,7 +52760,7 @@ var EvidenceReader = class extends import_obsidian49.ItemView {
     this.claim = claim;
     this.paper = paper;
     this.component?.unload();
-    this.component = new import_obsidian49.Component();
+    this.component = new import_obsidian51.Component();
     this.component.load();
     this.contentEl.empty();
     this.contentEl.addClass("evidence-reader");
@@ -51989,8 +52768,8 @@ var EvidenceReader = class extends import_obsidian49.ItemView {
     const toolbar = this.contentEl.createDiv("evidence-toolbar");
     toolbar.oncontextmenu = (e) => {
       e.preventDefault();
-      const menu = new import_obsidian49.Menu();
-      menu.addItem((i) => i.setTitle("Export citation review report").setIcon("file-output").onClick(() => void this.exportReview().catch((error) => new import_obsidian49.Notice(error.message))));
+      const menu = new import_obsidian51.Menu();
+      menu.addItem((i) => i.setTitle("Export citation review report").setIcon("file-output").onClick(() => void this.exportReview().catch((error) => new import_obsidian51.Notice(error.message))));
       menu.showAtMouseEvent(e);
     };
     toolbar.createEl("strong", { text: claim.label });
@@ -52003,7 +52782,7 @@ var EvidenceReader = class extends import_obsidian49.ItemView {
       selectionActions.classList.toggle("is-editing", this.editing);
       if (!this.editing) selectionActions.empty();
       editButton.setText(this.editing ? "Finish selecting" : "Edit selections");
-      new import_obsidian49.Notice(this.editing ? "Select text with the mouse to add a citation selection. Click an existing highlight to replace its passage." : "Selection editing finished.");
+      new import_obsidian51.Notice(this.editing ? "Select text with the mouse to add a citation selection. Click an existing highlight to replace its passage." : "Selection editing finished.");
     };
     const selectionActions = toolbar.createDiv("evidence-selection-actions");
     selectionActions.classList.toggle("is-editing", this.editing);
@@ -52013,7 +52792,7 @@ var EvidenceReader = class extends import_obsidian49.ItemView {
     review.onchange = () => {
       if (review.value === "") return;
       const i = Number(review.value), s = paper.selections[i];
-      const m = new import_obsidian49.Modal(this.app);
+      const m = new import_obsidian51.Modal(this.app);
       m.titleEl.setText("Review citation selection");
       if (s.quote) m.contentEl.createEl("blockquote", { text: s.quote });
       m.contentEl.createEl("p", { text: s.comment || "No comment attached." });
@@ -52027,7 +52806,7 @@ var EvidenceReader = class extends import_obsidian49.ItemView {
         this.replacing = i;
         selectionActions.classList.add("is-editing");
         editButton.setText("Finish selecting");
-        new import_obsidian49.Notice("Select the corrected passage, then choose Replace selection. The old record stays unchanged until you save.");
+        new import_obsidian51.Notice("Select the corrected passage, then choose Replace selection. The old record stays unchanged until you save.");
       };
       m.open();
       review.value = "";
@@ -52035,7 +52814,7 @@ var EvidenceReader = class extends import_obsidian49.ItemView {
     toolbar.createEl("button", { text: mark ? "Clear highlights" : "Show highlights" }).onclick = () => void this.show(claim, paper, !mark);
     toolbar.createEl("button", { text: "Open original" }).onclick = () => void this.app.workspace.openLinkText(paperSourcePath(this.app, paper.path), "", "tab");
     const file = this.app.vault.getAbstractFileByPath(paperSourcePath(this.app, paper.path));
-    if (!(file instanceof import_obsidian49.TFile)) {
+    if (!(file instanceof import_obsidian51.TFile)) {
       this.contentEl.createEl("p", { text: `Unavailable paper: ${paper.path}`, cls: "evidence-error" });
       return;
     }
@@ -52043,7 +52822,7 @@ var EvidenceReader = class extends import_obsidian49.ItemView {
     if (generation !== this.generation) return;
     this.source = source;
     const body = this.contentEl.createDiv("markdown-rendered evidence-paper");
-    await import_obsidian49.MarkdownRenderer.render(this.app, renderablePaper(this.source), body, paperSourcePath(this.app, paper.path), this.component);
+    await import_obsidian51.MarkdownRenderer.render(this.app, renderablePaper(this.source), body, paperSourcePath(this.app, paper.path), this.component);
     if (generation !== this.generation) return;
     body.addEventListener("mouseup", () => {
       if (!this.editing) return;
@@ -52113,7 +52892,7 @@ var EvidenceReader = class extends import_obsidian49.ItemView {
     el.setAttribute("aria-label", `Citation selection ${index2 + 1}: ${s.comment || "Open comment"}`);
     el.title = s.comment || "Open citation comment";
     const show = () => {
-      const m = new import_obsidian49.Modal(this.app);
+      const m = new import_obsidian51.Modal(this.app);
       m.titleEl.setText(`Citation source \xB7 ${this.paper?.label}`);
       if (s.quote) m.contentEl.createEl("blockquote", { text: s.quote });
       m.contentEl.createEl("p", { text: s.comment || "No comment attached." });
@@ -52127,7 +52906,7 @@ var EvidenceReader = class extends import_obsidian49.ItemView {
         this.replacing = index2;
         this.contentEl.querySelector(".evidence-selection-actions")?.classList.add("is-editing");
         this.contentEl.querySelector(".evidence-paper")?.classList.add("is-replacing");
-        new import_obsidian49.Notice("Select the replacement passage with the mouse, then choose Replace selection in the toolbar.");
+        new import_obsidian51.Notice("Select the replacement passage with the mouse, then choose Replace selection in the toolbar.");
       };
       resizeCommentWindow(m);
       m.open();
@@ -52167,7 +52946,7 @@ var EvidenceReader = class extends import_obsidian49.ItemView {
     if (s.image) {
       const file = imageFile(this.app, this.paper.path, s.image);
       if (!file) throw Error("Figure file is missing.");
-      if (await digest2(await this.app.vault.readBinary(file)) !== s.sha256) throw Error("Figure changed since selection; reselect its evidence.");
+      if (await digest3(await this.app.vault.readBinary(file)) !== s.sha256) throw Error("Figure changed since selection; reselect its evidence.");
       const matches = Array.from(root.querySelectorAll("img")).filter((img2) => {
         const src = img2.closest(".internal-embed")?.getAttribute("src") || img2.getAttribute("src") || "";
         return imageFile(this.app, this.paper.path, src)?.path === file.path || img2.src.split("?")[0] === this.app.vault.getResourcePath(file).split("?")[0];
@@ -52189,8 +52968,8 @@ var EvidenceReader = class extends import_obsidian49.ItemView {
       return;
     }
     const tables = Array.from(root.querySelectorAll("table")), sources = tableSources(this.source);
-    const hashes = await Promise.all(sources.map((raw) => digest2(raw)));
-    const fingerprints = await Promise.all(tables.map((t2) => digest2(renderedTable(t2))));
+    const hashes = await Promise.all(sources.map((raw) => digest3(raw)));
+    const fingerprints = await Promise.all(tables.map((t2) => digest3(renderedTable(t2))));
     const tableIndex = locateTable(sources.length === tables.length ? hashes : [], fingerprints, s);
     const table = tableIndex === null ? void 0 : tables[tableIndex];
     if (!table) throw Error("Table is missing, changed, or ambiguous. Review and reselect it.");
@@ -52218,12 +52997,12 @@ function registerEvidenceWorkflow(plugin2) {
       try {
         presets = JSON.parse(await app.vault.adapter.read(presetPath));
       } catch {
-        new import_obsidian50.Notice("Could not read evidence color presets.");
+        new import_obsidian52.Notice("Could not read evidence color presets.");
       }
     }
   });
   let saveQueue = Promise.resolve();
-  const fail = (e) => new import_obsidian50.Notice(e instanceof Error ? e.message : String(e), 1e4);
+  const fail = (e) => new import_obsidian52.Notice(e instanceof Error ? e.message : String(e), 1e4);
   const load = async (file) => {
     if (!safePath(file) || !file.endsWith(".yaml")) throw Error("Evidence file must be a vault-relative .yaml path.");
     const raw = await app.vault.adapter.read(file);
@@ -52245,10 +53024,10 @@ function registerEvidenceWorkflow(plugin2) {
     return job;
   };
   function choose(claim, open) {
-    const m = new import_obsidian50.Modal(app);
+    const m = new import_obsidian52.Modal(app);
     m.titleEl.setText(claim.label);
     for (const paper of claim.papers) {
-      const available = app.vault.getAbstractFileByPath(paperSourcePath(app, paper.path)) instanceof import_obsidian50.TFile;
+      const available = app.vault.getAbstractFileByPath(paperSourcePath(app, paper.path)) instanceof import_obsidian52.TFile;
       const b = m.contentEl.createEl("button", { text: `${paper.label} [${paper.citekey}]${available ? "" : " \u2014 file missing"}`, cls: "evidence-paper-choice" });
       b.onclick = () => {
         m.close();
@@ -52296,13 +53075,13 @@ function registerEvidenceWorkflow(plugin2) {
     return true;
   } });
   plugin2.addCommand({ id: "open-evidence-record", name: "Open Citation Source Viewer", callback: () => {
-    const m = new import_obsidian50.Modal(app);
+    const m = new import_obsidian52.Modal(app);
     m.titleEl.setText("Open Citation Source Viewer");
     let file = lastFile, id3 = lastID, window2 = true;
-    new import_obsidian50.Setting(m.contentEl).setName("Citation record file").addText((t2) => t2.setValue(file).onChange((v) => file = v));
-    new import_obsidian50.Setting(m.contentEl).setName("Claim ID").addText((t2) => t2.setValue(id3).onChange((v) => id3 = v));
-    new import_obsidian50.Setting(m.contentEl).setName("Separate window").addToggle((t2) => t2.setValue(true).onChange((v) => window2 = v));
-    new import_obsidian50.Setting(m.contentEl).addButton((b) => b.setButtonText("Open").onClick(() => {
+    new import_obsidian52.Setting(m.contentEl).setName("Citation record file").addText((t2) => t2.setValue(file).onChange((v) => file = v));
+    new import_obsidian52.Setting(m.contentEl).setName("Claim ID").addText((t2) => t2.setValue(id3).onChange((v) => id3 = v));
+    new import_obsidian52.Setting(m.contentEl).setName("Separate window").addToggle((t2) => t2.setValue(true).onChange((v) => window2 = v));
+    new import_obsidian52.Setting(m.contentEl).addButton((b) => b.setButtonText("Open").onClick(() => {
       m.close();
       void openRecord({ file, id: id3, window: String(window2) });
     }));
@@ -52311,7 +53090,7 @@ function registerEvidenceWorkflow(plugin2) {
   function colorEditor(m, s) {
     const redraw = () => {
       box.empty();
-      new import_obsidian50.Setting(box).setName("Color preset").addDropdown((d) => {
+      new import_obsidian52.Setting(box).setName("Color preset").addDropdown((d) => {
         d.addOption("", "Custom");
         Object.keys(presets).filter((k) => k !== "$default").forEach((k) => d.addOption(k, k));
         d.onChange((k) => {
@@ -52322,7 +53101,7 @@ function registerEvidenceWorkflow(plugin2) {
         });
       });
       let picker, hex;
-      new import_obsidian50.Setting(box).setName("Color").addColorPicker((p) => {
+      new import_obsidian52.Setting(box).setName("Color").addColorPicker((p) => {
         picker = p;
         p.setValue(s.color || "#247441").onChange((v) => {
           s.color = v;
@@ -52335,10 +53114,10 @@ function registerEvidenceWorkflow(plugin2) {
           if (/^#[\da-f]{6}$/i.test(v)) picker.setValue(v);
         });
       });
-      new import_obsidian50.Setting(box).setName("Dark-mode color (optional)").addText((t2) => t2.setPlaceholder("Same color if empty").setValue(s.darkColor || "").onChange((v) => s.darkColor = v || void 0));
-      new import_obsidian50.Setting(box).setName("Fill opacity").addSlider((t2) => t2.setLimits(0, 1, 0.05).setValue(s.opacity ?? 0.15).setDynamicTooltip().onChange((v) => s.opacity = v));
+      new import_obsidian52.Setting(box).setName("Dark-mode color (optional)").addText((t2) => t2.setPlaceholder("Same color if empty").setValue(s.darkColor || "").onChange((v) => s.darkColor = v || void 0));
+      new import_obsidian52.Setting(box).setName("Fill opacity").addSlider((t2) => t2.setLimits(0, 1, 0.05).setValue(s.opacity ?? 0.15).setDynamicTooltip().onChange((v) => s.opacity = v));
       let name2 = "";
-      new import_obsidian50.Setting(box).setName("Save named preset").addText((t2) => t2.setPlaceholder("Your color meaning").onChange((v) => name2 = v)).addButton((b) => b.setButtonText("Save preset").onClick(async () => {
+      new import_obsidian52.Setting(box).setName("Save named preset").addText((t2) => t2.setPlaceholder("Your color meaning").onChange((v) => name2 = v)).addButton((b) => b.setButtonText("Save preset").onClick(async () => {
         try {
           validateSelection(s);
           if (!name2.trim()) throw Error("Enter a preset name.");
@@ -52352,12 +53131,12 @@ function registerEvidenceWorkflow(plugin2) {
     };
     const box = m.contentEl.createDiv();
     redraw();
-    new import_obsidian50.Setting(m.contentEl).addButton((b) => b.setButtonText("Use these colors by default").onClick(async () => {
+    new import_obsidian52.Setting(m.contentEl).addButton((b) => b.setButtonText("Use these colors by default").onClick(async () => {
       try {
         validateSelection(s);
         presets.$default = { color: s.color || "#247441", darkColor: s.darkColor, opacity: s.opacity ?? 0.15 };
         await app.vault.adapter.write(presetPath, JSON.stringify(presets, null, 2));
-        new import_obsidian50.Notice("Default evidence colors saved.");
+        new import_obsidian52.Notice("Default evidence colors saved.");
       } catch (e) {
         fail(e);
       }
@@ -52365,49 +53144,49 @@ function registerEvidenceWorkflow(plugin2) {
   }
   async function edit(source, selection, index2) {
     const s = { color: "#247441", opacity: 0.15, ...presets.$default, ...selection };
-    const m = new import_obsidian50.Modal(app);
+    const m = new import_obsidian52.Modal(app);
     m.modalEl.addClass("evidence-editor");
     m.titleEl.setText(index2 === void 0 ? "Save citation selection" : "Edit citation selection");
     let file = lastFile, id3 = lastID, key2 = lastKey, label = current?.paper.path === source ? current.paper.label : source.split("/").pop()?.replace(/\.md$/, "") || source, claimLabel = "";
-    let snapshot = "";
-    if (index2 !== void 0 && current) snapshot = current.raw;
+    let snapshot2 = "";
+    if (index2 !== void 0 && current) snapshot2 = current.raw;
     else try {
-      snapshot = (await load(file)).raw;
+      snapshot2 = (await load(file)).raw;
     } catch {
     }
     let comment2;
-    new import_obsidian50.Setting(m.contentEl).setName("Comment").setClass("evidence-comment-field").addTextArea((t2) => {
+    new import_obsidian52.Setting(m.contentEl).setName("Comment").setClass("evidence-comment-field").addTextArea((t2) => {
       comment2 = t2.inputEl;
       t2.setPlaceholder("Add a comment on this source passage\u2026").setValue(s.comment || "").onChange((v) => s.comment = v);
     });
     const details = m.contentEl.createEl("details", { cls: "evidence-record-details" });
     details.createEl("summary", { text: "Citation record and selected passage" });
     if (index2 === void 0 && !id3) details.open = true;
-    new import_obsidian50.Setting(details).setName("Citation record file").addText((t2) => t2.setValue(file).onChange(async (v) => {
+    new import_obsidian52.Setting(details).setName("Citation record file").addText((t2) => t2.setValue(file).onChange(async (v) => {
       file = v;
       try {
-        snapshot = (await load(v)).raw;
+        snapshot2 = (await load(v)).raw;
       } catch {
-        snapshot = "";
+        snapshot2 = "";
       }
     }));
-    new import_obsidian50.Setting(details).setName("Claim ID").addText((t2) => t2.setValue(id3).onChange((v) => id3 = v));
-    new import_obsidian50.Setting(details).setName("Claim label (for new claim)").addText((t2) => t2.onChange((v) => claimLabel = v));
-    new import_obsidian50.Setting(details).setName("Paper citekey").addText((t2) => t2.setValue(key2).onChange((v) => key2 = v));
-    new import_obsidian50.Setting(details).setName("Paper label").addText((t2) => t2.setValue(label).onChange((v) => label = v));
+    new import_obsidian52.Setting(details).setName("Claim ID").addText((t2) => t2.setValue(id3).onChange((v) => id3 = v));
+    new import_obsidian52.Setting(details).setName("Claim label (for new claim)").addText((t2) => t2.onChange((v) => claimLabel = v));
+    new import_obsidian52.Setting(details).setName("Paper citekey").addText((t2) => t2.setValue(key2).onChange((v) => key2 = v));
+    new import_obsidian52.Setting(details).setName("Paper label").addText((t2) => t2.setValue(label).onChange((v) => label = v));
     if (s.quote) {
-      new import_obsidian50.Setting(details).setName("Exact quote").addTextArea((t2) => t2.setValue(s.quote).onChange((v) => s.quote = v));
-      new import_obsidian50.Setting(details).setName("Immediately preceding text (optional)").addTextArea((t2) => t2.setValue(s.before || "").onChange((v) => s.before = v || void 0));
-      new import_obsidian50.Setting(details).setName("Immediately following text (optional)").addTextArea((t2) => t2.setValue(s.after || "").onChange((v) => s.after = v || void 0));
+      new import_obsidian52.Setting(details).setName("Exact quote").addTextArea((t2) => t2.setValue(s.quote).onChange((v) => s.quote = v));
+      new import_obsidian52.Setting(details).setName("Immediately preceding text (optional)").addTextArea((t2) => t2.setValue(s.before || "").onChange((v) => s.before = v || void 0));
+      new import_obsidian52.Setting(details).setName("Immediately following text (optional)").addTextArea((t2) => t2.setValue(s.after || "").onChange((v) => s.after = v || void 0));
     }
     colorEditor(m, s);
     const footer = m.modalEl.createDiv("evidence-editor-footer");
     const output = footer.createDiv();
-    new import_obsidian50.Setting(footer).addButton((b) => b.setButtonText("Save and copy link").setCta().onClick(async () => {
+    new import_obsidian52.Setting(footer).addButton((b) => b.setButtonText("Save and copy link").setCta().onClick(async () => {
       try {
         if (!safePath(file) || !file.endsWith(".yaml") || !id3 || !key2) throw Error("Enter a vault-relative YAML file, claim ID and citekey.");
         validateSelection(s);
-        const records = snapshot ? readRecords(snapshot) : { version: 1, claims: {} };
+        const records = snapshot2 ? readRecords(snapshot2) : { version: 1, claims: {} };
         const claim = records.claims[id3] ??= { label: claimLabel || id3, papers: [] };
         let paper = claim.papers.find((p) => p.citekey === key2);
         if (!paper) {
@@ -52421,8 +53200,8 @@ function registerEvidenceWorkflow(plugin2) {
           if (!current || file !== current.file || id3 !== current.id || key2 !== current.paper.citekey) throw Error("Keep the original record identity when editing.");
           paper.selections[index2] = s;
         }
-        await save(file, snapshot, records);
-        snapshot = writeRecords(records);
+        await save(file, snapshot2, records);
+        snapshot2 = writeRecords(records);
         lastFile = file;
         lastID = id3;
         lastKey = key2;
@@ -52430,9 +53209,9 @@ function registerEvidenceWorkflow(plugin2) {
         await navigator.clipboard.writeText(`[evidence](${uri})`);
         output.setText("Saved and copied. Paste immediately after the Pandoc citation.");
         b.setDisabled(true);
-        new import_obsidian50.Notice("Evidence saved; link copied.");
+        new import_obsidian52.Notice("Evidence saved; link copied.");
         if (leaf && current?.file === file && current?.id === id3) {
-          current = { file, id: id3, claim, paper, raw: snapshot, keys: claim.papers.map((p) => p.citekey) };
+          current = { file, id: id3, claim, paper, raw: snapshot2, keys: claim.papers.map((p) => p.citekey) };
           await leaf.view.show(claim, paper);
         }
       } catch (e) {
@@ -52483,7 +53262,7 @@ function registerEvidenceWorkflow(plugin2) {
   }
   plugin2.registerMarkdownPostProcessor((el, ctx) => {
     if (el.closest(".study-margin-pane")) return;
-    const owner = ownReading(new import_obsidian50.MarkdownRenderChild(el));
+    const owner = ownReading(new import_obsidian52.MarkdownRenderChild(el));
     ctx.addChild(owner);
     owner.registerDomEvent(el, "contextmenu", (e) => {
       if (e.target.closest(".modal")) return;
@@ -52494,7 +53273,7 @@ function registerEvidenceWorkflow(plugin2) {
       if (shared.studyEvidenceMenu) return;
       shared.studyEvidenceMenu = true;
       e.preventDefault();
-      const menu = import_obsidian50.Menu.forEvent(e);
+      const menu = import_obsidian52.Menu.forEvent(e);
       if (quote) menu.addItem((i) => i.setSection("study-evidence").setTitle("Save selected text as citation source\u2026").onClick(() => void edit(ctx.sourcePath, { quote }).catch(fail)));
       if (img) {
         const src = img.closest(".internal-embed")?.getAttribute("src") || img.getAttribute("src") || "";
@@ -52503,7 +53282,7 @@ function registerEvidenceWorkflow(plugin2) {
           if (!file) throw Error("Use a local figure copied into this vault.");
           const parent = ctx.sourcePath.split("/").slice(0, -1).join("/");
           const image = file.path.startsWith(parent + "/") ? file.path.slice(parent.length + 1) : file.path;
-          await edit(ctx.sourcePath, { image, sha256: await digest2(await app.vault.readBinary(file)), ...rect ? { rect } : { whole: true } });
+          await edit(ctx.sourcePath, { image, sha256: await digest3(await app.vault.readBinary(file)), ...rect ? { rect } : { whole: true } });
         };
         menu.addItem((i) => i.setSection("study-evidence").setTitle("Highlight whole figure\u2026").onClick(() => void saveImage().catch(fail)));
         menu.addItem((i) => i.setSection("study-evidence").setTitle("Highlight figure area\u2026").onClick(() => region(img, (r) => void saveImage(r).catch(fail))));
@@ -52511,7 +53290,7 @@ function registerEvidenceWorkflow(plugin2) {
       if (table) {
         const root = table.closest(".evidence-paper,.markdown-preview-view,.markdown-rendered") || el;
         const number2 = Array.from(root.querySelectorAll("table")).indexOf(table) + 1;
-        const run = async (cells2) => edit(ctx.sourcePath, Object.assign({ table: number2, sha256: await digest2(tableSources(await app.vault.adapter.read(ctx.sourcePath))[number2 - 1] || ""), tableFingerprint: await digest2(renderedTable(table)), ...cells2 ? { cells: cells2 } : { whole: true } }));
+        const run = async (cells2) => edit(ctx.sourcePath, Object.assign({ table: number2, sha256: await digest3(tableSources(await app.vault.adapter.read(ctx.sourcePath))[number2 - 1] || ""), tableFingerprint: await digest3(renderedTable(table)), ...cells2 ? { cells: cells2 } : { whole: true } }));
         menu.addItem((i) => i.setSection("study-evidence").setTitle("Highlight whole table\u2026").onClick(() => void run().catch(fail)));
         const cell = target.closest("td,th");
         if (cell) menu.addItem((i) => i.setSection("study-evidence").setTitle("Highlight this table cell\u2026").onClick(() => void run([[cell.parentElement.rowIndex + 1, cell.cellIndex + 1]]).catch(fail)));
@@ -52554,7 +53333,7 @@ function registerEvidenceWorkflow(plugin2) {
 }
 
 // src/evidence.ts
-var import_obsidian51 = require("obsidian");
+var import_obsidian53 = require("obsidian");
 
 // src/evidence-model.ts
 function parseEvidence(raw) {
@@ -52569,9 +53348,9 @@ function parseEvidence(raw) {
   }
   return v;
 }
-function uniquePassage(text2, quote) {
-  const from = text2.indexOf(quote);
-  return from < 0 || text2.indexOf(quote, from + 1) >= 0 ? null : { from, to: from + quote.length };
+function uniquePassage(text3, quote) {
+  const from = text3.indexOf(quote);
+  return from < 0 || text3.indexOf(quote, from + 1) >= 0 ? null : { from, to: from + quote.length };
 }
 function evidenceURI(vault, target) {
   return `obsidian://study-evidence?vault=${encodeURIComponent(vault)}&target=${encodeURIComponent(JSON.stringify(target))}`;
@@ -52593,7 +53372,7 @@ function registerEvidence(plugin2) {
   };
   const render = (leaf, target) => {
     const view = leaf.view;
-    if (!(view instanceof import_obsidian51.MarkdownView) || view.file?.path !== target.path) {
+    if (!(view instanceof import_obsidian53.MarkdownView) || view.file?.path !== target.path) {
       clear(leaf);
       return;
     }
@@ -52605,7 +53384,7 @@ function registerEvidence(plugin2) {
       const walker = root.ownerDocument.createTreeWalker(root, 4), nodes = [];
       let node;
       while (node = walker.nextNode()) if (!node.parentElement?.closest("button,script,style,.study-evidence-highlight")) nodes.push(node);
-      const text2 = nodes.map((n) => n.data).join(""), at = uniquePassage(text2, passage.quote);
+      const text3 = nodes.map((n) => n.data).join(""), at = uniquePassage(text3, passage.quote);
       if (!at) {
         missed++;
         continue;
@@ -52626,7 +53405,7 @@ function registerEvidence(plugin2) {
           piece.replaceWith(mark);
           mark.append(piece);
           const show = () => {
-            const modal = new import_obsidian51.Modal(plugin2.app);
+            const modal = new import_obsidian53.Modal(plugin2.app);
             modal.titleEl.setText("Supporting passage");
             modal.contentEl.createEl("blockquote", { text: passage.quote });
             modal.contentEl.createEl("p", { text: passage.comment || "No comment attached." });
@@ -52665,7 +53444,7 @@ function registerEvidence(plugin2) {
       Object.assign(mark.style, { left: `${x * 100}%`, top: `${y * 100}%`, width: `${w * 100}%`, height: `${h * 100}%` });
       mark.title = area.comment || "Supporting area";
       mark.onclick = () => {
-        const modal = new import_obsidian51.Modal(plugin2.app);
+        const modal = new import_obsidian53.Modal(plugin2.app);
         modal.titleEl.setText("Supporting area");
         modal.contentEl.createEl("p", { text: area.comment || "No comment attached." });
         resizeCommentWindow(modal);
@@ -52673,7 +53452,7 @@ function registerEvidence(plugin2) {
       };
     }
     root.querySelector(".study-evidence-highlight,.study-evidence-area")?.scrollIntoView({ block: "center" });
-    if (missed) new import_obsidian51.Notice(`${missed} supporting passage(s) could not be uniquely located. No approximate match was highlighted.`);
+    if (missed) new import_obsidian53.Notice(`${missed} supporting passage(s) could not be uniquely located. No approximate match was highlighted.`);
   };
   const imageTarget = (image) => image.closest(".internal-embed")?.getAttribute("src") || image.getAttribute("src") || "";
   plugin2.registerObsidianProtocolHandler("study-evidence", async (params) => {
@@ -52685,7 +53464,7 @@ function registerEvidence(plugin2) {
       const target = parseEvidence(params.target || "");
       target.path = paperSourcePath(plugin2.app, target.path);
       const file = plugin2.app.vault.getAbstractFileByPath(target.path);
-      if (!(file instanceof import_obsidian51.TFile)) throw Error("Source paper is not present in this vault");
+      if (!(file instanceof import_obsidian53.TFile)) throw Error("Source paper is not present in this vault");
       const leaf = plugin2.app.workspace.getLeaf(target.window ? "window" : "tab");
       await leaf.openFile(file, { state: { mode: "preview" } });
       await plugin2.app.workspace.revealLeaf(leaf);
@@ -52707,7 +53486,7 @@ function registerEvidence(plugin2) {
         win.clearTimeout(timer);
       });
     } catch (e) {
-      new import_obsidian51.Notice(e instanceof Error ? e.message : "Invalid evidence link");
+      new import_obsidian53.Notice(e instanceof Error ? e.message : "Invalid evidence link");
     }
   });
   plugin2.addCommand({ id: "clear-evidence-highlights", name: "Clear temporary evidence highlights", callback: () => {
@@ -52715,7 +53494,7 @@ function registerEvidence(plugin2) {
     for (const leaf of plugin2.app.workspace.getLeavesOfType("study-evidence-reader")) void leaf.view.clear();
   } });
   plugin2.registerEvent(plugin2.app.workspace.on("layout-change", () => {
-    for (const [leaf, target] of active) if (!(leaf.view instanceof import_obsidian51.MarkdownView) || leaf.view.file?.path !== target.path) clear(leaf);
+    for (const [leaf, target] of active) if (!(leaf.view instanceof import_obsidian53.MarkdownView) || leaf.view.file?.path !== target.path) clear(leaf);
   }));
   plugin2.register(() => {
     for (const leaf of [...active.keys()]) clear(leaf);
@@ -52723,16 +53502,16 @@ function registerEvidence(plugin2) {
   plugin2.addCommand({ id: "copy-evidence-link", name: "Copy evidence link to selected passage", editorCheckCallback: (checking, editor, info) => {
     if (!info.file || !editor.getSelection().trim()) return false;
     if (checking) return true;
-    const path = info.file.path, quote = editor.getSelection(), modal = new import_obsidian51.Modal(plugin2.app);
+    const path = info.file.path, quote = editor.getSelection(), modal = new import_obsidian53.Modal(plugin2.app);
     let comment2 = "", popout = true;
     modal.titleEl.setText("Copy evidence link");
     modal.contentEl.createEl("p", { text: "Select plain rendered text. The link carries the passage and optional comment; nothing is added to the paper." });
-    new import_obsidian51.Setting(modal.contentEl).setName("Comment").addTextArea((t2) => t2.onChange((v) => comment2 = v));
-    new import_obsidian51.Setting(modal.contentEl).setName("Open in separate window").addToggle((t2) => t2.setValue(true).onChange((v) => popout = v));
-    new import_obsidian51.Setting(modal.contentEl).addButton((b) => b.setButtonText("Copy link").setCta().onClick(async () => {
+    new import_obsidian53.Setting(modal.contentEl).setName("Comment").addTextArea((t2) => t2.onChange((v) => comment2 = v));
+    new import_obsidian53.Setting(modal.contentEl).setName("Open in separate window").addToggle((t2) => t2.setValue(true).onChange((v) => popout = v));
+    new import_obsidian53.Setting(modal.contentEl).addButton((b) => b.setButtonText("Copy link").setCta().onClick(async () => {
       await navigator.clipboard.writeText(`[Supporting passage](${evidenceURI(plugin2.app.vault.getName(), { path, passages: [{ quote, comment: comment2 }], window: popout })})`);
       modal.close();
-      new import_obsidian51.Notice("Evidence link copied");
+      new import_obsidian53.Notice("Evidence link copied");
     }));
     modal.open();
     return true;
@@ -52740,8 +53519,8 @@ function registerEvidence(plugin2) {
 }
 
 // src/note-grouping-ui.ts
-var import_obsidian52 = require("obsidian");
-var NoteGrouping = class extends import_obsidian52.Component {
+var import_obsidian54 = require("obsidian");
+var NoteGrouping = class extends import_obsidian54.Component {
   constructor(host, view, path, ended, complete) {
     super();
     this.host = host;
@@ -52805,7 +53584,7 @@ var NoteGrouping = class extends import_obsidian52.Component {
         await this.complete([...this.selected].map(Number));
         this.unload();
       } catch (e) {
-        new import_obsidian52.Notice(String(e));
+        new import_obsidian54.Notice(String(e));
       } finally {
         this.reviewing = false;
       }
@@ -52860,10 +53639,10 @@ function groupOccurrences(source, lines, title, prompt = "") {
 }
 
 // src/note-removal.ts
-var import_obsidian54 = require("obsidian");
+var import_obsidian56 = require("obsidian");
 
 // src/question-deletion.ts
-var import_obsidian53 = require("obsidian");
+var import_obsidian55 = require("obsidian");
 
 // src/deletion-model.ts
 function removeQuestionEmbeds(raw, ids) {
@@ -52887,7 +53666,7 @@ function examUsesQuestions(exam, selected, bank) {
 
 // src/question-deletion.ts
 async function readCurrent(app, file) {
-  const views = app.workspace.getLeavesOfType("markdown").map((l) => l.view).filter((v) => v instanceof import_obsidian53.MarkdownView && v.file?.path === file.path && v.getMode() === "source");
+  const views = app.workspace.getLeavesOfType("markdown").map((l) => l.view).filter((v) => v instanceof import_obsidian55.MarkdownView && v.file?.path === file.path && v.getMode() === "source");
   const sources = views.map((v) => v.editor.getValue());
   if (new Set(sources).size > 1) throw Error(`Open copies of ${file.path} disagree. Save or close those copies first.`);
   return sources[0] ?? await app.vault.read(file);
@@ -52896,7 +53675,7 @@ async function plan(host, questions, bank, notePath) {
   const app = host.app, ids = new Set(questions.map((q) => q.definition.id)), out = { notePath, questions: [], changes: [], blocked: [] };
   for (const q of questions) {
     const file = app.vault.getAbstractFileByPath(q.path);
-    if (!(file instanceof import_obsidian53.TFile)) throw Error(`Question disappeared: ${q.definition.title}`);
+    if (!(file instanceof import_obsidian55.TFile)) throw Error(`Question disappeared: ${q.definition.title}`);
     const raw = await readCurrent(app, file);
     if (raw !== q.raw) throw Error(`Question changed: ${q.definition.title}. Reopen deletion to review its current version.`);
     out.questions.push({ q, file, raw });
@@ -52952,7 +53731,7 @@ async function applyLocked(host, p, recheck) {
       if (await readCurrent(app, c.file) !== c.before) throw Error(`Note changed: ${c.file.path}`);
       for (const leaf of app.workspace.getLeavesOfType("markdown")) {
         const v = leaf.view;
-        if (v instanceof import_obsidian53.MarkdownView && v.file?.path === c.file.path) await v.save();
+        if (v instanceof import_obsidian55.MarkdownView && v.file?.path === c.file.path) await v.save();
       }
       await app.vault.process(c.file, (raw) => {
         if (raw !== c.before) throw Error(`Note changed: ${c.file.path}`);
@@ -52986,9 +53765,9 @@ async function applyLocked(host, p, recheck) {
     throw Error(`${String(error)}. ${restored ? "Changes rolled back." : "Some changes could not be rolled back."} Recovery copy: ${backup.path}`);
   }
   const removed = p.changes.reduce((n, c) => n + c.count, 0);
-  new import_obsidian53.Notice(p.notePath ? `Removed ${removed} question card${removed === 1 ? "" : "s"} from this note. Question files and other notes are unchanged.` : `Moved ${p.questions.length} question${p.questions.length === 1 ? "" : "s"} to vault trash. Recorded history is preserved. Recovery: ${backup.path}`, 12e3);
+  new import_obsidian55.Notice(p.notePath ? `Removed ${removed} question card${removed === 1 ? "" : "s"} from this note. Question files and other notes are unchanged.` : `Moved ${p.questions.length} question${p.questions.length === 1 ? "" : "s"} to vault trash. Recorded history is preserved. Recovery: ${backup.path}`, 12e3);
 }
-var DeleteQuestions = class extends import_obsidian53.Modal {
+var DeleteQuestions = class extends import_obsidian55.Modal {
   constructor(host, questions, done, notePath) {
     super(host.app);
     this.host = host;
@@ -53064,7 +53843,7 @@ var DeleteQuestions = class extends import_obsidian53.Modal {
 };
 
 // src/note-removal.ts
-var NoteRemoval = class extends import_obsidian54.Component {
+var NoteRemoval = class extends import_obsidian56.Component {
   constructor(host, view, path, ended) {
     super();
     this.host = host;
@@ -53126,13 +53905,13 @@ var NoteRemoval = class extends import_obsidian54.Component {
         }
         const bank = await this.host.bank(), questions = bank.filter((q) => this.selected.has(q.definition.id));
         if (!questions.length) {
-          new import_obsidian54.Notice("The selected questions are no longer available.");
+          new import_obsidian56.Notice("The selected questions are no longer available.");
           return;
         }
         const modal = new DeleteQuestions(this.host, questions, () => this.unload(), this.path);
         modal.open();
       } catch (e) {
-        new import_obsidian54.Notice(String(e));
+        new import_obsidian56.Notice(String(e));
       } finally {
         this.reviewing = false;
       }
@@ -53177,7 +53956,7 @@ var NoteRemoval = class extends import_obsidian54.Component {
 };
 
 // src/figure-retirement.ts
-var import_obsidian55 = require("obsidian");
+var import_obsidian57 = require("obsidian");
 var hash3 = async (b) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", b)), (x) => x.toString(16).padStart(2, "0")).join("");
 function registerFigureRetirement(plugin2, store) {
   let stopped = false, timer, pending = Promise.resolve();
@@ -53189,7 +53968,7 @@ function registerFigureRetirement(plugin2, store) {
   };
   const changed = async (path, f) => {
     const note = plugin2.app.vault.getAbstractFileByPath(path);
-    if (!(note instanceof import_obsidian55.TFile)) return false;
+    if (!(note instanceof import_obsidian57.TFile)) return false;
     const bridge = plugin2.app.plugins.plugins["slide-studio"]?.scientificStudyBridge;
     if (bridge?.version !== 1) return false;
     const source = await plugin2.app.vault.read(note);
@@ -53200,14 +53979,14 @@ function registerFigureRetirement(plugin2, store) {
       const paths = bridge.panels(source, f.figureId), hashes = [];
       for (const path2 of paths) {
         const image2 = plugin2.app.vault.getAbstractFileByPath(path2) ?? plugin2.app.metadataCache.getFirstLinkpathDest(path2, note.path);
-        if (!(image2 instanceof import_obsidian55.TFile)) return false;
+        if (!(image2 instanceof import_obsidian57.TFile)) return false;
         watch(image2.path, path2);
         hashes.push(await hash3(await plugin2.app.vault.readBinary(image2)));
       }
       return hashes.includes(f.imageHash) ? false : JSON.stringify([paths, hashes]);
     }
     const image = plugin2.app.vault.getAbstractFileByPath(f.imagePath);
-    if (!(image instanceof import_obsidian55.TFile)) return false;
+    if (!(image instanceof import_obsidian57.TFile)) return false;
     const current = await hash3(await plugin2.app.vault.readBinary(image));
     return current !== f.imageHash ? current : false;
   };
@@ -53245,13 +54024,13 @@ function registerFigureRetirement(plugin2, store) {
     } catch (e) {
       if (!reported.has(key2)) {
         reported.add(key2);
-        new import_obsidian55.Notice("Figure questions need review before retirement: " + String(e), 15e3);
+        new import_obsidian57.Notice("Figure questions need review before retirement: " + String(e), 15e3);
       }
     }
   };
   const run = (notes) => {
     pending = pending.then(() => check3(notes)).catch((e) => {
-      new import_obsidian55.Notice("Could not check figure questions: " + String(e));
+      new import_obsidian57.Notice("Could not check figure questions: " + String(e));
     });
     return pending;
   };
@@ -53284,11 +54063,11 @@ function registerFigureRetirement(plugin2, store) {
       if (seen.has(key2)) continue;
       seen.add(key2);
       const note = plugin2.app.vault.getAbstractFileByPath(c.path);
-      if (!(note instanceof import_obsidian55.TFile)) continue;
+      if (!(note instanceof import_obsidian57.TFile)) continue;
       try {
         for (const path of bridge.panels(await plugin2.app.vault.cachedRead(note), f.figureId)) {
           const image = plugin2.app.vault.getAbstractFileByPath(path) ?? plugin2.app.metadataCache.getFirstLinkpathDest(path, c.path);
-          if (image instanceof import_obsidian55.TFile) watch(image.path, c.path);
+          if (image instanceof import_obsidian57.TFile) watch(image.path, c.path);
         }
       } catch {
       }
@@ -53311,11 +54090,11 @@ function registerFigureRetirement(plugin2, store) {
 }
 
 // src/shortcut-guide.ts
-var import_obsidian56 = require("obsidian");
+var import_obsidian58 = require("obsidian");
 function registerShortcutGuide(plugin2) {
   plugin2.addCommand({ id: "shortcut-guide", name: "Open keyboard shortcut guide", hotkeys: [{ modifiers: ["Mod", "Alt"], key: "/" }], callback: () => new ShortcutGuide(plugin2.app).open() });
 }
-var ShortcutGuide = class extends import_obsidian56.Modal {
+var ShortcutGuide = class extends import_obsidian58.Modal {
   onOpen() {
     this.titleEl.setText("Keyboard shortcuts");
     const runtime = this.app;
@@ -53358,7 +54137,7 @@ var ShortcutGuide = class extends import_obsidian56.Modal {
       render();
     };
     this.contentEl.createEl("p", { text: "Mod means Command on Mac and Control on Windows/Linux. Assign global shortcuts in Settings \u2192 Hotkeys. This guide uses active commands and vault overrides; unavailable registries show no commands." });
-    this.contentEl.createEl("p", { text: "Inside Study Studio: pickers use typing, \u2191/\u2193, Enter and Escape. Question editor: Option/Alt+Enter adds a choice; Ctrl+Space opens choice actions; Ctrl+Enter saves; Ctrl+Shift+Enter saves and opens the note; Ctrl+M edits math; Ctrl+Shift+M inserts display math; Ctrl+Shift+B makes a blank. Table editor: Alt+Enter inserts a row; Alt+Shift+Enter inserts a column; Alt+Backspace deletes the focused row; Alt+Shift+Backspace deletes the focused column. Ctrl+Shift+B toggles Given / formatting; Alt+arrows move between cells. Practice card: Ctrl+Space opens numbered question actions. Remove multiple questions activates in-note checkboxes: arrows move, Space selects, Ctrl+Enter reviews, Escape cancels. Guide: Alt+\u2190/\u2192 changes page. Tab moves between controls." });
+    this.contentEl.createEl("p", { text: "Inside Study Studio: pickers use typing, \u2191/\u2193, Enter and Escape. Question editor: Option/Alt+Enter adds a choice; Ctrl+Space opens choice actions; Ctrl+Enter saves; Ctrl+Shift+Enter saves and opens the note; Cmd+Shift+M (Mac) or Ctrl+M edits math; Ctrl+Shift+M inserts display math; Ctrl+Shift+B makes a blank. Table editor: Alt+Enter inserts a row; Alt+Shift+Enter inserts a column; Alt+Backspace deletes the focused row; Alt+Shift+Backspace deletes the focused column. Ctrl+Shift+B toggles Given / formatting; Alt+arrows move between cells. Practice card: Ctrl+Space opens numbered question actions. Remove multiple questions activates in-note checkboxes: arrows move, Space selects, Ctrl+Enter reviews, Escape cancels. Guide: Alt+\u2190/\u2192 changes page. Tab moves between controls." });
     this.scope.register(["Alt"], "ArrowLeft", () => {
       page = Math.max(0, page - 1);
       render();
@@ -53375,7 +54154,7 @@ var ShortcutGuide = class extends import_obsidian56.Modal {
 };
 
 // src/lab-organizer.ts
-var import_obsidian57 = require("obsidian");
+var import_obsidian59 = require("obsidian");
 
 // src/lab-chapter-moves.ts
 var labChapterMoves = [
@@ -53513,13 +54292,13 @@ async function organizeCourseLab(app) {
     const source = app.vault.getAbstractFileByPath(move.from), destination = app.vault.getAbstractFileByPath(move.to);
     if (source && destination) throw Error(`Both source and destination exist: ${move.from}. Resolve the duplicate first.`);
     const file = source ?? destination;
-    if (!(file instanceof import_obsidian57.TFile)) throw Error(`Missing lab note: ${move.from}`);
+    if (!(file instanceof import_obsidian59.TFile)) throw Error(`Missing lab note: ${move.from}`);
     if ("kind" in move) {
       const raw = await app.vault.read(file);
       const id3 = move.kind === "question" ? parseQuestion(raw, file.path).definition.id : parseExam(raw).id;
       if (id3 !== move.id) throw Error(`Unexpected note identity: ${file.path}`);
     }
-    if (source instanceof import_obsidian57.TFile) pending.push({ file: source, to: move.to });
+    if (source instanceof import_obsidian59.TFile) pending.push({ file: source, to: move.to });
   }
   for (const { file, to } of pending) {
     const parts = to.split("/");
@@ -53532,16 +54311,16 @@ async function organizeCourseLab(app) {
     await app.fileManager.renameFile(file, to);
   }
   for (const file of app.vault.getMarkdownFiles().filter((f) => f.path.startsWith("Courses/") || f.path === "Course lab home.md")) await app.vault.process(file, (raw) => {
-    let text2 = raw;
+    let text3 = raw;
     for (const move of labChapterMoves) {
       const old = move.from.replace(/\.md$/, ""), next = move.to.replace(/\.md$/, "");
-      text2 = text2.replaceAll("[[" + old + "|", "[[" + next + "|").replaceAll("[[" + old + "]]", "[[" + next + "]]").replaceAll("[[" + move.from + "|", "[[" + move.to + "|").replaceAll("[[" + move.from + "]]", "[[" + move.to + "]]");
+      text3 = text3.replaceAll("[[" + old + "|", "[[" + next + "|").replaceAll("[[" + old + "]]", "[[" + next + "]]").replaceAll("[[" + move.from + "|", "[[" + move.to + "|").replaceAll("[[" + move.from + "]]", "[[" + move.to + "]]");
     }
-    return text2;
+    return text3;
   });
   for (const path of ["Courses/Calculus/Questions", "Courses/French/Questions", "Courses/Python/Questions", "Courses/Fluid Dynamics/Questions", "Courses/Fluid Dynamics/Exams"]) {
     const f = app.vault.getAbstractFileByPath(path);
-    if (f instanceof import_obsidian57.TFolder && !f.children.length) await app.vault.trash(f, true);
+    if (f instanceof import_obsidian59.TFolder && !f.children.length) await app.vault.trash(f, true);
   }
   return pending.length;
 }
@@ -53605,7 +54384,7 @@ async function rubricReview(app, host, q, owner, initial, save) {
     const row = host.createDiv("study-rubric-row");
     await RichMarkdown.render(app, criterion.text, row.createDiv("markdown-rendered"), q.path, owner);
     const input = row.createEl("select", { attr: { "aria-label": `Score criterion ${inputs.length + 1}` } });
-    for (const [value, text2] of [["", "Choose score"], ["0", "Not met \u2014 0"], ["0.5", "Partly met \u2014 0.5"], ["1", "Met \u2014 1"]]) input.createEl("option", { value, text: text2 });
+    for (const [value, text3] of [["", "Choose score"], ["0", "Not met \u2014 0"], ["0.5", "Partly met \u2014 0.5"], ["1", "Met \u2014 1"]]) input.createEl("option", { value, text: text3 });
     input.value = initial?.[criterion.id]?.toString() ?? "";
     inputs.push(input);
   }
@@ -53825,8 +54604,8 @@ async function orderingField(app, parent, q, initial, owner, changed) {
 }
 
 // src/exam-ui.ts
-var import_obsidian58 = require("obsidian");
-var import_obsidian59 = require("obsidian");
+var import_obsidian60 = require("obsidian");
+var import_obsidian61 = require("obsidian");
 var uid = (prefix) => `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
 function newExam() {
   return { version: 1, id: uid("exam"), title: "New exam", mode: "sections", allowBack: true, shuffleSections: false, sections: [{ id: uid("section"), title: "Section 1", shuffleGroups: false, groups: [{ id: uid("group"), title: "Group 1", shuffleQuestions: false, questions: [] }] }] };
@@ -53864,7 +54643,7 @@ var ExamEditor = class extends StudioPanel {
   select(parent, label, value, options, change) {
     const l = parent.createEl("label", { cls: "study-exam-field", text: label });
     const input = l.createEl("select");
-    for (const [id3, text2] of options) input.createEl("option", { value: id3, text: text2 });
+    for (const [id3, text3] of options) input.createEl("option", { value: id3, text: text3 });
     input.value = value;
     input.onchange = () => change(input.value);
   }
@@ -53931,7 +54710,7 @@ var ExamEditor = class extends StudioPanel {
         }
         this.button(group2, "Add question", () => {
           if (!this.bank.length) {
-            new import_obsidian59.Notice("Create a question first.");
+            new import_obsidian61.Notice("Create a question first.");
             return;
           }
           g.questions.push({ id: uid("slot"), questionId: this.bank[0].definition.id, variants: 1 });
@@ -53954,10 +54733,10 @@ var ExamEditor = class extends StudioPanel {
         button2.disabled = true;
         void this.save(structuredClone(e)).then(() => this.close(), (err) => {
           button2.disabled = false;
-          new import_obsidian59.Notice(String(err));
+          new import_obsidian61.Notice(String(err));
         });
       } catch (err) {
-        new import_obsidian59.Notice(String(err));
+        new import_obsidian61.Notice(String(err));
       }
     };
   }
@@ -53985,10 +54764,10 @@ var ExamRunner = class extends StudioPanel {
     void this.render();
   }
   save() {
-    const snapshot = structuredClone(this.session);
+    const snapshot2 = structuredClone(this.session);
     this.status?.setText("Saving exam\u2026");
     const operation = this.pending.catch(() => {
-    }).then(() => this.write(snapshot));
+    }).then(() => this.write(snapshot2));
     this.pending = operation;
     void operation.then(() => {
       if (this.pending === operation) {
@@ -54014,7 +54793,7 @@ var ExamRunner = class extends StudioPanel {
   async render() {
     const generation = ++this.generation;
     this.owner?.unload();
-    this.owner = new import_obsidian59.Component();
+    this.owner = new import_obsidian61.Component();
     this.owner.load();
     this.mathOpen = 0;
     this.controls = [];
@@ -54163,7 +54942,7 @@ var ExamRunner = class extends StudioPanel {
     const actions = (event) => {
       event.preventDefault();
       event.stopPropagation();
-      const menu = new import_obsidian58.Menu();
+      const menu = new import_obsidian60.Menu();
       this.reviews?.questionMenu(menu, entry.question, d, `exam:${this.session.id}`);
       const r = d.getBoundingClientRect();
       menu.showAtPosition({ x: "clientX" in event ? event.clientX : r.left, y: "clientY" in event ? event.clientY : r.top });
@@ -54231,7 +55010,7 @@ var ExamRunner = class extends StudioPanel {
     this.generation++;
     this.owner?.unload();
     void this.pending.then(() => this.released(), () => {
-      new import_obsidian59.Notice("The last exam save failed. Resume uses the last saved responses.");
+      new import_obsidian61.Notice("The last exam save failed. Resume uses the last saved responses.");
       this.released();
     });
   }
@@ -54349,8 +55128,8 @@ var QuestionIndex = class {
 };
 
 // src/response-math.ts
-var import_obsidian60 = require("obsidian");
-var AnswerMathEditor = class extends import_obsidian60.Modal {
+var import_obsidian62 = require("obsidian");
+var AnswerMathEditor = class extends import_obsidian62.Modal {
   constructor(app, value, path, apply2, restoreFocus) {
     super(app);
     this.value = value;
@@ -54359,7 +55138,7 @@ var AnswerMathEditor = class extends import_obsidian60.Modal {
     this.restoreFocus = restoreFocus;
     this.modalEl.addClass("study-response-math-modal");
   }
-  owner = new import_obsidian60.Component();
+  owner = new import_obsidian62.Component();
   onOpen() {
     this.titleEl.setText("Edit your math answer");
     this.owner.load();
@@ -54402,21 +55181,21 @@ var AnswerMathEditor = class extends import_obsidian60.Modal {
 
 // src/intake.ts
 function cells(line) {
-  let text2 = line.trim();
-  if (text2.startsWith("|")) text2 = text2.slice(1);
-  if (text2.endsWith("|") && !text2.endsWith("\\|")) text2 = text2.slice(0, -1);
+  let text3 = line.trim();
+  if (text3.startsWith("|")) text3 = text3.slice(1);
+  if (text3.endsWith("|") && !text3.endsWith("\\|")) text3 = text3.slice(0, -1);
   const out = [];
   let cell = "", ticks = 0;
-  for (let i = 0; i < text2.length; i++) {
-    const c = text2[i];
-    if (c === "\\" && text2[i + 1] === "|") {
+  for (let i = 0; i < text3.length; i++) {
+    const c = text3[i];
+    if (c === "\\" && text3[i + 1] === "|") {
       cell += "\\|";
       i++;
       continue;
     }
     if (c === "`") {
       let n = 1;
-      while (text2[i + n] === "`") n++;
+      while (text3[i + n] === "`") n++;
       if (!ticks) ticks = n;
       else if (ticks === n) ticks = 0;
       cell += "`".repeat(n);
@@ -54438,7 +55217,7 @@ function selectedTable(selection) {
   if (separator.length !== columns.length || !separator.every((x) => /^:?-{3,}:?$/.test(x))) return null;
   const rows = lines.slice(2).map(cells);
   if (rows.some((row) => row.length !== columns.length)) throw Error("Select a complete rectangular Markdown table, including its header and separator.");
-  return { columns, rows: rows.map((row) => row.map((text2) => ({ text: text2 }))) };
+  return { columns, rows: rows.map((row) => row.map((text3) => ({ text: text3 }))) };
 }
 function intakeDraft(kind, id3, title, selection, path) {
   const q = parseQuestion(template(kind, id3, title, selection), path);
@@ -54505,9 +55284,9 @@ ${id3}
 function callouts(source) {
   const lines = [];
   let offset = 0;
-  for (const text2 of source.split("\n")) {
-    lines.push({ start: offset, end: offset + text2.length, text: text2 });
-    offset += text2.length + 1;
+  for (const text3 of source.split("\n")) {
+    lines.push({ start: offset, end: offset + text3.length, text: text3 });
+    offset += text3.length + 1;
   }
   const spans = [];
   let fence = "";
@@ -54588,8 +55367,8 @@ function questionEditorHelp(title, root, d) {
   panel.setAttribute("role", "region");
   panel.setAttribute("aria-label", "Question editor help");
   button2.setAttribute("aria-controls", panel.id);
-  const heading2 = (text2) => panel.createEl("h3", { text: text2 });
-  const note = (text2) => panel.createEl("p", { text: text2 });
+  const heading2 = (text3) => panel.createEl("h3", { text: text3 });
+  const note = (text3) => panel.createEl("p", { text: text3 });
   const shortcuts = (rows) => {
     const dl = panel.createEl("dl");
     for (const [keys2, action] of rows) {
@@ -54661,8 +55440,8 @@ function questionEditorHelp(title, root, d) {
 }
 
 // src/diagram-author.ts
-var import_obsidian61 = require("obsidian");
-var ImagePicker = class extends import_obsidian61.FuzzySuggestModal {
+var import_obsidian63 = require("obsidian");
+var ImagePicker = class extends import_obsidian63.FuzzySuggestModal {
   constructor(app, chosen) {
     super(app);
     this.chosen = chosen;
@@ -54701,8 +55480,8 @@ function diagramAuthor(app, root, d, path, area, rebuild) {
       diagram.image = dest;
       image.value = dest;
       draw();
-      new import_obsidian61.Notice("Image imported into the vault. It remains available if you cancel this question.");
-    })().catch((e) => new import_obsidian61.Notice(String(e)));
+      new import_obsidian63.Notice("Image imported into the vault. It remains available if you cancel this question.");
+    })().catch((e) => new import_obsidian63.Notice(String(e)));
   };
   image.onchange = () => {
     diagram.image = image.value;
@@ -54860,14 +55639,14 @@ function diagramAuthor(app, root, d, path, area, rebuild) {
 }
 
 // src/code-author.ts
-var import_obsidian62 = require("obsidian");
+var import_obsidian64 = require("obsidian");
 function codeAuthor(root, d, owner, changed = () => {
 }) {
   const notify = changed;
   root.createEl("h3", { text: "Code" });
   const guarded = !!d.code.grading;
   const language2 = root.createEl("select", { attr: { "aria-label": "Code language" } });
-  for (const [value, text2] of Object.entries(codeLanguages)) language2.createEl("option", { value, text: text2 });
+  for (const [value, text3] of Object.entries(codeLanguages)) language2.createEl("option", { value, text: text3 });
   language2.value = d.code.language;
   language2.disabled = guarded;
   language2.hidden = guarded;
@@ -54950,7 +55729,7 @@ function codeAuthor(root, d, owner, changed = () => {
   make.setAttribute("aria-keyshortcuts", "Control+Shift+B");
   const add2 = () => {
     if (guarded) {
-      new import_obsidian62.Notice("Re-prepare the marked code to change this question\u2019s blank boundaries.");
+      new import_obsidian64.Notice("Re-prepare the marked code to change this question\u2019s blank boundaries.");
       return;
     }
     try {
@@ -54963,7 +55742,7 @@ function codeAuthor(root, d, owner, changed = () => {
       source.focus();
       source.setSelectionRange(from, from + `{{blank:${id3}}}`.length);
     } catch (e) {
-      new import_obsidian62.Notice(String(e));
+      new import_obsidian64.Notice(String(e));
     }
   };
   source.oninput = () => {
@@ -54987,7 +55766,7 @@ function codeAuthor(root, d, owner, changed = () => {
 }
 
 // src/authoring.ts
-var import_obsidian63 = require("obsidian");
+var import_obsidian65 = require("obsidian");
 
 // src/authoring-model.ts
 var alternatives = (value) => value.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
@@ -55066,11 +55845,11 @@ function tableIssues(grid) {
   }));
   return issues;
 }
-function setTableCellText(cell, text2) {
-  cell.text = text2;
+function setTableCellText(cell, text3) {
+  cell.text = text3;
   if (cell.blank || cell.accepted) {
     const rest = alternatives(cell.accepted).slice(1);
-    const answer = text2.trim().replace(/^\$\$?([\s\S]*?)\$\$?$/, "$1").trim();
+    const answer = text3.trim().replace(/^\$\$?([\s\S]*?)\$\$?$/, "$1").trim();
     cell.accepted = [answer, ...rest].join("\n");
   }
 }
@@ -55108,7 +55887,7 @@ var QuestionEditor = class extends StudioPanel {
   pausedControls = [];
   liveFields = /* @__PURE__ */ new Map();
   writtenFields = /* @__PURE__ */ new Map();
-  renderComponent = new import_obsidian63.Component();
+  renderComponent = new import_obsidian65.Component();
   closed = false;
   titleInput;
   rankInput;
@@ -55129,7 +55908,7 @@ var QuestionEditor = class extends StudioPanel {
       if (this.mathEditors || this.busy) return;
       event.preventDefault();
       event.stopPropagation();
-      const menu = new import_obsidian63.Menu();
+      const menu = new import_obsidian65.Menu();
       menu.addItem((i) => i.setTitle("1 \xB7 Preview question").onClick(() => void this.previewQuestion()));
       menu.addItem((i) => i.setTitle("2 \xB7 Save question").onClick(() => void this.save(false)));
       menu.addItem((i) => i.setTitle("3 \xB7 Save and open note").onClick(() => void this.save(true)));
@@ -55159,17 +55938,17 @@ var QuestionEditor = class extends StudioPanel {
         else this.removeTableDimension(event.shiftKey);
       }
     }, true);
-    new import_obsidian63.Setting(root).setName("Title").addText(
+    new import_obsidian65.Setting(root).setName("Title").addText(
       (t2) => (this.titleInput = t2.inputEl, t2).setValue(this.definition.title).onChange((v) => (this.definition.title = v, this.validationAttempted && this.validateFields(false)))
     );
     const details = root.createEl("details", { cls: "study-author-details" });
     details.createEl("summary", { text: "Details" });
-    new import_obsidian63.Setting(details).setName("Concepts").addText(
+    new import_obsidian65.Setting(details).setName("Concepts").addText(
       (t2) => t2.setValue(this.definition.concepts.join(", ")).onChange(
         (v) => this.definition.concepts = v.split(",").map((x) => x.trim()).filter(Boolean)
       )
     );
-    new import_obsidian63.Setting(details).setName("Difficulty rank").setDesc("1 = easiest. Rank both versions to set their order; blank leaves it unranked.").addText((t2) => {
+    new import_obsidian65.Setting(details).setName("Difficulty rank").setDesc("1 = easiest. Rank both versions to set their order; blank leaves it unranked.").addText((t2) => {
       this.rankInput = t2.inputEl;
       t2.inputEl.inputMode = "numeric";
       t2.inputEl.setAttribute("aria-label", "Difficulty rank");
@@ -55185,14 +55964,14 @@ var QuestionEditor = class extends StudioPanel {
           const title = catalog.find((c) => c.course.id === id3)?.course.title ?? id3;
           const existing = this.definition.chapters?.find((c) => c.courseId === id3);
           const chapterId = existing?.chapterId ?? `chapter-${crypto.randomUUID().slice(0, 8)}`;
-          new import_obsidian63.Setting(chapters).setName(`Chapter \xB7 ${title}`).addText((text2) => {
+          new import_obsidian65.Setting(chapters).setName(`Chapter \xB7 ${title}`).addText((text3) => {
             const list = chapters.createEl("datalist");
             list.id = `chapters-${crypto.randomUUID()}`;
             const known = /* @__PURE__ */ new Map();
             for (const f of this.app.vault.getMarkdownFiles()) for (const c of this.app.metadataCache.getFileCache(f)?.frontmatter?.study?.chapters ?? []) if (c.courseId === id3 && typeof c.title === "string" && typeof c.chapterId === "string") known.set(c.title, c);
             for (const c of known.values()) list.createEl("option", { value: c.title });
-            text2.inputEl.setAttribute("list", list.id);
-            text2.setValue(existing?.title ?? "").onChange((value) => {
+            text3.inputEl.setAttribute("list", list.id);
+            text3.setValue(existing?.title ?? "").onChange((value) => {
               const others = (this.definition.chapters ?? []).filter((c) => c.courseId !== id3);
               const match = known.get(value.trim());
               this.definition.chapters = value.trim() ? [...others, { courseId: id3, chapterId: match?.chapterId ?? chapterId, title: value.trim() }] : others;
@@ -55287,7 +56066,7 @@ var QuestionEditor = class extends StudioPanel {
     });
   }
   area(parent, label, value, change, rows = 2) {
-    const owner = new import_obsidian63.Component();
+    const owner = new import_obsidian65.Component();
     this.renderComponent.addChild(owner);
     const editor = writtenEditor(this.app, parent, this.file.path, value, owner, (v) => {
       change(v);
@@ -55332,7 +56111,7 @@ var QuestionEditor = class extends StudioPanel {
   renderRules() {
     const root = this.gridHost;
     if (this.mathEditors) {
-      new import_obsidian63.Notice("Finish the active math or drawing editor before changing question structure.");
+      new import_obsidian65.Notice("Finish the active math or drawing editor before changing question structure.");
       return;
     }
     for (const [input, owner] of this.writtenFields) if (root.contains(input)) {
@@ -55346,7 +56125,7 @@ var QuestionEditor = class extends StudioPanel {
     if (["short-answer", "drawing"].includes(d.type)) {
       if (d.type === "drawing") {
         root.createEl("h3", { text: "Reference drawing (hidden until submission)" });
-        const referenceOwner = new import_obsidian63.Component();
+        const referenceOwner = new import_obsidian65.Component();
         this.renderComponent.addChild(referenceOwner);
         const field = drawingInput(this.app, root, d.drawing ? JSON.stringify(d.drawing) : "", referenceOwner, (value) => {
           d.drawing = value ? JSON.parse(value) : void 0;
@@ -55445,7 +56224,7 @@ var QuestionEditor = class extends StudioPanel {
           event.preventDefault();
           event.stopPropagation();
           if (this.mathEditors) return;
-          const m = new import_obsidian63.Menu();
+          const m = new import_obsidian65.Menu();
           m.addItem((item) => item.setTitle("1 \xB7 Add choice after this").onClick(() => this.addChoice(index2 + 1)));
           m.addItem((item) => item.setTitle("2 \xB7 Mark correct").setChecked(d.correct.includes(c.id)).onClick(() => {
             d.correct = d.correct.includes(c.id) ? d.correct.filter((id3) => id3 !== c.id) : [...d.correct, c.id];
@@ -55639,12 +56418,12 @@ var QuestionEditor = class extends StudioPanel {
     if (!this.grid || this.mathEditors) return;
     const active = this.contentEl.ownerDocument.activeElement, cell = active?.closest("[data-table-column]");
     if (!cell || !column && cell.dataset.tableRow === void 0) {
-      new import_obsidian63.Notice("Focus a cell in the row or column to delete.");
+      new import_obsidian65.Notice("Focus a cell in the row or column to delete.");
       return;
     }
     const grid = this.grid, r = Number(cell.dataset.tableRow ?? 0), c = Number(cell.dataset.tableColumn);
     if ((column ? grid.columns.length : grid.rows.length) <= 1) {
-      new import_obsidian63.Notice("Keep at least one row and one column.");
+      new import_obsidian65.Notice("Keep at least one row and one column.");
       return;
     }
     if (column) {
@@ -55719,7 +56498,7 @@ var QuestionEditor = class extends StudioPanel {
   }
   previewQuestion() {
     if (this.mathEditors) {
-      new import_obsidian63.Notice("Finish the active math or drawing editor before previewing the question.");
+      new import_obsidian65.Notice("Finish the active math or drawing editor before previewing the question.");
       return;
     }
     if (!this.validateFields()) return;
@@ -55785,7 +56564,7 @@ var QuestionEditor = class extends StudioPanel {
   }
   async save(openNote) {
     if (this.mathEditors) {
-      new import_obsidian63.Notice("Finish the active math or drawing editor before saving the question.");
+      new import_obsidian65.Notice("Finish the active math or drawing editor before saving the question.");
       return;
     }
     if (this.busy) return;
@@ -55828,12 +56607,12 @@ var QuestionEditor = class extends StudioPanel {
       let savedFile;
       if (this.createFile) savedFile = await this.createFile(next);
       else {
-        if (!(this.file instanceof import_obsidian63.TFile)) throw Error("Question file is unavailable.");
+        if (!(this.file instanceof import_obsidian65.TFile)) throw Error("Question file is unavailable.");
         savedFile = this.file;
         await this.app.vault.process(savedFile, (current) => checkedReplacement(current, this.original.raw, next));
       }
       this.close();
-      new import_obsidian63.Notice(outputWarning ? "Question saved; output unavailable: " + outputWarning : "Question saved. Reopen practice to load the changes.");
+      new import_obsidian65.Notice(outputWarning ? "Question saved; output unavailable: " + outputWarning : "Question saved. Reopen practice to load the changes.");
       if (openNote) await this.app.workspace.getLeaf("tab").openFile(savedFile);
     } catch (e) {
       if (!this.closed) {
@@ -55855,17 +56634,17 @@ var QuestionEditor = class extends StudioPanel {
 };
 
 // src/main.ts
-var import_obsidian64 = require("obsidian");
+var import_obsidian66 = require("obsidian");
 var ROOT2 = "Study Studio";
 var QUESTIONS = `${ROOT2}/Questions`;
 var ATTEMPTS = `${ROOT2}/Attempts`;
 var errorText = (e) => e instanceof Error ? e.message : String(e);
-var Card = class extends import_obsidian64.MarkdownRenderChild {
-  constructor(el, plugin2, q, context, done, preview = false, exam, retryCourse, ephemeral = false, onChecked, retained) {
+var Card = class extends import_obsidian66.MarkdownRenderChild {
+  constructor(el, plugin2, q, context2, done, preview = false, exam, retryCourse, ephemeral = false, onChecked, retained) {
     super(el);
     this.plugin = plugin2;
     this.q = q;
-    this.context = context;
+    this.context = context2;
     this.done = done;
     this.preview = preview;
     this.exam = exam;
@@ -55873,7 +56652,7 @@ var Card = class extends import_obsidian64.MarkdownRenderChild {
     this.ephemeral = ephemeral;
     this.onChecked = onChecked;
     this.retained = retained;
-    if (!preview && !exam) this.context = plugin2.practiceContext(context);
+    if (!preview && !exam) this.context = plugin2.practiceContext(context2);
   }
   ready;
   submitForSet;
@@ -55971,18 +56750,18 @@ var Card = class extends import_obsidian64.MarkdownRenderChild {
     const showMenu = (event) => {
       event.preventDefault();
       event.stopPropagation();
-      const menu = new import_obsidian64.Menu();
+      const menu = new import_obsidian66.Menu();
       const blocked = this.editing > 0 || this.working || this.rendering;
       const reveal3 = Array.from(el.querySelectorAll("button")).find((b) => b.textContent === "Reveal without scoring");
       if (reveal3) menu.addItem((item) => item.setTitle("1 \xB7 Reveal without scoring").setDisabled(blocked || reveal3.disabled).onClick(() => reveal3.click()));
       if (!this.preview || this.exam) this.reviewsMenu(menu, q, el);
       if (!this.exam && (!this.preview || this.ephemeral)) menu.addItem((item) => item.setTitle("3 \xB7 Edit question").setDisabled(blocked).onClick(() => void this.plugin.openQuestion(d.id)));
       if (!this.preview && !this.exam) {
-        menu.addItem((item) => item.setTitle("2 \xB7 Reset question").setDisabled(blocked).onClick(() => void this.plugin.resetPractice(this.context, [d.id]).catch((e) => new import_obsidian64.Notice(errorText(e)))));
+        menu.addItem((item) => item.setTitle("2 \xB7 Reset question").setDisabled(blocked).onClick(() => void this.plugin.resetPractice(this.context, [d.id]).catch((e) => new import_obsidian66.Notice(errorText(e)))));
         const sourcePath = this.plugin.practiceSource(this.context);
-        if (sourcePath) menu.addItem((item) => item.setTitle("4 \xB7 Group or remove from note\u2026").setDisabled(blocked).onClick(() => void this.plugin.bank().then((bank) => manageNote(this.plugin.app, bank, (id3) => void this.plugin.openQuestion(id3), d.id, sourcePath)).catch((e) => new import_obsidian64.Notice(errorText(e)))));
+        if (sourcePath) menu.addItem((item) => item.setTitle("4 \xB7 Group or remove from note\u2026").setDisabled(blocked).onClick(() => void this.plugin.bank().then((bank) => manageNote(this.plugin.app, bank, (id3) => void this.plugin.openQuestion(id3), d.id, sourcePath)).catch((e) => new import_obsidian66.Notice(errorText(e)))));
         if (courseInput) menu.addItem((item) => item.setTitle(`5 \xB7 Course: ${course?.title ?? "Unassigned"}\u2026`).setDisabled(blocked || courseInput.disabled).onClick(() => {
-          const choices = new import_obsidian64.Menu();
+          const choices = new import_obsidian66.Menu();
           for (const [index2, option] of Array.from(courseInput.options).entries()) choices.addItem((item2) => item2.setTitle(`${index2 + 1} \xB7 ${option.text}`).setChecked(option.value === courseInput.value).onClick(() => {
             courseInput.value = option.value;
             courseInput.dispatchEvent(new Event("change"));
@@ -55993,7 +56772,7 @@ var Card = class extends import_obsidian64.MarkdownRenderChild {
       }
       menu.addSeparator();
       menu.addItem((item) => item.setTitle("6 \xB7 Question information").onClick(() => {
-        const modal = new import_obsidian64.Modal(this.plugin.app);
+        const modal = new import_obsidian66.Modal(this.plugin.app);
         modal.titleEl.setText(d.title);
         if (d.concepts.length) modal.contentEl.createEl("p", { text: "Concepts: " + d.concepts.join(" \xB7 ") });
         modal.contentEl.createEl("p", { text: "Course: " + (course?.title ?? "Unassigned") });
@@ -56075,12 +56854,12 @@ var Card = class extends import_obsidian64.MarkdownRenderChild {
           await this.plugin.saveAttempt(record);
           this.plugin.completions[key2] = record;
           ++draftRevision;
-          await this.plugin.putDraft(key2, void 0).catch(() => new import_obsidian64.Notice("Attempt saved; draft cleanup could not be saved."));
+          await this.plugin.putDraft(key2, void 0).catch(() => new import_obsidian66.Notice("Attempt saved; draft cleanup could not be saved."));
         }
         if (courseInput) courseInput.disabled = true;
         return record;
       }, () => {
-        if (!this.preview) void this.plugin.resetPractice(this.context, [d.id]).catch((e) => new import_obsidian64.Notice(errorText(e)));
+        if (!this.preview) void this.plugin.resetPractice(this.context, [d.id]).catch((e) => new import_obsidian66.Notice(errorText(e)));
         else {
           this.unload();
           this.load();
@@ -56189,13 +56968,15 @@ var Card = class extends import_obsidian64.MarkdownRenderChild {
       input.oninput = () => update();
       input.onblur = () => update(false);
       input.onkeydown = (event) => {
-        if (event.ctrlKey && event.code === "KeyM") {
+        if (event.code === "KeyM" && (event.ctrlKey || event.metaKey && event.shiftKey && !event.altKey)) {
           event.preventDefault();
           event.stopPropagation();
           openMath();
         }
       };
       preview.onkeydown = input.onkeydown;
+      focusedMathShortcut(this.plugin.app, this, input, openMath);
+      focusedMathShortcut(this.plugin.app, this, preview, openMath);
       showAnswers.set(id3, async (answer, correct) => {
         ++revision;
         input.hidden = true;
@@ -56250,11 +57031,11 @@ var Card = class extends import_obsidian64.MarkdownRenderChild {
           persist();
         };
         controls.push(input);
-        const text2 = label.createDiv("markdown-rendered");
+        const text3 = label.createDiv("markdown-rendered");
         await RichMarkdown.render(
           this.plugin.app,
           option.text,
-          text2,
+          text3,
           q.path,
           this
         );
@@ -56351,7 +57132,7 @@ var Card = class extends import_obsidian64.MarkdownRenderChild {
           await this.plugin.saveAttempt(record);
           this.plugin.completions[key2] = record;
           ++draftRevision;
-          void this.plugin.putDraft(key2, void 0).catch(() => new import_obsidian64.Notice("Attempt saved, but the old draft could not be cleared."));
+          void this.plugin.putDraft(key2, void 0).catch(() => new import_obsidian66.Notice("Attempt saved, but the old draft could not be cleared."));
         }
         draftStatus.empty();
         finished = true;
@@ -56484,7 +57265,7 @@ var Card = class extends import_obsidian64.MarkdownRenderChild {
           const again = feedback.createEl("button", { text: "Try again" });
           if (!prior) again.focus();
           again.onclick = () => {
-            if (!this.preview) void this.plugin.resetPractice(this.context, [d.id]).catch((e) => new import_obsidian64.Notice(errorText(e)));
+            if (!this.preview) void this.plugin.resetPractice(this.context, [d.id]).catch((e) => new import_obsidian66.Notice(errorText(e)));
             else {
               this.unload();
               this.load();
@@ -56524,7 +57305,7 @@ var Card = class extends import_obsidian64.MarkdownRenderChild {
     );
   }
 };
-var PickQuestion = class extends import_obsidian64.FuzzySuggestModal {
+var PickQuestion = class extends import_obsidian66.FuzzySuggestModal {
   constructor(plugin2, questions, choose) {
     super(plugin2.app);
     this.plugin = plugin2;
@@ -56542,7 +57323,7 @@ var PickQuestion = class extends import_obsidian64.FuzzySuggestModal {
     this.choose(q);
   }
 };
-var CreateQuestion = class extends import_obsidian64.Modal {
+var CreateQuestion = class extends import_obsidian66.Modal {
   constructor(plugin2, editor, source) {
     super(plugin2.app);
     this.plugin = plugin2;
@@ -56574,21 +57355,21 @@ var CreateQuestion = class extends import_obsidian64.Modal {
     const existingGroups = embeds(sourceText ?? "").filter((e) => e.group);
     let targetGroup = -1;
     let titleInput;
-    new import_obsidian64.Setting(this.contentEl).setName("Title").addText((t2) => {
+    new import_obsidian66.Setting(this.contentEl).setName("Title").addText((t2) => {
       titleInput = t2.inputEl;
       t2.setPlaceholder("e.g. Velocity gradient").onChange((v) => title = v);
     });
     const placement = this.contentEl.createEl("details");
     placement.hidden = !existingGroups.length;
     placement.createEl("summary", { text: "Add to an existing group (optional)" });
-    if (existingGroups.length) new import_obsidian64.Setting(placement).setName("Place question").addDropdown((d) => {
+    if (existingGroups.length) new import_obsidian66.Setting(placement).setName("Place question").addDropdown((d) => {
       d.addOption("-1", "Individual card after selection");
       existingGroups.forEach((g, i) => d.addOption(String(i), g.title));
       d.onChange((v) => targetGroup = Number(v));
     });
     const types2 = [["choice", "Multiple choice"], ["blank", "Fill in the blank"], ["table", "Complete the table"], ["code", "Complete the code"], ["diagram", "Label the diagram"], ["ordering", "Put steps in order"], ["short-answer", "Short answer / essay"], ["drawing", "Drawing response"]];
     let typeSelect;
-    new import_obsidian64.Setting(this.contentEl).setName("Question type").setDesc("Tab here, then press 1\u20138 to choose.").addDropdown((d) => {
+    new import_obsidian66.Setting(this.contentEl).setName("Question type").setDesc("Tab here, then press 1\u20138 to choose.").addDropdown((d) => {
       typeSelect = d.selectEl;
       types2.forEach(([id3, label], i) => d.addOption(id3, `${i + 1} \xB7 ${label}`));
       d.setValue(kind).onChange((v) => kind = v);
@@ -56611,10 +57392,10 @@ var CreateQuestion = class extends import_obsidian64.Modal {
     this.contentEl.createEl("p", {
       text: "Ctrl+Enter continues. Your selection stays in the note; saving adds a question after it."
     });
-    new import_obsidian64.Setting(this.contentEl).addButton(
+    new import_obsidian66.Setting(this.contentEl).addButton(
       (b) => b.setButtonText("Continue to question editor").setCta().onClick(async () => {
         if (!title.trim()) {
-          new import_obsidian64.Notice("Enter a question title.");
+          new import_obsidian66.Notice("Enter a question title.");
           return;
         }
         b.setDisabled(true);
@@ -56632,7 +57413,7 @@ var CreateQuestion = class extends import_obsidian64.Modal {
             draft,
             (el, q) => new Card(el, this.plugin, q, "author-preview", void 0, true),
             async (raw) => {
-              const sourceView = this.source ? this.app.workspace.getLeavesOfType("markdown").map((leaf) => leaf.view).find((view) => view instanceof import_obsidian64.MarkdownView && view.file?.path === this.source.path) : void 0;
+              const sourceView = this.source ? this.app.workspace.getLeavesOfType("markdown").map((leaf) => leaf.view).find((view) => view instanceof import_obsidian66.MarkdownView && view.file?.path === this.source.path) : void 0;
               const sourceEditor = sourceView?.getMode() === "source" ? sourceView.editor : void 0;
               const currentSource = this.source ? sourceEditor?.getValue() ?? await this.app.vault.read(this.source) : void 0;
               const canInsert = sourceText !== void 0 && currentSource === sourceText;
@@ -56651,15 +57432,15 @@ var CreateQuestion = class extends import_obsidian64.Modal {
                     return current.slice(0, insertion.at) + insertion.text + current.slice(end);
                   });
                 } catch {
-                  new import_obsidian64.Notice("Question saved. The source note changed; use Insert question card to link it.", 1e4);
+                  new import_obsidian66.Notice("Question saved. The source note changed; use Insert question card to link it.", 1e4);
                 }
               }
-              if (this.source && !canInsert) new import_obsidian64.Notice("Question saved. The note changed while you were editing; use Insert question card to choose its placement.", 1e4);
+              if (this.source && !canInsert) new import_obsidian66.Notice("Question saved. The note changed while you were editing; use Insert question card to choose its placement.", 1e4);
               return f;
             }
           ).open();
         } catch (e) {
-          new import_obsidian64.Notice(errorText(e));
+          new import_obsidian66.Notice(errorText(e));
           b.setDisabled(false);
         }
       })
@@ -56674,12 +57455,12 @@ var CreateQuestion = class extends import_obsidian64.Modal {
     this.contentEl.empty();
   }
 };
-var ReviewSetup = class extends import_obsidian64.Modal {
-  constructor(plugin2, questions, context) {
+var ReviewSetup = class extends import_obsidian66.Modal {
+  constructor(plugin2, questions, context2) {
     super(plugin2.app);
     this.plugin = plugin2;
     this.questions = questions;
-    this.context = context;
+    this.context = context2;
   }
   onOpen() {
     this.titleEl.setText("Start review");
@@ -56690,7 +57471,7 @@ var ReviewSetup = class extends import_obsidian64.Modal {
     this.contentEl.createEl("p", {
       text: `${this.questions.length} variants across ${families.size} question families. Choose how many variants from each family to include. Selection is random, without repeats.`
     });
-    new import_obsidian64.Setting(this.contentEl).setName("Variants per family").addDropdown(
+    new import_obsidian66.Setting(this.contentEl).setName("Variants per family").addDropdown(
       (d) => d.addOptions({
         "1": "One",
         "2": "Up to two",
@@ -56698,7 +57479,7 @@ var ReviewSetup = class extends import_obsidian64.Modal {
         "999999": "All"
       }).onChange((v) => count2 = Number(v))
     );
-    new import_obsidian64.Setting(this.contentEl).addButton(
+    new import_obsidian66.Setting(this.contentEl).addButton(
       (b) => b.setButtonText("Start review").setCta().onClick(() => {
         const selected = selectVariants(this.questions, count2);
         this.close();
@@ -56710,12 +57491,12 @@ var ReviewSetup = class extends import_obsidian64.Modal {
     this.contentEl.empty();
   }
 };
-var Review = class extends import_obsidian64.Modal {
-  constructor(plugin2, questions, context) {
+var Review = class extends import_obsidian66.Modal {
+  constructor(plugin2, questions, context2) {
     super(plugin2.app);
     this.plugin = plugin2;
     this.questions = questions;
-    this.context = context;
+    this.context = context2;
     this.modalEl.addClass("study-review-modal");
   }
   index = 0;
@@ -56760,37 +57541,37 @@ var Review = class extends import_obsidian64.Modal {
     this.contentEl.empty();
   }
 };
-var StudyStudio = class extends import_obsidian64.Plugin {
+var StudyStudio = class extends import_obsidian66.Plugin {
   writtenEditorCommands = dist_exports3;
   createWrittenEditor(...args) {
     return writtenEditor(...args);
   }
   configurePractice(questions, title = "Practice", course) {
-    const setup = new import_obsidian64.Modal(this.app);
+    const setup = new import_obsidian66.Modal(this.app);
     setup.titleEl.setText("Practice settings");
     setup.contentEl.createEl("p", { text: `${title} \xB7 ${questions.length} questions` });
     let randomize = false;
     let required = 1;
-    new import_obsidian64.Setting(setup.contentEl).setName("Question order").addDropdown((select) => select.addOption("chapter", "Chapter order").addOption("random", "Random order").setValue("chapter").onChange((value) => randomize = value === "random"));
-    new import_obsidian64.Setting(setup.contentEl).setName("Clear missed questions after").addDropdown((select) => select.addOption("1", "One correct answer").addOption("2", "Two consecutive correct answers").setValue("1").onChange((value) => required = value === "2" ? 2 : 1));
-    new import_obsidian64.Setting(setup.contentEl).addButton((button2) => button2.setButtonText("Cancel").onClick(() => setup.close())).addButton((button2) => button2.setButtonText("Start practice").setCta().setDisabled(!questions.length).onClick(() => {
+    new import_obsidian66.Setting(setup.contentEl).setName("Question order").addDropdown((select) => select.addOption("chapter", "Chapter order").addOption("random", "Random order").setValue("chapter").onChange((value) => randomize = value === "random"));
+    new import_obsidian66.Setting(setup.contentEl).setName("Clear missed questions after").addDropdown((select) => select.addOption("1", "One correct answer").addOption("2", "Two consecutive correct answers").setValue("1").onChange((value) => required = value === "2" ? 2 : 1));
+    new import_obsidian66.Setting(setup.contentEl).addButton((button2) => button2.setButtonText("Cancel").onClick(() => setup.close())).addButton((button2) => button2.setButtonText("Start practice").setCta().setDisabled(!questions.length).onClick(() => {
       setup.close();
       const ordered = chapterOrder(questions);
-      const context = `practice-set:${course?.id ?? "unassigned"}:${crypto.randomUUID()}`;
-      this.openPracticePage(rankVersions(randomize ? shuffledPractice(ordered) : ordered), title, course, void 0, questions.length, context, void 0, { fullIds: ordered.map((q) => q.definition.id), rootContext: context, required, randomize, round: 0, streaks: {} });
+      const context2 = `practice-set:${course?.id ?? "unassigned"}:${crypto.randomUUID()}`;
+      this.openPracticePage(rankVersions(randomize ? shuffledPractice(ordered) : ordered), title, course, void 0, questions.length, context2, void 0, { fullIds: ordered.map((q) => q.definition.id), rootContext: context2, required, randomize, round: 0, streaks: {} });
     }));
     setup.open();
   }
   async openPracticePage(questions, title = "Practice", course, provided, expected = questions.length, savedContext, submittedStamp, reviewState) {
-    const context = savedContext ?? `practice-set:${course?.id ?? "unassigned"}:${crypto.randomUUID()}`;
-    const frozenFile = this.app.vault.getAbstractFileByPath(practiceSessionPath(context));
-    if (frozenFile instanceof import_obsidian64.TFile) {
+    const context2 = savedContext ?? `practice-set:${course?.id ?? "unassigned"}:${crypto.randomUUID()}`;
+    const frozenFile = this.app.vault.getAbstractFileByPath(practiceSessionPath(context2));
+    if (frozenFile instanceof import_obsidian66.TFile) {
       await this.showFrozenPractice(parsePracticeSession(await this.app.vault.read(frozenFile)), provided);
       return;
     }
-    const review = reviewState ?? { fullIds: questions.map((q) => q.definition.id), rootContext: context, required: 1, randomize: false, round: 0, streaks: {} };
+    const review = reviewState ?? { fullIds: questions.map((q) => q.definition.id), rootContext: context2, required: 1, randomize: false, round: 0, streaks: {} };
     const panel = provided ?? new StudioPanel(this.app);
-    panel.restoration = { review, kind: "practice-set", title, course: course ?? null, context, submittedStamp, questionIds: questions.map((q) => q.definition.id) };
+    panel.restoration = { review, kind: "practice-set", title, course: course ?? null, context: context2, submittedStamp, questionIds: questions.map((q) => q.definition.id) };
     panel.titleEl.setText(title);
     panel.modalEl.addClass("study-practice-page");
     const root = panel.contentEl;
@@ -56799,7 +57580,7 @@ var StudyStudio = class extends import_obsidian64.Plugin {
     const top2 = root.createDiv("study-practice-page-header");
     top2.createEl("p", { text: `${course?.title ? course.title + " \xB7 " : ""}${questions.length} questions \xB7 Practice`, cls: "study-muted" });
     top2.createEl("p", { text: "Check answers individually, or submit the whole set at the bottom. Practice does not contribute to assessment grades.", cls: "study-muted" });
-    if (questions.some((q) => q.definition.type === "short-answer")) top2.createEl("p", { text: "Ctrl/Cmd+Enter submits a response for self-assessment. Ctrl+M edits math. Responses are saved locally as drafts.", cls: "study-muted" });
+    if (questions.some((q) => q.definition.type === "short-answer")) top2.createEl("p", { text: "Ctrl/Cmd+Enter submits a response for self-assessment. Cmd+Shift+M (Mac) or Ctrl+M edits math. Responses are saved locally as drafts.", cls: "study-muted" });
     if (questions.some((q) => q.definition.type === "drawing")) top2.createEl("p", { text: "For drawings, use Done (Ctrl/Cmd+Enter) before submitting for self-assessment. Strokes are saved locally as drafts.", cls: "study-muted" });
     if (expected !== questions.length) top2.createEl("p", { text: `${expected - questions.length} questions are no longer available.`, cls: "study-error" });
     top2.createEl("button", { text: "New set attempt" }).onclick = () => {
@@ -56812,13 +57593,13 @@ var StudyStudio = class extends import_obsidian64.Plugin {
       });
     };
     panel.copyLink = () => {
-      void navigator.clipboard.writeText(practiceLink(this.app.vault.getName(), { title, ids: review.fullIds, course: course?.id })).then(() => new import_obsidian64.Notice("Practice set link copied. Opens the set without sharing your answers."), () => new import_obsidian64.Notice("Could not copy the practice link."));
+      void navigator.clipboard.writeText(practiceLink(this.app.vault.getName(), { title, ids: review.fullIds, course: course?.id })).then(() => new import_obsidian66.Notice("Practice set link copied. Opens the set without sharing your answers."), () => new import_obsidian66.Notice("Could not copy the practice link."));
     };
     if (review.round) top2.createEl("p", { text: `Review round ${review.round} \xB7 Clear each question after ${review.required === 1 ? "one correct answer" : "two consecutive correct answers"}. The original set score is unchanged.`, cls: "study-muted" });
     const layout = root.createDiv("study-practice-workspace"), nav2 = layout.createEl("nav", { cls: "study-practice-question-nav", attr: { "aria-label": "Practice questions" } }), body = layout.createDiv("study-practice-question-list");
     const items = questions.map((q) => {
       const section = body.createEl("section", { cls: "study-practice-question" }), number2 = section.createDiv("study-practice-question-number"), host = section.createDiv();
-      const card = new Card(host, this, q, context, void 0, false, void 0, course);
+      const card = new Card(host, this, q, context2, void 0, false, void 0, course);
       panel.addChild(card);
       return { q, section, number: number2, host, card };
     });
@@ -56834,7 +57615,7 @@ var StudyStudio = class extends import_obsidian64.Plugin {
           item.host.focus({ preventScroll: true });
         };
       });
-      panel.restoration = { review, kind: "practice-set", title, course: course ?? null, context, submittedStamp, questionIds: ordered.map((q) => q.definition.id) };
+      panel.restoration = { review, kind: "practice-set", title, course: course ?? null, context: context2, submittedStamp, questionIds: ordered.map((q) => q.definition.id) };
       this.app.workspace.requestSaveLayout();
     };
     arrange(questions);
@@ -56843,7 +57624,7 @@ var StudyStudio = class extends import_obsidian64.Plugin {
     const submitSet = finish.createEl("button", { text: "Submit practice", cls: "mod-cta" });
     const reviewActions = finish.createDiv("study-review-actions");
     const summary = () => practiceCompletion(questions.map((q) => {
-      const record = this.completions[draftKey(context, q.definition.id)];
+      const record = this.completions[draftKey(context2, q.definition.id)];
       return record && signature(record.question) === signature(q) ? record : void 0;
     }));
     let submitting = false;
@@ -56860,7 +57641,7 @@ var StudyStudio = class extends import_obsidian64.Plugin {
       } else submitSet.setText("Submit practice");
       reviewActions.empty();
       if (ready && submittedStamp) {
-        const next = nextReview(questions.map((q) => q.definition.id), questions.map((q) => this.completions[draftKey(context, q.definition.id)]), review);
+        const next = nextReview(questions.map((q) => q.definition.id), questions.map((q) => this.completions[draftKey(context2, q.definition.id)]), review);
         if (next.remaining.length) {
           reviewActions.createEl("p", { text: `${next.remaining.length} questions remaining to review.` });
           const button2 = reviewActions.createEl("button", { text: review.round ? "Continue review" : "Practice missed questions", cls: "mod-cta" });
@@ -56880,27 +57661,27 @@ var StudyStudio = class extends import_obsidian64.Plugin {
         for (const item of items) {
           await item.card.ready;
           await item.card.submitForSet?.();
-          const record = this.completions[draftKey(context, item.q.definition.id)];
+          const record = this.completions[draftKey(context2, item.q.definition.id)];
           if (!record || record.mode !== "attempt") throw Error("A response could not be saved. Retry submission.");
         }
         if (!summary().ready) {
-          new import_obsidian64.Notice("Complete the rubric assessment for written responses, then submit the set.");
+          new import_obsidian66.Notice("Complete the rubric assessment for written responses, then submit the set.");
           return;
         }
-        const frozen = freezePractice(context, title, course, review, questions.map((q) => this.completions[draftKey(context, q.definition.id)]));
+        const frozen = freezePractice(context2, title, course, review, questions.map((q) => this.completions[draftKey(context2, q.definition.id)]));
         await this.ensureFolder(PRACTICE_SESSIONS);
-        const path = practiceSessionPath(context);
+        const path = practiceSessionPath(context2);
         if (!this.app.vault.getAbstractFileByPath(path)) await this.app.vault.create(path, JSON.stringify(frozen, null, 2) + "\n");
         items.forEach((item) => panel.removeChild(item.card));
         this.practiceResultListeners.delete(update);
         await this.showFrozenPractice(frozen, panel);
         panel.titleEl.scrollIntoView({ block: "start" });
         submittedStamp = "submitted";
-        panel.restoration = { kind: "practice-frozen", context };
+        panel.restoration = { kind: "practice-frozen", context: context2 };
         this.app.workspace.requestSaveLayout();
         gradeHost.scrollIntoView({ behavior: "smooth", block: "start" });
       } catch (e) {
-        new import_obsidian64.Notice(errorText(e));
+        new import_obsidian66.Notice(errorText(e));
       } finally {
         submitting = false;
         update();
@@ -56915,15 +57696,15 @@ var StudyStudio = class extends import_obsidian64.Plugin {
           await submitAll();
           return;
         }
-        const warning = new import_obsidian64.Modal(this.app);
+        const warning = new import_obsidian66.Modal(this.app);
         warning.titleEl.setText("Unanswered questions");
         warning.contentEl.createEl("p", { text: `Questions ${missing.join(", ")} have unanswered fields. These will receive zero credit; completed fields still earn their normal credit.` });
-        new import_obsidian64.Setting(warning.contentEl).addButton((b) => b.setButtonText("Return to questions").onClick(() => warning.close())).addButton((b) => b.setButtonText("Submit anyway").setCta().onClick(() => {
+        new import_obsidian66.Setting(warning.contentEl).addButton((b) => b.setButtonText("Return to questions").onClick(() => warning.close())).addButton((b) => b.setButtonText("Submit anyway").setCta().onClick(() => {
           warning.close();
           void submitAll();
         }));
         warning.open();
-      })().catch((e) => new import_obsidian64.Notice(errorText(e)));
+      })().catch((e) => new import_obsidian66.Notice(errorText(e)));
     };
     this.practiceResultListeners.add(update);
     panel.register(() => this.practiceResultListeners.delete(update));
@@ -56976,12 +57757,12 @@ var StudyStudio = class extends import_obsidian64.Plugin {
     const folder = `${ROOT2}/Exam sessions`;
     await this.ensureFolder(folder);
     const path = `${folder}/${session.id}.json`, file = this.app.vault.getAbstractFileByPath(path), raw = JSON.stringify(session, null, 2) + "\n";
-    if (file instanceof import_obsidian64.TFile) await this.app.vault.modify(file, raw);
+    if (file instanceof import_obsidian66.TFile) await this.app.vault.modify(file, raw);
     else await this.app.vault.create(path, raw);
   }
   showExam(session) {
     if (this.examWindows.has(session.id)) {
-      new import_obsidian64.Notice("That exam session is already open.");
+      new import_obsidian66.Notice("That exam session is already open.");
       return;
     }
     this.examWindows.add(session.id);
@@ -57006,8 +57787,8 @@ var StudyStudio = class extends import_obsidian64.Plugin {
   drafts = {};
   completions = {};
   noteLocations = {};
-  practiceSource(context) {
-    return Object.entries(this.noteLocations).find(([, id3]) => id3 === context)?.[0];
+  practiceSource(context2) {
+    return Object.entries(this.noteLocations).find(([, id3]) => id3 === context2)?.[0];
   }
   practiceContext(path) {
     if (!path.endsWith(".md")) return path;
@@ -57019,7 +57800,7 @@ var StudyStudio = class extends import_obsidian64.Plugin {
       this.drafts = drafts;
       this.completions = completions;
       this.noteLocations[path] = id3;
-      void this.persistPractice().catch((e) => new import_obsidian64.Notice("Could not save practice location: " + errorText(e)));
+      void this.persistPractice().catch((e) => new import_obsidian66.Notice("Could not save practice location: " + errorText(e)));
     }
     return this.noteLocations[path];
   }
@@ -57030,30 +57811,30 @@ var StudyStudio = class extends import_obsidian64.Plugin {
       this.expandedNotes.delete(path);
       this.expandedNotes.set(newPath + path.slice(oldPath.length), open);
     }
-    void this.persistPractice().catch((e) => new import_obsidian64.Notice("Could not save moved practice state: " + errorText(e)));
+    void this.persistPractice().catch((e) => new import_obsidian66.Notice("Could not save moved practice state: " + errorText(e)));
   }
   savedData = {};
   draftWrites = Promise.resolve();
   practiceCards = /* @__PURE__ */ new Set();
   resetting = false;
-  async resetPractice(context, ids) {
-    context = this.practiceContext(context);
-    if (this.app.vault.getAbstractFileByPath(practiceSessionPath(context))) throw Error("This session is submitted and read only. Start a new attempt.");
+  async resetPractice(context2, ids) {
+    context2 = this.practiceContext(context2);
+    if (this.app.vault.getAbstractFileByPath(practiceSessionPath(context2))) throw Error("This session is submitted and read only. Start a new attempt.");
     if (this.resetting) throw Error("A reset is already saving.");
-    const target = new Set(ids.map((id3) => draftKey(context, id3))), cards = [...this.practiceCards].filter((c) => target.has(c.key));
+    const target = new Set(ids.map((id3) => draftKey(context2, id3))), cards = [...this.practiceCards].filter((c) => target.has(c.key));
     if (cards.some((c) => c.busy())) throw Error("Finish the active editor or submission before resetting.");
     const focusedCard = cards.find((c) => c.element.contains(c.element.ownerDocument.activeElement));
     this.resetting = true;
     cards.forEach((c) => c.element.inert = true);
     const priorDrafts = structuredClone(this.drafts), priorCompletions = structuredClone(this.completions);
     try {
-      for (const key2 of practiceResetKeys(context, ids, this.drafts, this.completions)) {
+      for (const key2 of practiceResetKeys(context2, ids, this.drafts, this.completions)) {
         delete this.drafts[key2];
         delete this.completions[key2];
       }
       await this.persistPractice();
       cards.forEach((c) => c.reload());
-      new import_obsidian64.Notice("Practice reset. Recorded history is preserved.");
+      new import_obsidian66.Notice("Practice reset. Recorded history is preserved.");
     } catch (e) {
       for (const key2 of target) {
         if (priorDrafts[key2]) this.drafts[key2] = priorDrafts[key2];
@@ -57074,9 +57855,9 @@ var StudyStudio = class extends import_obsidian64.Plugin {
   }
   practiceResultListeners = /* @__PURE__ */ new Set();
   persistPractice() {
-    const snapshot = { ...this.savedData, practiceNoteLocations: { ...this.noteLocations }, practiceDrafts: structuredClone(this.drafts), practiceCompletions: structuredClone(this.completions) };
+    const snapshot2 = { ...this.savedData, practiceNoteLocations: { ...this.noteLocations }, practiceDrafts: structuredClone(this.drafts), practiceCompletions: structuredClone(this.completions) };
     const write = this.draftWrites.catch(() => {
-    }).then(() => this.saveData(snapshot));
+    }).then(() => this.saveData(snapshot2));
     this.draftWrites = write;
     void write.then(() => this.practiceResultListeners.forEach((update) => update()), () => {
     });
@@ -57086,7 +57867,7 @@ var StudyStudio = class extends import_obsidian64.Plugin {
     this.expandedNotes.set(path, open);
     this.app.workspace.getLeavesOfType("markdown").forEach((leaf) => {
       const view = leaf.view;
-      if (view instanceof import_obsidian64.MarkdownView && view.file?.path === path)
+      if (view instanceof import_obsidian66.MarkdownView && view.file?.path === path)
         view.containerEl.querySelectorAll("details.study-embed").forEach((el) => {
           el.open = open;
         });
@@ -57115,10 +57896,10 @@ var StudyStudio = class extends import_obsidian64.Plugin {
       }
     }
     if (!questions.length) {
-      new import_obsidian64.Notice("The linked practice questions are no longer available.");
+      new import_obsidian66.Notice("The linked practice questions are no longer available.");
       return;
     }
-    if (questions.length !== new Set(ids).size) new import_obsidian64.Notice("Some linked questions are unavailable. Showing those that are present.");
+    if (questions.length !== new Set(ids).size) new import_obsidian66.Notice("Some linked questions are unavailable. Showing those that are present.");
     const sourcePaths = [...new Set(questions.map((q) => q.definition.studySource?.path).filter(Boolean))];
     if (sourcePaths.length === 1) this.app.workspace.trigger("study-practice-source", sourcePaths[0]);
     return testYourself(this.app, questions, title, (host, q, checked, kept) => new Card(host, this, q, "test-yourself", void 0, true, void 0, void 0, true, checked, kept));
@@ -57127,6 +57908,7 @@ var StudyStudio = class extends import_obsidian64.Plugin {
     registerVaultWindowIdentity(this);
     this.reviews = new ReviewStore(this.app);
     this.register(() => this.reviews.closeHoverPreviews());
+    this.addCommand({ id: "review-sync-conflicts", name: "Review annotation sync conflicts", callback: () => this.reviews.showSyncConflicts() });
     await this.reviews.load();
     this.symbolSystem = await registerSymbolSystem(this);
     this.symbolApi = this.symbolSystem?.api;
@@ -57156,7 +57938,7 @@ var StudyStudio = class extends import_obsidian64.Plugin {
     registerPanelRestorer(this.app, "practice-frozen", (panel, state) => {
       void (async () => {
         const file = this.app.vault.getAbstractFileByPath(practiceSessionPath(String(state.context)));
-        if (!(file instanceof import_obsidian64.TFile)) throw Error("Saved practice session not found.");
+        if (!(file instanceof import_obsidian66.TFile)) throw Error("Saved practice session not found.");
         await this.showFrozenPractice(parsePracticeSession(await this.app.vault.read(file)), panel);
       })().catch((e) => panel.contentEl.setText(errorText(e)));
     });
@@ -57184,24 +57966,24 @@ var StudyStudio = class extends import_obsidian64.Plugin {
           const course = selection.course ? (await courses(this.app)).find((c) => c.course.id === selection.course)?.course : void 0;
           if (selection.course && !course) throw Error("This practice link needs a course not found in this vault. Sync the course files first.");
           this.configurePractice(selection.ids.map((id3) => byId.get(id3)), selection.title, course);
-        })().catch((e) => new import_obsidian64.Notice(errorText(e), 1e4));
+        })().catch((e) => new import_obsidian66.Notice(errorText(e), 1e4));
       });
     });
     registerShortcutGuide(this);
     this.addCommand({ id: "group-note-questions", name: "Group questions on this note\u2026", checkCallback: (checking) => {
-      const view = this.app.workspace.getActiveViewOfType(import_obsidian64.MarkdownView);
+      const view = this.app.workspace.getActiveViewOfType(import_obsidian66.MarkdownView);
       if (!view?.file) return false;
       if (!checking) void this.groupNoteQuestions(view.file.path);
       return true;
     } });
     this.addCommand({ id: "remove-note-questions", name: "Remove questions from this note\u2026", checkCallback: (checking) => {
-      const view = this.app.workspace.getActiveViewOfType(import_obsidian64.MarkdownView);
+      const view = this.app.workspace.getActiveViewOfType(import_obsidian66.MarkdownView);
       if (!view?.file) return false;
       if (!checking) void this.removeNoteQuestions(view.file.path);
       return true;
     } });
-    this.addCommand({ id: "manage-note-questions", name: "Manage questions in this note", hotkeys: [{ modifiers: ["Mod", "Alt"], key: "G" }], callback: () => void this.bank().then((bank) => manageNote(this.app, bank, (id3) => void this.openQuestion(id3))).catch((e) => new import_obsidian64.Notice(errorText(e))) });
-    if (this.app.vault.getName() === "study_studio_lab") this.addCommand({ id: "organize-course-lab", name: "Organize course lab into chapter folders", callback: () => void organizeCourseLab(this.app).then((n) => new import_obsidian64.Notice(`Moved ${n} lab notes into chapter folders.`, 8e3)).catch((e) => new import_obsidian64.Notice(errorText(e), 12e3)) });
+    this.addCommand({ id: "manage-note-questions", name: "Manage questions in this note", hotkeys: [{ modifiers: ["Mod", "Alt"], key: "G" }], callback: () => void this.bank().then((bank) => manageNote(this.app, bank, (id3) => void this.openQuestion(id3))).catch((e) => new import_obsidian66.Notice(errorText(e))) });
+    if (this.app.vault.getName() === "study_studio_lab") this.addCommand({ id: "organize-course-lab", name: "Organize course lab into chapter folders", callback: () => void organizeCourseLab(this.app).then((n) => new import_obsidian66.Notice(`Moved ${n} lab notes into chapter folders.`, 8e3)).catch((e) => new import_obsidian66.Notice(errorText(e), 12e3)) });
     this.registerMarkdownCodeBlockProcessor("study-dashboard", (source, el) => {
       const id3 = source.trim() || "all";
       if (!/^[\w-]+$/.test(id3)) {
@@ -57210,35 +57992,35 @@ var StudyStudio = class extends import_obsidian64.Plugin {
       }
       el.createEl("button", { text: id3 === "all" ? "Open all-course dashboard" : "Open course dashboard", cls: "mod-cta" }).onclick = () => void dashboard(this.app, () => this.bank(), id3);
     });
-    this.addCommand({ id: "study-dashboard", name: "Open study dashboard", callback: () => void dashboard(this.app, () => this.bank()).catch((e) => new import_obsidian64.Notice(errorText(e))) });
+    this.addCommand({ id: "study-dashboard", name: "Open study dashboard", callback: () => void dashboard(this.app, () => this.bank()).catch((e) => new import_obsidian66.Notice(errorText(e))) });
     this.addCommand({ id: "reset-note-practice", name: "Reset all practice questions in this note", checkCallback: (checking) => {
-      const view = this.app.workspace.getActiveViewOfType(import_obsidian64.MarkdownView);
+      const view = this.app.workspace.getActiveViewOfType(import_obsidian66.MarkdownView);
       if (!view?.file) return false;
       if (!checking) {
         const path = view.file.path;
         const source = view.getMode() === "source" ? view.editor.getValue() : void 0;
-        void (source === void 0 ? this.app.vault.read(view.file) : Promise.resolve(source)).then((raw) => this.resetPractice(path, noteQuestionIds(raw))).catch((e) => new import_obsidian64.Notice(errorText(e)));
+        void (source === void 0 ? this.app.vault.read(view.file) : Promise.resolve(source)).then((raw) => this.resetPractice(path, noteQuestionIds(raw))).catch((e) => new import_obsidian66.Notice(errorText(e)));
       }
       return true;
     } });
-    this.addCommand({ id: "manage-courses", name: "Manage courses", callback: () => void manageCourses(this.app).catch((e) => new import_obsidian64.Notice(errorText(e))) });
+    this.addCommand({ id: "manage-courses", name: "Manage courses", callback: () => void manageCourses(this.app).catch((e) => new import_obsidian66.Notice(errorText(e))) });
     this.addCommand({ id: "assign-courses", name: "Assign current note to courses", callback: () => {
       const file = this.app.workspace.getActiveFile();
-      if (file) void assignCourses(this.app, file).catch((e) => new import_obsidian64.Notice(errorText(e)));
-      else new import_obsidian64.Notice("Open a question or exam source note first.");
+      if (file) void assignCourses(this.app, file).catch((e) => new import_obsidian66.Notice(errorText(e)));
+      else new import_obsidian66.Notice("Open a question or exam source note first.");
     } });
     const candidate = (file) => file.extension === "md" && (this.authoredPaths.has(file.path) || file.path.startsWith(QUESTIONS + "/") || !!this.app.metadataCache.getFileCache(file)?.frontmatter?.study);
     this.questionIndex = new QuestionIndex({
       paths: () => this.app.vault.getMarkdownFiles().filter(candidate).map((f) => f.path),
       read: async (path) => {
         const file = this.app.vault.getAbstractFileByPath(path);
-        return file instanceof import_obsidian64.TFile && candidate(file) ? this.app.vault.read(file) : void 0;
+        return file instanceof import_obsidian66.TFile && candidate(file) ? this.app.vault.read(file) : void 0;
       }
     });
     this.register(() => this.questionIndex.dispose());
     this.app.workspace.trigger("study-code-annotations-ready");
     const changed = (file) => {
-      if (file instanceof import_obsidian64.TFile && (candidate(file) || this.questionIndex.has(file.path))) this.questionIndex.invalidate(file.path);
+      if (file instanceof import_obsidian66.TFile && (candidate(file) || this.questionIndex.has(file.path))) this.questionIndex.invalidate(file.path);
     };
     this.registerEvent(this.app.vault.on("create", changed));
     this.registerEvent(this.app.vault.on("modify", changed));
@@ -57246,7 +58028,7 @@ var StudyStudio = class extends import_obsidian64.Plugin {
       changed(file);
       for (const path of this.authoredPaths) if (within(path, file.path)) this.authoredPaths.delete(path);
       for (const path of Object.keys(this.noteLocations)) if (within(path, file.path)) delete this.noteLocations[path];
-      void this.persistPractice().catch((e) => new import_obsidian64.Notice(errorText(e)));
+      void this.persistPractice().catch((e) => new import_obsidian66.Notice(errorText(e)));
     }));
     this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
       for (const path of [...this.authoredPaths]) if (within(path, oldPath)) {
@@ -57256,10 +58038,10 @@ var StudyStudio = class extends import_obsidian64.Plugin {
       try {
         this.renamePractice(oldPath, file.path);
       } catch (e) {
-        new import_obsidian64.Notice(errorText(e));
+        new import_obsidian66.Notice(errorText(e));
       }
       this.questionIndex.invalidate(oldPath);
-      if (file instanceof import_obsidian64.TFile) this.questionIndex.invalidate(file.path);
+      if (file instanceof import_obsidian66.TFile) this.questionIndex.invalidate(file.path);
       else {
         this.questionIndex.invalidatePrefix(oldPath);
         this.questionIndex.discover();
@@ -57275,21 +58057,21 @@ var StudyStudio = class extends import_obsidian64.Plugin {
       }
     }));
     this.addCommand({ id: "question-index-status", name: "Show question index status", callback: () => {
-      void this.questionIndex.ready().then(() => new import_obsidian64.Notice(JSON.stringify(this.questionIndex.stats()), 1e4)).catch((e) => new import_obsidian64.Notice(errorText(e)));
+      void this.questionIndex.ready().then(() => new import_obsidian66.Notice(JSON.stringify(this.questionIndex.stats()), 1e4)).catch((e) => new import_obsidian66.Notice(errorText(e)));
     } });
     this.addCommand({ id: "create-exam", name: "Create exam", callback: () => {
-      void this.editExam().catch((e) => new import_obsidian64.Notice(errorText(e)));
+      void this.editExam().catch((e) => new import_obsidian66.Notice(errorText(e)));
     } });
     this.addCommand({ id: "edit-exam", name: "Edit current exam", editorCallback: (_editor, view) => {
-      if (view.file) void this.editExam(view.file).catch((e) => new import_obsidian64.Notice(errorText(e)));
+      if (view.file) void this.editExam(view.file).catch((e) => new import_obsidian66.Notice(errorText(e)));
     } });
     this.addCommand({ id: "start-exam", name: "Start current exam", editorCallback: (_editor, view) => {
-      if (view.file) void this.app.vault.read(view.file).then((raw) => this.launchExam(parseExam(raw))).catch((e) => new import_obsidian64.Notice(errorText(e)));
+      if (view.file) void this.app.vault.read(view.file).then((raw) => this.launchExam(parseExam(raw))).catch((e) => new import_obsidian66.Notice(errorText(e)));
     } });
     this.addCommand({ id: "resume-exam", name: "Resume exam or view exam results", callback: () => {
       void (async () => {
         const files = this.app.vault.getFiles().filter((f) => f.path.startsWith(`${ROOT2}/Exam sessions/`) && f.extension === "json").sort((a2, b) => b.stat.mtime - a2.stat.mtime);
-        const modal = new import_obsidian64.Modal(this.app);
+        const modal = new import_obsidian66.Modal(this.app);
         modal.titleEl.setText("Exam sessions");
         if (!files.length) modal.contentEl.createEl("p", { text: "No exams started yet." });
         for (const file of files) {
@@ -57304,7 +58086,7 @@ var StudyStudio = class extends import_obsidian64.Plugin {
           }
         }
         modal.open();
-      })().catch((e) => new import_obsidian64.Notice(errorText(e)));
+      })().catch((e) => new import_obsidian66.Notice(errorText(e)));
     } });
     this.registerMarkdownCodeBlockProcessor("study-exam", async (source, el, ctx) => {
       try {
@@ -57317,7 +58099,7 @@ var StudyStudio = class extends import_obsidian64.Plugin {
         const { file, exam } = matches[0];
         el.addClass("study-exam-launcher");
         const sheet = el.createDiv("study-print-sheet study-print-only");
-        const owner = new import_obsidian64.MarkdownRenderChild(sheet);
+        const owner = new import_obsidian66.MarkdownRenderChild(sheet);
         ctx.addChild(owner);
         const printSession = createSession(exam, await this.bank(), "print-preview", () => 0);
         let section = "";
@@ -57334,14 +58116,14 @@ var StudyStudio = class extends import_obsidian64.Plugin {
         const printMenu = (event) => {
           event.preventDefault();
           event.stopPropagation();
-          new import_obsidian64.Menu().addItem((x) => x.setTitle("Show printable question sheet").onClick(() => {
+          new import_obsidian66.Menu().addItem((x) => x.setTitle("Show printable question sheet").onClick(() => {
             sheet.toggleClass("study-print-only", false);
             sheet.scrollIntoView({ block: "start" });
           })).showAtPosition({ x: event.clientX, y: event.clientY });
         };
         el.addEventListener("contextmenu", printMenu);
-        el.createEl("button", { text: "Start new exam", cls: "mod-cta" }).onclick = () => void this.app.vault.read(file).then((raw) => this.launchExam(parseExam(raw))).catch((e) => new import_obsidian64.Notice(errorText(e)));
-        el.createEl("button", { text: "Edit exam" }).onclick = () => void this.editExam(file).catch((e) => new import_obsidian64.Notice(errorText(e)));
+        el.createEl("button", { text: "Start new exam", cls: "mod-cta" }).onclick = () => void this.app.vault.read(file).then((raw) => this.launchExam(parseExam(raw))).catch((e) => new import_obsidian66.Notice(errorText(e)));
+        el.createEl("button", { text: "Edit exam" }).onclick = () => void this.editExam(file).catch((e) => new import_obsidian66.Notice(errorText(e)));
       } catch (e) {
         el.createEl("p", { text: errorText(e), cls: "study-error" });
       }
@@ -57353,7 +58135,7 @@ var StudyStudio = class extends import_obsidian64.Plugin {
     this.drafts = this.savedData.practiceDrafts && typeof this.savedData.practiceDrafts === "object" && !Array.isArray(this.savedData.practiceDrafts) ? this.savedData.practiceDrafts : {};
     this.completions = this.savedData.practiceCompletions && typeof this.savedData.practiceCompletions === "object" && !Array.isArray(this.savedData.practiceCompletions) ? this.savedData.practiceCompletions : {};
     for (const open of [true, false]) this.addCommand({ id: open ? "expand-all-questions" : "collapse-all-questions", name: open ? "Expand all questions in this note" : "Collapse all questions in this note", checkCallback: (checking) => {
-      const view = this.app.workspace.getActiveViewOfType(import_obsidian64.MarkdownView);
+      const view = this.app.workspace.getActiveViewOfType(import_obsidian66.MarkdownView);
       if (!view?.file) return false;
       if (!checking) this.expandNote(view.file.path, open);
       return true;
@@ -57368,7 +58150,7 @@ var StudyStudio = class extends import_obsidian64.Plugin {
         const groupMenu = (event) => {
           event.preventDefault();
           event.stopPropagation();
-          const menu = new import_obsidian64.Menu().addItem((item) => item.setTitle("1 \xB7 Reset group practice").setIcon("rotate-ccw").onClick(() => void this.resetPractice(practiceContext, group2.questions).catch((e) => new import_obsidian64.Notice(errorText(e))))).addItem((item) => item.setTitle("2 \xB7 Remove multiple questions from this note\u2026").setIcon("trash").onClick(() => void this.removeNoteQuestions(ctx.sourcePath))).addItem((item) => item.setTitle("3 \xB7 Edit group and parent prompt\u2026").setIcon("pencil").onClick(() => void this.bank().then((bank) => editGroup(this.app, ctx.sourcePath, bank, ctx.getSectionInfo(el)?.lineStart, group2.title, this.groupTools(ctx.sourcePath))).catch((e) => new import_obsidian64.Notice(errorText(e)))));
+          const menu = new import_obsidian66.Menu().addItem((item) => item.setTitle("1 \xB7 Reset group practice").setIcon("rotate-ccw").onClick(() => void this.resetPractice(practiceContext, group2.questions).catch((e) => new import_obsidian66.Notice(errorText(e))))).addItem((item) => item.setTitle("2 \xB7 Remove multiple questions from this note\u2026").setIcon("trash").onClick(() => void this.removeNoteQuestions(ctx.sourcePath))).addItem((item) => item.setTitle("3 \xB7 Edit group and parent prompt\u2026").setIcon("pencil").onClick(() => void this.bank().then((bank) => editGroup(this.app, ctx.sourcePath, bank, ctx.getSectionInfo(el)?.lineStart, group2.title, this.groupTools(ctx.sourcePath))).catch((e) => new import_obsidian66.Notice(errorText(e)))));
           const rect = summary.getBoundingClientRect();
           menu.showAtPosition({ x: "clientX" in event ? event.clientX : rect.left, y: "clientY" in event ? event.clientY : rect.bottom });
         };
@@ -57378,7 +58160,7 @@ var StudyStudio = class extends import_obsidian64.Plugin {
         });
         const host = details.createDiv();
         if (group2.prompt) {
-          const parent = host.createDiv("study-group-prompt"), owner = new import_obsidian64.MarkdownRenderChild(parent);
+          const parent = host.createDiv("study-group-prompt"), owner = new import_obsidian66.MarkdownRenderChild(parent);
           ctx.addChild(owner);
           await RichMarkdown.render(this.app, group2.prompt, parent, ctx.sourcePath, owner);
         }
@@ -57402,9 +58184,9 @@ var StudyStudio = class extends import_obsidian64.Plugin {
         new GroupEditor(this.app, path, bank, { title: "", questions: [] }, async (group2) => {
           if (view.file?.path !== path || editor.getValue() !== raw) throw Error("Note changed. Reopen Insert question group.");
           editor.replaceRange("\n" + embedSource(group2.questions, group2.title, group2.prompt) + "\n", from, to);
-          if (view instanceof import_obsidian64.MarkdownView) await this.app.workspace.revealLeaf(view.leaf);
+          if (view instanceof import_obsidian66.MarkdownView) await this.app.workspace.revealLeaf(view.leaf);
         }, destination.scope, this.groupTools(path)).open();
-      }).catch((e) => new import_obsidian64.Notice(errorText(e)));
+      }).catch((e) => new import_obsidian66.Notice(errorText(e)));
     } });
     this.registerMarkdownCodeBlockProcessor(
       "study",
@@ -57439,7 +58221,7 @@ var StudyStudio = class extends import_obsidian64.Plugin {
             if (loaded) return;
             event.preventDefault();
             event.stopPropagation();
-            const menu = new import_obsidian64.Menu();
+            const menu = new import_obsidian66.Menu();
             menu.addItem((i) => i.setTitle("3 \xB7 Edit question").onClick(() => void this.openQuestion(id3)));
             menu.addItem((i) => i.setTitle("7 \xB7 Remove from this note\u2026").onClick(() => void this.removeNoteQuestions(ctx.sourcePath, [id3])));
             menu.addItem((i) => i.setTitle("9 \xB7 Delete question everywhere\u2026").setIcon("trash").onClick(() => void this.deleteQuestions([id3])));
@@ -57476,7 +58258,7 @@ var StudyStudio = class extends import_obsidian64.Plugin {
             (el, q) => new Card(el, this, q, "author-preview", void 0, true)
           ).open();
         } catch (e) {
-          new import_obsidian64.Notice(errorText(e));
+          new import_obsidian66.Notice(errorText(e));
         }
       }
     });
@@ -57499,12 +58281,12 @@ var StudyStudio = class extends import_obsidian64.Plugin {
       editorCallback: (editor, view) => {
         const source = editor.getValue(), from = editor.getCursor("from"), to = editor.getCursor("to");
         void Promise.all([this.bank(), chapterDestination(this.app, view.file ?? void 0)]).then(([bank, destination]) => new ScopedQuestionPicker(this.app, bank, destination.scope, (q) => {
-          if (this.app.workspace.getActiveViewOfType(import_obsidian64.MarkdownView) !== view || editor.getValue() !== source) {
-            new import_obsidian64.Notice("Note changed. Reopen Insert question card.");
+          if (this.app.workspace.getActiveViewOfType(import_obsidian66.MarkdownView) !== view || editor.getValue() !== source) {
+            new import_obsidian66.Notice("Note changed. Reopen Insert question card.");
             return;
           }
           editor.replaceRange("\n" + embedSource([q.definition.id]) + "\n", from, to);
-        }, "Insert question card").open()).catch((e) => new import_obsidian64.Notice(errorText(e)));
+        }, "Insert question card").open()).catch((e) => new import_obsidian66.Notice(errorText(e)));
       }
     });
     this.addCommand({
@@ -57537,11 +58319,11 @@ var StudyStudio = class extends import_obsidian64.Plugin {
             { line: 0, ch: 0 },
             editor.offsetToPos(raw.length)
           );
-          new import_obsidian64.Notice(
+          new import_obsidian66.Notice(
             "Selection is now a blank; its answer was saved in properties."
           );
         } catch (e) {
-          new import_obsidian64.Notice(errorText(e));
+          new import_obsidian66.Notice(errorText(e));
         }
       }
     });
@@ -57556,7 +58338,7 @@ var StudyStudio = class extends import_obsidian64.Plugin {
             view.file?.path ?? ""
           ).open();
         } catch (e) {
-          new import_obsidian64.Notice(errorText(e));
+          new import_obsidian66.Notice(errorText(e));
         }
       }
     });
@@ -57576,10 +58358,10 @@ var StudyStudio = class extends import_obsidian64.Plugin {
             serialize(d, q.prompt, q.explanation)
           );
           await this.app.workspace.getLeaf("tab").openFile(file);
-          new import_obsidian64.Notice(
+          new import_obsidian66.Notice(
             "Variant created. Edit its prompt, blanks and answers; family ID stays shared."
           );
-        })().catch((e) => new import_obsidian64.Notice(errorText(e)));
+        })().catch((e) => new import_obsidian66.Notice(errorText(e)));
       }
     });
     this.addCommand({
@@ -57602,7 +58384,7 @@ var StudyStudio = class extends import_obsidian64.Plugin {
             ),
             view.file?.path ?? ""
           ).open();
-        })().catch((e) => new import_obsidian64.Notice(errorText(e)));
+        })().catch((e) => new import_obsidian66.Notice(errorText(e)));
       }
     });
     this.addCommand({
@@ -57611,7 +58393,7 @@ var StudyStudio = class extends import_obsidian64.Plugin {
       callback: () => {
         void this.bank().then((bank) => {
           if (!bank.length) {
-            new import_obsidian64.Notice("Create a question first.");
+            new import_obsidian66.Notice("Create a question first.");
             return;
           }
           new PickQuestion(
@@ -57619,13 +58401,13 @@ var StudyStudio = class extends import_obsidian64.Plugin {
             bank,
             (q) => new Review(this, [q], "question-bank").open()
           ).open();
-        }).catch((e) => new import_obsidian64.Notice(errorText(e)));
+        }).catch((e) => new import_obsidian66.Notice(errorText(e)));
       }
     });
     this.addCommand({
       id: "history",
       name: "Show review history",
-      callback: () => void this.history().catch((e) => new import_obsidian64.Notice(errorText(e)))
+      callback: () => void this.history().catch((e) => new import_obsidian66.Notice(errorText(e)))
     });
     this.addRibbonIcon(
       "graduation-cap",
@@ -57637,13 +58419,13 @@ var StudyStudio = class extends import_obsidian64.Plugin {
             bank,
             (q) => new Review(this, [q], "question-bank").open()
           ).open()
-        ).catch((e) => new import_obsidian64.Notice(errorText(e)));
+        ).catch((e) => new import_obsidian66.Notice(errorText(e)));
       }
     );
   }
   async ensureFolder(path) {
     let parent = "";
-    for (const part of (0, import_obsidian64.normalizePath)(path).split("/")) {
+    for (const part of (0, import_obsidian66.normalizePath)(path).split("/")) {
       parent = parent ? `${parent}/${part}` : part;
       if (!this.app.vault.getAbstractFileByPath(parent)) {
         try {
@@ -57668,31 +58450,31 @@ var StudyStudio = class extends import_obsidian64.Plugin {
     try {
       const bank = await this.bank(), questions = bank.filter((q) => ids.includes(q.definition.id));
       if (!questions.length) {
-        new import_obsidian64.Notice("No saved questions to delete.");
+        new import_obsidian66.Notice("No saved questions to delete.");
         return;
       }
       new DeleteQuestions(this, questions, done).open();
     } catch (e) {
-      new import_obsidian64.Notice(errorText(e));
+      new import_obsidian66.Notice(errorText(e));
     }
   }
   groupingMode;
   async groupNoteQuestions(path) {
     try {
-      const view = this.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian64.MarkdownView && v.file?.path === path);
+      const view = this.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian66.MarkdownView && v.file?.path === path);
       if (!view?.file) return;
       const file = view.file;
       this.groupingMode?.unload();
-      const snapshot = await this.app.vault.read(file);
+      const snapshot2 = await this.app.vault.read(file);
       const mode = new NoteGrouping(this, view, path, () => {
         this.removeChild(mode);
         if (this.groupingMode === mode) this.groupingMode = void 0;
       }, async (lines) => {
-        const bank = await this.bank(), destination = await chapterDestination(this.app, file), blocks = embeds(snapshot).filter((b) => !b.group && lines.includes(snapshot.slice(0, b.start).split("\n").length - 1));
-        groupOccurrences(snapshot, lines, "New group");
+        const bank = await this.bank(), destination = await chapterDestination(this.app, file), blocks = embeds(snapshot2).filter((b) => !b.group && lines.includes(snapshot2.slice(0, b.start).split("\n").length - 1));
+        groupOccurrences(snapshot2, lines, "New group");
         new GroupEditor(this.app, path, bank, { title: "", questions: blocks.flatMap((b) => b.ids) }, async (group2) => {
           await this.app.vault.process(file, (current) => {
-            if (current !== snapshot) throw Error("Note changed. Cancel and select its questions again.");
+            if (current !== snapshot2) throw Error("Note changed. Cancel and select its questions again.");
             const grouped = groupOccurrences(current, lines, group2.title, group2.prompt), target = embeds(grouped).find((b) => b.group && b.title === group2.title && b.start === blocks[0].start);
             if (!target) throw Error("Group position changed.");
             return replaceEmbed(grouped, target, embedSource(group2.questions, group2.title, group2.prompt));
@@ -57703,13 +58485,13 @@ var StudyStudio = class extends import_obsidian64.Plugin {
       this.groupingMode = mode;
       this.addChild(mode);
     } catch (e) {
-      new import_obsidian64.Notice(errorText(e));
+      new import_obsidian66.Notice(errorText(e));
     }
   }
   groupTools(path) {
     return { preview: (host, q) => new Card(host, this, q, "group-preview", void 0, true), create: (kind, accept) => {
       void (async () => {
-        const source = this.app.vault.getAbstractFileByPath(path), destination = await chapterDestination(this.app, source instanceof import_obsidian64.TFile ? source : void 0), id3 = crypto.randomUUID(), questionPath = `${destination.folder}/Question-${id3}.md`, draft = intakeDraft(kind, id3, "New question", "", questionPath);
+        const source = this.app.vault.getAbstractFileByPath(path), destination = await chapterDestination(this.app, source instanceof import_obsidian66.TFile ? source : void 0), id3 = crypto.randomUUID(), questionPath = `${destination.folder}/Question-${id3}.md`, draft = intakeDraft(kind, id3, "New question", "", questionPath);
         draft.definition.title = "";
         if (destination.scope) draft.definition.courseIds = [destination.scope.courseId];
         if (destination.placement) draft.definition.chapters = [destination.placement];
@@ -57720,18 +58502,18 @@ var StudyStudio = class extends import_obsidian64.Plugin {
           accept(parseQuestion(raw, questionPath));
           return file;
         }).open();
-      })().catch((e) => new import_obsidian64.Notice(errorText(e)));
+      })().catch((e) => new import_obsidian66.Notice(errorText(e)));
     } };
   }
   removalMode;
   async removeNoteQuestions(path, selected) {
     try {
       const file = this.app.vault.getAbstractFileByPath(path);
-      if (!(file instanceof import_obsidian64.TFile)) return;
-      const view = this.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian64.MarkdownView && v.file?.path === path);
+      if (!(file instanceof import_obsidian66.TFile)) return;
+      const view = this.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian66.MarkdownView && v.file?.path === path);
       if (!selected) {
         if (!view) {
-          new import_obsidian64.Notice("Open this note to select its questions.");
+          new import_obsidian66.Notice("Open this note to select its questions.");
           return;
         }
         this.removalMode?.unload();
@@ -57746,26 +58528,26 @@ var StudyStudio = class extends import_obsidian64.Plugin {
       const ids = selected ?? embeds(view?.editor.getValue() ?? await this.app.vault.read(file)).flatMap((b) => b.ids);
       const bank = await this.bank(), questions = bank.filter((q) => ids.includes(q.definition.id));
       if (!questions.length) {
-        new import_obsidian64.Notice("No question cards in this note.");
+        new import_obsidian66.Notice("No question cards in this note.");
         return;
       }
       new DeleteQuestions(this, questions, () => {
       }, path).open();
     } catch (e) {
-      new import_obsidian64.Notice(errorText(e));
+      new import_obsidian66.Notice(errorText(e));
     }
   }
   async openQuestion(id3) {
-    const origin = this.app.workspace.getActiveViewOfType(import_obsidian64.MarkdownView)?.leaf;
+    const origin = this.app.workspace.getActiveViewOfType(import_obsidian66.MarkdownView)?.leaf;
     try {
       const q = await this.find(id3);
       const file = this.app.vault.getAbstractFileByPath(q.path);
-      if (file instanceof import_obsidian64.TFile) new QuestionEditor(this.app, file, q, (el, draft) => new Card(el, this, draft, "author-preview", void 0, true), void 0, (done) => void this.deleteQuestions([id3], () => {
+      if (file instanceof import_obsidian66.TFile) new QuestionEditor(this.app, file, q, (el, draft) => new Card(el, this, draft, "author-preview", void 0, true), void 0, (done) => void this.deleteQuestions([id3], () => {
         done();
         if (origin) void this.app.workspace.revealLeaf(origin);
       })).open();
     } catch (e) {
-      new import_obsidian64.Notice(errorText(e));
+      new import_obsidian66.Notice(errorText(e));
     }
   }
   async saveAttempt(attempt) {
