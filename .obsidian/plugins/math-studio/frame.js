@@ -1,430 +1,5 @@
 "use strict";
 (() => {
-  // src/layout.ts
-  function splitOuter(source, delimiter) {
-    const parts = [];
-    let start = 0, braces = 0, environments = 0;
-    for (let i = 0; i < source.length; i++) {
-      if (source[i] === "\\") {
-        const environment = source.slice(i).match(/^\\(begin|end)\{[^}]+\}/);
-        if (environment) {
-          environments += environment[1] === "begin" ? 1 : -1;
-          if (environments < 0) throw new Error("This compound layout must be edited in Native LaTeX.");
-          i += environment[0].length - 1;
-          continue;
-        }
-        if (!braces && !environments && source.startsWith(delimiter, i)) {
-          parts.push(source.slice(start, i));
-          i += delimiter.length - 1;
-          start = i + 1;
-          continue;
-        }
-        const command = source.slice(i).match(/^\\(?:[a-zA-Z]+|.)/s);
-        if (command) i += command[0].length - 1;
-        continue;
-      }
-      if (source[i] === "{") braces++;
-      else if (source[i] === "}") {
-        braces--;
-        if (braces < 0) throw new Error("This compound layout must be edited in Native LaTeX.");
-      } else if (!braces && !environments && source.startsWith(delimiter, i)) {
-        parts.push(source.slice(start, i));
-        i += delimiter.length - 1;
-        start = i + 1;
-      }
-    }
-    if (braces || environments) throw new Error("This compound layout must be edited in Native LaTeX.");
-    parts.push(source.slice(start));
-    return parts;
-  }
-  function alignEquation(source, alignment) {
-    let body = source.trim();
-    const environment = body.match(/^\\begin\{(aligned|gathered|array)\}(?:\{([lcr])\})?([\s\S]*)\\end\{\1\}$/);
-    if (environment && (environment[1] !== "array" || environment[2])) body = environment[3];
-    else if (body.startsWith("\\displaylines{") && body.endsWith("}")) body = body.slice(14, -1);
-    const rows2 = splitOuter(body, "\\\\").map((row) => {
-      if (/^\s*\[/.test(row)) throw new Error("This layout has custom row spacing. Keep it in Native LaTeX.");
-      const cells = splitOuter(row, "&");
-      if (cells.length > 2) throw new Error("This layout has multiple alignment pairs. Keep it in Native LaTeX.");
-      const joined = cells.join("").trim().replace(/^\\displaystyle\s*/, "");
-      if (alignment !== "equals") return joined || "{}";
-      const terms = splitOuter(joined, "=");
-      if (terms.length === 1 && cells.length === 2) return cells.map((x) => x.trim()).join(" & ");
-      return terms.length > 1 ? `${terms.shift()} &= ${terms.join("=")}` : `{} & ${joined || "{}"}`;
-    });
-    if (alignment === "equals") return `\\begin{aligned}${rows2.join("\\\\ ")}\\end{aligned}`;
-    if (alignment === "center") return `\\begin{gathered}${rows2.join("\\\\ ")}\\end{gathered}`;
-    return `\\begin{array}{${alignment === "left" ? "l" : "r"}}${rows2.map((x) => "\\displaystyle " + x).join("\\\\ ")}\\end{array}`;
-  }
-
-  // src/compact-ui.ts
-  var paths = {
-    sigma: '<path d="M18 4H6l7 8-7 8h12"/>',
-    matrix: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M4 15h16M9 4v16M15 4v16"/>',
-    text: '<path d="M4 5h16M12 5v15M8 20h8M4 5v3M20 5v3"/>',
-    color: '<circle cx="12" cy="12" r="8"/><path d="M12 4v16"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/>',
-    tag: '<path d="M20 13 13 20a2 2 0 0 1-3 0l-7-7V3h10l7 7a2 2 0 0 1 0 3Z"/><circle cx="7.5" cy="7.5" r="1"/>',
-    layout: '<path d="M4 5h16M7 10h10M4 15h16M7 20h10"/>',
-    undo: '<path d="M3 10h10a7 7 0 0 1 7 7M3 10l5-5M3 10l5 5"/>',
-    redo: '<path d="M21 10H11a7 7 0 0 0-7 7M21 10l-5-5M21 10l-5 5"/>',
-    more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>'
-  };
-  function icon(button2, name, label2) {
-    button2.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]}</svg>`;
-    button2.title = label2;
-    button2.setAttribute("aria-label", label2);
-    button2.classList.add("tool");
-  }
-  function compactUI(e) {
-    const { bar: bar2, mf: mf2, resize: resize2 } = e, doc = bar2.ownerDocument;
-    const style2 = doc.createElement("style");
-    style2.textContent = `
- body{padding:8px;font-size:13px}button,input,select{font-size:12px}button{min-height:26px;padding:3px 10px}.bar{gap:2px;margin:0 0 6px}.math-wrap{padding:2px;margin:0}
- .toolbar{display:flex;flex-wrap:nowrap;align-items:center;gap:2px;height:28px;position:relative}.tool{display:inline-flex;flex:none;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:0;background:transparent;color:var(--text-muted);border-radius:5px;cursor:pointer}.tool:hover{background:var(--background-modifier-hover);color:var(--text-normal)}.tool.active{color:var(--interactive-accent);background:color-mix(in srgb,var(--interactive-accent) 16%,transparent)}.tool-separator{width:1px;height:14px;margin:0 4px;background:var(--background-modifier-border);flex:none}.toolbar .more-tool{margin-left:auto}
- math-field{min-height:${e.display ? 76 : 56}px;padding:10px 14px;font-size:22px;border-color:var(--background-modifier-border);border-radius:6px}math-field::part(container){align-items:center;min-height:52px}math-field::part(content){align-self:center}math-field:focus-within{border-color:var(--interactive-accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--interactive-accent) 25%,transparent)}math-field::part(menu-toggle){display:none}
- .context-line{min-height:18px;margin:4px 2px 0;display:flex;align-items:center;font-size:11px;color:var(--text-muted)}.context-line[hidden]{display:none}.context-line .hint{margin:0;font-size:11px}.context-line button{border:0;background:none;padding:0 4px;color:var(--text-muted);min-height:18px;font-size:11px}.error:empty{display:none}.error{font-size:12px;line-height:1.45;margin:4px 2px;overflow-wrap:anywhere}
- .footer{margin-top:4px;gap:6px;min-height:26px}.footer button{height:26px;font-size:12px;padding:2px 12px}.footer button:not(.primary){background:transparent;border-color:transparent}.footer #status{font-size:11px;color:var(--text-muted)}
- .drawer{margin:6px 0 0!important;width:100%!important;border:1px solid var(--background-modifier-border);border-radius:6px;background:var(--background-secondary);padding:8px!important;box-shadow:none!important}.drawer[hidden],.menu[hidden],.context-line [hidden]{display:none!important}.drawer-head{display:flex;align-items:center;gap:6px;min-height:24px;margin-bottom:6px;font-size:12px;font-weight:600}.drawer-close{margin-left:auto;min-height:22px;width:22px;padding:0;border:0;background:transparent;font-size:16px;color:var(--text-muted)}
- .palette .grid{max-height:192px}.palette .template{height:32px;font-size:12px;padding:3px 8px;gap:8px}.palette .template .preview{order:-1;font-size:18px;min-width:72px;max-width:120px;overflow:hidden}.template-name{flex:1}.palette .search{height:28px;margin-bottom:6px}.palette .categories{gap:2px;padding-bottom:4px;margin-bottom:4px;flex-wrap:nowrap}.palette .categories button{min-width:0;flex:1;padding:4px;font-size:11px}.palette .categories button>span:last-child{display:none}.palette .modes{margin:4px 0 0;padding:3px 0 0;gap:2px}.palette .modes button{font-size:11px;padding:3px}.palette-label{display:none}
- .colors .swatches{gap:6px;margin:6px 0 10px;flex-wrap:nowrap}.colors .swatch{width:22px;height:22px;min-height:22px;padding:2px}.colors .color-custom{gap:5px;font-size:11px}.colors .color-custom input[type=color]{width:30px;height:26px}.colors .color-custom input[type=text]{width:78px;height:26px}.colors>.hint,.matrix>.hint,.tags>.hint{display:none}.colors>strong{display:none}.colors .color-error:empty{display:none}.color-error{min-height:0}
- .matrix label{font-size:11px;margin-right:6px;gap:4px}.matrix input{width:42px;padding:4px}.matrix .bar{margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.matrix .bar button{font-size:11px;padding:3px 4px}.tags input{width:100px}.tags select{max-width:190px}.menu{position:relative;margin:4px 0 6px 0;padding:4px;border:1px solid var(--background-modifier-border);background:var(--background-secondary);border-radius:6px}.menu button{display:flex;width:100%;text-align:left;align-items:center;background:transparent;border:0;border-radius:3px;height:28px;padding:4px 9px}.menu button:hover{background:var(--background-modifier-hover)}.menu .native{margin:0}.shortcut-drawer{line-height:1.6;color:var(--text-muted)}.shortcut-drawer .hint{font-size:12px;margin:0}.math-source-fallback{margin:0;padding:12px;white-space:pre-wrap;max-height:220px;overflow:auto;font:13px monospace;border:1px solid var(--background-modifier-border);border-radius:6px}
- @media(max-width:380px){.toolbar .history-tool{display:none}.menu .history-menu{display:flex}.tool-separator{margin:0 2px}}@media(min-width:381px){.menu .history-menu{display:none}}
- `;
-    doc.head.append(style2);
-    const old = Array.from(bar2.querySelectorAll("button")), find = (name) => old.find((b) => b.textContent === name);
-    const palette2 = find("Palette \\"), matrix3 = find("Matrix"), color = find("Color"), undo = find("Undo"), redo = find("Redo"), number = find("Equation number"), copy = find("Copy LaTeX"), native = find("Native LaTeX");
-    const menu = doc.createElement("div");
-    menu.className = "menu";
-    menu.hidden = true;
-    const layoutMenu = e.layout;
-    layoutMenu.className = "menu";
-    layoutMenu.hidden = true;
-    layoutMenu.querySelector("span")?.remove();
-    const shortcuts = doc.createElement("div");
-    shortcuts.className = "drawer shortcut-drawer";
-    shortcuts.hidden = true;
-    shortcuts.append(e.hint);
-    const drawers = [e.palette, e.colors, e.matrix, e.tags, shortcuts];
-    let saved = null;
-    let specialContext = false;
-    const close = (restore = false) => {
-      for (const panel of [...drawers, menu, layoutMenu]) panel.hidden = true;
-      for (const b of Array.from(bar2.querySelectorAll("button"))) b.classList.remove("active");
-      if (restore) {
-        if (saved) mf2.selection = saved;
-        mf2.focus();
-      }
-      resize2();
-    };
-    const open = (panel) => {
-      saved = structuredClone(mf2.selection);
-      for (const other of [...drawers, menu, layoutMenu]) if (other !== panel) other.hidden = true;
-      panel.hidden = false;
-      for (const b of Array.from(bar2.querySelectorAll("button"))) if (b !== text) b.classList.remove("active");
-      for (const [b, p] of [[palette2, e.palette], [color, e.colors], [matrix3, e.matrix]]) if (p === panel) b.classList.add("active");
-      resize2();
-    };
-    for (const [panel, title] of [[e.palette, "Insert"], [e.colors, "Text color"], [e.matrix, "Matrix"], [e.tags, "Equation number"], [shortcuts, "Keyboard shortcuts"]]) {
-      panel.classList.add("drawer");
-      const head = doc.createElement("div");
-      head.className = "drawer-head";
-      head.textContent = title;
-      const x = doc.createElement("button");
-      x.textContent = "\xD7";
-      x.title = "Close " + title;
-      x.setAttribute("aria-label", x.title);
-      x.className = "drawer-close";
-      x.onclick = () => close(true);
-      head.append(x);
-      panel.prepend(head);
-    }
-    for (const [b, panel] of [[palette2, e.palette], [matrix3, e.matrix], [color, e.colors], [number, e.tags]]) {
-      b.addEventListener("mousedown", () => {
-        saved = structuredClone(mf2.selection);
-      });
-      b.addEventListener("click", () => {
-        if (!panel.hidden) {
-          for (const other of [...drawers, menu, layoutMenu]) if (other !== panel) other.hidden = true;
-          b.classList.add("active");
-        }
-        resize2();
-      });
-    }
-    bar2.replaceChildren();
-    bar2.className = "toolbar";
-    const add = (b, name, label2) => {
-      icon(b, name, label2);
-      b.addEventListener("mousedown", (event) => event.preventDefault());
-      bar2.append(b);
-      return b;
-    };
-    const make = (name, label2, fn) => {
-      const b = doc.createElement("button");
-      b.type = "button";
-      b.onclick = fn;
-      return add(b, name, label2);
-    };
-    const separator = () => {
-      const s = doc.createElement("span");
-      s.className = "tool-separator";
-      bar2.append(s);
-    };
-    add(palette2, "sigma", "Insert symbols (\\ or Ctrl+Space)");
-    add(matrix3, "matrix", "Matrix");
-    const text = make("text", "Text mode", () => {
-      close();
-      mf2.focus();
-      mf2.executeCommand(["switchMode", mf2.mode === "text" ? "math" : "text"]);
-    });
-    text.disabled = !!e.blocked;
-    mf2.addEventListener("mode-change", () => text.classList.toggle("active", mf2.mode === "text"));
-    separator();
-    add(color, "color", "Text color (Cmd/Ctrl+Shift+C)");
-    const symbolSlot = doc.createElement("span");
-    symbolSlot.style.display = "contents";
-    bar2.append(symbolSlot);
-    if (e.display) {
-      separator();
-      make("layout", "Equation layout", () => {
-        const wasOpen = !layoutMenu.hidden;
-        close();
-        if (!wasOpen) open(layoutMenu);
-      }).disabled = !!e.blocked;
-    }
-    separator();
-    add(undo, "undo", "Undo").classList.add("history-tool");
-    add(redo, "redo", "Redo").classList.add("history-tool");
-    const more = make("more", "More equation actions", () => {
-      const wasOpen = !menu.hidden;
-      close();
-      if (!wasOpen) open(menu);
-    });
-    more.classList.add("more-tool");
-    if (e.display) menu.append(number);
-    menu.append(copy, native);
-    const action = (label2, fn, cls = "") => {
-      const b = doc.createElement("button");
-      b.textContent = label2;
-      b.className = cls;
-      b.onmousedown = (event) => event.preventDefault();
-      b.onclick = fn;
-      menu.append(b);
-      return b;
-    };
-    action("Undo", () => {
-      close();
-      undo.click();
-    }, "history-menu").disabled = !!e.blocked;
-    action("Redo", () => {
-      close();
-      redo.click();
-    }, "history-menu").disabled = !!e.blocked;
-    action("Math controls\u2026", () => {
-      close();
-      mf2.focus();
-      const r = mf2.getBoundingClientRect();
-      mf2.showMenu({ location: { x: r.left + 16, y: r.top + 20 }, modifiers: { alt: false, control: false, shift: false, meta: false } });
-    }).disabled = !!e.blocked;
-    action("Keyboard shortcuts", () => open(shortcuts));
-    const context = doc.createElement("div");
-    context.className = "context-line";
-    const defaultHint = doc.createElement("span");
-    defaultHint.textContent = "\u21E7\u21B5 Save \xB7 Esc Cancel \xB7 \\ Insert";
-    context.append(e.textHint, defaultHint);
-    const contextUpdate = () => {
-      context.hidden = specialContext;
-      defaultHint.hidden = specialContext || mf2.mode === "text";
-      e.textHint.hidden = specialContext || mf2.mode !== "text";
-      text.classList.toggle("active", mf2.mode === "text");
-    };
-    mf2.addEventListener("mode-change", contextUpdate);
-    contextUpdate();
-    e.save.textContent = "Save";
-    e.save.title = "Save equation (Shift+Enter)";
-    e.cancel.title = "Cancel (Esc)";
-    e.status.textContent = "";
-    doc.body.replaceChildren(bar2, menu, layoutMenu, e.wrap, context, ...drawers, e.error, e.footer);
-    for (const b of Array.from(layoutMenu.querySelectorAll("button"))) {
-      b.onmousedown = (event) => event.preventDefault();
-      b.addEventListener("click", () => close());
-    }
-    doc.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && [...drawers, menu, layoutMenu].some((p) => !p.hidden)) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        close(true);
-      }
-    }, true);
-    if (e.blocked) {
-      const pre = doc.createElement("pre");
-      pre.className = "math-source-fallback";
-      pre.textContent = mf2.value;
-      e.wrap.after(pre);
-      e.save.hidden = true;
-      native.textContent = "Edit LaTeX source";
-      native.className = "primary";
-      e.footer.append(native);
-    }
-    return { open, close, context, defaultHint, setSymbolContext(active) {
-      specialContext = active;
-      contextUpdate();
-    }, addSymbolControl(handler) {
-      const b = doc.createElement("button");
-      icon(b, "tag", "Tag symbol (Cmd/Ctrl+Shift+Y)");
-      b.onmousedown = (event) => event.preventDefault();
-      b.onclick = handler;
-      symbolSlot.append(b);
-      return b;
-    }, addDrawer(panel) {
-      drawers.push(panel);
-      panel.classList.add("drawer");
-      e.error.before(panel);
-    } };
-  }
-
-  // src/symbol-model.ts
-  var ID = /^[0-9a-z]{10}$/;
-  var clone = (value) => JSON.parse(JSON.stringify(value));
-  function escaped(s, i) {
-    let n = 0;
-    while (i > 0 && s[--i] === "\\") n++;
-    return n % 2 === 1;
-  }
-  function group(s, at) {
-    if (s[at] !== "{") return null;
-    let depth = 1;
-    for (let i = at + 1; i < s.length; i++) {
-      if (escaped(s, i)) continue;
-      if (s[i] === "%") {
-        const next = s.indexOf("\n", i);
-        if (next < 0) return null;
-        i = next;
-        continue;
-      }
-      if (s[i] === "{") depth++;
-      if (s[i] === "}" && !--depth) return { from: at, to: i + 1, body: s.slice(at + 1, i) };
-    }
-    return null;
-  }
-  function markers(tex) {
-    const out = [];
-    const command = /\\class\b/g;
-    let match;
-    while (match = command.exec(tex)) {
-      const from = match.index;
-      if (escaped(tex, from)) continue;
-      const line = tex.lastIndexOf("\n", from) + 1;
-      let commented = false;
-      for (let k = line; k < from; k++) if (tex[k] === "%" && !escaped(tex, k)) {
-        commented = true;
-        break;
-      }
-      if (commented) continue;
-      let at = command.lastIndex;
-      while (/\s/.test(tex[at] ?? "") && at < tex.length) at++;
-      const cls = group(tex, at);
-      if (!cls) continue;
-      const tokens = cls.body.trim().split(/\s+/);
-      if (!tokens.some((t) => t === "mjx-ss" || t.startsWith("mjx-ss-o-"))) continue;
-      const id = /^mjx-ss mjx-ss-o-([0-9a-z]{10})$/.exec(cls.body)?.[1];
-      if (!id) throw Error("Malformed symbol marker. Keep its source intact and repair the ID.");
-      at = cls.to;
-      while (/\s/.test(tex[at] ?? "") && at < tex.length) at++;
-      const body = group(tex, at);
-      if (!body) throw Error("Unclosed symbol marker.");
-      if (out.some((m) => from > m.from && from < m.to)) throw Error("Nested symbol tags are not supported.");
-      out.push({ id, from, to: body.to, bodyFrom: at + 1, bodyTo: body.to - 1, body: body.body });
-    }
-    return out;
-  }
-  function wrapSymbol(id, tex) {
-    if (!ID.test(id)) throw Error("Invalid occurrence ID.");
-    if (!tex.trim()) throw Error("Select a symbol first.");
-    if (markers(tex).length) throw Error("This selection already contains a symbol tag.");
-    return `\\class{mjx-ss mjx-ss-o-${id}}{${tex}}`;
-  }
-  function applyEdits(source, edits) {
-    const sorted = [...edits].sort((a, b) => a.from - b.from || a.to - b.to);
-    let last = 0, out = "";
-    for (const edit of sorted) {
-      if (edit.from < last || edit.to < edit.from || edit.to > source.length) throw Error("Overlapping or invalid symbol edits.");
-      out += source.slice(last, edit.from) + edit.insert;
-      last = edit.to;
-    }
-    return out + source.slice(last);
-  }
-  function semanticGlyph(tex) {
-    let out = "";
-    for (let i = 0; i < tex.length; ) {
-      const color = /^\\(textcolor|color)(?![A-Za-z])/.exec(tex.slice(i));
-      if (color) {
-        let at = i + color[0].length;
-        while (/\s/.test(tex[at] ?? "") && at < tex.length) at++;
-        if (tex[at] === "[") {
-          const end = tex.indexOf("]", at);
-          if (end < 0) return tex;
-          at = end + 1;
-        }
-        const name = group(tex, at);
-        if (name) {
-          if (color[1] === "color") {
-            i = name.to;
-            continue;
-          }
-          let bodyAt = name.to;
-          while (/\s/.test(tex[bodyAt] ?? "") && bodyAt < tex.length) bodyAt++;
-          const body = group(tex, bodyAt);
-          if (body) {
-            out += semanticGlyph(body.body);
-            i = body.to;
-            continue;
-          }
-        }
-      }
-      out += tex[i++];
-    }
-    const normalize = (s) => s.replace(/\s+/g, "").replace(/\\(?:left|right|displaystyle|textstyle|scriptstyle|scriptscriptstyle)\b/g, "").replace(/\\[,;!:]/g, "").replace(/([_^])\{([A-Za-z0-9])\}/g, "$1$2").replace(/\^\{\\prime\}|\^\\prime\b/g, "'");
-    let normalized = "", last = 0;
-    const text = /\\(?:text|mbox|operatorname)\b\s*/g;
-    let hit;
-    while (hit = text.exec(out)) {
-      const body = group(out, text.lastIndex);
-      if (!body) continue;
-      normalized += normalize(out.slice(last, hit.index)) + out.slice(hit.index, body.to);
-      last = body.to;
-      text.lastIndex = body.to;
-    }
-    return normalized + normalize(out.slice(last));
-  }
-  function freshId(existing) {
-    const used = new Set(existing);
-    for (let i = 0; i < 100; i++) {
-      const bytes = crypto.getRandomValues(new Uint8Array(10));
-      const id = Array.from(bytes, (n) => (n % 36).toString(36)).join("");
-      if (!used.has(id)) return id;
-    }
-    throw Error("Unable to allocate a unique symbol ID.");
-  }
-
-  // src/symbol-selection.ts
-  function findTaggedRange(info, start, end) {
-    for (let at = 0; at < info.length; at++) {
-      const value = info[at], latex = value?.latex?.trim();
-      if (!latex?.includes("mjx-ss-o-")) continue;
-      let hits;
-      try {
-        hits = markers(latex);
-      } catch {
-        continue;
-      }
-      if (hits.length !== 1 || hits[0].from !== 0 || hits[0].to !== latex.length) continue;
-      let before = at - 1;
-      while (before > 0 && (info[before]?.depth ?? 0) > (value?.depth ?? 0)) before--;
-      if (start >= before && end <= at) return { id: hits[0].id, range: [before, at] };
-    }
-    return null;
-  }
-
   // node_modules/mathlive/mathlive.mjs
   var __defProp = Object.defineProperty;
   var __defProps = Object.defineProperties;
@@ -34143,7 +33718,7 @@ data-command='["setEnvironment","pmatrix"]'>
     return "type" in item && item.type === "heading";
   }
   var ICON_CATALOG = {};
-  function icon2(name) {
+  function icon(name) {
     let icon22 = ICON_CATALOG[name];
     if (!icon22) {
       let markup;
@@ -34319,10 +33894,10 @@ data-command='["setEnvironment","pmatrix"]'>
       else li.removeAttribute("aria-disabled");
       if (this.checked === true) {
         li.setAttribute("aria-checked", "true");
-        li.append(icon2("checkmark"));
+        li.append(icon("checkmark"));
       } else if (this.checked === "mixed") {
         li.setAttribute("aria-checked", "mixed");
-        li.append(icon2("mixedmark"));
+        li.append(icon("mixedmark"));
       } else li.removeAttribute("aria-checked");
       if (this.ariaLabel) li.setAttribute("aria-label", this.ariaLabel);
       const span = document.createElement("span");
@@ -34338,7 +33913,7 @@ data-command='["setEnvironment","pmatrix"]'>
         kbd.innerHTML = getKeybindingMarkup(this._declaration.keyboardShortcut);
         li.append(kbd);
       }
-      if (this.type === "submenu") li.append(icon2("trailing-chevron"));
+      if (this.type === "submenu") li.append(icon("trailing-chevron"));
     }
     get element() {
       if (this._element) return this._element;
@@ -43162,6 +42737,794 @@ If you are using Vue, this may be because you are using the runtime-only build o
     return globalThis[Symbol.for("io.cortexjs.mathlive")];
   }
 
+  // src/symbol-model.ts
+  var ID = /^[0-9a-z]{10}$/;
+  var clone = (value) => JSON.parse(JSON.stringify(value));
+  function escaped(s, i) {
+    let n = 0;
+    while (i > 0 && s[--i] === "\\") n++;
+    return n % 2 === 1;
+  }
+  function group(s, at) {
+    if (s[at] !== "{") return null;
+    let depth = 1;
+    for (let i = at + 1; i < s.length; i++) {
+      if (escaped(s, i)) continue;
+      if (s[i] === "%") {
+        const next = s.indexOf("\n", i);
+        if (next < 0) return null;
+        i = next;
+        continue;
+      }
+      if (s[i] === "{") depth++;
+      if (s[i] === "}" && !--depth) return { from: at, to: i + 1, body: s.slice(at + 1, i) };
+    }
+    return null;
+  }
+  function markers(tex) {
+    const out = [];
+    const command = /\\class\b/g;
+    let match;
+    while (match = command.exec(tex)) {
+      const from = match.index;
+      if (escaped(tex, from)) continue;
+      const line = tex.lastIndexOf("\n", from) + 1;
+      let commented = false;
+      for (let k = line; k < from; k++) if (tex[k] === "%" && !escaped(tex, k)) {
+        commented = true;
+        break;
+      }
+      if (commented) continue;
+      let at = command.lastIndex;
+      while (/\s/.test(tex[at] ?? "") && at < tex.length) at++;
+      const cls = group(tex, at);
+      if (!cls) continue;
+      const tokens = cls.body.trim().split(/\s+/);
+      if (!tokens.some((t) => t === "mjx-ss" || t.startsWith("mjx-ss-o-"))) continue;
+      const id = /^mjx-ss mjx-ss-o-([0-9a-z]{10})$/.exec(cls.body)?.[1];
+      if (!id) throw Error("Malformed symbol marker. Keep its source intact and repair the ID.");
+      at = cls.to;
+      while (/\s/.test(tex[at] ?? "") && at < tex.length) at++;
+      const body = group(tex, at);
+      if (!body) throw Error("Unclosed symbol marker.");
+      if (out.some((m) => from > m.from && from < m.to)) throw Error("Nested symbol tags are not supported.");
+      out.push({ id, from, to: body.to, bodyFrom: at + 1, bodyTo: body.to - 1, body: body.body });
+    }
+    return out;
+  }
+  function wrapSymbol(id, tex) {
+    if (!ID.test(id)) throw Error("Invalid occurrence ID.");
+    if (!tex.trim()) throw Error("Select a symbol first.");
+    if (markers(tex).length) throw Error("This selection already contains a symbol tag.");
+    return `\\class{mjx-ss mjx-ss-o-${id}}{${tex}}`;
+  }
+  function applyEdits(source, edits) {
+    const sorted = [...edits].sort((a, b) => a.from - b.from || a.to - b.to);
+    let last = 0, out = "";
+    for (const edit of sorted) {
+      if (edit.from < last || edit.to < edit.from || edit.to > source.length) throw Error("Overlapping or invalid symbol edits.");
+      out += source.slice(last, edit.from) + edit.insert;
+      last = edit.to;
+    }
+    return out + source.slice(last);
+  }
+  function semanticGlyph(tex) {
+    let out = "";
+    for (let i = 0; i < tex.length; ) {
+      const color = /^\\(textcolor|color)(?![A-Za-z])/.exec(tex.slice(i));
+      if (color) {
+        let at = i + color[0].length;
+        while (/\s/.test(tex[at] ?? "") && at < tex.length) at++;
+        if (tex[at] === "[") {
+          const end = tex.indexOf("]", at);
+          if (end < 0) return tex;
+          at = end + 1;
+        }
+        const name = group(tex, at);
+        if (name) {
+          if (color[1] === "color") {
+            i = name.to;
+            continue;
+          }
+          let bodyAt = name.to;
+          while (/\s/.test(tex[bodyAt] ?? "") && bodyAt < tex.length) bodyAt++;
+          const body = group(tex, bodyAt);
+          if (body) {
+            out += semanticGlyph(body.body);
+            i = body.to;
+            continue;
+          }
+        }
+      }
+      out += tex[i++];
+    }
+    const normalize = (s) => s.replace(/\s+/g, "").replace(/\\(?:left|right|displaystyle|textstyle|scriptstyle|scriptscriptstyle)\b/g, "").replace(/\\[,;!:]/g, "").replace(/([_^])\{([A-Za-z0-9])\}/g, "$1$2").replace(/\^\{\\prime\}|\^\\prime\b/g, "'");
+    let normalized = "", last = 0;
+    const text = /\\(?:text|mbox|operatorname)\b\s*/g;
+    let hit;
+    while (hit = text.exec(out)) {
+      const body = group(out, text.lastIndex);
+      if (!body) continue;
+      normalized += normalize(out.slice(last, hit.index)) + out.slice(hit.index, body.to);
+      last = body.to;
+      text.lastIndex = body.to;
+    }
+    return normalized + normalize(out.slice(last));
+  }
+  function freshId(existing) {
+    const used = new Set(existing);
+    for (let i = 0; i < 100; i++) {
+      const bytes = crypto.getRandomValues(new Uint8Array(10));
+      const id = Array.from(bytes, (n) => (n % 36).toString(36)).join("");
+      if (!used.has(id)) return id;
+    }
+    throw Error("Unable to allocate a unique symbol ID.");
+  }
+
+  // src/reference-model.ts
+  var ID2 = "[A-Za-z0-9-]{1,80}";
+  var CLASS = new RegExp(`^klref kl-([ntbc])-(${ID2}(?:_${ID2})?)(?: kl-label-([0-9a-f]{16}))?$`);
+  var SAFE_CLASS = new RegExp(`^mjx-klref mjx-kl-([ntbc])-(${ID2}(?:_${ID2})?)(?: mjx-kl-label-([0-9a-f]{16}))?$`);
+  var escaped2 = (s, i) => {
+    let n = 0;
+    while (i > 0 && s[--i] === "\\") n++;
+    return n % 2 === 1;
+  };
+  function mathReferences(source) {
+    const out = [];
+    const command = /\\class\b/g;
+    let match;
+    while (match = command.exec(source)) {
+      const from = match.index;
+      if (escaped2(source, from)) continue;
+      const line = source.lastIndexOf("\n", from) + 1;
+      let comment = false;
+      for (let i = line; i < from; i++) if (source[i] === "%" && !escaped2(source, i)) {
+        comment = true;
+        break;
+      }
+      if (comment) continue;
+      const cls = group(source, command.lastIndex);
+      if (!cls) continue;
+      if (!/(?:^|\s)(?:mjx-)?klref(?:\s|$)/.test(cls.body)) continue;
+      const fields = CLASS.exec(cls.body) || SAFE_CLASS.exec(cls.body), body = group(source, cls.to);
+      if (!fields || !body) throw Error("Malformed knowledge reference. Keep its source intact and repair the link.");
+      if (out.some((r) => from > r.from && from < r.to)) throw Error("Nested knowledge references are not supported.");
+      out.push({ from, to: body.to, bodyFrom: cls.to + 1, bodyTo: body.to - 1, raw: source.slice(from, body.to), body: body.body, mode: fields[1], target: fields[2].replace("_", "."), baseline: fields[3] });
+    }
+    const symbols = markers(source);
+    let symbol = 0;
+    for (const reference of out) {
+      while (symbol < symbols.length && symbols[symbol].to <= reference.from) symbol++;
+      if (symbol < symbols.length && reference.from > symbols[symbol].from && reference.from < symbols[symbol].to) throw Error("A reference cannot be placed inside a symbol tag. Select the whole tagged symbol.");
+    }
+    return out;
+  }
+  function referencePreserver(original, initialSerialized) {
+    const originals = /* @__PURE__ */ new Map();
+    function registration(source, serialized, allowAmbiguous = false) {
+      const before = mathReferences(source), initial2 = mathReferences(serialized);
+      if (before.length !== initial2.length || before.some((r, i) => r.target !== initial2[i].target || r.mode !== initial2[i].mode || r.baseline !== initial2[i].baseline))
+        throw Error("The visual editor changed reference metadata. Use native LaTeX to preserve it.");
+      const next = /* @__PURE__ */ new Map();
+      initial2.forEach((r, i) => {
+        const set = next.get(r.raw) || new Set(originals.get(r.raw));
+        set.add(before[i].raw);
+        next.set(r.raw, set);
+      });
+      if (!allowAmbiguous && [...next.values()].some((set) => set.size > 1)) throw Error("This reference normalizes ambiguously. Use native LaTeX to preserve it.");
+      return next;
+    }
+    function register3(source, serialized, allowAmbiguous = false) {
+      for (const [raw, set] of registration(source, serialized, allowAmbiguous)) originals.set(raw, set);
+    }
+    register3(original, initialSerialized, true);
+    const serializeWith = (current, mapping) => {
+      const edits = [];
+      for (const r of mathReferences(current)) {
+        const matches = mapping.get(r.raw);
+        if (!matches) continue;
+        if (matches.size !== 1) throw Error("Repeated references normalized ambiguously. Use native LaTeX to preserve their source.");
+        const raw = [...matches][0];
+        if (raw !== r.raw) edits.push({ from: r.from, to: r.to, insert: raw });
+      }
+      return applyEdits(current, edits);
+    };
+    const serialize = (current) => serializeWith(current, originals);
+    const check = (source, serialized, current) => serializeWith(current, new Map([...originals, ...registration(source, serialized)]));
+    return Object.assign(serialize, { register: register3, check });
+  }
+  function insertedReference(before, after, canonical, removed) {
+    const desired = mathReferences(canonical);
+    if (desired.length !== 1 || desired[0].raw !== canonical) throw Error("Invalid prepared reference.");
+    const counts = /* @__PURE__ */ new Map();
+    for (const r of mathReferences(before)) counts.set(r.raw, (counts.get(r.raw) || 0) + 1);
+    if (removed) {
+      if (!counts.get(removed)) throw Error("Reference to change is missing.");
+      counts.set(removed, counts.get(removed) - 1);
+    }
+    const added = [];
+    for (const r of mathReferences(after)) {
+      const n = counts.get(r.raw) || 0;
+      if (n) counts.set(r.raw, n - 1);
+      else added.push(r);
+    }
+    if ([...counts.values()].some((n) => n !== 0) || added.length !== 1 || added[0].target !== desired[0].target || added[0].mode !== desired[0].mode || added[0].baseline !== desired[0].baseline)
+      throw Error("The editor changed other references during insertion. Your equation is unchanged.");
+    return added[0];
+  }
+
+  // src/layout.ts
+  function splitOuter(source, delimiter) {
+    const parts = [];
+    let start = 0, braces = 0, environments = 0;
+    for (let i = 0; i < source.length; i++) {
+      if (source[i] === "\\") {
+        const environment = source.slice(i).match(/^\\(begin|end)\{[^}]+\}/);
+        if (environment) {
+          environments += environment[1] === "begin" ? 1 : -1;
+          if (environments < 0) throw new Error("This compound layout must be edited in Native LaTeX.");
+          i += environment[0].length - 1;
+          continue;
+        }
+        if (!braces && !environments && source.startsWith(delimiter, i)) {
+          parts.push(source.slice(start, i));
+          i += delimiter.length - 1;
+          start = i + 1;
+          continue;
+        }
+        const command = source.slice(i).match(/^\\(?:[a-zA-Z]+|.)/s);
+        if (command) i += command[0].length - 1;
+        continue;
+      }
+      if (source[i] === "{") braces++;
+      else if (source[i] === "}") {
+        braces--;
+        if (braces < 0) throw new Error("This compound layout must be edited in Native LaTeX.");
+      } else if (!braces && !environments && source.startsWith(delimiter, i)) {
+        parts.push(source.slice(start, i));
+        i += delimiter.length - 1;
+        start = i + 1;
+      }
+    }
+    if (braces || environments) throw new Error("This compound layout must be edited in Native LaTeX.");
+    parts.push(source.slice(start));
+    return parts;
+  }
+  function alignEquation(source, alignment) {
+    let body = source.trim();
+    const environment = body.match(/^\\begin\{(aligned|gathered|array)\}(?:\{([lcr])\})?([\s\S]*)\\end\{\1\}$/);
+    if (environment && (environment[1] !== "array" || environment[2])) body = environment[3];
+    else if (body.startsWith("\\displaylines{") && body.endsWith("}")) body = body.slice(14, -1);
+    const rows2 = splitOuter(body, "\\\\").map((row) => {
+      if (/^\s*\[/.test(row)) throw new Error("This layout has custom row spacing. Keep it in Native LaTeX.");
+      const cells = splitOuter(row, "&");
+      if (cells.length > 2) throw new Error("This layout has multiple alignment pairs. Keep it in Native LaTeX.");
+      const joined = cells.join("").trim().replace(/^\\displaystyle\s*/, "");
+      if (alignment !== "equals") return joined || "{}";
+      const terms = splitOuter(joined, "=");
+      if (terms.length === 1 && cells.length === 2) return cells.map((x) => x.trim()).join(" & ");
+      return terms.length > 1 ? `${terms.shift()} &= ${terms.join("=")}` : `{} & ${joined || "{}"}`;
+    });
+    if (alignment === "equals") return `\\begin{aligned}${rows2.join("\\\\ ")}\\end{aligned}`;
+    if (alignment === "center") return `\\begin{gathered}${rows2.join("\\\\ ")}\\end{gathered}`;
+    return `\\begin{array}{${alignment === "left" ? "l" : "r"}}${rows2.map((x) => "\\displaystyle " + x).join("\\\\ ")}\\end{array}`;
+  }
+
+  // src/justification.ts
+  function justificationRowAt(source, offset) {
+    const env = source.match(/^(\s*)\\begin\{(aligned|gathered)\}([\s\S]*)\\end\{\2\}(\s*)$/);
+    if (!env) return 0;
+    let start = env[1].length + ("\\begin{" + env[2] + "}").length;
+    const rows2 = splitOuter(env[3], "\\\\");
+    for (let i = 0; i < rows2.length; i++) {
+      if (offset <= start + rows2[i].length) return i;
+      start += rows2[i].length + 2;
+    }
+    return rows2.length - 1;
+  }
+
+  // src/model.ts
+  function saveableLatex(latex) {
+    return latex.replace(/\\placeholder(?:\[[^\]]*\])?\{[^{}]*\}/g, "{}");
+  }
+
+  // src/justification-source.ts
+  function appendSourceJustification(source, reference, index) {
+    const env = /^(\s*)\\begin\{(aligned|gathered)\}([\s\S]*)\\end\{\2\}(\s*)$/.exec(source);
+    let at = source.trimEnd().length, join = "\\quad ";
+    if (env) {
+      const rows2 = splitOuter(env[3], "\\\\");
+      if (index < 0 || index >= rows2.length) throw Error("The selected equation row changed. Reopen it.");
+      at = env[1].length + ("\\begin{" + env[2] + "}").length;
+      for (let i = 0; i < index; i++) at += rows2[i].length + 2;
+      at += rows2[index].trimEnd().length;
+      join = env[2] === "aligned" && splitOuter(rows2[index], "&").length < 3 ? " && " : "\\quad ";
+    }
+    while (at > 0 && /[,.;:!?]/.test(source[at - 1]) && source[at - 2] !== "\\") at--;
+    return source.slice(0, at) + join + reference + source.slice(at);
+  }
+
+  // src/reference-editor.ts
+  function referenceEditor(o) {
+    const { mf: mf2, ui } = o;
+    const sourceStates = /* @__PURE__ */ new Map([[mf2.getValue(), o.initial]]);
+    let sourceEdited = false;
+    let busy = false;
+    const preserve = referencePreserver(o.initial, mf2.getValue());
+    const tint = mf2.ownerDocument.createElement("style");
+    tint.textContent = ".klref,.mjx-klref{border-bottom:1.5px dotted var(--kl-reference-color);cursor:pointer}";
+    mf2.shadowRoot?.append(tint);
+    const controls = ui.addReferenceControl(() => void link());
+    ui.addAction("Justify this step\u2026 (Cmd/Ctrl+J)", () => void justify());
+    const context = mf2.ownerDocument.createElement("div");
+    context.className = "reference-context";
+    context.hidden = true;
+    ui.context.after(context);
+    const style2 = mf2.ownerDocument.createElement("style");
+    style2.textContent = ".reference-context{font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:6px;margin:3px 2px}.reference-context[hidden]{display:none}.reference-context button{padding:0 3px;border:0;background:none;min-height:20px;color:var(--interactive-accent)}";
+    mf2.ownerDocument.head.append(style2);
+    context.append("Reference");
+    for (const [label2, handler] of [["Change", () => void link(true)], ["Remove link", () => remove()]]) {
+      const b = mf2.ownerDocument.createElement("button");
+      b.textContent = label2;
+      b.onclick = handler;
+      b.onmousedown = (e) => e.preventDefault();
+      context.append(b);
+    }
+    const caretReference = () => !!mf2.shadowRoot?.querySelector(".ML__caret")?.closest(".klref,.mjx-klref");
+    function state() {
+      const reason = busy ? "Finish choosing this reference." : mf2.selection.ranges.length !== 1 ? "Select one continuous expression." : mf2.selectionIsCollapsed ? "Select an expression to link." : "";
+      for (const b of [controls.button, controls.fallback]) {
+        b.disabled = !!reason;
+        b.title = reason || "Link selected expression (Cmd/Ctrl+K)";
+      }
+      context.hidden = !caretReference();
+      o.resize();
+    }
+    function owned() {
+      const start = Math.min(...mf2.selection.ranges.flat()), end = Math.max(...mf2.selection.ranges.flat());
+      const info = Array.from({ length: mf2.lastOffset + 1 }, (_, i) => mf2.getElementInfo(i));
+      for (let at = 0; at < info.length; at++) {
+        const atom = info[at], latex = atom?.latex?.trim();
+        if (!latex || !/^\\class\{(?:mjx-)?klref /.test(latex)) continue;
+        const refs = mathReferences(latex);
+        if (refs.length !== 1 || refs[0].from !== 0 || refs[0].to !== latex.length) continue;
+        let before = at - 1;
+        while (before > 0 && (info[before]?.depth ?? 0) > (atom?.depth ?? 0)) before--;
+        if (start >= before && end <= at) return { reference: refs[0], selection: { ranges: [[before, at]], direction: "forward" } };
+      }
+      return null;
+    }
+    function temporary() {
+      const field = new MathfieldElement();
+      field.mathVirtualKeyboardPolicy = "manual";
+      field.style.cssText = "position:fixed;left:-10000px;top:0;width:600px;visibility:hidden;pointer-events:none";
+      field.setAttribute("aria-hidden", "true");
+      mf2.ownerDocument.body.append(field);
+      return field;
+    }
+    function trial(body, selection2, replacement) {
+      const field = temporary();
+      try {
+        field.value = body;
+        if (field.getValue() !== body) throw Error("The expression changed during preparation. Reopen its reference control.");
+        field.selection = selection2;
+        field.insert(replacement, { format: "latex", insertionMode: "replaceSelection", selectionMode: "item" });
+        if (field.errors.length) throw Error("This reference cannot be rendered without changing its source.");
+        mathReferences(field.getValue());
+        markers(field.getValue());
+        return field.getValue();
+      } finally {
+        field.remove();
+      }
+    }
+    async function link(change = false) {
+      if (busy) return;
+      const originalSelection = structuredClone(mf2.selection);
+      let saved = originalSelection, before = mf2.getValue(), inserted = false, token;
+      const previousDisabled = o.save.disabled, previousReadOnly = mf2.readOnly;
+      try {
+        if (saved.ranges.length !== 1) throw Error("Select one continuous expression.");
+        const hit = owned();
+        if (hit && !change) throw Error("This expression is already linked. Use Change in its reference controls.");
+        if (change) {
+          if (!hit) throw Error("Select only inside the link to change it, or outside it to create a new one.");
+          saved = hit.selection;
+        } else if (mf2.selectionIsCollapsed) throw Error("Select the words or expression you want to link.");
+        const expression = change ? hit.reference.body : mf2.getValue(saved, "latex");
+        if (mathReferences(expression).length) throw Error("Select an expression without another reference inside it.");
+        trial(before, saved, "\\class{mjx-klref mjx-kl-c-selection-check}{" + expression + "}");
+        busy = true;
+        mf2.readOnly = true;
+        o.save.disabled = true;
+        state();
+        ui.close();
+        const prepared = await o.request("choose-reference", { expression, ...change ? { mode: hit.reference.mode, currentTarget: hit.reference.target } : {} });
+        if (!prepared) return;
+        token = prepared.token;
+        const wrapped = await o.request("wrap-reference", { token: prepared.token, body: prepared.expression });
+        const expected = trial(before, saved, wrapped.wrapper);
+        const insertedWrapper = insertedReference(before, expected, wrapped.wrapper, change ? hit.reference.raw : void 0);
+        preserve.check(wrapped.wrapper, insertedWrapper.raw, expected);
+        if (mf2.getValue() !== before) throw Error("The equation changed while choosing its reference. Try again.");
+        mf2.readOnly = false;
+        mf2.focus();
+        mf2.selection = saved;
+        mf2.insert(wrapped.wrapper, { format: "latex", insertionMode: "replaceSelection", selectionMode: "item" });
+        if (mf2.getValue() !== expected) {
+          mf2.executeCommand("undo");
+          throw Error("The editor changed this reference unexpectedly. Your previous expression was restored.");
+        }
+        preserve.register(wrapped.wrapper, insertedWrapper.raw);
+        inserted = true;
+      } catch (error2) {
+        o.error(error2.message);
+      } finally {
+        if (token) void o.request("discard-reference", { token }).catch(() => {
+        });
+        busy = false;
+        mf2.readOnly = previousReadOnly;
+        o.save.disabled = previousDisabled;
+        if (!inserted) mf2.selection = originalSelection;
+        mf2.focus();
+        if (inserted) mf2.dispatchEvent(new Event("input", { bubbles: true }));
+        state();
+      }
+    }
+    async function justify(rowOverride) {
+      if (busy) return;
+      const saved = structuredClone(mf2.selection), before = mf2.getValue(), previousDisabled = o.save.disabled, previousReadOnly = mf2.readOnly;
+      let token;
+      try {
+        if (saved.ranges.length !== 1) throw Error("Place the caret in one math row.");
+        const collapsed = mf2.selectionIsCollapsed, expression = collapsed ? "\\vphantom{0}" : mf2.getValue(saved, "latex");
+        const marked = trial(before, saved, "\\class{kl-justification-caret}{" + expression + "}");
+        busy = true;
+        mf2.readOnly = true;
+        o.save.disabled = true;
+        ui.close();
+        const prepared = await o.request("choose-reference", { expression: "Justification", mode: "auto", purpose: "justification" });
+        if (!prepared) return;
+        token = prepared.token;
+        const wrapped = await o.request("wrap-reference", { token, body: prepared.expression });
+        const rawBefore = sourceStates.get(before);
+        if (rawBefore === void 0) throw Error("Save or undo the equation edits before adding a source-preserving justification.");
+        const row = rowOverride ?? justificationRowAt(marked, marked.indexOf("\\class{kl-justification-caret}{"));
+        const rawAfter = appendSourceJustification(rawBefore, wrapped.wrapper, row);
+        const field = temporary();
+        let expected;
+        try {
+          field.value = rawAfter;
+          if (field.errors.length) throw Error("This justification cannot be rendered. The original source is retained.");
+          expected = field.getValue();
+        } finally {
+          field.remove();
+        }
+        const inserted = insertedReference(before, expected, wrapped.wrapper);
+        preserve.check(wrapped.wrapper, inserted.raw, expected);
+        if (mf2.getValue() !== before) throw Error("The equation changed while choosing its justification.");
+        mf2.readOnly = false;
+        mf2.focus();
+        mf2.insert(rawAfter, { format: "latex", insertionMode: "replaceAll", selectionMode: "after" });
+        if (mf2.getValue() !== expected) {
+          mf2.executeCommand("undo");
+          throw Error("The equation changed unexpectedly; the previous draft was restored.");
+        }
+        preserve.register(wrapped.wrapper, inserted.raw);
+        sourceStates.set(expected, rawAfter);
+        sourceEdited = true;
+        mf2.dispatchEvent(new Event("input", { bubbles: true }));
+      } catch (error2) {
+        o.error(error2.message);
+      } finally {
+        if (token) void o.request("discard-reference", { token }).catch(() => {
+        });
+        busy = false;
+        mf2.readOnly = previousReadOnly;
+        o.save.disabled = previousDisabled;
+        mf2.focus();
+        state();
+      }
+    }
+    function remove() {
+      if (busy) return;
+      try {
+        const hit = owned();
+        if (!hit) throw Error("Place the caret inside a reference.");
+        const before = mf2.getValue();
+        trial(before, hit.selection, hit.reference.body);
+        mf2.selection = hit.selection;
+        mf2.insert(hit.reference.body, { format: "latex", insertionMode: "replaceSelection", selectionMode: "item" });
+        mf2.dispatchEvent(new Event("input", { bubbles: true }));
+        mf2.focus();
+      } catch (error2) {
+        o.error(error2.message);
+      }
+      state();
+    }
+    mf2.addEventListener("selection-change", state);
+    mf2.addEventListener("keydown", (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.code === "KeyJ") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        void justify();
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.code === "KeyK") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        void link(caretReference());
+      }
+    }, true);
+    state();
+    return { justify, sourceDraft() {
+      if (!sourceEdited) return null;
+      const after = sourceStates.get(mf2.getValue());
+      if (after === void 0) throw Error("Save the justification before making other equation edits, or undo those edits.");
+      return { before: o.initial, after };
+    }, serialize(latex) {
+      if (busy) throw Error("Finish choosing the reference before saving.");
+      return preserve(latex);
+    } };
+  }
+
+  // src/compact-ui.ts
+  var paths = {
+    link: '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2"/>',
+    sigma: '<path d="M18 4H6l7 8-7 8h12"/>',
+    matrix: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M4 15h16M9 4v16M15 4v16"/>',
+    text: '<path d="M4 5h16M12 5v15M8 20h8M4 5v3M20 5v3"/>',
+    color: '<circle cx="12" cy="12" r="8"/><path d="M12 4v16"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/>',
+    tag: '<path d="M20 13 13 20a2 2 0 0 1-3 0l-7-7V3h10l7 7a2 2 0 0 1 0 3Z"/><circle cx="7.5" cy="7.5" r="1"/>',
+    layout: '<path d="M4 5h16M7 10h10M4 15h16M7 20h10"/>',
+    undo: '<path d="M3 10h10a7 7 0 0 1 7 7M3 10l5-5M3 10l5 5"/>',
+    redo: '<path d="M21 10H11a7 7 0 0 0-7 7M21 10l-5-5M21 10l-5 5"/>',
+    more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>'
+  };
+  function icon2(button2, name, label2) {
+    button2.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]}</svg>`;
+    button2.title = label2;
+    button2.setAttribute("aria-label", label2);
+    button2.classList.add("tool");
+  }
+  function compactUI(e) {
+    const { bar: bar2, mf: mf2, resize: resize2 } = e, doc = bar2.ownerDocument;
+    const style2 = doc.createElement("style");
+    style2.textContent = `
+ body{padding:8px;font-size:13px}button,input,select{font-size:12px}button{min-height:26px;padding:3px 10px}.bar{gap:2px;margin:0 0 6px}.math-wrap{padding:2px;margin:0}
+ .toolbar{display:flex;flex-wrap:nowrap;align-items:center;gap:2px;height:28px;position:relative}.tool{display:inline-flex;flex:none;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:0;background:transparent;color:var(--text-muted);border-radius:5px;cursor:pointer}.tool:hover{background:var(--background-modifier-hover);color:var(--text-normal)}.tool.active{color:var(--interactive-accent);background:color-mix(in srgb,var(--interactive-accent) 16%,transparent)}.tool-separator{width:1px;height:14px;margin:0 4px;background:var(--background-modifier-border);flex:none}.toolbar .more-tool{margin-left:auto}
+ math-field{min-height:${e.display ? 76 : 56}px;padding:10px 14px;font-size:22px;border-color:var(--background-modifier-border);border-radius:6px}math-field::part(container){align-items:center;min-height:52px}math-field::part(content){align-self:center}math-field:focus-within{border-color:var(--interactive-accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--interactive-accent) 25%,transparent)}math-field::part(menu-toggle){display:none}
+ .context-line{min-height:18px;margin:4px 2px 0;display:flex;align-items:center;font-size:11px;color:var(--text-muted)}.context-line[hidden]{display:none}.context-line .hint{margin:0;font-size:11px}.context-line button{border:0;background:none;padding:0 4px;color:var(--text-muted);min-height:18px;font-size:11px}.error:empty{display:none}.error{font-size:12px;line-height:1.45;margin:4px 2px;overflow-wrap:anywhere}
+ .footer{margin-top:4px;gap:6px;min-height:26px}.footer button{height:26px;font-size:12px;padding:2px 12px}.footer button:not(.primary){background:transparent;border-color:transparent}.footer #status{font-size:11px;color:var(--text-muted)}
+ .drawer{margin:6px 0 0!important;width:100%!important;border:1px solid var(--background-modifier-border);border-radius:6px;background:var(--background-secondary);padding:8px!important;box-shadow:none!important}.drawer[hidden],.menu[hidden],.context-line [hidden]{display:none!important}.drawer-head{display:flex;align-items:center;gap:6px;min-height:24px;margin-bottom:6px;font-size:12px;font-weight:600}.drawer-close{margin-left:auto;min-height:22px;width:22px;padding:0;border:0;background:transparent;font-size:16px;color:var(--text-muted)}
+ .palette .grid{max-height:192px}.palette .template{height:32px;font-size:12px;padding:3px 8px;gap:8px}.palette .template .preview{order:-1;font-size:18px;min-width:72px;max-width:120px;overflow:hidden}.template-name{flex:1}.palette .search{height:28px;margin-bottom:6px}.palette .categories{gap:2px;padding-bottom:4px;margin-bottom:4px;flex-wrap:nowrap}.palette .categories button{min-width:0;flex:1;padding:4px;font-size:11px}.palette .categories button>span:last-child{display:none}.palette .modes{margin:4px 0 0;padding:3px 0 0;gap:2px}.palette .modes button{font-size:11px;padding:3px}.palette-label{display:none}
+ .colors .swatches{gap:6px;margin:6px 0 10px;flex-wrap:nowrap}.colors .swatch{width:22px;height:22px;min-height:22px;padding:2px}.colors .color-custom{gap:5px;font-size:11px}.colors .color-custom input[type=color]{width:30px;height:26px}.colors .color-custom input[type=text]{width:78px;height:26px}.colors>.hint,.matrix>.hint,.tags>.hint{display:none}.colors>strong{display:none}.colors .color-error:empty{display:none}.color-error{min-height:0}
+ .matrix label{font-size:11px;margin-right:6px;gap:4px}.matrix input{width:42px;padding:4px}.matrix .bar{margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.matrix .bar button{font-size:11px;padding:3px 4px}.tags input{width:100px}.tags select{max-width:190px}.menu{position:relative;margin:4px 0 6px 0;padding:4px;border:1px solid var(--background-modifier-border);background:var(--background-secondary);border-radius:6px}.menu button{display:flex;width:100%;text-align:left;align-items:center;background:transparent;border:0;border-radius:3px;height:28px;padding:4px 9px}.menu button:hover{background:var(--background-modifier-hover)}.menu .native{margin:0}.shortcut-drawer{line-height:1.6;color:var(--text-muted)}.shortcut-drawer .hint{font-size:12px;margin:0}.math-source-fallback{margin:0;padding:12px;white-space:pre-wrap;max-height:220px;overflow:auto;font:13px monospace;border:1px solid var(--background-modifier-border);border-radius:6px}
+ @media(max-width:380px){.toolbar .history-tool,.toolbar .reference-tool{display:none}.menu .history-menu,.menu .reference-menu{display:flex}.tool-separator{margin:0 2px}}@media(min-width:381px){.menu .history-menu,.menu .reference-menu{display:none}}
+ `;
+    doc.head.append(style2);
+    const old = Array.from(bar2.querySelectorAll("button")), find = (name) => old.find((b) => b.textContent === name);
+    const palette2 = find("Palette \\"), matrix3 = find("Matrix"), color = find("Color"), undo = find("Undo"), redo = find("Redo"), number = find("Equation number"), copy = find("Copy LaTeX"), native = find("Native LaTeX");
+    const menu = doc.createElement("div");
+    menu.className = "menu";
+    menu.hidden = true;
+    const layoutMenu = e.layout;
+    layoutMenu.className = "menu";
+    layoutMenu.hidden = true;
+    layoutMenu.querySelector("span")?.remove();
+    const shortcuts = doc.createElement("div");
+    shortcuts.className = "drawer shortcut-drawer";
+    shortcuts.hidden = true;
+    shortcuts.append(e.hint);
+    const drawers = [e.palette, e.colors, e.matrix, e.tags, shortcuts];
+    let saved = null;
+    let specialContext = false;
+    const close = (restore = false) => {
+      for (const panel of [...drawers, menu, layoutMenu]) panel.hidden = true;
+      for (const b of Array.from(bar2.querySelectorAll("button"))) b.classList.remove("active");
+      if (restore) {
+        if (saved) mf2.selection = saved;
+        mf2.focus();
+      }
+      resize2();
+    };
+    const open = (panel) => {
+      saved = structuredClone(mf2.selection);
+      for (const other of [...drawers, menu, layoutMenu]) if (other !== panel) other.hidden = true;
+      panel.hidden = false;
+      for (const b of Array.from(bar2.querySelectorAll("button"))) if (b !== text) b.classList.remove("active");
+      for (const [b, p] of [[palette2, e.palette], [color, e.colors], [matrix3, e.matrix]]) if (p === panel) b.classList.add("active");
+      resize2();
+    };
+    for (const [panel, title] of [[e.palette, "Insert"], [e.colors, "Text color"], [e.matrix, "Matrix"], [e.tags, "Equation number"], [shortcuts, "Keyboard shortcuts"]]) {
+      panel.classList.add("drawer");
+      const head = doc.createElement("div");
+      head.className = "drawer-head";
+      head.textContent = title;
+      const x = doc.createElement("button");
+      x.textContent = "\xD7";
+      x.title = "Close " + title;
+      x.setAttribute("aria-label", x.title);
+      x.className = "drawer-close";
+      x.onclick = () => close(true);
+      head.append(x);
+      panel.prepend(head);
+    }
+    for (const [b, panel] of [[palette2, e.palette], [matrix3, e.matrix], [color, e.colors], [number, e.tags]]) {
+      b.addEventListener("mousedown", () => {
+        saved = structuredClone(mf2.selection);
+      });
+      b.addEventListener("click", () => {
+        if (!panel.hidden) {
+          for (const other of [...drawers, menu, layoutMenu]) if (other !== panel) other.hidden = true;
+          b.classList.add("active");
+        }
+        resize2();
+      });
+    }
+    bar2.replaceChildren();
+    bar2.className = "toolbar";
+    const add = (b, name, label2) => {
+      icon2(b, name, label2);
+      b.addEventListener("mousedown", (event) => event.preventDefault());
+      bar2.append(b);
+      return b;
+    };
+    const make = (name, label2, fn) => {
+      const b = doc.createElement("button");
+      b.type = "button";
+      b.onclick = fn;
+      return add(b, name, label2);
+    };
+    const separator = () => {
+      const s = doc.createElement("span");
+      s.className = "tool-separator";
+      bar2.append(s);
+    };
+    add(palette2, "sigma", "Insert symbols (\\ or Ctrl+Space)");
+    add(matrix3, "matrix", "Matrix");
+    const text = make("text", "Text mode", () => {
+      close();
+      mf2.focus();
+      mf2.executeCommand(["switchMode", mf2.mode === "text" ? "math" : "text"]);
+    });
+    text.disabled = !!e.blocked;
+    mf2.addEventListener("mode-change", () => text.classList.toggle("active", mf2.mode === "text"));
+    separator();
+    add(color, "color", "Text color (Cmd/Ctrl+Shift+C)");
+    const symbolSlot = doc.createElement("span");
+    symbolSlot.style.display = "contents";
+    bar2.append(symbolSlot);
+    if (e.display) {
+      separator();
+      make("layout", "Equation layout", () => {
+        const wasOpen = !layoutMenu.hidden;
+        close();
+        if (!wasOpen) open(layoutMenu);
+      }).disabled = !!e.blocked;
+    }
+    separator();
+    add(undo, "undo", "Undo").classList.add("history-tool");
+    add(redo, "redo", "Redo").classList.add("history-tool");
+    const more = make("more", "More equation actions", () => {
+      const wasOpen = !menu.hidden;
+      close();
+      if (!wasOpen) open(menu);
+    });
+    more.classList.add("more-tool");
+    if (e.display) menu.append(number);
+    menu.append(copy, native);
+    const action = (label2, fn, cls = "") => {
+      const b = doc.createElement("button");
+      b.textContent = label2;
+      b.className = cls;
+      b.onmousedown = (event) => event.preventDefault();
+      b.onclick = fn;
+      menu.append(b);
+      return b;
+    };
+    action("Undo", () => {
+      close();
+      undo.click();
+    }, "history-menu").disabled = !!e.blocked;
+    action("Redo", () => {
+      close();
+      redo.click();
+    }, "history-menu").disabled = !!e.blocked;
+    action("Math controls\u2026", () => {
+      close();
+      mf2.focus();
+      const r = mf2.getBoundingClientRect();
+      mf2.showMenu({ location: { x: r.left + 16, y: r.top + 20 }, modifiers: { alt: false, control: false, shift: false, meta: false } });
+    }).disabled = !!e.blocked;
+    action("Keyboard shortcuts", () => open(shortcuts));
+    const context = doc.createElement("div");
+    context.className = "context-line";
+    const defaultHint = doc.createElement("span");
+    defaultHint.textContent = "\u21E7\u21B5 Save \xB7 Esc Cancel \xB7 \\ Insert";
+    context.append(e.textHint, defaultHint);
+    const contextUpdate = () => {
+      context.hidden = specialContext;
+      defaultHint.hidden = specialContext || mf2.mode === "text";
+      e.textHint.hidden = specialContext || mf2.mode !== "text";
+      text.classList.toggle("active", mf2.mode === "text");
+    };
+    mf2.addEventListener("mode-change", contextUpdate);
+    contextUpdate();
+    e.save.textContent = "Save";
+    e.save.title = "Save equation (Shift+Enter)";
+    e.cancel.title = "Cancel (Esc)";
+    e.status.textContent = "";
+    doc.body.replaceChildren(bar2, menu, layoutMenu, e.wrap, context, ...drawers, e.error, e.footer);
+    for (const b of Array.from(layoutMenu.querySelectorAll("button"))) {
+      b.onmousedown = (event) => event.preventDefault();
+      b.addEventListener("click", () => close());
+    }
+    doc.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && [...drawers, menu, layoutMenu].some((p) => !p.hidden)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        close(true);
+      }
+    }, true);
+    if (e.blocked) {
+      const pre = doc.createElement("pre");
+      pre.className = "math-source-fallback";
+      pre.textContent = mf2.value;
+      e.wrap.after(pre);
+      e.save.hidden = true;
+      native.textContent = "Edit LaTeX source";
+      native.className = "primary";
+      e.footer.append(native);
+    }
+    return { open, close, context, defaultHint, setSymbolContext(active) {
+      specialContext = active;
+      contextUpdate();
+    }, addSymbolControl(handler) {
+      const b = doc.createElement("button");
+      icon2(b, "tag", "Tag symbol (Cmd/Ctrl+Shift+Y)");
+      b.onmousedown = (event) => event.preventDefault();
+      b.onclick = handler;
+      symbolSlot.append(b);
+      return b;
+    }, addReferenceControl(handler) {
+      const b = doc.createElement("button");
+      icon2(b, "link", "Link selected expression (Cmd/Ctrl+K)");
+      b.classList.add("reference-tool");
+      b.onmousedown = (event) => event.preventDefault();
+      b.onclick = handler;
+      symbolSlot.append(b);
+      const fallback = action("Link selected expression\u2026", handler, "reference-menu");
+      return { button: b, fallback };
+    }, addAction(label2, handler) {
+      return action(label2, handler);
+    }, addDrawer(panel) {
+      drawers.push(panel);
+      panel.classList.add("drawer");
+      e.error.before(panel);
+    } };
+  }
+
+  // src/symbol-selection.ts
+  function findTaggedRange(info, start, end) {
+    for (let at = 0; at < info.length; at++) {
+      const value = info[at], latex = value?.latex?.trim();
+      if (!latex?.includes("mjx-ss-o-")) continue;
+      let hits;
+      try {
+        hits = markers(latex);
+      } catch {
+        continue;
+      }
+      if (hits.length !== 1 || hits[0].from !== 0 || hits[0].to !== latex.length) continue;
+      let before = at - 1;
+      while (before > 0 && (info[before]?.depth ?? 0) > (value?.depth ?? 0)) before--;
+      if (start >= before && end <= at) return { id: hits[0].id, range: [before, at] };
+    }
+    return null;
+  }
+
   // src/symbol-editor.ts
   function symbolEditor(o) {
     const { mf: mf2, ui } = o, doc = mf2.ownerDocument, context = o.context;
@@ -43518,12 +43881,7 @@ If you are using Vue, this may be because you are using the runtime-only build o
   }
 
   // src/build-id.ts
-  var BUILD_ID = "d9012abf5976be09";
-
-  // src/model.ts
-  function saveableLatex(latex) {
-    return latex.replace(/\\placeholder(?:\[[^\]]*\])?\{[^{}]*\}/g, "{}");
-  }
+  var BUILD_ID = "6bc9f34df38e536d";
 
   // src/frame.ts
   var config = window.mathStudioConfig;
@@ -43538,6 +43896,7 @@ If you are using Vue, this may be because you are using the runtime-only build o
   root.style.colorScheme = config.dark ? "dark" : "light";
   root.style.setProperty("--study-symbol-fill", config.dark ? "rgba(151,104,215,.28)" : "rgba(132,79,193,.18)");
   root.style.setProperty("--study-symbol-edge", config.dark ? "#9768d7" : "#844fc1");
+  root.style.setProperty("--kl-reference-color", config.dark ? "#f0c75e" : "#845000");
   var style = document.createElement("style");
   style.textContent = `
 *{box-sizing:border-box}body{margin:0;padding:12px;font:14px system-ui;color:var(--text-normal);background:var(--background-primary)}button,input,select{font:inherit;color:inherit;background:var(--background-secondary);border:1px solid var(--background-modifier-border);border-radius:5px;padding:6px 9px}button{cursor:pointer}button:hover,button:focus-visible{border-color:var(--interactive-accent)}button:disabled{opacity:.45;cursor:default}.bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:10px}.bar small{margin-left:auto;color:var(--text-muted)}math-field{display:block;width:100%;min-height:90px;padding:18px 12px;font-size:25px;background:var(--background-primary);color:var(--text-normal);border:1px solid var(--background-modifier-border);border-radius:6px;--caret-color:var(--interactive-accent);--selection-background-color:var(--background-modifier-hover);--contains-highlight-background-color:var(--background-modifier-hover)}math-field::part(virtual-keyboard-toggle){display:none}.math-wrap{overflow-x:auto;padding:2px}.hint{color:var(--text-muted);font-size:12px;margin:8px 0}.error{color:var(--text-error,#d65b5b);white-space:pre-wrap}.footer{margin-top:8px;display:flex;gap:8px;align-items:center}.primary{background:var(--interactive-accent);color:var(--text-on-accent,#fff)}.palette{border:1px solid var(--background-modifier-border);border-radius:6px;padding:10px;margin:8px 0;background:var(--background-secondary)}.palette[hidden],.tags[hidden],.matrix[hidden]{display:none}.search{width:100%;margin-bottom:8px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:5px;max-height:230px;overflow:auto}.template{height:72px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px;font-size:11px}.template .preview{font-size:20px}.template.selected{outline:2px solid var(--interactive-accent)}.tags,.matrix{padding:8px;border:1px solid var(--background-modifier-border);margin-bottom:8px}.tags label,.matrix label{display:inline-flex;align-items:center;gap:8px;margin-right:10px}.matrix input{width:65px}#status{flex:1}.native{margin-left:auto}.title{font-weight:650}.matrix .bar{margin:8px 0 0}
@@ -43946,20 +44305,23 @@ If you are using Vue, this may be because you are using the runtime-only build o
   var initial = mf.getValue();
   var initialTag = JSON.stringify(tag);
   var symbolControls;
+  var referenceControls;
   var saving = false;
+  var referenceStartupProblem = "";
   function commit(native = false) {
     if (saving) return;
-    if (initialProblem || mf.errors.length) {
-      error.textContent = initialProblem || "This expression contains unsupported or incomplete LaTeX. Use Native LaTeX to preserve it.";
+    if (initialProblem || referenceStartupProblem || mf.errors.length) {
+      error.textContent = initialProblem || referenceStartupProblem || "This expression contains unsupported or incomplete LaTeX. Use Native LaTeX to preserve it.";
       resize();
       return;
     }
     try {
       const symbols = symbolControls?.proposal();
+      const latex = referenceControls ? referenceControls.serialize(saveableLatex(mf.getValue())) : saveableLatex(mf.getValue());
       saving = true;
       mf.readOnly = true;
       save.disabled = true;
-      send("save", { native, latex: saveableLatex(mf.getValue()), tag, symbols, changed: mf.getValue() !== initial || JSON.stringify(tag) !== initialTag });
+      send("save", { native, latex, tag, symbols, referenceSource: referenceControls?.sourceDraft(), changed: mf.getValue() !== initial || JSON.stringify(tag) !== initialTag });
       status.textContent = "Saving\u2026";
     } catch (e) {
       error.textContent = e.message;
@@ -44073,6 +44435,7 @@ If you are using Vue, this may be because you are using the runtime-only build o
     for (const b of Array.from(bar.querySelectorAll("button"))) if (!["Native LaTeX", "Copy LaTeX"].includes(b.textContent || "")) b.disabled = true;
   }
   var compact = compactUI({ bar, mf, wrap, palette, colors: colorsPanel, matrix: matrix2, tags, layout, hint, textHint, error, footer, status, save, cancel, display: config.display, blocked: initialProblem, resize });
+  if (config.context) status.textContent = "Editing equation \xB7 " + config.context.toLowerCase();
   var checks = /* @__PURE__ */ new Map();
   window.addEventListener("message", (event) => {
     if (event.source !== parent || event.data?.mathStudio !== config.id || event.data.type !== "symbol-checked") return;
@@ -44092,11 +44455,36 @@ If you are using Vue, this may be because you are using the runtime-only build o
     checks.set(request, { resolve, reject, timer });
     send("check-symbol", { request, latex, id });
   }) });
+  var referenceRequests = /* @__PURE__ */ new Map();
+  window.addEventListener("message", (event) => {
+    if (event.source !== parent || event.data?.mathStudio !== config.id || event.data.type !== "reference-result") return;
+    const pending = referenceRequests.get(event.data.request);
+    if (!pending) return;
+    referenceRequests.delete(event.data.request);
+    if (event.data.error) pending.reject(Error(event.data.error));
+    else pending.resolve(event.data.result);
+  });
+  if (config.references && !initialProblem) try {
+    referenceControls = referenceEditor({ mf, ui: compact, initial: config.latex, save, resize, error: (message) => {
+      error.textContent = message;
+      resize();
+    }, request: (type, extra) => new Promise((resolve, reject) => {
+      const request = crypto.randomUUID();
+      referenceRequests.set(request, { resolve, reject });
+      send(type, { request, ...extra });
+    }) });
+  } catch (e) {
+    referenceStartupProblem = e.message;
+    error.textContent = referenceStartupProblem;
+    save.disabled = true;
+    mf.readOnly = true;
+  }
   new ResizeObserver(resize).observe(document.body);
   requestAnimationFrame(() => {
     mf.focus();
     selection = mf.selection;
     resize();
     send("ready", { buildId: BUILD_ID });
+    if (config.justifyRow !== void 0 && referenceControls) void referenceControls.justify(config.justifyRow);
   });
 })();

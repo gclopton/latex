@@ -1,1 +1,9 @@
-{"author":"Grady","description":"Reviewed cross-vault definitions, results, theorems and equations. Browse, reuse and edit sources.","id":"knowledge-library","isDesktopOnly":true,"minAppVersion":"1.8.0","name":"Index","version":"0.2.1"}
+{
+  "id": "knowledge-library",
+  "name": "Index",
+  "version": "0.3.0",
+  "minAppVersion": "1.8.0",
+  "description": "Isolated index development with frozen and reviewed test collections.",
+  "author": "Grady",
+  "isDesktopOnly": true
+}

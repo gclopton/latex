@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "pluginId": "callout-outline",
+  "sourceCommit": "4a66ac904d79795abca8624d59196442d449dc60",
+  "release": "7ac955af6996d1c8633fe0b546d17d2e11ebe54a92f350b90f6f6b335c58b24c",
+  "candidate": true,
+  "files": {
+    "main.js": "206c8e7be498158744adc2b37b99e1f8a5011feec1ee4c32500790469f1aebd6",
+    "manifest.json": "7b866620401675cbe3282af9def410c6d453c93a246fd9da2fec9d5806e3c7a0",
+    "styles.css": "c3999361bf87142c2d58ac0cbaf16e7a0a80174ebf7faa0b9d49283abab4015d"
+  }
+}

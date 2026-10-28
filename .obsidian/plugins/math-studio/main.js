@@ -24,28 +24,102 @@ __export(main_exports, {
 });
 module.exports = __toCommonJS(main_exports);
 
-// src/section-lines.ts
-function sectionLines(source, first, last) {
-  let from = 0;
-  for (let line = 0; line < first; line++) {
-    const end = source.indexOf("\n", from);
-    if (end < 0) return "";
-    from = end + 1;
+// src/layout.ts
+function splitOuter(source, delimiter) {
+  const parts = [];
+  let start = 0, braces = 0, environments = 0;
+  for (let i = 0; i < source.length; i++) {
+    if (source[i] === "\\") {
+      const environment = source.slice(i).match(/^\\(begin|end)\{[^}]+\}/);
+      if (environment) {
+        environments += environment[1] === "begin" ? 1 : -1;
+        if (environments < 0) throw new Error("This compound layout must be edited in Native LaTeX.");
+        i += environment[0].length - 1;
+        continue;
+      }
+      if (!braces && !environments && source.startsWith(delimiter, i)) {
+        parts.push(source.slice(start, i));
+        i += delimiter.length - 1;
+        start = i + 1;
+        continue;
+      }
+      const command = source.slice(i).match(/^\\(?:[a-zA-Z]+|.)/s);
+      if (command) i += command[0].length - 1;
+      continue;
+    }
+    if (source[i] === "{") braces++;
+    else if (source[i] === "}") {
+      braces--;
+      if (braces < 0) throw new Error("This compound layout must be edited in Native LaTeX.");
+    } else if (!braces && !environments && source.startsWith(delimiter, i)) {
+      parts.push(source.slice(start, i));
+      i += delimiter.length - 1;
+      start = i + 1;
+    }
   }
-  let to2 = from;
-  for (let line = first; line <= last; line++) {
-    const end = source.indexOf("\n", to2);
-    if (end < 0) return source.slice(from);
-    if (line === last) return source.slice(from, end);
-    to2 = end + 1;
-  }
-  return "";
+  if (braces || environments) throw new Error("This compound layout must be edited in Native LaTeX.");
+  parts.push(source.slice(start));
+  return parts;
 }
 
-// src/build-id.ts
-var BUILD_ID = "d9012abf5976be09";
-
 // src/symbol-model.ts
+var REGISTRY_OPEN = "%% study-symbols v1\n";
+var ID = /^[0-9a-z]{10}$/;
+var DEF_ID = /^d-[0-9a-z]{10}$/;
+function object(v2) {
+  return !!v2 && typeof v2 === "object" && !Array.isArray(v2);
+}
+function string(v2, max, name2) {
+  if (typeof v2 !== "string" || v2.length > max) throw Error(`Invalid symbol ${name2}.`);
+}
+function validateDefinition(value) {
+  if (!object(value)) throw Error("Invalid symbol definition.");
+  string(value.tex, 16e3, "TeX");
+  string(value.meaning, 4e3, "meaning");
+  string(value.units, 1e3, "units");
+  if (!value.meaning.trim()) throw Error("Give this symbol a meaning.");
+  if (value.concept !== void 0) string(value.concept, 200, "concept key");
+  if (!Array.isArray(value.code) || value.code.length > 100) throw Error("Invalid symbol code names.");
+  for (const c of value.code) {
+    if (!object(c)) throw Error("Invalid code representation.");
+    string(c.lang, 60, "language");
+    string(c.name, 200, "code name");
+    if (!c.lang.trim() || !c.name.trim()) throw Error("Code language and name are required.");
+    if (c.scope !== void 0) string(c.scope, 1e3, "scope");
+  }
+}
+function validateRegistry(value) {
+  if (!object(value) || !object(value.defs) || !object(value.occ)) throw Error("Invalid symbol registry; source has been left intact.");
+  if (Object.keys(value.defs).length > 1e4 || Object.keys(value.occ).length > 5e4) throw Error("Symbol registry exceeds the supported size.");
+  for (const [id, d] of Object.entries(value.defs)) {
+    if (!DEF_ID.test(id)) throw Error("Invalid definition ID.");
+    validateDefinition(d);
+  }
+  for (const [id, o] of Object.entries(value.occ)) {
+    if (!ID.test(id) || !object(o) || typeof o.def !== "string" || !Object.hasOwn(value.defs, o.def)) throw Error("Occurrence has no valid definition.");
+    string(o.glyph, 16e3, "occurrence glyph");
+    string(o.equation, 16e3, "equation reference");
+  }
+}
+function registryBlock(source, excluded = []) {
+  const starts = [...source.matchAll(/^%% study-symbols[^\n]*\n/gm)].filter((m4) => !excluded.some((r) => m4.index >= r.from && m4.index < r.to));
+  if (starts.length > 1) throw Error("Multiple symbol registries found. Resolve them before editing symbols.");
+  if (!starts.length) return null;
+  const m3 = starts[0], from = m3.index;
+  if (m3[0].replace(/\r\n/g, "\n") !== REGISTRY_OPEN) throw Error("Unsupported symbol registry version.");
+  const bodyFrom = from + m3[0].length, end = /^%%[ \t]*(?:\r?$)/m.exec(source.slice(bodyFrom));
+  if (!end) throw Error("Unclosed symbol registry; source has been left intact.");
+  const to2 = bodyFrom + end.index + end[0].length, raw = source.slice(bodyFrom, bodyFrom + end.index);
+  if (raw.length > 2e6) throw Error("Symbol registry exceeds the supported size.");
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    throw Error("Invalid symbol registry JSON; source has been left intact.");
+  }
+  validateRegistry(data);
+  return { from, to: to2, data };
+}
 function escaped(s, i) {
   let n = 0;
   while (i > 0 && s[--i] === "\\") n++;
@@ -150,6 +224,343 @@ function semanticGlyph(tex) {
     text.lastIndex = body.to;
   }
   return normalized + normalize(out.slice(last));
+}
+
+// src/reference-model.ts
+var ID2 = "[A-Za-z0-9-]{1,80}";
+var CLASS = new RegExp(`^klref kl-([ntbc])-(${ID2}(?:_${ID2})?)(?: kl-label-([0-9a-f]{16}))?$`);
+var SAFE_CLASS = new RegExp(`^mjx-klref mjx-kl-([ntbc])-(${ID2}(?:_${ID2})?)(?: mjx-kl-label-([0-9a-f]{16}))?$`);
+var escaped2 = (s, i) => {
+  let n = 0;
+  while (i > 0 && s[--i] === "\\") n++;
+  return n % 2 === 1;
+};
+function mathReferences(source) {
+  const out = [];
+  const command = /\\class\b/g;
+  let match;
+  while (match = command.exec(source)) {
+    const from = match.index;
+    if (escaped2(source, from)) continue;
+    const line = source.lastIndexOf("\n", from) + 1;
+    let comment2 = false;
+    for (let i = line; i < from; i++) if (source[i] === "%" && !escaped2(source, i)) {
+      comment2 = true;
+      break;
+    }
+    if (comment2) continue;
+    const cls = group(source, command.lastIndex);
+    if (!cls) continue;
+    if (!/(?:^|\s)(?:mjx-)?klref(?:\s|$)/.test(cls.body)) continue;
+    const fields = CLASS.exec(cls.body) || SAFE_CLASS.exec(cls.body), body = group(source, cls.to);
+    if (!fields || !body) throw Error("Malformed knowledge reference. Keep its source intact and repair the link.");
+    if (out.some((r) => from > r.from && from < r.to)) throw Error("Nested knowledge references are not supported.");
+    out.push({ from, to: body.to, bodyFrom: cls.to + 1, bodyTo: body.to - 1, raw: source.slice(from, body.to), body: body.body, mode: fields[1], target: fields[2].replace("_", "."), baseline: fields[3] });
+  }
+  const symbols = markers(source);
+  let symbol = 0;
+  for (const reference of out) {
+    while (symbol < symbols.length && symbols[symbol].to <= reference.from) symbol++;
+    if (symbol < symbols.length && reference.from > symbols[symbol].from && reference.from < symbols[symbol].to) throw Error("A reference cannot be placed inside a symbol tag. Select the whole tagged symbol.");
+  }
+  return out;
+}
+
+// src/model.ts
+var escaped3 = (s, i) => {
+  let n = 0;
+  while (i > 0 && s[--i] === "\\") n++;
+  return n % 2 === 1;
+};
+function displayContainer(source, start, end) {
+  const opening = source.slice(source.lastIndexOf("\n", start - 1) + 1, start);
+  const prefix = /^[ \t]*(?:>[ \t]*)+/.exec(opening)?.[0] ?? "";
+  const depth = (prefix.match(/>/g) || []).length, nextLine = source.indexOf("\n", start), newline = nextLine > 0 && source[nextLine - 1] === "\r" ? "\r\n" : "\n";
+  const lines = source.slice(start + 2, end).split(/\r?\n/);
+  let issue = "";
+  const body = lines.map((line, i) => {
+    if (!i || !depth) return line;
+    const p2 = /^[ \t]*(?:>[ \t]*)+/.exec(line)?.[0] ?? "";
+    if ((p2.match(/>/g) || []).length !== depth) {
+      issue = "This display equation crosses Markdown container boundaries. Use native editing to repair it.";
+      return line;
+    }
+    return line.slice(p2.length);
+  }).join("\n");
+  return { body, ...prefix ? { linePrefix: prefix } : {}, ...newline === "\r\n" ? { newline } : {}, ...issue ? { containerIssue: issue } : {} };
+}
+function equations(s) {
+  const out = [];
+  let i = 0;
+  let fence = "";
+  let fenceLength = 0;
+  if (s.startsWith("---\n") || s.startsWith("---\r\n")) {
+    const m3 = /\r?\n(?:---|\.\.\.)\s*(?:\r?\n|$)/g;
+    m3.lastIndex = 3;
+    const end = m3.exec(s);
+    if (end) i = end.index + end[0].length;
+  }
+  while (i < s.length) {
+    if (i === 0 || s[i - 1] === "\n") {
+      const line = s.slice(i, s.indexOf("\n", i) < 0 ? s.length : s.indexOf("\n", i));
+      const f = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+      if (f) {
+        if (!fence) {
+          fence = f[1][0];
+          fenceLength = f[1].length;
+        } else if (f[1][0] === fence && f[1].length >= fenceLength) fence = "";
+        i += line.length + 1;
+        continue;
+      }
+      if (fence || /^ {4}|^\t/.test(line)) {
+        i += line.length + 1;
+        continue;
+      }
+    }
+    if (s[i] === "`" && !escaped3(s, i)) {
+      let n = 1;
+      while (s[i + n] === "`") n++;
+      const end2 = s.indexOf("`".repeat(n), i + n);
+      i = end2 < 0 ? i + n : end2 + n;
+      continue;
+    }
+    if (s[i] !== "$" || escaped3(s, i)) {
+      i++;
+      continue;
+    }
+    const display = s[i + 1] === "$";
+    const size = display ? 2 : 1;
+    const start = i;
+    let j = i + size;
+    if (!display && /\s/.test(s[j] ?? "")) {
+      i++;
+      continue;
+    }
+    let end = -1;
+    while (j < s.length) {
+      if (!display && s[j] === "\n") break;
+      if (s[j] === "$" && !escaped3(s, j) && (!display || s[j + 1] === "$")) {
+        end = j;
+        break;
+      }
+      j++;
+    }
+    if (end < 0) {
+      i += size;
+      continue;
+    }
+    if (!display && (/\s/.test(s[end - 1] ?? "") || /\d/.test(s[end + 1] ?? ""))) {
+      i = end + size;
+      continue;
+    }
+    const to2 = end + size;
+    out.push({ from: start, to: to2, bodyFrom: start + size, bodyTo: end, body: s.slice(start + size, end), display, raw: s.slice(start, to2), ...display ? displayContainer(s, start, end) : {} });
+    i = to2;
+  }
+  return out;
+}
+function splitTag(body) {
+  const auto = /% math-studio:auto:([a-zA-Z0-9-]+)/.exec(body);
+  const tags2 = [...body.matchAll(/\\tag\{([^{}]*)\}/g)];
+  const tag = tags2.length === 1 ? tags2[0] : void 0;
+  return { latex: body.replace(/% math-studio:auto:[a-zA-Z0-9-]+\s*/g, "").replace(/\\tag\{[^{}]*\}/g, "").trim(), tag: auto ? { kind: "auto", label: tag?.[1] ?? "", id: auto[1] } : tag ? { kind: "manual", label: tag[1] } : { kind: "none", label: "" } };
+}
+function unsupported(body) {
+  let portable = body;
+  try {
+    for (const ref of mathReferences(body).reverse()) portable = portable.slice(0, ref.from) + ref.body + portable.slice(ref.to);
+  } catch (error) {
+    return error.message;
+  }
+  const checked = portable.replace(/\\class\{mjx-ss mjx-ss-o-[0-9a-z]{10}\}/g, "");
+  if (/\\(?:newcommand|renewcommand|def|gdef|require|html\w*|href|includegraphics|class|style)\b/.test(checked)) return "This equation uses a macro definition or an external/HTML command. Keep editing it in native LaTeX.";
+  const stripped = body.replace(/% math-studio:auto:[a-zA-Z0-9-]+/g, "");
+  if (/(^|[^\\])%/.test(stripped)) return "This equation contains LaTeX comments. Native editing preserves them exactly.";
+  if ((body.match(/\\tag\b/g) || []).length > 1 || /\\tag\*/.test(body) || /\\label\b|\\ref\b|\\eqref\b/.test(body)) return "This equation uses labels, references or multiple tags. Use native editing to preserve them.";
+  if (/\\tag\{[^}]*\{/.test(body)) return "Nested equation tags are supported in native editing only.";
+  return null;
+}
+function compose(original, latex, tag) {
+  if (original.containerIssue) throw Error(original.containerIssue);
+  const label = tag.label.trim();
+  if (/[{}\\\n\r]/.test(label)) throw Error("Use a plain equation label without braces, backslashes or line breaks.");
+  let body = latex.trim();
+  if (tag.kind !== "none" && original.display) body += `\\tag{${label || "1"}}`;
+  if (tag.kind === "auto" && original.display) body += `
+% math-studio:auto:${tag.id || crypto.randomUUID()}`;
+  if (original.display) {
+    const newline = original.newline ?? "\n", prefix = original.linePrefix ?? "";
+    return "$$" + newline + body.split(/\r?\n/).map((line) => prefix + line).join(newline) + newline + prefix + "$$";
+  }
+  return `$${body}$`;
+}
+function numberingEdits(doc) {
+  const parsed = equations(doc);
+  const reserved = new Set(parsed.filter((q) => q.display).map((q) => splitTag(q.body).tag).filter((tag) => tag.kind === "manual").map((tag) => tag.label.trim()));
+  let n = 0;
+  const ids = /* @__PURE__ */ new Set();
+  const edits = [];
+  for (const q of parsed) {
+    const { tag } = splitTag(q.body);
+    if (tag.kind !== "auto" || !q.display) continue;
+    do {
+      n++;
+    } while (reserved.has(String(n)));
+    let raw = q.raw;
+    const id = tag.id;
+    if (ids.has(id)) raw = raw.replace(`math-studio:auto:${id}`, `math-studio:auto:${crypto.randomUUID()}`);
+    ids.add(id);
+    raw = /\\tag\{[^{}]*\}/.test(raw) ? raw.replace(/\\tag\{[^{}]*\}/, `\\tag{${n}}`) : raw.replace(/(\r?\n)([ \t]*(?:>[ \t]*)*)% math-studio:auto:/, (_match, newline, prefix) => `\\tag{${n}}${newline}${prefix}% math-studio:auto:`);
+    if (raw !== q.raw) edits.push({ from: q.from, to: q.to, insert: raw });
+  }
+  return edits;
+}
+function safeReplacement(doc, q, replacement) {
+  if (doc.slice(q.from, q.to) !== q.raw) throw Error("The equation changed outside this visual editor. Your draft is kept open; cancel and reopen the current equation.");
+  return { from: q.from, to: q.to, insert: replacement };
+}
+function equationAt(source, at) {
+  if (at > 0 && source[at - 1] === "$" && source[at] === "$" && source[at - 2] !== "$" && source[at + 1] !== "$" && !escaped3(source, at - 1)) {
+    const probe = source.slice(0, at) + "x" + source.slice(at);
+    if (equations(probe).some((q) => q.from === at - 1 && !q.display))
+      return { from: at - 1, to: at + 1, bodyFrom: at, bodyTo: at, body: "", display: false, raw: "$$" };
+  }
+  return equations(source).find((q) => at >= q.from && at <= q.to);
+}
+
+// src/justification-source.ts
+function composeSourceDraft(q, before, after, tag) {
+  const original = splitTag(q.body);
+  if (original.latex !== before || JSON.stringify(original.tag) !== JSON.stringify(tag)) throw Error("Save equation or numbering edits before adding a source-preserving justification.");
+  if (before === after) return q.raw;
+  let first = 0, end = before.length, last = after.length;
+  while (first < end && first < last && before[first] === after[first]) first++;
+  while (end > first && last > first && before[end - 1] === after[last - 1]) {
+    end--;
+    last--;
+  }
+  const base = q.body.indexOf(before);
+  if (base < 0 || q.body.indexOf(before, base + 1) >= 0) throw Error("The exact equation source is ambiguous. Your draft is retained.");
+  const map = [];
+  let body = "";
+  const size = q.display ? 2 : 1, raw = q.raw.slice(size, -size), depth = (q.linePrefix?.match(/>/g) || []).length;
+  let start = 0, line = 0;
+  while (start < raw.length) {
+    let at = start;
+    if (line && depth) {
+      const prefix = /^[ \t]*(?:>[ \t]*)+/.exec(raw.slice(at))?.[0] || "";
+      if ((prefix.match(/>/g) || []).length !== depth) throw Error("Equation container changed.");
+      at += prefix.length;
+    }
+    while (at < raw.length && raw[at] !== "\n") {
+      if (raw[at] === "\r" && raw[at + 1] === "\n") {
+        at++;
+        continue;
+      }
+      map.push(size + at);
+      body += raw[at++];
+    }
+    if (at < raw.length) {
+      map.push(size + (raw[at - 1] === "\r" ? at - 1 : at));
+      body += "\n";
+      at++;
+    }
+    start = at;
+    line++;
+  }
+  map.push(q.raw.length - size);
+  if (body !== q.body) throw Error("The exact equation container could not be mapped.");
+  const a = map[base + first], b = map[base + end], replacement = after.slice(first, last).replace(/\r?\n/g, (q.newline || "\n") + (q.linePrefix || ""));
+  return q.raw.slice(0, a) + replacement + q.raw.slice(b);
+}
+
+// src/justification.ts
+function justificationRowAt(source, offset) {
+  const env = source.match(/^(\s*)\\begin\{(aligned|gathered)\}([\s\S]*)\\end\{\2\}(\s*)$/);
+  if (!env) return 0;
+  let start = env[1].length + ("\\begin{" + env[2] + "}").length;
+  const rows = splitOuter(env[3], "\\\\");
+  for (let i = 0; i < rows.length; i++) {
+    if (offset <= start + rows[i].length) return i;
+    start += rows[i].length + 2;
+  }
+  return rows.length - 1;
+}
+
+// src/save-plan.ts
+function plannedEquation(source, equation, edits) {
+  const planned = edits.find((e) => e.from === equation.from && e.to === equation.to);
+  if (planned) return planned;
+  if (source.slice(equation.from, equation.to) === equation.insert) return equation;
+  throw Error("Equation save plan is incomplete.");
+}
+function mergeEquationPlans(source, equation, referenceEdits, symbolEdits = []) {
+  const unique = /* @__PURE__ */ new Map();
+  for (const plan of [referenceEdits, symbolEdits]) for (const edit of plan) {
+    if (!Number.isInteger(edit.from) || !Number.isInteger(edit.to) || typeof edit.insert !== "string" || edit.from < 0 || edit.to < edit.from || edit.to > source.length) throw Error("Invalid equation save plan. Your draft is retained.");
+    if (edit.from < equation.to && edit.to > equation.from && (edit.from !== equation.from || edit.to !== equation.to || edit.insert !== equation.insert)) throw Error("Equation save plans disagree. Your draft is retained.");
+    unique.set(JSON.stringify([edit.from, edit.to, edit.insert]), edit);
+  }
+  const eof = [...unique.values()].filter((e) => e.from === source.length && e.to === source.length);
+  if (eof.length === 2) {
+    const anchor = eof.find((e) => referenceEdits.includes(e) && /^(?:\r?\n){2}\^[A-Za-z0-9-]{1,80}(?:\r?\n)?$/.test(e.insert));
+    const registry = eof.find((e) => symbolEdits.includes(e) && e !== anchor);
+    if (anchor && registry) {
+      const block = registryBlock(registry.insert);
+      if (block && /^\s*$/.test(registry.insert.slice(0, block.from)) && /^\s*$/.test(registry.insert.slice(block.to))) {
+        for (const e of eof) unique.delete(JSON.stringify([e.from, e.to, e.insert]));
+        const joined = { from: source.length, to: source.length, insert: anchor.insert.replace(/(?:\r?\n)+$/, "") + (anchor.insert.startsWith("\r\n") ? "\r\n\r\n" : "\n\n") + registry.insert.trimStart() };
+        unique.set("eof-records", joined);
+      }
+    }
+  }
+  const edits = [...unique.values()].sort((a, b) => a.from - b.from || a.to - b.to);
+  for (let i = 1; i < edits.length; i++) {
+    const a = edits[i - 1], b = edits[i];
+    if (b.from < a.to || a.from === a.to && b.from === b.to && a.from === b.from) throw Error("Reference and symbol records overlap. Your draft is retained.");
+  }
+  applyEdits(source, edits);
+  return edits;
+}
+
+// src/reference-session.ts
+var ReferenceDraft = class {
+  constructor(api, sessionId, path, hash) {
+    this.api = api;
+    this.sessionId = sessionId;
+    this.path = path;
+    this.hash = hash;
+  }
+  reservations = /* @__PURE__ */ new Map();
+  abort = new AbortController();
+  async choose(options, text, expression) {
+    const choice = await this.api.choose({ ...options, expression, signal: this.abort.signal });
+    if (!choice || this.abort.signal.aborted) return null;
+    const source = text();
+    const prepared = await this.api.prepare({ path: this.path, text: source, sourceHash: this.hash(source), sessionId: this.sessionId, choice, expression, reservations: [...this.reservations.values()] });
+    if (this.abort.signal.aborted) return null;
+    if (prepared.reservation) this.reservations.set(prepared.target, prepared.reservation);
+    return prepared;
+  }
+  async wrap(prepared, body) {
+    if (this.abort.signal.aborted) throw Error("Equation editor was closed.");
+    const result = await this.api.wrap({ mode: prepared.mode, target: prepared.target, body });
+    if (this.abort.signal.aborted) throw Error("Equation editor was closed.");
+    return result.wrapper;
+  }
+  async plan(source, equation, original, symbolEdits) {
+    const plan = await this.api.planEquationSave({ path: this.path, text: source, sourceHash: this.hash(source), sessionId: this.sessionId, from: equation.from, to: equation.to, original, replacement: equation.insert, reservations: [...this.reservations.values()] });
+    const edits = mergeEquationPlans(source, equation, plan.changes, symbolEdits);
+    return { plan, edits };
+  }
+  dispose() {
+    this.abort.abort();
+    this.reservations.clear();
+  }
+};
+function checkReferenceDraftSize(replacement) {
+  if (replacement.length > 2e5) throw Error("Equation draft exceeds the interactive size limit.");
+  if (mathReferences(replacement).length > 256) throw Error("At most 256 references are supported in one equation.");
 }
 
 // node_modules/@lezer/common/dist/index.js
@@ -1758,8 +2169,8 @@ var Parser = class {
   }
 };
 var StringInput = class {
-  constructor(string2) {
-    this.string = string2;
+  constructor(string3) {
+    this.string = string3;
   }
   get length() {
     return this.string.length;
@@ -1987,7 +2398,7 @@ var name = t();
 var typeName = t(name);
 var propertyName = t(name);
 var literal = t();
-var string = t(literal);
+var string2 = t(literal);
 var number = t(literal);
 var content = t();
 var heading = t(content);
@@ -2060,19 +2471,19 @@ var tags = {
   /**
   A string [literal](#highlight.tags.literal).
   */
-  string,
+  string: string2,
   /**
   A documentation [string](#highlight.tags.string).
   */
-  docString: t(string),
+  docString: t(string2),
   /**
   A character literal (subtag of [string](#highlight.tags.string)).
   */
-  character: t(string),
+  character: t(string2),
   /**
   An attribute value (subtag of [string](#highlight.tags.string)).
   */
-  attributeValue: t(string),
+  attributeValue: t(string2),
   /**
   A number [literal](#highlight.tags.literal).
   */
@@ -3629,9 +4040,9 @@ var DefaultInline = {
   Escape(cx, next, start) {
     if (next != 92 || start == cx.end - 1)
       return -1;
-    let escaped3 = cx.char(start + 1);
+    let escaped4 = cx.char(start + 1);
     for (let i = 0; i < Escapable.length; i++)
-      if (Escapable.charCodeAt(i) == escaped3)
+      if (Escapable.charCodeAt(i) == escaped4)
         return cx.append(elt(Type.Escape, start, start + 2));
     return -1;
   },
@@ -3801,12 +4212,12 @@ function parseURL(text, start, offset) {
     return null;
   } else {
     let depth = 0, pos = start;
-    for (let escaped3 = false; pos < text.length; pos++) {
+    for (let escaped4 = false; pos < text.length; pos++) {
       let ch = text.charCodeAt(pos);
       if (space(ch)) {
         break;
-      } else if (escaped3) {
-        escaped3 = false;
+      } else if (escaped4) {
+        escaped4 = false;
       } else if (ch == 40) {
         depth++;
       } else if (ch == 41) {
@@ -3814,7 +4225,7 @@ function parseURL(text, start, offset) {
           break;
         depth--;
       } else if (ch == 92) {
-        escaped3 = true;
+        escaped4 = true;
       }
     }
     return pos > start ? elt(Type.URL, start + offset, pos + offset) : pos == text.length ? null : false;
@@ -3825,22 +4236,22 @@ function parseLinkTitle(text, start, offset) {
   if (next != 39 && next != 34 && next != 40)
     return false;
   let end = next == 40 ? 41 : next;
-  for (let pos = start + 1, escaped3 = false; pos < text.length; pos++) {
+  for (let pos = start + 1, escaped4 = false; pos < text.length; pos++) {
     let ch = text.charCodeAt(pos);
-    if (escaped3)
-      escaped3 = false;
+    if (escaped4)
+      escaped4 = false;
     else if (ch == end)
       return elt(Type.LinkTitle, start + offset, pos + 1 + offset);
     else if (ch == 92)
-      escaped3 = true;
+      escaped4 = true;
   }
   return null;
 }
 function parseLinkLabel(text, start, offset, requireNonWS) {
-  for (let escaped3 = false, pos = start + 1, end = Math.min(text.length, pos + 999); pos < end; pos++) {
+  for (let escaped4 = false, pos = start + 1, end = Math.min(text.length, pos + 999); pos < end; pos++) {
     let ch = text.charCodeAt(pos);
-    if (escaped3)
-      escaped3 = false;
+    if (escaped4)
+      escaped4 = false;
     else if (ch == 93)
       return requireNonWS ? false : elt(Type.LinkLabel, start + offset, pos + 1 + offset);
     else {
@@ -3849,7 +4260,7 @@ function parseLinkLabel(text, start, offset, requireNonWS) {
       if (ch == 91)
         return false;
       else if (ch == 92)
-        escaped3 = true;
+        escaped4 = true;
     }
   }
   return null;
@@ -4355,139 +4766,98 @@ var Emoji = {
   }]
 };
 
-// src/model.ts
-var escaped2 = (s, i) => {
-  let n = 0;
-  while (i > 0 && s[--i] === "\\") n++;
-  return n % 2 === 1;
-};
-function equations(s) {
-  const out = [];
-  let i = 0;
-  let fence = "";
-  let fenceLength = 0;
-  if (s.startsWith("---\n") || s.startsWith("---\r\n")) {
-    const m3 = /\r?\n(?:---|\.\.\.)\s*(?:\r?\n|$)/g;
-    m3.lastIndex = 3;
-    const end = m3.exec(s);
-    if (end) i = end.index + end[0].length;
+// src/editor-mount.ts
+function calloutBounds(view, child) {
+  if (!child.matches(".cm-callout")) return null;
+  try {
+    const index = Array.prototype.indexOf.call(view.contentDOM.childNodes, child);
+    const from = view.posAtDOM(view.contentDOM, index), to2 = view.posAtDOM(view.contentDOM, index + 1);
+    return Number.isInteger(from) && Number.isInteger(to2) && from >= 0 && to2 <= view.state.doc.length && to2 > from ? { from, to: to2 } : null;
+  } catch {
+    return null;
   }
-  while (i < s.length) {
-    if (i === 0 || s[i - 1] === "\n") {
-      const line = s.slice(i, s.indexOf("\n", i) < 0 ? s.length : s.indexOf("\n", i));
-      const f = /^ {0,3}(`{3,}|~{3,})/.exec(line);
-      if (f) {
-        if (!fence) {
-          fence = f[1][0];
-          fenceLength = f[1].length;
-        } else if (f[1][0] === fence && f[1].length >= fenceLength) fence = "";
-        i += line.length + 1;
-        continue;
-      }
-      if (fence || /^ {4}|^\t/.test(line)) {
-        i += line.length + 1;
-        continue;
-      }
-    }
-    if (s[i] === "`" && !escaped2(s, i)) {
-      let n = 1;
-      while (s[i + n] === "`") n++;
-      const end2 = s.indexOf("`".repeat(n), i + n);
-      i = end2 < 0 ? i + n : end2 + n;
-      continue;
-    }
-    if (s[i] !== "$" || escaped2(s, i)) {
-      i++;
-      continue;
-    }
-    const display = s[i + 1] === "$";
-    const size = display ? 2 : 1;
-    const start = i;
-    let j = i + size;
-    if (!display && /\s/.test(s[j] ?? "")) {
-      i++;
-      continue;
-    }
-    let end = -1;
-    while (j < s.length) {
-      if (!display && s[j] === "\n") break;
-      if (s[j] === "$" && !escaped2(s, j) && (!display || s[j + 1] === "$")) {
-        end = j;
-        break;
-      }
-      j++;
-    }
-    if (end < 0) {
-      i += size;
-      continue;
-    }
-    if (!display && (/\s/.test(s[end - 1] ?? "") || /\d/.test(s[end + 1] ?? ""))) {
-      i = end + size;
-      continue;
-    }
-    const to2 = end + size;
-    out.push({ from: start, to: to2, bodyFrom: start + size, bodyTo: end, body: s.slice(start + size, end), display, raw: s.slice(start, to2) });
-    i = to2;
+}
+function editorMount(view, q) {
+  const empty = q.bodyFrom === q.bodyTo;
+  const fallback = { at: empty ? q.from : q.to, side: empty ? -1 : 1 };
+  for (const child of Array.from(view.contentDOM.children)) {
+    const range = calloutBounds(view, child);
+    if (range && range.from <= q.from && range.to >= q.to) return { at: range.to, side: 1 };
   }
-  return out;
+  return sourceQuoteMount(view.state.doc.toString(), q) ?? fallback;
 }
-function splitTag(body) {
-  const auto = /% math-studio:auto:([a-zA-Z0-9-]+)/.exec(body);
-  const tags2 = [...body.matchAll(/\\tag\{([^{}]*)\}/g)];
-  const tag = tags2.length === 1 ? tags2[0] : void 0;
-  return { latex: body.replace(/% math-studio:auto:[a-zA-Z0-9-]+\s*/g, "").replace(/\\tag\{[^{}]*\}/g, "").trim(), tag: auto ? { kind: "auto", label: tag?.[1] ?? "", id: auto[1] } : tag ? { kind: "manual", label: tag[1] } : { kind: "none", label: "" } };
-}
-function unsupported(body) {
-  const checked = body.replace(/\\class\{mjx-ss mjx-ss-o-[0-9a-z]{10}\}/g, "");
-  if (/\\(?:newcommand|renewcommand|def|gdef|require|html\w*|href|includegraphics|class|style)\b/.test(checked)) return "This equation uses a macro definition or an external/HTML command. Keep editing it in native LaTeX.";
-  const stripped = body.replace(/% math-studio:auto:[a-zA-Z0-9-]+/g, "");
-  if (/(^|[^\\])%/.test(stripped)) return "This equation contains LaTeX comments. Native editing preserves them exactly.";
-  if ((body.match(/\\tag\b/g) || []).length > 1 || /\\tag\*/.test(body) || /\\label\b|\\ref\b|\\eqref\b/.test(body)) return "This equation uses labels, references or multiple tags. Use native editing to preserve them.";
-  if (/\\tag\{[^}]*\{/.test(body)) return "Nested equation tags are supported in native editing only.";
-  return null;
-}
-function compose(original, latex, tag) {
-  const label = tag.label.trim();
-  if (/[{}\\\n\r]/.test(label)) throw Error("Use a plain equation label without braces, backslashes or line breaks.");
-  let body = latex.trim();
-  if (tag.kind !== "none" && original.display) body += `\\tag{${label || "1"}}`;
-  if (tag.kind === "auto" && original.display) body += `
-% math-studio:auto:${tag.id || crypto.randomUUID()}`;
-  if (original.display) return `$$
-${body}
-$$`;
-  return `$${body}$`;
-}
-function numberingEdits(doc) {
-  let n = 0;
-  const ids = /* @__PURE__ */ new Set();
-  const edits = [];
-  for (const q of equations(doc)) {
-    const { tag } = splitTag(q.body);
-    if (tag.kind !== "auto" || !q.display) continue;
-    n++;
-    let raw = q.raw;
-    const id = tag.id;
-    if (ids.has(id)) raw = raw.replace(`math-studio:auto:${id}`, `math-studio:auto:${crypto.randomUUID()}`);
-    ids.add(id);
-    raw = /\\tag\{[^{}]*\}/.test(raw) ? raw.replace(/\\tag\{[^{}]*\}/, `\\tag{${n}}`) : raw.replace(/\n% math-studio:auto:/, `\\tag{${n}}
-% math-studio:auto:`);
-    if (raw !== q.raw) edits.push({ from: q.from, to: q.to, insert: raw });
+function sourceQuoteMount(source, q) {
+  if (!source.includes(">")) return null;
+  let outer = null;
+  for (let node = parser.parse(source).resolveInner(q.from, 1); node; node = node.parent) {
+    if (node.name === "Blockquote" && node.from <= q.from && node.to >= q.to) outer = { from: node.from, to: node.to };
   }
-  return edits;
+  if (!outer) return null;
+  let end = outer.to;
+  if (source.slice(end, end + 2) === "\r\n") end += 2;
+  else if (source[end] === "\n") end++;
+  return { at: end, side: end === source.length ? 1 : -1 };
 }
-function safeReplacement(doc, q, replacement) {
-  if (doc.slice(q.from, q.to) !== q.raw) throw Error("The equation changed outside this visual editor. Your draft is kept open; cancel and reopen the current equation.");
-  return { from: q.from, to: q.to, insert: replacement };
+function matchingEquation(equations2, rendered, index) {
+  const normalize = (s) => s.replace(/\r\n/g, "\n").trim();
+  if (index < 0 || index >= rendered.length || equations2.length !== rendered.length) return null;
+  if (equations2.some((q, i) => rendered[i].body === null || q.display !== rendered[i].display || normalize(q.body) !== normalize(rendered[i].body))) return null;
+  return equations2[index];
 }
-function equationAt(source, at) {
-  if (at > 0 && source[at - 1] === "$" && source[at] === "$" && source[at - 2] !== "$" && source[at + 1] !== "$" && !escaped2(source, at - 1)) {
-    const probe = source.slice(0, at) + "x" + source.slice(at);
-    if (equations(probe).some((q) => q.from === at - 1 && !q.display))
-      return { from: at - 1, to: at + 1, bodyFrom: at, bodyTo: at, body: "", display: false, raw: "$$" };
+function editableCalloutEquations(source, equations2, offset = 0) {
+  let masked = "", last = 0;
+  for (const q of equations2) {
+    masked += source.slice(last, q.from - offset) + q.raw.replace(/[^\r\n]/g, "x");
+    last = q.to - offset;
   }
-  return equations(source).find((q) => at >= q.from && at <= q.to);
+  masked += source.slice(last);
+  const links = [];
+  parser.parse(masked).iterate({ enter(n) {
+    if (["Link", "Image", "Autolink"].includes(n.name)) {
+      links.push({ from: n.from, to: n.to });
+      return false;
+    }
+  } });
+  for (const m3 of masked.matchAll(/!?\[\[[^\]\r\n]*\]\]/g)) links.push({ from: m3.index, to: m3.index + m3[0].length });
+  return equations2.filter((q) => !links.some((r) => q.from - offset >= r.from && q.to - offset <= r.to));
 }
+function calloutEquation(view, math, equations2) {
+  if (math.closest(".internal-embed,.markdown-embed,.kl-dynamic-reference,a")) return null;
+  const widget = Array.from(view.contentDOM.children).find((e) => e.matches(".cm-callout") && e.contains(math));
+  if (!widget) return void 0;
+  const range = calloutBounds(view, widget);
+  if (!range) return null;
+  if (range.to - range.from > 65536) return null;
+  const nodes = Array.from(widget.querySelectorAll(".math")).filter((e) => !e.closest(".internal-embed,.markdown-embed,.kl-dynamic-reference,a"));
+  const target = math.closest(".math");
+  const scoped = equations2.filter((q) => q.from >= range.from && q.to <= range.to);
+  const editable = editableCalloutEquations(view.state.doc.sliceString(range.from, range.to), scoped, range.from);
+  return matchingEquation(editable, nodes.map((e) => ({
+    body: e.getAttribute("data-math-studio-latex") ?? e.querySelector(":scope > mjx-container")?.getAttribute("data-kl-source-latex") ?? e.querySelector(":scope > mjx-container > mjx-math")?.getAttribute("data-latex") ?? null,
+    display: e.classList.contains("math-block")
+  })), nodes.indexOf(target));
+}
+
+// src/section-lines.ts
+function sectionLines(source, first, last) {
+  let from = 0;
+  for (let line = 0; line < first; line++) {
+    const end = source.indexOf("\n", from);
+    if (end < 0) return "";
+    from = end + 1;
+  }
+  let to2 = from;
+  for (let line = first; line <= last; line++) {
+    const end = source.indexOf("\n", to2);
+    if (end < 0) return source.slice(from);
+    if (line === last) return source.slice(from, end);
+    to2 = end + 1;
+  }
+  return "";
+}
+
+// src/build-id.ts
+var BUILD_ID = "6bc9f34df38e536d";
 
 // src/emphasis.ts
 var EmphasisIndex = class {
@@ -9664,13 +10034,11 @@ var sessionField = import_state.StateField.define({
         if (from2 < value.q.to && to3 > value.q.from || from2 === to3 && from2 > value.q.from && from2 < value.q.to) conflict = true;
       });
       const from = tr2.changes.mapPos(value.q.from, 1), to2 = tr2.changes.mapPos(value.q.to, -1);
-      return { ...value, conflict, q: { ...value.q, from, to: to2, bodyFrom: from + (value.q.display ? 2 : 1), bodyTo: to2 - (value.q.display ? 2 : 1) } };
+      return { ...value, conflict, mount: { ...value.mount, at: tr2.changes.mapPos(value.mount.at, value.mount.side) }, q: { ...value.q, from, to: to2, bodyFrom: from + (value.q.display ? 2 : 1), bodyTo: to2 - (value.q.display ? 2 : 1) } };
     }
     return value;
   },
-  // Empty $|$ may be inside a much larger native display replacement. Mount
-  // before its opener so Live Preview cannot swallow the visual editor.
-  provide: (field) => import_view.EditorView.decorations.from(field, (value) => value ? import_view.Decoration.set([import_view.Decoration.widget({ widget: new MathWidget(value), block: true, side: value.q.bodyFrom === value.q.bodyTo ? -1 : 1 }).range(value.q.bodyFrom === value.q.bodyTo ? value.q.from : value.q.to)]) : import_view.Decoration.none)
+  provide: (field) => import_view.EditorView.decorations.from(field, (value) => value ? import_view.Decoration.set([import_view.Decoration.widget({ widget: new MathWidget(value), block: true, side: value.mount.side }).range(value.mount.at)]) : import_view.Decoration.none)
 });
 var EditButton = class extends import_view.WidgetType {
   constructor(from) {
@@ -9711,9 +10079,16 @@ var controls = import_view.ViewPlugin.fromClass(class {
     const target = event.target;
     if (target.closest(".math-studio-host")) return;
     const math = target.closest(".math, mjx-container");
-    if (!math || this.view.state.field(sessionField, false)) return;
+    if (!math || math.closest(".internal-embed,.markdown-embed,.kl-dynamic-reference,a") || this.view.state.field(sessionField, false)) return;
     try {
-      const at = this.view.posAtDOM(math);
+      const matched = calloutEquation(this.view, math, equationsFor(this.view.state.doc));
+      if (matched === null) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        new import_obsidian.Notice("Couldn\u2019t identify this equation; open it from source.");
+        return;
+      }
+      const at = matched?.from ?? this.view.posAtDOM(math);
       if (equationsFor(this.view.state.doc).some((q) => at >= q.from && at <= q.to)) {
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -9806,6 +10181,7 @@ var IntegralWidget = class extends import_view.WidgetType {
     const el2 = view.dom.ownerDocument.createElement(this.q.display ? "div" : "span");
     el2.className = "math-studio-special" + (this.q.display ? " math-studio-display" : "");
     el2.innerHTML = staticMarkup(this.q);
+    el2.dataset.mathStudioLatex = this.q.body;
     el2.title = "Click to edit this equation visually";
     el2.setAttribute("role", "button");
     el2.setAttribute("aria-label", "Edit closed integral equation");
@@ -9830,6 +10206,7 @@ var compatibilityField = import_state.StateField.define({ create: () => import_v
   return import_view.Decoration.set(closedFor(tr2.state.doc).filter((q) => !(head >= q.from && head <= q.to)).map((q) => import_view.Decoration.replace({ widget: new IntegralWidget(q), block: q.display }).range(q.from, q.to)), true);
 }, provide: (f) => import_view.EditorView.decorations.from(f) });
 var MathStudio = class extends import_obsidian.Plugin {
+  composeReferenceSource = composeSourceDraft;
   buildId = BUILD_ID;
   frameCode = "";
   mathCSS = "";
@@ -9851,9 +10228,14 @@ var MathStudio = class extends import_obsidian.Plugin {
       if (event.button !== 0 || event.ctrlKey || event.metaKey || event.altKey) return false;
       const target = event.target;
       const math = target.closest(".math");
-      if (!math || target.closest(".math-studio-host") || view.state.field(sessionField, false)) return false;
+      if (!math || math.closest(".internal-embed,.markdown-embed,.kl-dynamic-reference,a") || target.closest(".math-studio-host") || view.state.field(sessionField, false)) return false;
       try {
-        const at = view.posAtDOM(math);
+        const matched = calloutEquation(view, math, equationsFor(view.state.doc));
+        if (matched === null) {
+          new import_obsidian.Notice("Couldn\u2019t identify this equation; open it from source.");
+          return true;
+        }
+        const at = matched?.from ?? view.posAtDOM(math);
         if (equationsFor(view.state.doc).some((q) => at >= q.from && at <= q.to)) {
           event.preventDefault();
           this.start(view, at);
@@ -9900,6 +10282,7 @@ var MathStudio = class extends import_obsidian.Plugin {
         if (q && hasClosedIntegral(q) && !u2(splitTag(q.body).latex).length) {
           this.styleMath(el2.ownerDocument);
           target.innerHTML = staticMarkup(q);
+          target.dataset.mathStudioLatex = q.body;
           target.classList.add("math-studio-special");
         }
       }
@@ -9917,7 +10300,7 @@ var MathStudio = class extends import_obsidian.Plugin {
     doc.head.append(style);
     this.styledDocs.set(doc, style);
   }
-  start(view, at) {
+  start(view, at, justify = false) {
     if (view.state.field(sessionField, false)) {
       new import_obsidian.Notice("Save or cancel the current visual equation first.");
       return;
@@ -9927,9 +10310,22 @@ var MathStudio = class extends import_obsidian.Plugin {
       new import_obsidian.Notice("Place the cursor inside an inline or display equation.");
       return;
     }
-    const info = view.state.field(import_obsidian.editorInfoField, false);
-    const s = { id: crypto.randomUUID(), q, conflict: false, filePath: info?.file?.path ?? null };
-    view.dispatch({ effects: openEffect.of(s), selection: import_state.EditorSelection.cursor(q.bodyFrom === q.bodyTo ? q.bodyFrom : Math.min(view.state.doc.length, q.to + 1)) });
+    const row = justificationRowAt(q.body, Math.max(0, at - q.bodyFrom));
+    const info = view.state.field(import_obsidian.editorInfoField, false), s = { ...justify ? { justifyRow: row } : {}, id: crypto.randomUUID(), q, conflict: false, filePath: info?.file?.path ?? null, mount: editorMount(view, q) };
+    view.dispatch({ effects: [openEffect.of(s), import_view.EditorView.scrollIntoView(s.mount.at, { y: "nearest" })], selection: import_state.EditorSelection.cursor(s.mount.at !== q.to ? s.mount.at : q.bodyFrom === q.bodyTo ? q.bodyFrom : Math.min(view.state.doc.length, q.to + 1)) });
+    const check = (retry) => view.requestMeasure({ read: () => !!view.dom.querySelector(`[data-math-studio-session="${s.id}"]`), write: (mounted) => {
+      const current = view.state.field(sessionField, false);
+      if (mounted || current?.id !== s.id) return;
+      const mount = editorMount(view, current.q);
+      if (retry && (mount.at !== current.mount.at || mount.side !== current.mount.side)) {
+        view.dispatch({ effects: [openEffect.of({ ...current, mount }), import_view.EditorView.scrollIntoView(mount.at, { y: "nearest" })], selection: import_state.EditorSelection.cursor(mount.at) });
+        check(false);
+      } else {
+        view.dispatch({ effects: openEffect.of(null) });
+        new import_obsidian.Notice("Couldn\u2019t place the editor; open it from source.");
+      }
+    } });
+    check(true);
   }
   renumber(view) {
     if (view.state.field(sessionField, false)) return;
@@ -9940,6 +10336,8 @@ var MathStudio = class extends import_obsidian.Plugin {
     const doc = view.dom.ownerDocument;
     const host = doc.createElement("div");
     host.className = "math-studio-host";
+    host.dataset.mathStudioSession = s.id;
+    host.tabIndex = -1;
     const iframe = doc.createElement("iframe");
     iframe.className = "math-studio-frame";
     iframe.title = "Math Studio visual equation editor";
@@ -9949,6 +10347,11 @@ var MathStudio = class extends import_obsidian.Plugin {
     const computed = doc.defaultView.getComputedStyle(view.dom);
     for (const key of ["--text-normal", "--text-muted", "--text-error", "--text-warning", "--color-purple", "--text-faint", "--background-primary", "--background-secondary", "--background-modifier-border", "--background-modifier-hover", "--interactive-accent", "--text-on-accent"]) colors[key] = computed.getPropertyValue(key).trim();
     const symbolApi = this.app.plugins?.plugins?.["study-studio"]?.symbolApi;
+    const providers = this.app.plugins?.plugins;
+    const referenceApi = (providers?.["knowledge-library-lab"] ?? providers?.["knowledge-library"])?.referenceApi;
+    const hash = (text) => require("crypto").createHash("sha256").update(text).digest("hex");
+    const referenceDraft = s.filePath && referenceApi?.version === 1 && ["choose", "prepare", "wrap", "planEquationSave", "verifyEquationSave"].every((k) => typeof referenceApi[k] === "function") ? new ReferenceDraft(referenceApi, s.id, s.filePath, hash) : null;
+    const preparedReferences = /* @__PURE__ */ new Map();
     let symbols;
     try {
       if (symbolApi?.version === 1) symbols = symbolApi.session(view.state.doc.toString(), s.filePath);
@@ -9956,7 +10359,7 @@ var MathStudio = class extends import_obsidian.Plugin {
       new import_obsidian.Notice(error.message);
     }
     const { latex, tag } = splitTag(s.q.body);
-    const config = { id: s.id, buildId: BUILD_ID, symbols, fontCSS: this.fontCSS, mathCSS: this.mathCSS, latex, tag, display: s.q.display, fonts: this.app.vault.adapter.getResourcePath(`${this.manifest.dir}/vendor/fonts`), dark: doc.body.classList.contains("theme-dark"), colors, blocked: unsupported(s.q.body) };
+    const config = { id: s.id, buildId: BUILD_ID, justifyRow: s.justifyRow, context: s.mount.at !== s.q.to ? "Line " + view.state.doc.lineAt(s.q.from).number : void 0, symbols, references: !!referenceDraft, fontCSS: this.fontCSS, mathCSS: this.mathCSS, latex, tag, display: s.q.display, fonts: this.app.vault.adapter.getResourcePath(`${this.manifest.dir}/vendor/fonts`), dark: doc.body.classList.contains("theme-dark"), colors, blocked: s.q.containerIssue || unsupported(s.q.body) || (!referenceDraft && /\\class\{(?:mjx-)?klref\b/.test(latex) ? "Enable Knowledge Library to edit linked equations." : null) };
     const script = this.frameCode.replace(/<\/script/gi, "<\\/script");
     iframe.srcdoc = `<!doctype html><html><head><meta charset="UTF-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; font-src app: data:; img-src data:; connect-src 'none'"></head><body><script>window.mathStudioConfig=${JSON.stringify(config).replace(/</g, "\\u003c")};<\/script><script>${script}<\/script></body></html>`;
     let finishTarget = null;
@@ -9971,7 +10374,7 @@ var MathStudio = class extends import_obsidian.Plugin {
       iframe.contentWindow?.postMessage({ mathStudio: s.id, type: "finish" }, "*");
     };
     const fail = (message) => iframe.contentWindow?.postMessage({ mathStudio: s.id, type: "error", message }, "*");
-    let readyBuild, saving = false;
+    let readyBuild, saving = false, initialScroll = false;
     const receive = async (event) => {
       if (event.source !== iframe.contentWindow || event.data?.mathStudio !== s.id) return;
       const data = event.data;
@@ -9982,6 +10385,7 @@ var MathStudio = class extends import_obsidian.Plugin {
         if (readyBuild !== BUILD_ID) fail("Math Studio main.js and frame.js do not match. Install the complete release.");
       }
       if (data.type === "open-symbols") {
+        host.focus({ preventScroll: true });
         void this.app.plugins?.plugins?.["study-studio"]?.symbolSystem?.open(s.filePath);
       }
       if (data.type === "check-symbol") {
@@ -9994,11 +10398,52 @@ var MathStudio = class extends import_obsidian.Plugin {
           iframe.contentWindow?.postMessage({ mathStudio: s.id, type: "symbol-checked", request: data.request, error: error.message }, "*");
         }
       }
+      if (data.type === "discard-reference") {
+        preparedReferences.delete(data.token);
+        iframe.contentWindow?.postMessage({ mathStudio: s.id, type: "reference-result", request: data.request, result: null }, "*");
+      }
+      if (data.type === "choose-reference" || data.type === "wrap-reference") {
+        try {
+          if (readyBuild !== BUILD_ID || !referenceDraft) throw Error("Enable the matching Knowledge Library reference tools.");
+          if (saving) throw Error("Wait for the equation save to finish.");
+          let result = null;
+          if (data.type === "choose-reference") {
+            if (typeof data.expression !== "string" || data.expression.length > 2e5) throw Error("Select an expression to link.");
+            const info = view.state.field(import_obsidian.editorInfoField, false);
+            if (info?.file?.path !== s.filePath || !info?.editor) throw Error("The note changed. Reopen its equation.");
+            host.focus({ preventScroll: true });
+            const prepared = await referenceDraft.choose({ editor: info.editor, info, anchorRect: host.getBoundingClientRect(), mode: data.mode, currentTarget: data.currentTarget, purpose: data.purpose }, () => view.state.doc.toString(), data.expression);
+            if (prepared) {
+              if (preparedReferences.size >= 256) throw Error("Too many pending choices; save or reopen this equation.");
+              const token = crypto.randomUUID();
+              preparedReferences.set(token, prepared);
+              result = { token, expression: prepared.expression, mode: prepared.mode, target: prepared.target };
+            }
+          } else {
+            const prepared = preparedReferences.get(data.token);
+            if (!prepared) throw Error("Choose the reference again.");
+            if (typeof data.body !== "string" || data.body.length > 2e5) throw Error("Invalid reference expression.");
+            result = { wrapper: await referenceDraft.wrap(prepared, data.body) };
+            preparedReferences.delete(data.token);
+          }
+          if (view.state.field(sessionField, false)?.id === s.id) {
+            iframe.focus({ preventScroll: true });
+            iframe.contentWindow?.postMessage({ mathStudio: s.id, type: "reference-result", request: data.request, result }, "*");
+          }
+        } catch (error) {
+          if (view.state.field(sessionField, false)?.id === s.id) iframe.focus({ preventScroll: true });
+          iframe.contentWindow?.postMessage({ mathStudio: s.id, type: "reference-result", request: data.request, error: error.message }, "*");
+        }
+      }
       if (data.type === "resize") {
         iframe.style.height = `${Math.max(150, Math.min(780, Number(data.height) || 200))}px`;
         view.requestMeasure();
+        if (!initialScroll) {
+          initialScroll = true;
+          host.scrollIntoView({ block: "nearest" });
+        }
       }
-      if (data.type === "cancel" || data.type === "native") {
+      if ((data.type === "cancel" || data.type === "native") && !saving) {
         view.dispatch({ effects: openEffect.of(null), selection: import_state.EditorSelection.cursor(current.q.bodyFrom) });
         view.focus();
       }
@@ -10013,22 +10458,62 @@ var MathStudio = class extends import_obsidian.Plugin {
           const path = view.state.field(import_obsidian.editorInfoField, false)?.file?.path ?? null;
           if (current.conflict || path !== current.filePath) throw Error("The note or equation changed while you were editing. Your draft is still here; copy it before reopening the current source.");
           if (typeof data.latex !== "string" || !["none", "manual", "auto"].includes(data.tag?.kind)) throw Error("Invalid equation draft.");
-          const source = view.state.doc.toString(), replacement = data.changed ? compose(current.q, data.latex, data.tag) : current.q.raw;
+          const snapshot = view.state.doc, source = snapshot.toString();
+          let replacement = data.referenceSource ? composeSourceDraft(current.q, data.referenceSource.before, data.referenceSource.after, data.tag) : data.changed ? compose(current.q, data.latex, data.tag) : current.q.raw;
           const change = safeReplacement(source, current.q, replacement);
+          checkReferenceDraftSize(replacement);
           let changes = [change];
+          let foreignIdentities = [];
           if (symbolApi && data.symbols) changes = await symbolApi.planEquationSave(path, source, current.q.from, current.q.to, current.q.raw, replacement, data.symbols);
           else {
             const before = markers(current.q.raw), after = markers(replacement);
             if (before.length !== after.length || before.some((m3, i) => m3.id !== after[i].id || semanticGlyph(m3.body) !== semanticGlyph(after[i].body))) throw Error("Enable the matching symbol system before changing tagged symbols.");
           }
+          if (referenceDraft) {
+            const finalEquation = plannedEquation(source, change, changes);
+            replacement = finalEquation.insert;
+            checkReferenceDraftSize(replacement);
+            const planned = await referenceDraft.plan(source, finalEquation, current.q.raw, changes);
+            await referenceApi.verifyEquationSave(planned.plan, source);
+            if (symbolApi && data.symbols) {
+              const verified = await symbolApi.planEquationSave(path, source, current.q.from, current.q.to, current.q.raw, change.insert, data.symbols);
+              if (JSON.stringify(verified) !== JSON.stringify(changes)) throw Error("Symbol definitions changed during save. Review your draft again.");
+            }
+            changes = planned.edits;
+            foreignIdentities = planned.plan.foreignIdentities || [];
+          } else if (/\\class\{(?:mjx-)?klref\b/.test(replacement) && replacement !== current.q.raw) throw Error("Enable the matching Knowledge Library before changing linked equations.");
+          changes = changes.filter((e) => source.slice(e.from, e.to) !== e.insert);
+          const expected = applyEdits(source, changes), expectedHash = hash(expected);
           if (view.state.field(sessionField, false)?.id !== s.id) return;
-          if (view.state.doc.toString() !== source) throw Error("The note changed during the save check. Your draft is retained.");
+          if (view.state.doc !== snapshot || view.state.field(import_obsidian.editorInfoField, false)?.file?.path !== path) throw Error("The note changed during the save check. Your draft is retained.");
+          const annotations = [import_state.Transaction.userEvent.of("input.math-studio")];
+          let isolated = false;
+          try {
+            const commands = require("@codemirror/commands");
+            if (view.state.field(commands.historyField, false) !== void 0) {
+              annotations.push(commands.isolateHistory.of("full"));
+              isolated = true;
+            }
+          } catch {
+          }
           const target = finishTarget;
           finishTarget = null;
           const changeSet = view.state.changes(changes), mappedStart = changeSet.mapPos(current.q.from, -1), mappedTarget = target ? changeSet.mapPos(target.at, 1) : null;
-          const transaction = view.state.update({ changes: changeSet, effects: openEffect.of(null), selection: import_state.EditorSelection.cursor(mappedTarget ?? (data.native ? mappedStart + (current.q.display ? 2 : 1) : Math.min(changeSet.newLength, mappedStart + replacement.length + 1))), annotations: import_state.Transaction.userEvent.of("input.symbols") });
-          if (transaction.newDoc.toString() !== applyEdits(source, changes)) throw Error("The editor refused part of this change. Equation and symbol records were left untouched.");
-          view.dispatch(transaction);
+          const commit = async (extraEffects = []) => {
+            if (view.state.doc !== snapshot || view.state.field(sessionField, false)?.id !== s.id) throw Error("The equation changed during its grouped save. Your draft is retained.");
+            const transaction = view.state.update({ changes: changeSet, effects: [openEffect.of(null), ...extraEffects], selection: import_state.EditorSelection.cursor(mappedTarget ?? (!data.native && current.mount.at !== current.q.to ? changeSet.mapPos(current.mount.at, 1) : data.native ? mappedStart + (current.q.display ? 2 : 1) : Math.min(changeSet.newLength, mappedStart + replacement.length + 1))), annotations });
+            if (transaction.newDoc.toString() !== applyEdits(source, changes)) throw Error("The editor refused part of this change. Equation and symbol records were left untouched.");
+            view.dispatch(transaction);
+          };
+          if (foreignIdentities.length) {
+            if (typeof referenceApi.commitEquationSave !== "function") throw Error("Enable matching Knowledge Library tools to save this foreign identity.");
+            await referenceApi.commitEquationSave({ view, path, before: source, after: expected, identities: foreignIdentities }, commit);
+          } else await commit();
+          if (!isolated) view.dispatch({ selection: view.state.selection, userEvent: "select.math-studio" });
+          if (hash(view.state.doc.toString()) !== expectedHash) {
+            new import_obsidian.Notice("The saved equation differs from its verified plan. Undo this edit before continuing.");
+            return;
+          }
           if (this.settings.autoNumber) this.renumber(view);
           view.focus();
           if (target?.math && mappedTarget !== null) this.start(view, mappedTarget);
@@ -10042,6 +10527,8 @@ var MathStudio = class extends import_obsidian.Plugin {
     doc.defaultView.addEventListener("message", receive);
     doc.addEventListener("mousedown", outside, true);
     const dispose = () => {
+      referenceDraft?.dispose();
+      preparedReferences.clear();
       doc.removeEventListener("mousedown", outside, true);
       doc.defaultView?.removeEventListener("message", receive);
       this.liveFrames.delete(dispose);
@@ -10063,7 +10550,7 @@ var MathSettings = class extends import_obsidian.PluginSettingTab {
       this.plugin.settings.buttons = v2;
       await this.plugin.saveData(this.plugin.settings);
     }));
-    new import_obsidian.Setting(this.containerEl).setName("Maintain automatic equation numbers").setDesc("Renumber equations explicitly marked Automatic after edits in an open note. Custom labels are unchanged.").addToggle((t33) => t33.setValue(this.plugin.settings.autoNumber).onChange(async (v2) => {
+    new import_obsidian.Setting(this.containerEl).setName("Maintain automatic equation numbers").setDesc("Renumber equations marked Automatic after edits, skipping numbers already used by fixed labels. Fixed labels are unchanged.").addToggle((t33) => t33.setValue(this.plugin.settings.autoNumber).onChange(async (v2) => {
       this.plugin.settings.autoNumber = v2;
       await this.plugin.saveData(this.plugin.settings);
     }));

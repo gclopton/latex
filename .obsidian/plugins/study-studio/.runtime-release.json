@@ -1,14 +1,13 @@
 {
   "schema": 1,
-  "plugin": "study-studio",
   "pluginId": "study-studio",
-  "sourceCommit": "9c56edd7b120015404edee636458a15d6c28f484",
-  "release": "code-edit-20261025",
-  "releaseIdentity": "code-edit-20261025-9c56edd7b120",
+  "sourceCommit": "fd615a1af607c6904fc37d75506b4f98a42d1960",
+  "release": "857534a9578cf87a2c0909cc8a08c9c0fe8a3b4bc33e3102f233f148a0f18929",
+  "candidate": true,
   "files": {
-    "main.js": "c4c3b6f4cbd7281e43d69a9a7c504ceea7c4cf2c9db4e1893e6d311ee8be3b16",
-    "styles.css": "caa972e16d9bb7945e653e59577a8d69c5da1f09e909174344e51fba76e14d5e",
+    "evidence-export.lua": "01502ed558507f36104721a3d89d81b0af5d758f228aa089c33c1615aa6a7667",
+    "main.js": "acde3ee08ffb74ba7bd62d9c19defec1b05d897727b39ab596b633e274a5b7a0",
     "manifest.json": "e827d117574f453216d4f26a333a6be8b79004a73b85896d1d28a45d4627006e",
-    "evidence-export.lua": "01502ed558507f36104721a3d89d81b0af5d758f228aa089c33c1615aa6a7667"
+    "styles.css": "caa972e16d9bb7945e653e59577a8d69c5da1f09e909174344e51fba76e14d5e"
   }
 }

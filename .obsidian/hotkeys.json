@@ -15,15 +15,7 @@
       ]
     }
   ],
-  "editor:insert-callout": [
-    {
-      "key": "1",
-      "modifiers": [
-        "Mod",
-        "Shift"
-      ]
-    }
-  ],
+  "editor:insert-callout": [],
   "editor:insert-link": [
     {
       "key": "K",
@@ -191,6 +183,86 @@
         "Ctrl",
         "Mod"
       ]
+    }
+  ],
+  "knowledge-library:create-callout": [
+    {
+      "key": "1",
+      "modifiers": [
+        "Mod",
+        "Shift"
+      ]
+    }
+  ],
+  "knowledge-library:justify-step": [
+    {
+      "modifiers": [
+        "Mod"
+      ],
+      "key": "J"
+    }
+  ],
+  "knowledge-library:toggle-callout": [
+    {
+      "modifiers": [
+        "Mod",
+        "Alt"
+      ],
+      "key": "."
+    }
+  ],
+  "knowledge-library:fold-all": [
+    {
+      "modifiers": [
+        "Mod",
+        "Alt"
+      ],
+      "key": "["
+    }
+  ],
+  "knowledge-library:unfold-all": [
+    {
+      "modifiers": [
+        "Mod",
+        "Alt"
+      ],
+      "key": "]"
+    }
+  ],
+  "knowledge-library:copy-callout": [
+    {
+      "modifiers": [
+        "Mod",
+        "Alt"
+      ],
+      "key": "C"
+    }
+  ],
+  "knowledge-library:admit-callout": [
+    {
+      "modifiers": [
+        "Mod",
+        "Alt"
+      ],
+      "key": "A"
+    }
+  ],
+  "knowledge-library:callout-source": [
+    {
+      "modifiers": [
+        "Mod",
+        "Alt"
+      ],
+      "key": "L"
+    }
+  ],
+  "knowledge-library:browse": [
+    {
+      "modifiers": [
+        "Mod",
+        "Shift"
+      ],
+      "key": "L"
     }
   ]
 }

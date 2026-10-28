@@ -506,7 +506,7 @@ class CalloutOutlineView extends ItemView {
     const countLabel = `${visible.length} of ${state.callouts.length} callouts`;
     if (this.countEl.textContent !== countText) this.countEl.textContent = countText;
     if (this.countEl.getAttribute('aria-label') !== countLabel) this.countEl.setAttribute('aria-label', countLabel);
-    const signature = JSON.stringify([path, this.filterType, this.plugin.colorVersion, this.plugin.mathStatus, visible]);
+    const signature = JSON.stringify([path, this.filterType, this.plugin.colorVersion, this.plugin.mathStatus, state.issue, visible]);
     if (signature === this.signature) return;
     this.signature = signature;
     const focused = this.list.contains(container.ownerDocument.activeElement) ? container.ownerDocument.activeElement : null;
@@ -521,7 +521,7 @@ class CalloutOutlineView extends ItemView {
     const valid = new Set(keys.values()); for (const key of this.rows.keys()) if (!valid.has(key)) this.rows.delete(key);
     const visibleKeys = new Set(visible.map(c => keys.get(c)));
     for (const item of [...this.list.children]) if (!visibleKeys.has(item.calloutRowKey) || this.rows.get(item.calloutRowKey)?.item !== item) {this.metaObserver?.unobserve(item); item.remove();}
-    if (!visible.length) this.list.createDiv({cls:'callout-outline-empty', text:state.file ? 'No matching callouts in this note.' : 'Open a Markdown note to show callouts.'});
+    if (!visible.length) this.list.createDiv({cls:'callout-outline-empty', text:state.issue || (state.file ? 'No matching callouts in this note.' : 'Open a Markdown note to show callouts.')});
     // Refresh every click target before any deferred label rendering.
     for (const c of visible) {const row = this.rows.get(keys.get(c)); if (row) row.callout = c;}
     let index = 0, cursor = this.list.firstChild;
@@ -555,7 +555,7 @@ class CalloutOutlineView extends ItemView {
           row.label = callout.label; row.mathStatus = this.plugin.mathStatus;
         }
         if (!this.metaObserver || row.nearViewport || container.ownerDocument.activeElement === row.item || row.metaText == null) this.updateRowMeta(row);
-        const note = callout.titleMismatch ? callout.rawTitle : '';
+        const note = callout.issue || (callout.titleMismatch ? callout.rawTitle : '');
         if (note && row.rawNote !== note) {
           row.note ||= row.item.createDiv({cls:'callout-outline-item-note'});
           row.note.replaceChildren(); renderInlineMath(row.note, note, () => this.plugin.scheduleMathReload()); math ||= note.includes('$');
@@ -720,6 +720,7 @@ module.exports = class CalloutOutlinePlugin extends Plugin {
       const view = this.getActiveMarkdownView(); this.observeMarkdownView(view); this.refreshView();
     };
     for (const event of ['active-leaf-change', 'file-open', 'layout-change']) this.registerEvent(this.app.workspace.on(event, update));
+    this.registerEvent(this.app.workspace.on('knowledge-library:callouts-changed', () => {this.providerCache = null; update();}));
     this.registerEvent(this.app.workspace.on('editor-change', (_editor, info) => {if (info?.file?.path === this.getActiveMarkdownView()?.file?.path) this.refreshView();}));
     this.registerEvent(this.app.vault.on('modify', file => {if (file.path === this.currentState.file?.path) this.refreshView();}));
     this.registerEvent(this.app.workspace.on('css-change', async () => {await this.reloadCalloutManagerColors(); if (!this.unloaded) this.refreshView();}));
@@ -731,7 +732,7 @@ module.exports = class CalloutOutlinePlugin extends Plugin {
     this.refreshView?.cancel?.(); this.stopObservingMarkdownView(); this.clearDecorateRetry();
     this.restoreAllRenderedCallouts();
     for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE)) leaf.view?.onClose?.();
-    this.lastMarkdownView = null; this.parseCache = null;
+    this.lastMarkdownView = null; this.parseCache = null; this.providerCache = null; this.readingSnapshots = null;
     // Obsidian owns the leaf lifecycle; do not remove the user's sidebar tab.
   }
 
@@ -752,6 +753,7 @@ module.exports = class CalloutOutlinePlugin extends Plugin {
   }
 
   observeMarkdownView(view) {
+    if (this.calloutProvider(view?.file)) {this.stopObservingMarkdownView(); return;}
     const root = isLivePreview(view) ? view.contentEl?.querySelector('.cm-content') : null;
     if (this.currentObservedView === view && this.observedRoot === root && this.calloutMutationObserver) return;
     this.stopObservingMarkdownView();
@@ -777,11 +779,56 @@ module.exports = class CalloutOutlinePlugin extends Plugin {
     this.lastMarkdownView = null; return null;
   }
 
+  calloutProvider(file) {
+    if (!file) return null;
+    for (const id of ['knowledge-library', 'knowledge-library-lab']) {
+      const api = this.app.plugins?.plugins?.[id]?.calloutAPI;
+      if (api?.version !== 1 || typeof api.decoratesTitles !== 'function' || typeof api.getCallouts !== 'function') continue;
+      const capability = api.decoratesTitles(file);
+      if (capability === 'yes' || capability === 'pending') return api;
+    }
+    return null;
+  }
+
   async getActiveMarkdownState() {
     const view = this.getActiveMarkdownView();
     if (!view?.file) return {file:null, callouts:[], doc:null, view:null};
-    const file = view.file, doc = view.editor?.cm?.state.doc;
-    const text = view.editor ? view.editor.getValue() : await this.app.vault.cachedRead(file);
+    const file = view.file, doc = view.getMode?.() === 'source' ? view.editor?.cm?.state.doc : null;
+    const provider = this.calloutProvider(file), providerRevision = provider?.revision?.();
+    let text;
+    const readText = () => text ??= doc ? view.editor.getValue() :
+      typeof view.getViewData === 'function' ? view.getViewData() : this.app.vault.cachedRead(file);
+    if (provider) {
+      this.stopObservingMarkdownView();
+      if (provider.decoratesTitles(file) === 'pending') return {file,doc,view,provider,providerRevision,callouts:[],issue:'Waiting for reference numbering…'};
+      const cached = this.providerCache;
+      if (cached?.provider === provider && (!cached.expiresAt || cached.expiresAt > Date.now()) && cached.revision === providerRevision && cached.file === file &&
+          (doc ? cached.doc === doc : cached.text === await readText())) {
+        const state = await cached.promise;
+        return state.view === view ? state : {...state,view};
+      }
+      this.readingSnapshots ||= new WeakMap();
+      let snapshot = doc;
+      if (!snapshot) {
+        text = await readText();
+        const last = this.readingSnapshots.get(view);
+        snapshot = last?.text === text ? last.doc : {};
+        this.readingSnapshots.set(view,{text,doc:snapshot});
+      }
+      const base = {file,doc,view,provider,providerRevision,readingText:doc ? undefined : text};
+      const promise = provider.getCallouts({file,doc:snapshot,text:readText}).then(
+        result => ({...base,callouts:result.callouts}),
+        error => ({...base,callouts:[],retryable:error.retryable !== false,issue:`Callout references unavailable: ${error.message || error}`}));
+      const record = {provider,revision:providerRevision,file,doc,text,promise};
+      this.providerCache = record;
+      const state = await promise;
+      // Permanent failures stay until the snapshot/provider changes. Transient
+      // errors may recover on a later interaction, without a background poller.
+      if (state.issue && state.retryable) record.expiresAt = Date.now() + 3000;
+      return state;
+    }
+    this.providerCache = null;
+    text = await readText();
     if (this.parseCache?.path === file.path && this.parseCache.text === text) {
       const cached = this.parseCache.state;
       return this.parseCache.state = cached.view === view && cached.doc === doc ? cached : {...cached, view, doc};
@@ -794,7 +841,10 @@ module.exports = class CalloutOutlinePlugin extends Plugin {
     if (this.unloaded) return;
     const epoch = this.refreshEpoch = (this.refreshEpoch || 0) + 1, state = await this.getActiveMarkdownState();
     if (this.unloaded || epoch !== this.refreshEpoch || state.view?.file?.path !== state.file?.path ||
-        (state.doc && state.doc !== state.view.editor?.cm?.state.doc)) return;
+        (state.doc && state.doc !== state.view.editor?.cm?.state.doc) ||
+        (state.provider || null) !== this.calloutProvider(state.file) ||
+        (state.provider && state.providerRevision !== state.provider.revision?.()) ||
+        (state.readingText !== undefined && typeof state.view.getViewData === 'function' && state.readingText !== state.view.getViewData())) return;
     if (this.currentState !== state) this.decorationWork = null;
     this.currentState = state;
     this.observeMarkdownView(state.view);
@@ -851,11 +901,13 @@ module.exports = class CalloutOutlinePlugin extends Plugin {
   decorateRenderedCallouts() {
     if (this.unloaded || this.decorationFrame) return;
     const view = this.getActiveMarkdownView(), state = this.currentState;
-    if (!isLivePreview(view) || view.file?.path !== state.file?.path || state.doc !== view.editor?.cm?.state.doc) return;
+    if (this.calloutProvider(view?.file)) {this.stopObservingMarkdownView(); return;}
+    if (!isLivePreview(view) || !view.contentEl?.querySelector('.cm-content') || view.file?.path !== state.file?.path || state.doc !== view.editor?.cm?.state.doc) return;
     const win = view.contentEl.ownerDocument.defaultView;
     this.decorationFrame = {win, id:win.requestAnimationFrame(() => {
       this.decorationFrame = null;
-      if (this.unloaded) return;
+      if (this.unloaded || this.calloutProvider(view?.file)) return;
+      if (!view.contentEl?.querySelector('.cm-content')) return;
       if (!isLivePreview(view) || this.getActiveMarkdownView() !== view || this.currentState !== state || state.doc !== view.editor?.cm?.state.doc) {
         this.decorateRenderedCallouts(); return;
       }
@@ -882,6 +934,11 @@ module.exports = class CalloutOutlinePlugin extends Plugin {
   jumpToCallout(callout) {
     const view = this.getActiveMarkdownView();
     if (!view?.file || view.file.path !== this.currentState.file?.path) {new Notice('Open the source note to jump to this callout.'); return;}
+    if ((this.currentState.doc && this.currentState.doc !== view.editor?.cm?.state.doc) ||
+        (this.currentState.provider && this.currentState.providerRevision !== this.currentState.provider.revision?.()) ||
+        (this.currentState.readingText !== undefined && typeof view.getViewData === 'function' && this.currentState.readingText !== view.getViewData())) {
+      this.refreshView(); new Notice('The callout outline is updating. Try this callout again in a moment.'); return;
+    }
     view.setEphemeralState({line:callout.line});
   }
 };
