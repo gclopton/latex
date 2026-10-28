@@ -26,6 +26,7 @@
 .study-field-preview{padding:.6em;border:1px solid var(--background-modifier-border);border-radius:4px;overflow:auto;min-height:2em;max-height:22em;font-size:var(--font-text-size);user-select:text}
 .study-field-preview p{margin:.2em 0}.study-field-preview [role=button]{cursor:pointer}.study-field-preview [role=button]:hover{outline:1px solid var(--interactive-accent)}
 .study-field-math:empty{display:none}.study-field-math{min-width:0;width:100%}.study-field-math iframe{width:100%;border:1px solid var(--background-modifier-border);min-height:280px}
+.study-field-source{padding:12px;border:1px solid var(--background-modifier-border);border-radius:6px}.study-field-source textarea{width:100%;font-family:var(--font-monospace);resize:vertical}.study-field-source [role=alert]{color:var(--text-error)}.study-field-source button{margin-right:8px}
 .study-author-modal:has(.study-field-math iframe) .study-author-actions button{opacity:.6}
 .study-answer-preview{padding:.25em 0}
 .study-preview-modal{width:min(1000px,94vw);max-width:94vw}

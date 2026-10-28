@@ -1,9 +1,9 @@
 {
   "id": "vault-manager-status",
   "name": "Vault Manager Status",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "minAppVersion": "1.6.0",
-  "description": "A small read-only cross-Mac status indicator supplied by Vault Manager.",
+  "description": "Cross-Mac sync status and receiver-local unsaved editor protection.",
   "author": "Grady Clopton",
   "isDesktopOnly": true
 }
