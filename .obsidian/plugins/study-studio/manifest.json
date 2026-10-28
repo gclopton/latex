@@ -1,7 +1,7 @@
 {
   "id": "study-studio",
   "name": "Study Studio",
-  "version": "0.4.23",
+  "version": "0.4.24",
   "minAppVersion": "1.8.0",
   "description": "Reusable Markdown questions, collapsible practice cards and local review history.",
   "author": "Grady Clopton",

@@ -42,6 +42,116 @@ function sectionLines(source, first, last) {
   return "";
 }
 
+// src/build-id.ts
+var BUILD_ID = "d9012abf5976be09";
+
+// src/symbol-model.ts
+function escaped(s, i) {
+  let n = 0;
+  while (i > 0 && s[--i] === "\\") n++;
+  return n % 2 === 1;
+}
+function group(s, at) {
+  if (s[at] !== "{") return null;
+  let depth = 1;
+  for (let i = at + 1; i < s.length; i++) {
+    if (escaped(s, i)) continue;
+    if (s[i] === "%") {
+      const next = s.indexOf("\n", i);
+      if (next < 0) return null;
+      i = next;
+      continue;
+    }
+    if (s[i] === "{") depth++;
+    if (s[i] === "}" && !--depth) return { from: at, to: i + 1, body: s.slice(at + 1, i) };
+  }
+  return null;
+}
+function markers(tex) {
+  const out = [];
+  const command = /\\class\b/g;
+  let match;
+  while (match = command.exec(tex)) {
+    const from = match.index;
+    if (escaped(tex, from)) continue;
+    const line = tex.lastIndexOf("\n", from) + 1;
+    let commented = false;
+    for (let k = line; k < from; k++) if (tex[k] === "%" && !escaped(tex, k)) {
+      commented = true;
+      break;
+    }
+    if (commented) continue;
+    let at = command.lastIndex;
+    while (/\s/.test(tex[at] ?? "") && at < tex.length) at++;
+    const cls = group(tex, at);
+    if (!cls) continue;
+    const tokens = cls.body.trim().split(/\s+/);
+    if (!tokens.some((t33) => t33 === "mjx-ss" || t33.startsWith("mjx-ss-o-"))) continue;
+    const id = /^mjx-ss mjx-ss-o-([0-9a-z]{10})$/.exec(cls.body)?.[1];
+    if (!id) throw Error("Malformed symbol marker. Keep its source intact and repair the ID.");
+    at = cls.to;
+    while (/\s/.test(tex[at] ?? "") && at < tex.length) at++;
+    const body = group(tex, at);
+    if (!body) throw Error("Unclosed symbol marker.");
+    if (out.some((m3) => from > m3.from && from < m3.to)) throw Error("Nested symbol tags are not supported.");
+    out.push({ id, from, to: body.to, bodyFrom: at + 1, bodyTo: body.to - 1, body: body.body });
+  }
+  return out;
+}
+function applyEdits(source, edits) {
+  const sorted = [...edits].sort((a, b) => a.from - b.from || a.to - b.to);
+  let last = 0, out = "";
+  for (const edit of sorted) {
+    if (edit.from < last || edit.to < edit.from || edit.to > source.length) throw Error("Overlapping or invalid symbol edits.");
+    out += source.slice(last, edit.from) + edit.insert;
+    last = edit.to;
+  }
+  return out + source.slice(last);
+}
+function semanticGlyph(tex) {
+  let out = "";
+  for (let i = 0; i < tex.length; ) {
+    const color = /^\\(textcolor|color)(?![A-Za-z])/.exec(tex.slice(i));
+    if (color) {
+      let at = i + color[0].length;
+      while (/\s/.test(tex[at] ?? "") && at < tex.length) at++;
+      if (tex[at] === "[") {
+        const end = tex.indexOf("]", at);
+        if (end < 0) return tex;
+        at = end + 1;
+      }
+      const name2 = group(tex, at);
+      if (name2) {
+        if (color[1] === "color") {
+          i = name2.to;
+          continue;
+        }
+        let bodyAt = name2.to;
+        while (/\s/.test(tex[bodyAt] ?? "") && bodyAt < tex.length) bodyAt++;
+        const body = group(tex, bodyAt);
+        if (body) {
+          out += semanticGlyph(body.body);
+          i = body.to;
+          continue;
+        }
+      }
+    }
+    out += tex[i++];
+  }
+  const normalize = (s) => s.replace(/\s+/g, "").replace(/\\(?:left|right|displaystyle|textstyle|scriptstyle|scriptscriptstyle)\b/g, "").replace(/\\[,;!:]/g, "").replace(/([_^])\{([A-Za-z0-9])\}/g, "$1$2").replace(/\^\{\\prime\}|\^\\prime\b/g, "'");
+  let normalized = "", last = 0;
+  const text = /\\(?:text|mbox|operatorname)\b\s*/g;
+  let hit;
+  while (hit = text.exec(out)) {
+    const body = group(out, text.lastIndex);
+    if (!body) continue;
+    normalized += normalize(out.slice(last, hit.index)) + out.slice(hit.index, body.to);
+    last = body.to;
+    text.lastIndex = body.to;
+  }
+  return normalized + normalize(out.slice(last));
+}
+
 // node_modules/@lezer/common/dist/index.js
 var DefaultBufferLength = 1024;
 var nextPropID = 0;
@@ -178,8 +288,8 @@ var NodeType = class _NodeType {
     if (typeof name2 == "string") {
       if (this.name == name2)
         return true;
-      let group = this.prop(NodeProp.group);
-      return group ? group.indexOf(name2) > -1 : false;
+      let group2 = this.prop(NodeProp.group);
+      return group2 ? group2.indexOf(name2) > -1 : false;
     }
     return this.id == name2;
   }
@@ -3288,11 +3398,11 @@ var MarkdownParser = class _MarkdownParser extends Parser {
         if (composite)
           skipContextMarkup[nodeTypes2.length] = (bl, cx, line) => composite(cx, line, bl.value);
         let id = nodeTypes2.length;
-        let group = composite ? ["Block", "BlockContext"] : !block ? void 0 : id >= Type.ATXHeading1 && id <= Type.SetextHeading2 ? ["Block", "LeafBlock", "Heading"] : ["Block", "LeafBlock"];
+        let group2 = composite ? ["Block", "BlockContext"] : !block ? void 0 : id >= Type.ATXHeading1 && id <= Type.SetextHeading2 ? ["Block", "LeafBlock", "Heading"] : ["Block", "LeafBlock"];
         nodeTypes2.push(NodeType.define({
           id,
           name: name2,
-          props: group && [[NodeProp.group, group]]
+          props: group2 && [[NodeProp.group, group2]]
         }));
         if (style) {
           if (!styles)
@@ -3519,9 +3629,9 @@ var DefaultInline = {
   Escape(cx, next, start) {
     if (next != 92 || start == cx.end - 1)
       return -1;
-    let escaped2 = cx.char(start + 1);
+    let escaped3 = cx.char(start + 1);
     for (let i = 0; i < Escapable.length; i++)
-      if (Escapable.charCodeAt(i) == escaped2)
+      if (Escapable.charCodeAt(i) == escaped3)
         return cx.append(elt(Type.Escape, start, start + 2));
     return -1;
   },
@@ -3691,12 +3801,12 @@ function parseURL(text, start, offset) {
     return null;
   } else {
     let depth = 0, pos = start;
-    for (let escaped2 = false; pos < text.length; pos++) {
+    for (let escaped3 = false; pos < text.length; pos++) {
       let ch = text.charCodeAt(pos);
       if (space(ch)) {
         break;
-      } else if (escaped2) {
-        escaped2 = false;
+      } else if (escaped3) {
+        escaped3 = false;
       } else if (ch == 40) {
         depth++;
       } else if (ch == 41) {
@@ -3704,7 +3814,7 @@ function parseURL(text, start, offset) {
           break;
         depth--;
       } else if (ch == 92) {
-        escaped2 = true;
+        escaped3 = true;
       }
     }
     return pos > start ? elt(Type.URL, start + offset, pos + offset) : pos == text.length ? null : false;
@@ -3715,22 +3825,22 @@ function parseLinkTitle(text, start, offset) {
   if (next != 39 && next != 34 && next != 40)
     return false;
   let end = next == 40 ? 41 : next;
-  for (let pos = start + 1, escaped2 = false; pos < text.length; pos++) {
+  for (let pos = start + 1, escaped3 = false; pos < text.length; pos++) {
     let ch = text.charCodeAt(pos);
-    if (escaped2)
-      escaped2 = false;
+    if (escaped3)
+      escaped3 = false;
     else if (ch == end)
       return elt(Type.LinkTitle, start + offset, pos + 1 + offset);
     else if (ch == 92)
-      escaped2 = true;
+      escaped3 = true;
   }
   return null;
 }
 function parseLinkLabel(text, start, offset, requireNonWS) {
-  for (let escaped2 = false, pos = start + 1, end = Math.min(text.length, pos + 999); pos < end; pos++) {
+  for (let escaped3 = false, pos = start + 1, end = Math.min(text.length, pos + 999); pos < end; pos++) {
     let ch = text.charCodeAt(pos);
-    if (escaped2)
-      escaped2 = false;
+    if (escaped3)
+      escaped3 = false;
     else if (ch == 93)
       return requireNonWS ? false : elt(Type.LinkLabel, start + offset, pos + 1 + offset);
     else {
@@ -3739,7 +3849,7 @@ function parseLinkLabel(text, start, offset, requireNonWS) {
       if (ch == 91)
         return false;
       else if (ch == 92)
-        escaped2 = true;
+        escaped3 = true;
     }
   }
   return null;
@@ -4246,7 +4356,7 @@ var Emoji = {
 };
 
 // src/model.ts
-var escaped = (s, i) => {
+var escaped2 = (s, i) => {
   let n = 0;
   while (i > 0 && s[--i] === "\\") n++;
   return n % 2 === 1;
@@ -4279,14 +4389,14 @@ function equations(s) {
         continue;
       }
     }
-    if (s[i] === "`" && !escaped(s, i)) {
+    if (s[i] === "`" && !escaped2(s, i)) {
       let n = 1;
       while (s[i + n] === "`") n++;
       const end2 = s.indexOf("`".repeat(n), i + n);
       i = end2 < 0 ? i + n : end2 + n;
       continue;
     }
-    if (s[i] !== "$" || escaped(s, i)) {
+    if (s[i] !== "$" || escaped2(s, i)) {
       i++;
       continue;
     }
@@ -4301,7 +4411,7 @@ function equations(s) {
     let end = -1;
     while (j < s.length) {
       if (!display && s[j] === "\n") break;
-      if (s[j] === "$" && !escaped(s, j) && (!display || s[j + 1] === "$")) {
+      if (s[j] === "$" && !escaped2(s, j) && (!display || s[j + 1] === "$")) {
         end = j;
         break;
       }
@@ -4328,7 +4438,8 @@ function splitTag(body) {
   return { latex: body.replace(/% math-studio:auto:[a-zA-Z0-9-]+\s*/g, "").replace(/\\tag\{[^{}]*\}/g, "").trim(), tag: auto ? { kind: "auto", label: tag?.[1] ?? "", id: auto[1] } : tag ? { kind: "manual", label: tag[1] } : { kind: "none", label: "" } };
 }
 function unsupported(body) {
-  if (/\\(?:newcommand|renewcommand|def|gdef|require|html\w*|href|includegraphics|class|style)\b/.test(body)) return "This equation uses a macro definition or an external/HTML command. Keep editing it in native LaTeX.";
+  const checked = body.replace(/\\class\{mjx-ss mjx-ss-o-[0-9a-z]{10}\}/g, "");
+  if (/\\(?:newcommand|renewcommand|def|gdef|require|html\w*|href|includegraphics|class|style)\b/.test(checked)) return "This equation uses a macro definition or an external/HTML command. Keep editing it in native LaTeX.";
   const stripped = body.replace(/% math-studio:auto:[a-zA-Z0-9-]+/g, "");
   if (/(^|[^\\])%/.test(stripped)) return "This equation contains LaTeX comments. Native editing preserves them exactly.";
   if ((body.match(/\\tag\b/g) || []).length > 1 || /\\tag\*/.test(body) || /\\label\b|\\ref\b|\\eqref\b/.test(body)) return "This equation uses labels, references or multiple tags. Use native editing to preserve them.";
@@ -4370,7 +4481,7 @@ function safeReplacement(doc, q, replacement) {
   return { from: q.from, to: q.to, insert: replacement };
 }
 function equationAt(source, at) {
-  if (at > 0 && source[at - 1] === "$" && source[at] === "$" && source[at - 2] !== "$" && source[at + 1] !== "$" && !escaped(source, at - 1)) {
+  if (at > 0 && source[at - 1] === "$" && source[at] === "$" && source[at - 2] !== "$" && source[at + 1] !== "$" && !escaped2(source, at - 1)) {
     const probe = source.slice(0, at) + "x" + source.slice(at);
     if (equations(probe).some((q) => q.from === at - 1 && !q.display))
       return { from: at - 1, to: at + 1, bodyFrom: at, bodyTo: at, body: "", display: false, raw: "$$" };
@@ -9719,6 +9830,7 @@ var compatibilityField = import_state.StateField.define({ create: () => import_v
   return import_view.Decoration.set(closedFor(tr2.state.doc).filter((q) => !(head >= q.from && head <= q.to)).map((q) => import_view.Decoration.replace({ widget: new IntegralWidget(q), block: q.display }).range(q.from, q.to)), true);
 }, provide: (f) => import_view.EditorView.decorations.from(f) });
 var MathStudio = class extends import_obsidian.Plugin {
+  buildId = BUILD_ID;
   frameCode = "";
   mathCSS = "";
   fontCSS = "";
@@ -9835,9 +9947,16 @@ var MathStudio = class extends import_obsidian.Plugin {
     host.append(iframe);
     const colors = {};
     const computed = doc.defaultView.getComputedStyle(view.dom);
-    for (const key of ["--text-normal", "--text-muted", "--text-error", "--background-primary", "--background-secondary", "--background-modifier-border", "--background-modifier-hover", "--interactive-accent", "--text-on-accent"]) colors[key] = computed.getPropertyValue(key).trim();
+    for (const key of ["--text-normal", "--text-muted", "--text-error", "--text-warning", "--color-purple", "--text-faint", "--background-primary", "--background-secondary", "--background-modifier-border", "--background-modifier-hover", "--interactive-accent", "--text-on-accent"]) colors[key] = computed.getPropertyValue(key).trim();
+    const symbolApi = this.app.plugins?.plugins?.["study-studio"]?.symbolApi;
+    let symbols;
+    try {
+      if (symbolApi?.version === 1) symbols = symbolApi.session(view.state.doc.toString(), s.filePath);
+    } catch (error) {
+      new import_obsidian.Notice(error.message);
+    }
     const { latex, tag } = splitTag(s.q.body);
-    const config = { id: s.id, fontCSS: this.fontCSS, mathCSS: this.mathCSS, latex, tag, display: s.q.display, fonts: this.app.vault.adapter.getResourcePath(`${this.manifest.dir}/vendor/fonts`), dark: doc.body.classList.contains("theme-dark"), colors, blocked: unsupported(s.q.body) };
+    const config = { id: s.id, buildId: BUILD_ID, symbols, fontCSS: this.fontCSS, mathCSS: this.mathCSS, latex, tag, display: s.q.display, fonts: this.app.vault.adapter.getResourcePath(`${this.manifest.dir}/vendor/fonts`), dark: doc.body.classList.contains("theme-dark"), colors, blocked: unsupported(s.q.body) };
     const script = this.frameCode.replace(/<\/script/gi, "<\\/script");
     iframe.srcdoc = `<!doctype html><html><head><meta charset="UTF-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; font-src app: data:; img-src data:; connect-src 'none'"></head><body><script>window.mathStudioConfig=${JSON.stringify(config).replace(/</g, "\\u003c")};<\/script><script>${script}<\/script></body></html>`;
     let finishTarget = null;
@@ -9852,13 +9971,31 @@ var MathStudio = class extends import_obsidian.Plugin {
       iframe.contentWindow?.postMessage({ mathStudio: s.id, type: "finish" }, "*");
     };
     const fail = (message) => iframe.contentWindow?.postMessage({ mathStudio: s.id, type: "error", message }, "*");
-    const receive = (event) => {
+    let readyBuild, saving = false;
+    const receive = async (event) => {
       if (event.source !== iframe.contentWindow || event.data?.mathStudio !== s.id) return;
       const data = event.data;
       const current = view.state.field(sessionField, false);
       if (!current || current.id !== s.id) return;
+      if (data.type === "ready") {
+        readyBuild = data.buildId;
+        if (readyBuild !== BUILD_ID) fail("Math Studio main.js and frame.js do not match. Install the complete release.");
+      }
+      if (data.type === "open-symbols") {
+        void this.app.plugins?.plugins?.["study-studio"]?.symbolSystem?.open(s.filePath);
+      }
+      if (data.type === "check-symbol") {
+        try {
+          if (readyBuild !== BUILD_ID || !symbolApi) throw Error("Matching symbol tools are not available.");
+          if (typeof data.latex !== "string" || data.latex.length > 2e5) throw Error("This equation is too large for interactive tagging.");
+          await symbolApi.checkTag(data.latex, data.id, s.q.display);
+          iframe.contentWindow?.postMessage({ mathStudio: s.id, type: "symbol-checked", request: data.request }, "*");
+        } catch (error) {
+          iframe.contentWindow?.postMessage({ mathStudio: s.id, type: "symbol-checked", request: data.request, error: error.message }, "*");
+        }
+      }
       if (data.type === "resize") {
-        iframe.style.height = `${Math.max(260, Math.min(780, Number(data.height) || 300))}px`;
+        iframe.style.height = `${Math.max(150, Math.min(780, Number(data.height) || 200))}px`;
         view.requestMeasure();
       }
       if (data.type === "cancel" || data.type === "native") {
@@ -9869,21 +10006,36 @@ var MathStudio = class extends import_obsidian.Plugin {
         void navigator.clipboard.writeText(String(data.latex)).then(() => new import_obsidian.Notice("Equation LaTeX copied."));
       }
       if (data.type === "save") {
+        if (saving) return;
+        saving = true;
         try {
+          if (readyBuild !== BUILD_ID) throw Error("Math Studio runtime files do not match. Your draft is retained.");
           const path = view.state.field(import_obsidian.editorInfoField, false)?.file?.path ?? null;
           if (current.conflict || path !== current.filePath) throw Error("The note or equation changed while you were editing. Your draft is still here; copy it before reopening the current source.");
           if (typeof data.latex !== "string" || !["none", "manual", "auto"].includes(data.tag?.kind)) throw Error("Invalid equation draft.");
-          const replacement = data.changed ? compose(current.q, data.latex, data.tag) : current.q.raw;
-          const changes = safeReplacement(view.state.doc.toString(), current.q, replacement);
+          const source = view.state.doc.toString(), replacement = data.changed ? compose(current.q, data.latex, data.tag) : current.q.raw;
+          const change = safeReplacement(source, current.q, replacement);
+          let changes = [change];
+          if (symbolApi && data.symbols) changes = await symbolApi.planEquationSave(path, source, current.q.from, current.q.to, current.q.raw, replacement, data.symbols);
+          else {
+            const before = markers(current.q.raw), after = markers(replacement);
+            if (before.length !== after.length || before.some((m3, i) => m3.id !== after[i].id || semanticGlyph(m3.body) !== semanticGlyph(after[i].body))) throw Error("Enable the matching symbol system before changing tagged symbols.");
+          }
+          if (view.state.field(sessionField, false)?.id !== s.id) return;
+          if (view.state.doc.toString() !== source) throw Error("The note changed during the save check. Your draft is retained.");
           const target = finishTarget;
           finishTarget = null;
-          const mappedTarget = target ? Math.max(0, Math.min(view.state.doc.length + replacement.length - current.q.raw.length, target.at <= current.q.from ? target.at : target.at >= current.q.to ? target.at + replacement.length - current.q.raw.length : current.q.from + replacement.length)) : null;
-          view.dispatch({ ...replacement !== current.q.raw ? { changes } : {}, effects: openEffect.of(null), selection: import_state.EditorSelection.cursor(mappedTarget ?? (data.native ? current.q.bodyFrom : Math.min(view.state.doc.length + (replacement.length - current.q.raw.length), current.q.from + replacement.length + 1))), annotations: import_state.Transaction.userEvent.of("input.math-studio") });
+          const changeSet = view.state.changes(changes), mappedStart = changeSet.mapPos(current.q.from, -1), mappedTarget = target ? changeSet.mapPos(target.at, 1) : null;
+          const transaction = view.state.update({ changes: changeSet, effects: openEffect.of(null), selection: import_state.EditorSelection.cursor(mappedTarget ?? (data.native ? mappedStart + (current.q.display ? 2 : 1) : Math.min(changeSet.newLength, mappedStart + replacement.length + 1))), annotations: import_state.Transaction.userEvent.of("input.symbols") });
+          if (transaction.newDoc.toString() !== applyEdits(source, changes)) throw Error("The editor refused part of this change. Equation and symbol records were left untouched.");
+          view.dispatch(transaction);
           if (this.settings.autoNumber) this.renumber(view);
           view.focus();
           if (target?.math && mappedTarget !== null) this.start(view, mappedTarget);
         } catch (error) {
           fail(error.message);
+        } finally {
+          saving = false;
         }
       }
     };

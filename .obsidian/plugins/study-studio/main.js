@@ -81,8 +81,8 @@ ${source}
 ${fence}`;
 }
 function validateCodeGrading(g, answers, prepared = true) {
-  const check3 = (ok, message) => {
-    if (!ok) throw Error(message);
+  const check3 = (ok, message2) => {
+    if (!ok) throw Error(message2);
   };
   check3(g?.version === 1, "Unknown Python grading version.");
   check3(!prepared || typeof g.seal === "string" && /^[a-f0-9]{64}$/.test(g.seal), "Prepare code grading rules before saving the question.");
@@ -128,8 +128,8 @@ async function referenceFingerprint(d) {
   return Array.from(new Uint8Array(hash4), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 function cleanReferenceOutput(text2) {
-  const clean = text2.replace(/\x1b\][^\x07]*(?:\x07|\x1b\\)/g, "").replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "").replace(/\r\n?/g, "\n").replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "");
-  const lines = clean.split("\n"), bounded = lines.slice(0, 400).join("\n");
+  const clean2 = text2.replace(/\x1b\][^\x07]*(?:\x07|\x1b\\)/g, "").replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "").replace(/\r\n?/g, "\n").replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "");
+  const lines = clean2.split("\n"), bounded = lines.slice(0, 400).join("\n");
   const limit = bounded.length > 16384 && /[\uD800-\uDBFF]/.test(bounded[16383]) ? 16383 : 16384;
   return { text: bounded.slice(0, limit), truncated: lines.length > 400 || bounded.length > limit };
 }
@@ -180,8 +180,8 @@ function validateDrawingResponse(value) {
 
 // src/diagram-model.ts
 function validateDiagram(d) {
-  const check3 = (ok, message) => {
-    if (!ok) throw Error(message);
+  const check3 = (ok, message2) => {
+    if (!ok) throw Error(message2);
   };
   const unit2 = (v) => typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 1;
   const rect = (r) => {
@@ -3408,22 +3408,22 @@ function assertCollection(contents) {
 
 // node_modules/yaml/browser/dist/errors.js
 var YAMLError = class extends Error {
-  constructor(name2, pos, code, message) {
+  constructor(name2, pos, code, message2) {
     super();
     this.name = name2;
     this.code = code;
-    this.message = message;
+    this.message = message2;
     this.pos = pos;
   }
 };
 var YAMLParseError = class extends YAMLError {
-  constructor(pos, code, message) {
-    super("YAMLParseError", pos, code, message);
+  constructor(pos, code, message2) {
+    super("YAMLParseError", pos, code, message2);
   }
 };
 var YAMLWarning = class extends YAMLError {
-  constructor(pos, code, message) {
-    super("YAMLWarning", pos, code, message);
+  constructor(pos, code, message2) {
+    super("YAMLWarning", pos, code, message2);
   }
 };
 var prettifyError = (src, lc) => (error) => {
@@ -4020,8 +4020,8 @@ function composeCollection(CN2, ctx, token, props, onError) {
     const { anchor, newlineAfterProp: nl } = props;
     const lastProp = anchor && tagToken ? anchor.offset > tagToken.offset ? anchor : tagToken : anchor ?? tagToken;
     if (lastProp && (!nl || nl.offset < lastProp.offset)) {
-      const message = "Missing newline after block sequence props";
-      onError(lastProp, "MISSING_CHAR", message);
+      const message2 = "Missing newline after block sequence props";
+      onError(lastProp, "MISSING_CHAR", message2);
     }
   }
   const expType = token.type === "block-map" ? "map" : token.type === "block-seq" ? "seq" : token.start.source === "{" ? "map" : "seq";
@@ -4086,15 +4086,15 @@ function resolveBlockScalar(ctx, scalar, onError) {
         trimIndent = indent2.length;
     } else {
       if (indent2.length < trimIndent) {
-        const message = "Block scalars with more-indented leading empty lines must use an explicit indentation indicator";
-        onError(offset + indent2.length, "MISSING_CHAR", message);
+        const message2 = "Block scalars with more-indented leading empty lines must use an explicit indentation indicator";
+        onError(offset + indent2.length, "MISSING_CHAR", message2);
       }
       if (header.indent === 0)
         trimIndent = indent2.length;
       contentStart = i;
       if (trimIndent === 0 && !ctx.atRoot) {
-        const message = "Block scalar values in collections must be indented";
-        onError(offset, "BAD_INDENT", message);
+        const message2 = "Block scalar values in collections must be indented";
+        onError(offset, "BAD_INDENT", message2);
       }
       break;
     }
@@ -4117,8 +4117,8 @@ function resolveBlockScalar(ctx, scalar, onError) {
       content2 = content2.slice(0, -1);
     if (content2 && indent2.length < trimIndent) {
       const src = header.indent ? "explicit indentation indicator" : "first line";
-      const message = `Block scalar lines must not be less indented than their ${src}`;
-      onError(offset - content2.length - (crlf ? 2 : 1), "BAD_INDENT", message);
+      const message2 = `Block scalar lines must not be less indented than their ${src}`;
+      onError(offset - content2.length - (crlf ? 2 : 1), "BAD_INDENT", message2);
       indent2 = "";
     }
     if (type === Scalar.BLOCK_LITERAL) {
@@ -4196,8 +4196,8 @@ function parseBlockScalarHeader({ offset, props }, strict, onError) {
         break;
       case "comment":
         if (strict && !hasSpace) {
-          const message = "Comments must be separated from other tokens by white space characters";
-          onError(token, "MISSING_CHAR", message);
+          const message2 = "Comments must be separated from other tokens by white space characters";
+          onError(token, "MISSING_CHAR", message2);
         }
         length += token.source.length;
         comment2 = token.source.substring(1);
@@ -4208,8 +4208,8 @@ function parseBlockScalarHeader({ offset, props }, strict, onError) {
         break;
       /* istanbul ignore next should not happen */
       default: {
-        const message = `Unexpected token in block scalar header: ${token.type}`;
-        onError(token, "UNEXPECTED_TOKEN", message);
+        const message2 = `Unexpected token in block scalar header: ${token.type}`;
+        onError(token, "UNEXPECTED_TOKEN", message2);
         const ts = token.source;
         if (ts && typeof ts === "string")
           length += ts.length;
@@ -4566,13 +4566,13 @@ function composeNode(ctx, token, props, onError) {
         if (anchor)
           node.anchor = anchor.source.substring(1);
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        onError(token, "RESOURCE_EXHAUSTION", message);
+        const message2 = error instanceof Error ? error.message : String(error);
+        onError(token, "RESOURCE_EXHAUSTION", message2);
       }
       break;
     default: {
-      const message = token.type === "error" ? token.message : `Unsupported token (type: ${token.type})`;
-      onError(token, "UNEXPECTED_TOKEN", message);
+      const message2 = token.type === "error" ? token.message : `Unsupported token (type: ${token.type})`;
+      onError(token, "UNEXPECTED_TOKEN", message2);
       isSrcToken = false;
     }
   }
@@ -4704,12 +4704,12 @@ var Composer = class {
     this.prelude = [];
     this.errors = [];
     this.warnings = [];
-    this.onError = (source, code, message, warning) => {
+    this.onError = (source, code, message2, warning) => {
       const pos = getErrorPos(source);
       if (warning)
-        this.warnings.push(new YAMLWarning(pos, code, message));
+        this.warnings.push(new YAMLWarning(pos, code, message2));
       else
-        this.errors.push(new YAMLParseError(pos, code, message));
+        this.errors.push(new YAMLParseError(pos, code, message2));
     };
     this.directives = new Directives({ version: options.version || "1.2" });
     this.options = options;
@@ -4777,10 +4777,10 @@ ${cb}` : comment2;
   *next(token) {
     switch (token.type) {
       case "directive":
-        this.directives.add(token.source, (offset, message, warning) => {
+        this.directives.add(token.source, (offset, message2, warning) => {
           const pos = getErrorPos(token);
           pos[0] += offset;
-          this.onError(pos, "BAD_DIRECTIVE", message, warning);
+          this.onError(pos, "BAD_DIRECTIVE", message2, warning);
         });
         this.prelude.push(token.source);
         this.atDirectives = true;
@@ -5721,8 +5721,8 @@ var Parser = class {
     }
     const type = tokenType(source);
     if (!type) {
-      const message = `Not a YAML token: ${source}`;
-      yield* this.pop({ type: "error", offset: this.offset, message, source });
+      const message2 = `Not a YAML token: ${source}`;
+      yield* this.pop({ type: "error", offset: this.offset, message: message2, source });
       this.offset += source.length;
     } else if (type === "scalar") {
       this.atNewLine = false;
@@ -5812,8 +5812,8 @@ var Parser = class {
   *pop(error) {
     const token = error ?? this.stack.pop();
     if (!token) {
-      const message = "Tried to pop an empty stack";
-      yield { type: "error", offset: this.offset, source: "", message };
+      const message2 = "Tried to pop an empty stack";
+      yield { type: "error", offset: this.offset, source: "", message: message2 };
     } else if (this.stack.length === 0) {
       yield token;
     } else {
@@ -6548,8 +6548,8 @@ function replaceProperty(raw, key2, value) {
 }
 
 // src/model.ts
-function check(ok, message) {
-  if (!ok) throw new Error(message);
+function check(ok, message2) {
+  if (!ok) throw new Error(message2);
 }
 var validId = (x) => typeof x === "string" && /^[a-zA-Z0-9_-]{1,100}$/.test(x);
 var text = (x) => typeof x === "string" && x.trim().length > 0;
@@ -6851,13 +6851,13 @@ function selectVariants(questions, count2, random = Math.random) {
   const groups = /* @__PURE__ */ new Map();
   for (const q of questions) {
     const key2 = q.definition.familyId ?? q.definition.id;
-    const group = groups.get(key2) ?? [];
-    if (!group.some((x) => x.definition.id === q.definition.id)) group.push(q);
-    groups.set(key2, group);
+    const group2 = groups.get(key2) ?? [];
+    if (!group2.some((x) => x.definition.id === q.definition.id)) group2.push(q);
+    groups.set(key2, group2);
   }
   const selected = [];
-  for (const group of groups.values()) {
-    const pool = [...group];
+  for (const group2 of groups.values()) {
+    const pool = [...group2];
     for (let i = pool.length - 1; i > 0; i--) {
       const j = Math.floor(random() * (i + 1));
       [pool[i], pool[j]] = [pool[j], pool[i]];
@@ -6951,8 +6951,8 @@ NodeProp.contextHash = new NodeProp({ perNode: true });
 NodeProp.lookAhead = new NodeProp({ perNode: true });
 NodeProp.mounted = new NodeProp({ perNode: true });
 var MountedTree = class {
-  constructor(tree, overlay, parser8, bracketed2 = false) {
-    this.tree = tree;
+  constructor(tree2, overlay, parser8, bracketed2 = false) {
+    this.tree = tree2;
     this.overlay = overlay;
     this.parser = parser8;
     this.bracketed = bracketed2;
@@ -6960,8 +6960,8 @@ var MountedTree = class {
   /**
   @internal
   */
-  static get(tree) {
-    return tree && tree.props && tree.props[NodeProp.mounted.id];
+  static get(tree2) {
+    return tree2 && tree2.props && tree2.props[NodeProp.mounted.id];
   }
 };
 var noProps = /* @__PURE__ */ Object.create(null);
@@ -7034,8 +7034,8 @@ var NodeType = class _NodeType {
     if (typeof name2 == "string") {
       if (this.name == name2)
         return true;
-      let group = this.prop(NodeProp.group);
-      return group ? group.indexOf(name2) > -1 : false;
+      let group2 = this.prop(NodeProp.group);
+      return group2 ? group2.indexOf(name2) > -1 : false;
     }
     return this.id == name2;
   }
@@ -7780,8 +7780,8 @@ var StackIterator = class {
     return iterStack(this.heads);
   }
 };
-function stackIterator(tree, pos, side) {
-  let inner = tree.resolveInner(pos, side), layers = null;
+function stackIterator(tree2, pos, side) {
+  let inner = tree2.resolveInner(pos, side), layers = null;
   for (let scan = inner instanceof TreeNode ? inner : inner.context.parent; scan; scan = scan.parent) {
     if (scan.index < 0) {
       let parent = scan.parent;
@@ -8137,8 +8137,8 @@ var TreeCursor = class {
     return true;
   }
 };
-function hasChild(tree) {
-  return tree.children.some((ch) => ch instanceof TreeBuffer || !ch.type.isAnonymous || hasChild(ch));
+function hasChild(tree2) {
+  return tree2.children.some((ch) => ch instanceof TreeBuffer || !ch.type.isAnonymous || hasChild(ch));
 }
 function buildTree(data2) {
   var _a2;
@@ -8448,10 +8448,10 @@ var TreeFragment = class _TreeFragment {
   [`applyChanges`](#common.TreeFragment^applyChanges) instead of
   calling this directly.
   */
-  constructor(from, to, tree, offset, openStart = false, openEnd = false) {
+  constructor(from, to, tree2, offset, openStart = false, openEnd = false) {
     this.from = from;
     this.to = to;
-    this.tree = tree;
+    this.tree = tree2;
     this.offset = offset;
     this.open = (openStart ? 1 : 0) | (openEnd ? 2 : 0);
   }
@@ -8479,10 +8479,10 @@ var TreeFragment = class _TreeFragment {
   fragment has [`openEnd`](#common.TreeFragment.openEnd) set to
   true.
   */
-  static addTree(tree, fragments = [], partial = false) {
-    let result = [new _TreeFragment(0, tree.length, tree, 0, false, partial)];
+  static addTree(tree2, fragments = [], partial = false) {
+    let result = [new _TreeFragment(0, tree2.length, tree2, 0, false, partial)];
     for (let f of fragments)
-      if (f.to > tree.length)
+      if (f.to > tree2.length)
         result.push(f);
     return result;
   }
@@ -8550,8 +8550,8 @@ var Parser2 = class {
   }
 };
 var StringInput = class {
-  constructor(string3) {
-    this.string = string3;
+  constructor(string4) {
+    this.string = string4;
   }
   get length() {
     return this.string.length;
@@ -8775,8 +8775,8 @@ function materialize(cursor) {
   }
   base2.children[i] = split(0, b.length, NodeType.none, 0, buf.length, stack.length - 1);
   for (let index2 of newStack) {
-    let tree = cursor.tree.children[index2], pos = cursor.tree.positions[index2];
-    cursor.yield(new TreeNode(tree, pos + cursor.from, index2, cursor._tree));
+    let tree2 = cursor.tree.children[index2], pos = cursor.tree.positions[index2];
+    cursor.yield(new TreeNode(tree2, pos + cursor.from, index2, cursor._tree));
   }
 }
 var StructureCursor = class {
@@ -8801,11 +8801,11 @@ var StructureCursor = class {
   hasNode(cursor) {
     this.moveTo(cursor.from);
     if (!this.done && this.cursor.from + this.offset == cursor.from && this.cursor.tree) {
-      for (let tree = this.cursor.tree; ; ) {
-        if (tree == cursor.tree)
+      for (let tree2 = this.cursor.tree; ; ) {
+        if (tree2 == cursor.tree)
           return true;
-        if (tree.children.length && tree.positions[0] == 0 && tree.children[0] instanceof Tree)
-          tree = tree.children[0];
+        if (tree2.children.length && tree2.positions[0] == 0 && tree2.children[0] instanceof Tree)
+          tree2 = tree2.children[0];
         else
           break;
       }
@@ -9163,9 +9163,9 @@ function highlightTags(highlighters, tags3) {
   }
   return result;
 }
-function highlightTree(tree, highlighter, putStyle, from = 0, to = tree.length) {
+function highlightTree(tree2, highlighter, putStyle, from = 0, to = tree2.length) {
   let builder = new HighlightBuilder(from, Array.isArray(highlighter) ? highlighter : [highlighter], putStyle);
-  builder.highlightRange(tree.cursor(), from, to, "", builder.highlighters);
+  builder.highlightRange(tree2.cursor(), from, to, "", builder.highlighters);
   builder.flush(to);
 }
 var HighlightBuilder = class {
@@ -10576,8 +10576,8 @@ var BlockContext = class {
       this.finishContext();
     return this.addGaps(this.block.toTree(this.parser.nodeSet, this.lineStart));
   }
-  addGaps(tree) {
-    return this.ranges.length > 1 ? injectGaps(this.ranges, 0, tree.topNode, this.ranges[0].from, this.reusePlaceholders) : tree;
+  addGaps(tree2) {
+    return this.ranges.length > 1 ? injectGaps(this.ranges, 0, tree2.topNode, this.ranges[0].from, this.reusePlaceholders) : tree2;
   }
   /**
   @internal
@@ -10601,9 +10601,9 @@ var BlockContext = class {
     return new Buffer2(this.parser.nodeSet);
   }
 };
-function injectGaps(ranges, rangeI, tree, offset, dummies) {
+function injectGaps(ranges, rangeI, tree2, offset, dummies) {
   let rangeEnd2 = ranges[rangeI].to;
-  let children = [], positions = [], start = tree.from + offset;
+  let children = [], positions = [], start = tree2.from + offset;
   function movePastNext(upto, inclusive) {
     while (inclusive ? upto >= rangeEnd2 : upto > rangeEnd2) {
       let size = ranges[rangeI + 1].from - rangeEnd2;
@@ -10613,7 +10613,7 @@ function injectGaps(ranges, rangeI, tree, offset, dummies) {
       rangeEnd2 = ranges[rangeI].to;
     }
   }
-  for (let ch = tree.firstChild; ch; ch = ch.nextSibling) {
+  for (let ch = tree2.firstChild; ch; ch = ch.nextSibling) {
     movePastNext(ch.from + offset, true);
     let from = ch.from + offset, node, reuse = dummies.get(ch.tree);
     if (reuse) {
@@ -10627,8 +10627,8 @@ function injectGaps(ranges, rangeI, tree, offset, dummies) {
     children.push(node);
     positions.push(from - start);
   }
-  movePastNext(tree.to + offset, false);
-  return new Tree(tree.type, children, positions, tree.to + offset - start, tree.tree ? tree.tree.propValues : void 0);
+  movePastNext(tree2.to + offset, false);
+  return new Tree(tree2.type, children, positions, tree2.to + offset - start, tree2.tree ? tree2.tree.propValues : void 0);
 }
 var MarkdownParser = class _MarkdownParser extends Parser2 {
   /**
@@ -10674,11 +10674,11 @@ var MarkdownParser = class _MarkdownParser extends Parser2 {
         if (composite)
           skipContextMarkup[nodeTypes2.length] = (bl, cx, line) => composite(cx, line, bl.value);
         let id3 = nodeTypes2.length;
-        let group = composite ? ["Block", "BlockContext"] : !block ? void 0 : id3 >= Type.ATXHeading1 && id3 <= Type.SetextHeading2 ? ["Block", "LeafBlock", "Heading"] : ["Block", "LeafBlock"];
+        let group2 = composite ? ["Block", "BlockContext"] : !block ? void 0 : id3 >= Type.ATXHeading1 && id3 <= Type.SetextHeading2 ? ["Block", "LeafBlock", "Heading"] : ["Block", "LeafBlock"];
         nodeTypes2.push(NodeType.define({
           id: id3,
           name: name2,
-          props: group && [[NodeProp.group, group]]
+          props: group2 && [[NodeProp.group, group2]]
         }));
         if (style) {
           if (!styles)
@@ -10859,8 +10859,8 @@ var Element2 = class {
   }
 };
 var TreeElement = class {
-  constructor(tree, from) {
-    this.tree = tree;
+  constructor(tree2, from) {
+    this.tree = tree2;
     this.from = from;
   }
   get to() {
@@ -10905,9 +10905,9 @@ var DefaultInline = {
   Escape(cx, next, start) {
     if (next != 92 || start == cx.end - 1)
       return -1;
-    let escaped2 = cx.char(start + 1);
+    let escaped3 = cx.char(start + 1);
     for (let i = 0; i < Escapable.length; i++)
-      if (Escapable.charCodeAt(i) == escaped2)
+      if (Escapable.charCodeAt(i) == escaped3)
         return cx.append(elt(Type.Escape, start, start + 2));
     return -1;
   },
@@ -11077,12 +11077,12 @@ function parseURL(text2, start, offset) {
     return null;
   } else {
     let depth = 0, pos = start;
-    for (let escaped2 = false; pos < text2.length; pos++) {
+    for (let escaped3 = false; pos < text2.length; pos++) {
       let ch = text2.charCodeAt(pos);
       if (space(ch)) {
         break;
-      } else if (escaped2) {
-        escaped2 = false;
+      } else if (escaped3) {
+        escaped3 = false;
       } else if (ch == 40) {
         depth++;
       } else if (ch == 41) {
@@ -11090,7 +11090,7 @@ function parseURL(text2, start, offset) {
           break;
         depth--;
       } else if (ch == 92) {
-        escaped2 = true;
+        escaped3 = true;
       }
     }
     return pos > start ? elt(Type.URL, start + offset, pos + offset) : pos == text2.length ? null : false;
@@ -11101,22 +11101,22 @@ function parseLinkTitle(text2, start, offset) {
   if (next != 39 && next != 34 && next != 40)
     return false;
   let end = next == 40 ? 41 : next;
-  for (let pos = start + 1, escaped2 = false; pos < text2.length; pos++) {
+  for (let pos = start + 1, escaped3 = false; pos < text2.length; pos++) {
     let ch = text2.charCodeAt(pos);
-    if (escaped2)
-      escaped2 = false;
+    if (escaped3)
+      escaped3 = false;
     else if (ch == end)
       return elt(Type.LinkTitle, start + offset, pos + 1 + offset);
     else if (ch == 92)
-      escaped2 = true;
+      escaped3 = true;
   }
   return null;
 }
 function parseLinkLabel(text2, start, offset, requireNonWS) {
-  for (let escaped2 = false, pos = start + 1, end = Math.min(text2.length, pos + 999); pos < end; pos++) {
+  for (let escaped3 = false, pos = start + 1, end = Math.min(text2.length, pos + 999); pos < end; pos++) {
     let ch = text2.charCodeAt(pos);
-    if (escaped2)
-      escaped2 = false;
+    if (escaped3)
+      escaped3 = false;
     else if (ch == 93)
       return requireNonWS ? false : elt(Type.LinkLabel, start + offset, pos + 1 + offset);
     else {
@@ -11125,7 +11125,7 @@ function parseLinkLabel(text2, start, offset, requireNonWS) {
       if (ch == 91)
         return false;
       else if (ch == 92)
-        escaped2 = true;
+        escaped3 = true;
     }
   }
   return null;
@@ -11364,8 +11364,8 @@ var FragmentCursor2 = class {
     }
   }
   matches(hash4) {
-    let tree = this.cursor.tree;
-    return tree && tree.prop(NodeProp.contextHash) == hash4;
+    let tree2 = this.cursor.tree;
+    return tree2 && tree2.prop(NodeProp.contextHash) == hash4;
   }
   takeNodes(cx) {
     let cur = this.cursor, off = this.fragment.offset, fragEnd = this.fragmentEnd - (this.fragment.openEnd ? 1 : 0);
@@ -11761,8 +11761,8 @@ function markdownContext(source) {
     }
     fragments = TreeFragment.applyChanges(TreeFragment.addTree(context.tree), [{ fromA: from, toA, fromB: from, toB }]);
   }
-  const tree = parser2.parse(source, fragments), excluded = [];
-  tree.iterate({ enter: (n) => {
+  const tree2 = parser2.parse(source, fragments), excluded = [];
+  tree2.iterate({ enter: (n) => {
     if (["CodeBlock", "FencedCode", "InlineCode"].includes(n.name)) {
       excluded.push({ from: n.from, to: n.to });
       return false;
@@ -11771,7 +11771,7 @@ function markdownContext(source) {
   const front = /^---\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)(?:\r?\n|$)/.exec(source);
   if (front) excluded.push({ from: 0, to: front[0].length });
   excluded.sort((a2, b) => a2.from - b.from);
-  const result = { tree, excluded, reusedFragments: fragments.length };
+  const result = { tree: tree2, excluded, reusedFragments: fragments.length };
   cache5.set(source, result);
   if (cache5.size > 4) cache5.delete(cache5.keys().next().value);
   return result;
@@ -11948,8 +11948,8 @@ function tableCells(text2, offset) {
 }
 function richTables(source) {
   const out = [];
-  const tree = markdownParser.parse(source);
-  for (let node = tree.topNode.firstChild; node; node = node.nextSibling) {
+  const tree2 = markdownParser.parse(source);
+  for (let node = tree2.topNode.firstChild; node; node = node.nextSibling) {
     if (node.name !== "Table") continue;
     const rows = [];
     let align = [];
@@ -11967,8 +11967,8 @@ function cellMarkdown(text2) {
 }
 function imageSpans(source) {
   const out = [], excluded = [];
-  const tree = markdownParser.parse(source);
-  tree.iterate({ enter(n) {
+  const tree2 = markdownParser.parse(source);
+  tree2.iterate({ enter(n) {
     if (["FencedCode", "CodeBlock", "InlineCode"].includes(n.name)) {
       excluded.push({ from: n.from, to: n.to });
       return false;
@@ -12043,11 +12043,11 @@ function tableAnswer(answer, submitted, grade2) {
   const reference = answer.accepted.find((v) => /[\\$]/.test(v)) ?? answer.accepted[0];
   return { state, value, reference, display: state === "correct" ? value : reference };
 }
-function tableAnswerMarkdown(value, answer, math = false) {
-  return value.trim() && (math || answer.math) && !value.trim().startsWith("$") ? `$${value}$` : value;
+function tableAnswerMarkdown(value, answer, math2 = false) {
+  return value.trim() && (math2 || answer.math) && !value.trim().startsWith("$") ? `$${value}$` : value;
 }
-function tableSubmittedMarkdown(value, math = false) {
-  return value.trim() && (math || /[\\^_]/.test(value)) && !value.trim().startsWith("$") ? `$${value}$` : value;
+function tableSubmittedMarkdown(value, math2 = false) {
+  return value.trim() && (math2 || /[\\^_]/.test(value)) && !value.trim().startsWith("$") ? `$${value}$` : value;
 }
 
 // src/table-review.ts
@@ -12066,7 +12066,7 @@ async function tableReview(app, host, q, response, result, owner, includePrompt 
       target.setText(source);
     }
   };
-  const answer = async (parent, id3, math = false) => {
+  const answer = async (parent, id3, math2 = false) => {
     const rule = answers.get(id3);
     if (!rule) {
       parent.createSpan({ text: "Unavailable answer", cls: "study-muted" });
@@ -12078,7 +12078,7 @@ async function tableReview(app, host, q, response, result, owner, includePrompt 
     const top2 = box.createSpan({ cls: "study-table-correction-main" });
     top2.createSpan({ text: { correct: "\u2713", incorrect: "\u2717", unanswered: "\u25CB", unscored: "\xB7" }[item.state], cls: "study-table-result-icon", attr: { role: "img", "aria-label": `${answerLabel(q, id3)}: ${status}`, title: status } });
     const renderValue = async (value, target, submitted = false) => {
-      await render(submitted ? tableSubmittedMarkdown(value, mathIds.has(id3)) : tableAnswerMarkdown(value, rule, math || /[\\^_]/.test(value)), target);
+      await render(submitted ? tableSubmittedMarkdown(value, mathIds.has(id3)) : tableAnswerMarkdown(value, rule, math2 || /[\\^_]/.test(value)), target);
       if (target.querySelector("mjx-merror,[data-mjx-error],.MathJax_Error")) target.setText(value);
     };
     await renderValue(item.display, top2.createSpan({ cls: "markdown-rendered" }), item.state === "correct");
@@ -12095,9 +12095,9 @@ async function tableReview(app, host, q, response, result, owner, includePrompt 
   const rich = async (source, target) => {
     await render(clozeMarkdown(source), target);
     const pending = [], mathSlots = [];
-    mountClozeInputs(target, (parent, id3, math) => {
-      pending.push(answer(parent, id3, math));
-      if (math) mathSlots.push(id3);
+    mountClozeInputs(target, (parent, id3, math2) => {
+      pending.push(answer(parent, id3, math2));
+      if (math2) mathSlots.push(id3);
     });
     await Promise.all(pending);
     for (const id3 of mathSlots) {
@@ -12577,16 +12577,16 @@ function buildCodeQuestion(s, hash4, marks2, context) {
     if (code.language !== "python") throw Error("Flexible and structural checks currently support Python.");
     if (ranges.some((r) => !r.rule)) throw Error("Replace legacy exact blanks before combining them with flexible blanks.");
     const constraints = [], behaviorFields = [];
-    groups.forEach((group, i) => {
+    groups.forEach((group2, i) => {
       const field = answers[i].id;
-      if (group.marks.some((m) => m.rule === "behavior")) behaviorFields.push(field);
-      for (const red of group.marks.filter((m) => m.rule === "form")) constraints.push({
+      if (group2.marks.some((m) => m.rule === "behavior")) behaviorFields.push(field);
+      for (const red of group2.marks.filter((m) => m.rule === "form")) constraints.push({
         field,
         quote: d.text.slice(red.from, red.to),
-        from: red.from - group.from,
-        to: red.to - group.from,
-        placement: red.from === group.from && red.to === group.to ? "whole" : "within",
-        holes: group.marks.filter((m) => m.rule === "behavior" && m.from >= red.from && m.to <= red.to).map((m) => ({ from: m.from - group.from, to: m.to - group.from, quote: d.text.slice(m.from, m.to) }))
+        from: red.from - group2.from,
+        to: red.to - group2.from,
+        placement: red.from === group2.from && red.to === group2.to ? "whole" : "within",
+        holes: group2.marks.filter((m) => m.rule === "behavior" && m.from >= red.from && m.to <= red.to).map((m) => ({ from: m.from - group2.from, to: m.to - group2.from, quote: d.text.slice(m.from, m.to) }))
       });
     });
     code.grading = { version: 1, constraints, behaviorFields, cases: behaviorFields.length ? [{ mode: "stdout" }] : [] };
@@ -12600,8 +12600,335 @@ function directivesConflict(a2, b) {
   return !(a2.from <= b.from && a2.to >= b.to || b.from <= a2.from && b.to >= a2.to);
 }
 
+// src/symbols/model.ts
+var REGISTRY_OPEN = "%% study-symbols v1\n";
+var ID = /^[0-9a-z]{10}$/;
+var DEF_ID = /^d-[0-9a-z]{10}$/;
+var emptyRegistry = () => ({ defs: {}, occ: {} });
+var clone = (value) => JSON.parse(JSON.stringify(value));
+function object(v) {
+  return !!v && typeof v === "object" && !Array.isArray(v);
+}
+function string3(v, max, name2) {
+  if (typeof v !== "string" || v.length > max) throw Error(`Invalid symbol ${name2}.`);
+}
+function validateDefinition(value) {
+  if (!object(value)) throw Error("Invalid symbol definition.");
+  string3(value.tex, 16e3, "TeX");
+  string3(value.meaning, 4e3, "meaning");
+  string3(value.units, 1e3, "units");
+  if (!value.meaning.trim()) throw Error("Give this symbol a meaning.");
+  if (value.concept !== void 0) string3(value.concept, 200, "concept key");
+  if (!Array.isArray(value.code) || value.code.length > 100) throw Error("Invalid symbol code names.");
+  for (const c of value.code) {
+    if (!object(c)) throw Error("Invalid code representation.");
+    string3(c.lang, 60, "language");
+    string3(c.name, 200, "code name");
+    if (!c.lang.trim() || !c.name.trim()) throw Error("Code language and name are required.");
+    if (c.scope !== void 0) string3(c.scope, 1e3, "scope");
+  }
+}
+function validateRegistry(value) {
+  if (!object(value) || !object(value.defs) || !object(value.occ)) throw Error("Invalid symbol registry; source has been left intact.");
+  if (Object.keys(value.defs).length > 1e4 || Object.keys(value.occ).length > 5e4) throw Error("Symbol registry exceeds the supported size.");
+  for (const [id3, d] of Object.entries(value.defs)) {
+    if (!DEF_ID.test(id3)) throw Error("Invalid definition ID.");
+    validateDefinition(d);
+  }
+  for (const [id3, o] of Object.entries(value.occ)) {
+    if (!ID.test(id3) || !object(o) || typeof o.def !== "string" || !Object.hasOwn(value.defs, o.def)) throw Error("Occurrence has no valid definition.");
+    string3(o.glyph, 16e3, "occurrence glyph");
+    string3(o.equation, 16e3, "equation reference");
+  }
+}
+function registryBlock(source, excluded = []) {
+  const starts = [...source.matchAll(/^%% study-symbols[^\n]*\n/gm)].filter((m2) => !excluded.some((r) => m2.index >= r.from && m2.index < r.to));
+  if (starts.length > 1) throw Error("Multiple symbol registries found. Resolve them before editing symbols.");
+  if (!starts.length) return null;
+  const m = starts[0], from = m.index;
+  if (m[0].replace(/\r\n/g, "\n") !== REGISTRY_OPEN) throw Error("Unsupported symbol registry version.");
+  const bodyFrom = from + m[0].length, end = /^%%[ \t]*(?:\r?$)/m.exec(source.slice(bodyFrom));
+  if (!end) throw Error("Unclosed symbol registry; source has been left intact.");
+  const to = bodyFrom + end.index + end[0].length, raw = source.slice(bodyFrom, bodyFrom + end.index);
+  if (raw.length > 2e6) throw Error("Symbol registry exceeds the supported size.");
+  let data2;
+  try {
+    data2 = JSON.parse(raw);
+  } catch {
+    throw Error("Invalid symbol registry JSON; source has been left intact.");
+  }
+  validateRegistry(data2);
+  return { from, to, data: data2 };
+}
+function serializeRegistry(data2) {
+  validateRegistry(data2);
+  return REGISTRY_OPEN + JSON.stringify(data2).replace(/\$/g, "\\u0024").replace(/%/g, "\\u0025") + "\n%%";
+}
+function registryEdit(source, block, data2) {
+  return block ? { from: block.from, to: block.to, insert: serializeRegistry(data2) } : { from: source.length, to: source.length, insert: (source.endsWith("\n\n") ? "" : source.endsWith("\n") ? "\n" : "\n\n") + serializeRegistry(data2) + "\n" };
+}
+function escaped2(s, i) {
+  let n = 0;
+  while (i > 0 && s[--i] === "\\") n++;
+  return n % 2 === 1;
+}
+function group(s, at) {
+  if (s[at] !== "{") return null;
+  let depth = 1;
+  for (let i = at + 1; i < s.length; i++) {
+    if (escaped2(s, i)) continue;
+    if (s[i] === "%") {
+      const next = s.indexOf("\n", i);
+      if (next < 0) return null;
+      i = next;
+      continue;
+    }
+    if (s[i] === "{") depth++;
+    if (s[i] === "}" && !--depth) return { from: at, to: i + 1, body: s.slice(at + 1, i) };
+  }
+  return null;
+}
+function markers(tex) {
+  const out = [];
+  const command2 = /\\class\b/g;
+  let match;
+  while (match = command2.exec(tex)) {
+    const from = match.index;
+    if (escaped2(tex, from)) continue;
+    const line = tex.lastIndexOf("\n", from) + 1;
+    let commented = false;
+    for (let k = line; k < from; k++) if (tex[k] === "%" && !escaped2(tex, k)) {
+      commented = true;
+      break;
+    }
+    if (commented) continue;
+    let at = command2.lastIndex;
+    while (/\s/.test(tex[at] ?? "") && at < tex.length) at++;
+    const cls = group(tex, at);
+    if (!cls) continue;
+    const tokens = cls.body.trim().split(/\s+/);
+    if (!tokens.some((t2) => t2 === "mjx-ss" || t2.startsWith("mjx-ss-o-"))) continue;
+    const id3 = /^mjx-ss mjx-ss-o-([0-9a-z]{10})$/.exec(cls.body)?.[1];
+    if (!id3) throw Error("Malformed symbol marker. Keep its source intact and repair the ID.");
+    at = cls.to;
+    while (/\s/.test(tex[at] ?? "") && at < tex.length) at++;
+    const body = group(tex, at);
+    if (!body) throw Error("Unclosed symbol marker.");
+    if (out.some((m) => from > m.from && from < m.to)) throw Error("Nested symbol tags are not supported.");
+    out.push({ id: id3, from, to: body.to, bodyFrom: at + 1, bodyTo: body.to - 1, body: body.body });
+  }
+  return out;
+}
+function wrapSymbol(id3, tex) {
+  if (!ID.test(id3)) throw Error("Invalid occurrence ID.");
+  if (!tex.trim()) throw Error("Select a symbol first.");
+  if (markers(tex).length) throw Error("This selection already contains a symbol tag.");
+  return `\\class{mjx-ss mjx-ss-o-${id3}}{${tex}}`;
+}
+function untag(tex, id3) {
+  const hits = markers(tex).filter((m) => m.id === id3);
+  return applyEdits(tex, hits.map((m) => ({ from: m.from, to: m.to, insert: m.body })));
+}
+function applyEdits(source, edits) {
+  const sorted = [...edits].sort((a2, b) => a2.from - b.from || a2.to - b.to);
+  let last = 0, out = "";
+  for (const edit of sorted) {
+    if (edit.from < last || edit.to < edit.from || edit.to > source.length) throw Error("Overlapping or invalid symbol edits.");
+    out += source.slice(last, edit.from) + edit.insert;
+    last = edit.to;
+  }
+  return out + source.slice(last);
+}
+function semanticGlyph(tex) {
+  let out = "";
+  for (let i = 0; i < tex.length; ) {
+    const color = /^\\(textcolor|color)(?![A-Za-z])/.exec(tex.slice(i));
+    if (color) {
+      let at = i + color[0].length;
+      while (/\s/.test(tex[at] ?? "") && at < tex.length) at++;
+      if (tex[at] === "[") {
+        const end = tex.indexOf("]", at);
+        if (end < 0) return tex;
+        at = end + 1;
+      }
+      const name2 = group(tex, at);
+      if (name2) {
+        if (color[1] === "color") {
+          i = name2.to;
+          continue;
+        }
+        let bodyAt = name2.to;
+        while (/\s/.test(tex[bodyAt] ?? "") && bodyAt < tex.length) bodyAt++;
+        const body = group(tex, bodyAt);
+        if (body) {
+          out += semanticGlyph(body.body);
+          i = body.to;
+          continue;
+        }
+      }
+    }
+    out += tex[i++];
+  }
+  const normalize = (s) => s.replace(/\s+/g, "").replace(/\\(?:left|right|displaystyle|textstyle|scriptstyle|scriptscriptstyle)\b/g, "").replace(/\\[,;!:]/g, "").replace(/([_^])\{([A-Za-z0-9])\}/g, "$1$2").replace(/\^\{\\prime\}|\^\\prime\b/g, "'");
+  let normalized2 = "", last = 0;
+  const text2 = /\\(?:text|mbox|operatorname)\b\s*/g;
+  let hit;
+  while (hit = text2.exec(out)) {
+    const body = group(out, text2.lastIndex);
+    if (!body) continue;
+    normalized2 += normalize(out.slice(last, hit.index)) + out.slice(hit.index, body.to);
+    last = body.to;
+    text2.lastIndex = body.to;
+  }
+  return normalized2 + normalize(out.slice(last));
+}
+function freshId(existing) {
+  const used = new Set(existing);
+  for (let i = 0; i < 100; i++) {
+    const bytes = crypto.getRandomValues(new Uint8Array(10));
+    const id3 = Array.from(bytes, (n) => (n % 36).toString(36)).join("");
+    if (!used.has(id3)) return id3;
+  }
+  throw Error("Unable to allocate a unique symbol ID.");
+}
+function conflicts(data2) {
+  const result = [], meaning = /* @__PURE__ */ new Map(), names2 = /* @__PURE__ */ new Map(), concepts = /* @__PURE__ */ new Map();
+  for (const [id3, d] of Object.entries(data2.defs)) {
+    const key2 = d.meaning.trim().toLocaleLowerCase().replace(/\s+/g, " "), prior = meaning.get(key2);
+    if (prior) result.push({ kind: "possible-duplicate", definitions: [prior, id3], message: "These definitions have the same meaning text." });
+    else meaning.set(key2, id3);
+    for (const c of d.code) {
+      const k = [c.lang, c.scope ?? "", c.name].join("\0"), previous = names2.get(k);
+      if (previous && previous !== id3) result.push({ kind: "code-name", definitions: [previous, id3], message: `${c.name} is assigned to different definitions in the same scope.` });
+      else names2.set(k, id3);
+      if (d.concept) {
+        const ck = [d.concept, c.lang, c.scope ?? ""].join("\0"), old = concepts.get(ck);
+        if (old && old.name !== c.name) result.push({ kind: "concept-name", definitions: [old.id, id3], message: "One concept has different code names in the same language and scope." });
+        else concepts.set(ck, { id: id3, name: c.name });
+      }
+    }
+  }
+  return result;
+}
+function equationReference(tex) {
+  const plain2 = applyEdits(tex, markers(tex).map((m) => ({ from: m.from, to: m.to, insert: m.body }))).trim();
+  let hash4 = 2166136261;
+  for (let i = 0; i < plain2.length; i++) hash4 = Math.imul(hash4 ^ plain2.charCodeAt(i), 16777619);
+  return "fnv1a:" + (hash4 >>> 0).toString(16).padStart(8, "0") + " " + plain2.slice(0, 100);
+}
+function symbolTargetPositions(tex, target) {
+  if (!target) return [];
+  const commands = [...tex.matchAll(/\\[A-Za-z]+/g)].map((m) => ({ from: m.index, to: m.index + m[0].length }));
+  const hits = [];
+  for (let at = tex.indexOf(target); at >= 0; at = tex.indexOf(target, at + target.length)) {
+    const end = at + target.length;
+    if (commands.some((c) => at > c.from && at < c.to || end > c.from && end < c.to)) continue;
+    hits.push(at);
+  }
+  return hits;
+}
+
+// src/symbols/source-projection.ts
+var largeCache2 = /* @__PURE__ */ new Map();
+var smallCache2 = /* @__PURE__ */ new Map();
+function project(source, cuts) {
+  if (!cuts.length) return null;
+  cuts.sort((a2, b) => a2.from - b.from);
+  let last = 0, text2 = "";
+  const gaps = [];
+  for (const cut of cuts) {
+    if (cut.from < last) continue;
+    text2 += source.slice(last, cut.from);
+    gaps.push({ at: text2.length, from: cut.from, to: cut.to, removed: cut.to - cut.from, kind: cut.kind });
+    last = cut.to;
+  }
+  text2 += source.slice(last);
+  return { text: text2, toRaw(pos, side) {
+    let offset = 0;
+    for (const gap of gaps) {
+      if (gap.at > pos) break;
+      if (gap.at === pos && (gap.kind === "open" || gap.kind === "registry" && side > 0)) break;
+      offset += gap.removed;
+    }
+    return pos + offset;
+  }, toProjected(pos) {
+    let offset = 0;
+    for (const gap of gaps) {
+      if (pos <= gap.from) break;
+      if (pos < gap.to) return gap.at;
+      offset += gap.removed;
+    }
+    return pos - offset;
+  } };
+}
+function tagCuts(tex, offset = 0) {
+  try {
+    return markers(tex).flatMap((m) => [{ from: offset + m.from, to: offset + m.bodyFrom, kind: "open" }, { from: offset + m.bodyTo, to: offset + m.to, kind: "close" }]);
+  } catch {
+    return [];
+  }
+}
+function symbolTextProjection(source) {
+  const cache5 = source.length > 4096 ? largeCache2 : smallCache2;
+  if (cache5.has(source)) {
+    const hit = cache5.get(source);
+    cache5.delete(source);
+    cache5.set(source, hit);
+    return hit;
+  }
+  const cuts = [];
+  if (source.includes("mjx-ss-o-")) {
+    for (const q of equations(source)) if (q.body.includes("mjx-ss-o-")) cuts.push(...tagCuts(q.body, q.bodyFrom));
+  }
+  if (source.includes("%% study-symbols")) try {
+    const block = registryBlock(source, markdownContext(source).excluded);
+    if (block) cuts.push({ from: block.from, to: block.to, kind: "registry" });
+  } catch {
+  }
+  const result = project(source, cuts);
+  cache5.set(source, result);
+  if (cache5.size > (source.length > 4096 ? 8 : 16)) cache5.delete(cache5.keys().next().value);
+  return result;
+}
+function symbolLatexProjection(tex) {
+  return tex.includes("mjx-ss-o-") ? project(tex, tagCuts(tex)) : null;
+}
+function plainSymbolLatex(tex) {
+  return symbolLatexProjection(tex)?.text ?? tex;
+}
+function ordinaryAnchor(source, anchor, range) {
+  const p = symbolTextProjection(source);
+  if (!p) return anchor;
+  let next = { ...anchor };
+  if (range) {
+    const from = p.toProjected(range.from), to = p.toProjected(range.to);
+    next = { ...next, quote: p.text.slice(from, to), before: p.text.slice(Math.max(0, from - 48), from), after: p.text.slice(to, to + 48) };
+  } else {
+    next.quote = symbolTextProjection(anchor.quote)?.text ?? anchor.quote;
+  }
+  if (next.sectionSource) next.sectionSource = symbolTextProjection(next.sectionSource)?.text ?? next.sectionSource;
+  if (next.table) next.table = { ...next.table, source: symbolTextProjection(next.table.source)?.text ?? next.table.source, cellText: symbolTextProjection(next.table.cellText)?.text ?? next.table.cellText };
+  return next;
+}
+function isSymbolRegistrySection(source) {
+  const text2 = source.trim();
+  if (!text2.startsWith("%% study-symbols")) return false;
+  try {
+    const block = registryBlock(text2);
+    return !!block && block.from === 0 && block.to === text2.length;
+  } catch {
+    return false;
+  }
+}
+
 // src/review-model.ts
 function locateQuote(text2, a2) {
+  const p = symbolTextProjection(text2);
+  if (!p) return locateRawQuote(text2, a2);
+  const hit = locateRawQuote(p.text, a2);
+  return hit && { from: p.toRaw(hit.from, -1), to: p.toRaw(hit.to, 1) };
+}
+function locateRawQuote(text2, a2) {
   if (!a2.quote) return;
   const hits = [];
   let at = 0;
@@ -12734,7 +13061,13 @@ function indexedEquations(text2) {
   return qs;
 }
 function locateMarginAnchor(text2, a2) {
-  const exact = locateQuote(text2, a2);
+  const p = symbolTextProjection(text2);
+  if (!p) return locateRawMarginAnchor(text2, a2);
+  const hit = locateRawMarginAnchor(p.text, a2);
+  return hit && { from: p.toRaw(hit.from, -1), to: p.toRaw(hit.to, 1) };
+}
+function locateRawMarginAnchor(text2, a2) {
+  const exact = locateRawQuote(text2, a2);
   if (exact || a2.kind !== "math") return exact;
   const before = a2.before.trimEnd(), after = a2.after.trimStart();
   if (!before && !after) return;
@@ -12748,6 +13081,10 @@ function locateMarginAnchor(text2, a2) {
 // src/reading-projection.ts
 var cache = /* @__PURE__ */ new Map();
 function projectReadingAnchor(a2, source) {
+  if (source !== void 0) {
+    const projected = symbolTextProjection(source);
+    if (projected) return projectReadingAnchor(a2, projected.text);
+  }
   if (source === void 0 || a2.kind === "math" || a2.renderedQuote !== void 0) return [a2];
   const hit = locateMarginAnchor(source, a2);
   if (!hit) return [a2];
@@ -12796,6 +13133,9 @@ function projectReadingAnchor(a2, source) {
   return result;
 }
 
+// src/symbols/stats.ts
+var symbolStats = { initialScans: 0, registryParses: 0, markerParses: 0, fullTextReads: 0, writes: 0, apiCalls: 0, layoutChecks: 0, rowConversions: 0 };
+
 // src/math-semantic.ts
 function signatureItems(node) {
   const tag = node.tagName.toLowerCase();
@@ -12803,6 +13143,48 @@ function signatureItems(node) {
   if (["mjx-math", "mjx-mrow", "mjx-mstyle", "mjx-texatom", "mjx-script"].includes(tag)) return Array.from(node.children).flatMap(signatureItems);
   if (["mjx-mi", "mjx-mn", "mjx-mo", "mjx-mtext"].includes(tag)) return [[tag, node.textContent]];
   return [[tag, Array.from(node.children).map(signatureItems)]];
+}
+var symbolRowShapes = /* @__PURE__ */ new WeakMap();
+var symbolRowNodes = /* @__PURE__ */ new WeakMap();
+function symbolOnlyRow(node) {
+  const tex = node.getAttribute("data-latex") ?? "", cached = symbolRowNodes.get(node);
+  if (cached?.tex === tex) return cached.result;
+  const result = classifySymbolRow(node);
+  if (node.classList.contains("mjx-ss")) symbolRowNodes.set(node, { tex, result });
+  return result;
+}
+function classifySymbolRow(node) {
+  if (node.tagName.toLowerCase() !== "mjx-mrow") return false;
+  const classes = Array.from(node.classList);
+  if (!classes.includes("mjx-ss") || !classes.some((c) => /^mjx-ss-o-[0-9a-z]{10}$/.test(c))) return false;
+  const tex = node.getAttribute("data-latex") ?? "";
+  try {
+    const tags3 = markers(tex);
+    if (tags3.length !== 1) return false;
+    const body = tags3[0].body, doc2 = node.ownerDocument;
+    let cache5 = symbolRowShapes.get(doc2);
+    if (!cache5) {
+      cache5 = /* @__PURE__ */ new Map();
+      symbolRowShapes.set(doc2, cache5);
+    }
+    const display = node.closest("mjx-container")?.getAttribute("display") === "true", key2 = JSON.stringify([body, display]);
+    if (!cache5.has(key2)) {
+      const mj = doc2.defaultView?.MathJax;
+      if (!mj?.tex2chtml) return false;
+      symbolStats.rowConversions++;
+      const rendered = mj.tex2chtml(body, { display }), math2 = rendered.querySelector("mjx-math");
+      if (!math2 || math2.querySelector("mjx-merror")) return false;
+      const children = Array.from(math2.children).filter((n) => n.tagName.toLowerCase() !== "mjx-break");
+      cache5.set(key2, children.length > 1 ? children.map(mathSignature) : null);
+      if (cache5.size > 256) cache5.delete(cache5.keys().next().value);
+    }
+    const expected = cache5.get(key2);
+    if (!expected) return false;
+    const actual = Array.from(node.children).filter((n) => n.tagName.toLowerCase() !== "mjx-break");
+    return actual.length === expected.length && actual.every((n, i) => mathSignature(n) === expected[i]);
+  } catch {
+    return false;
+  }
 }
 function mathSignature(node) {
   return JSON.stringify(signatureItems(node));
@@ -12812,13 +13194,13 @@ function mathParentSignature(node) {
   let parent = node.parentElement;
   while (parent && parent.tagName.toLowerCase().startsWith("mjx-")) {
     const key2 = mathSignature(parent);
-    if (key2 !== own) return key2;
+    if (!symbolOnlyRow(parent) && key2 !== own) return key2;
     parent = parent.parentElement;
   }
   return "";
 }
-function semanticMatches(math, key2, parent) {
-  const all = Array.from(math.querySelectorAll("[data-latex]"));
+function semanticMatches(math2, key2, parent) {
+  const all = Array.from(math2.querySelectorAll("[data-latex]")).filter((n) => !symbolOnlyRow(n));
   return all.filter((n) => mathSignature(n) === key2 && mathParentSignature(n) === parent).filter((n) => !all.some((p) => p !== n && p.contains(n) && mathSignature(p) === key2 && mathParentSignature(p) === parent));
 }
 var renderedKeys = /* @__PURE__ */ new Map();
@@ -12829,8 +13211,8 @@ function latexSignature(latex, doc2) {
   let key2;
   try {
     const rendered = mj.tex2chtml(latex, { display: false });
-    const math = rendered.querySelector("mjx-math");
-    if (math && !math.querySelector("mjx-merror")) key2 = mathSignature(math);
+    const math2 = rendered.querySelector("mjx-math");
+    if (math2 && !math2.querySelector("mjx-merror")) key2 = mathSignature(math2);
   } catch {
   }
   renderedKeys.set(latex, key2);
@@ -12845,27 +13227,35 @@ function validSemantic(s) {
 function validMathPart(p) {
   return !!p && Array.isArray(p.nodes) && p.nodes.length > 0 && p.nodes.length <= 128 && p.nodes.every((n) => n && typeof n.latex === "string" && typeof n.parentLatex === "string" && Number.isSafeInteger(n.occurrence) && n.occurrence >= 0 && validSemantic(n.semantic));
 }
-function semanticNodes(math) {
-  return Array.from(math.querySelectorAll("[data-latex]"));
+function semanticNodes(math2) {
+  return Array.from(math2.querySelectorAll("[data-latex]")).filter((n) => !symbolOnlyRow(n));
+}
+function semanticParent(node) {
+  let parent = node.parentElement?.closest("[data-latex]") ?? null;
+  while (parent && symbolOnlyRow(parent)) parent = parent.parentElement?.closest("[data-latex]") ?? null;
+  return parent;
 }
 function parentLatex(node) {
-  return node.parentElement?.closest("[data-latex]")?.getAttribute("data-latex")?.trim() ?? "";
+  return plainSymbolLatex(semanticParent(node)?.getAttribute("data-latex")?.trim() ?? "");
 }
-function describePart(math, nodes) {
-  const all = semanticNodes(math);
+function nodeLatex(node) {
+  return plainSymbolLatex(node.getAttribute("data-latex")?.trim() ?? "");
+}
+function describePart(math2, nodes) {
+  const all = semanticNodes(math2);
   return { nodes: nodes.map((n) => {
-    const latex = n.getAttribute("data-latex").trim(), parent = parentLatex(n), key2 = mathSignature(n), parentKey = mathParentSignature(n), matches = semanticMatches(math, key2, parentKey), ordinal = matches.findIndex((x) => x === n || x.contains(n));
-    return { latex, parentLatex: parent, occurrence: all.filter((x) => x.getAttribute("data-latex")?.trim() === latex && parentLatex(x) === parent).indexOf(n), ...ordinal >= 0 ? { semantic: { key: key2, parent: parentKey, occurrence: ordinal, count: matches.length } } : {} };
+    const latex = nodeLatex(n), parent = parentLatex(n), key2 = mathSignature(n), parentKey = mathParentSignature(n), matches = semanticMatches(math2, key2, parentKey), ordinal = matches.findIndex((x) => x === n || x.contains(n));
+    return { latex, parentLatex: parent, occurrence: all.filter((x) => nodeLatex(x) === latex && parentLatex(x) === parent).indexOf(n), ...ordinal >= 0 ? { semantic: { key: key2, parent: parentKey, occurrence: ordinal, count: matches.length } } : {} };
   }) };
 }
-function resolvePart(math, part) {
-  const all = semanticNodes(math);
+function resolvePart(math2, part) {
+  const all = semanticNodes(math2);
   const found = part.nodes.map((n) => {
-    const exact = all.filter((x) => x.getAttribute("data-latex")?.trim() === n.latex.trim() && parentLatex(x) === n.parentLatex.trim())[n.occurrence];
+    const exact = all.filter((x) => nodeLatex(x) === plainSymbolLatex(n.latex.trim()) && parentLatex(x) === plainSymbolLatex(n.parentLatex.trim()))[n.occurrence];
     if (exact) return exact;
-    const key2 = n.semantic?.key ?? latexSignature(n.latex, math.ownerDocument), parent = n.semantic?.parent ?? latexSignature(n.parentLatex, math.ownerDocument);
+    const key2 = n.semantic?.key ?? latexSignature(n.latex, math2.ownerDocument), parent = n.semantic?.parent ?? latexSignature(n.parentLatex, math2.ownerDocument);
     if (!key2 || parent === void 0) return;
-    const matches = semanticMatches(math, key2, parent);
+    const matches = semanticMatches(math2, key2, parent);
     if (n.semantic) return matches.length === n.semantic.count ? matches[n.semantic.occurrence] : void 0;
     return matches.length === 1 && n.occurrence === 0 ? matches[0] : void 0;
   });
@@ -12873,15 +13263,15 @@ function resolvePart(math, part) {
   const nodes = found;
   return nodes.every((n, i) => !i || !!(nodes[i - 1].compareDocumentPosition(n) & 4)) ? nodes : [];
 }
-function selectedGlyphs(math, range) {
-  return Array.from(math.querySelectorAll("mjx-c")).filter((n) => {
+function selectedGlyphs(math2, range) {
+  return Array.from(math2.querySelectorAll("mjx-c")).filter((n) => {
     const r = n.ownerDocument.createRange();
     r.selectNodeContents(n);
     return range.compareBoundaryPoints(Range.END_TO_START, r) < 0 && range.compareBoundaryPoints(Range.START_TO_END, r) > 0;
   });
 }
-function partFromRange(math, range) {
-  const glyphs = selectedGlyphs(math, range);
+function partFromRange(math2, range) {
+  const glyphs = selectedGlyphs(math2, range);
   if (!glyphs.length) return;
   const selected = new Set(glyphs);
   const covered = (n) => {
@@ -12891,23 +13281,34 @@ function partFromRange(math, range) {
   const picked = /* @__PURE__ */ new Set();
   for (const glyph of glyphs) {
     let n = glyph.closest("[data-latex]");
-    if (!n || n === math) continue;
-    let p = n.parentElement?.closest("[data-latex]");
-    while (p && p !== math && math.contains(p) && covered(p)) {
+    if (!n || n === math2) continue;
+    let p = semanticParent(n);
+    while (p && p !== math2 && math2.contains(p) && covered(p)) {
       n = p;
-      p = n.parentElement?.closest("[data-latex]");
+      p = semanticParent(n);
     }
     picked.add(n);
   }
   const nodes = [...picked].filter((n) => ![...picked].some((p) => p !== n && p.contains(n)));
-  if (covered(math)) return;
-  return nodes.length ? describePart(math, nodes) : void 0;
+  if (covered(math2)) return;
+  return nodes.length ? describePart(math2, nodes) : void 0;
 }
-function partAtTarget(math, target) {
+function partAtTarget(math2, target) {
   const n = target.closest("[data-latex]");
-  return n && n !== math && math.contains(n) ? describePart(math, [n]) : void 0;
+  if (!n || n === math2 || !math2.contains(n)) return;
+  if (symbolOnlyRow(n)) {
+    const children = semanticNodes(n).filter((child) => semanticParent(child) === semanticParent(n));
+    return children.length ? describePart(math2, children) : void 0;
+  }
+  return describePart(math2, [n]);
 }
-function partFromSource(math, body, from, to) {
+function partFromSource(math2, body, from, to) {
+  const projection = symbolLatexProjection(body);
+  if (projection) {
+    from = projection.toProjected(from);
+    to = projection.toProjected(to);
+    body = projection.text;
+  }
   let failed = false;
   const ranges = /* @__PURE__ */ new Map();
   const canon = (s) => {
@@ -12919,10 +13320,10 @@ function partFromSource(math, body, from, to) {
     return { text: text2, positions };
   };
   const visit3 = (parent, start, end) => {
-    const children = semanticNodes(parent).filter((n) => n.parentElement?.closest("[data-latex]") === parent);
+    const children = semanticNodes(parent).filter((n) => semanticParent(n) === parent);
     let cursor = start;
     for (const n of children) {
-      const value = canon(n.getAttribute("data-latex") ?? "").text, available = canon(body.slice(cursor, end));
+      const value = canon(nodeLatex(n)).text, available = canon(body.slice(cursor, end));
       if (!value) continue;
       const at = available.text.indexOf(value);
       if (at < 0) {
@@ -12935,7 +13336,7 @@ function partFromSource(math, body, from, to) {
       cursor = b;
     }
   };
-  visit3(math, 0, body.length);
+  visit3(math2, 0, body.length);
   if (failed) return;
   const chosen = [...ranges].filter(([n, r]) => r.from < to && r.to > from && !semanticNodes(n).some((child) => {
     const c = ranges.get(child);
@@ -12944,21 +13345,21 @@ function partFromSource(math, body, from, to) {
   if (!chosen.length) return;
   const picked = new Set(chosen);
   for (const n of chosen) {
-    let p = n.parentElement?.closest("[data-latex]");
-    while (p && p !== math) {
+    let p = semanticParent(n);
+    while (p && p !== math2) {
       const r = ranges.get(p);
       if (!r || r.from < from || r.to > to) break;
       picked.add(p);
-      p = p.parentElement?.closest("[data-latex]");
+      p = semanticParent(p);
     }
   }
   const nodes = [...picked].filter((n) => ![...picked].some((p) => p !== n && p.contains(n)));
   const selected = canon(body.slice(from, to)).text;
   const valid = nodes.every((n) => {
-    const v = canon(n.getAttribute("data-latex") ?? "").text;
+    const v = canon(nodeLatex(n)).text;
     return selected.includes(v) || v.includes(selected);
   });
-  return nodes.length && valid ? describePart(math, nodes) : void 0;
+  return nodes.length && valid ? describePart(math2, nodes) : void 0;
 }
 
 // src/margin-model.ts
@@ -13052,7 +13453,13 @@ function markClass(comments) {
 
 // src/margin-location.ts
 function marginLocation(text2, a2) {
-  if (!a2.sectionSource) return locateMarginAnchor(text2, a2);
+  const p = symbolTextProjection(text2);
+  if (!p) return rawMarginLocation(text2, a2);
+  const hit = rawMarginLocation(p.text, a2);
+  return hit && { from: p.toRaw(hit.from, -1), to: p.toRaw(hit.to, 1) };
+}
+function rawMarginLocation(text2, a2) {
+  if (!a2.sectionSource) return locateRawMarginAnchor(text2, a2);
   const section = a2.sectionSource, base2 = text2.indexOf(section);
   if (base2 < 0 || text2.indexOf(section, base2 + 1) >= 0) return;
   const positions = [];
@@ -13123,8 +13530,8 @@ function inlineProjection(source) {
     for (const [at] of atoms) if (at >= from && at < to) atoms.delete(at);
     blocked.push({ from, to, reason });
   };
-  const tree = inlineParser.parse(source);
-  tree.iterate({ enter(n) {
+  const tree2 = inlineParser.parse(source);
+  tree2.iterate({ enter(n) {
     if (["FencedCode", "CodeBlock", "HTMLBlock", "LinkReference", "HorizontalRule"].includes(n.name)) {
       block(n.from, n.to, "code or unsupported block");
       return false;
@@ -13277,7 +13684,7 @@ function sourceBlocks(text2) {
   const cached = blockCache.get(text2);
   if (cached) return cached;
   const blocks = [];
-  let offset = 0, fence = "", math = false, start = -1, end = 0, lineNo = 0, front = false;
+  let offset = 0, fence = "", math2 = false, start = -1, end = 0, lineNo = 0, front = false;
   const lines = text2.split("\n");
   for (const line of lines) {
     const from = offset, to = offset + line.length;
@@ -13290,21 +13697,21 @@ function sourceBlocks(text2) {
       if (line.trim() === "---" || line.trim() === "...") front = false;
       continue;
     }
-    if (!fence && !math && /^ {0,3}#{1,6}\s/.test(line)) {
+    if (!fence && !math2 && /^ {0,3}#{1,6}\s/.test(line)) {
       if (start >= 0) blocks.push({ from: start, to: end });
       blocks.push({ from, to });
       start = -1;
       continue;
     }
     const f = /^\s*(`{3,}|~{3,})/.exec(line);
-    if (f && !math) {
+    if (f && !math2) {
       if (!fence) fence = f[1];
       else if (f[1][0] === fence[0] && f[1].length >= fence.length && line.slice(f[0].length).trim() === "") fence = "";
     } else if (!fence) {
       const marks2 = (line.match(/\$\$/g) ?? []).length;
-      if (marks2 % 2 === 1) math = !math;
+      if (marks2 % 2 === 1) math2 = !math2;
     }
-    const blank = !line.trim() && !fence && !math;
+    const blank = !line.trim() && !fence && !math2;
     if (blank) {
       if (start >= 0) {
         blocks.push({ from: start, to: end });
@@ -13365,6 +13772,12 @@ function placementContext(text2, offset) {
   return { from, to, projection, table };
 }
 function pointQuote(text2, p) {
+  const projected = symbolTextProjection(text2);
+  if (!projected) return rawPointQuote(text2, p);
+  const hit = rawPointQuote(projected.text, p);
+  return hit && { from: projected.toRaw(hit.from, -1), to: projected.toRaw(hit.to, 1) };
+}
+function rawPointQuote(text2, p) {
   const hits = [], matches = [];
   let at = -1;
   while ((at = text2.indexOf(p.quote, at + 1)) >= 0) {
@@ -13375,6 +13788,11 @@ function pointQuote(text2, p) {
   return candidates.length === 1 ? { from: candidates[0], to: candidates[0] + p.quote.length } : void 0;
 }
 function placementAt(text2, offset) {
+  const projected = symbolTextProjection(text2);
+  if (projected) {
+    offset = projected.toProjected(offset);
+    text2 = projected.text;
+  }
   const checked = stickyBoundary(text2, offset);
   if (checked.reason) return;
   offset = checked.offset;
@@ -13423,6 +13841,8 @@ function placementMatcher(placements) {
   const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const regex = groups.size ? new RegExp([...groups.keys()].map(escape).join("|"), "g") : void 0;
   return (text2) => {
+    const projected = symbolTextProjection(text2);
+    if (projected) text2 = projected.text;
     const counts = new Uint32Array(placements.length), contexts2 = new Uint32Array(placements.length), hits = new Float64Array(placements.length), matches = new Float64Array(placements.length);
     if (regex) {
       regex.lastIndex = 0;
@@ -13444,7 +13864,9 @@ function placementMatcher(placements) {
     }
     return placements.map((p, i) => {
       const count2 = contexts2[i] || counts[i], at = contexts2[i] ? matches[i] : hits[i];
-      return count2 === 1 ? at + (p.edge === "start" ? 0 : p.quote.length) : void 0;
+      if (count2 !== 1) return;
+      const offset = at + (p.edge === "start" ? 0 : p.quote.length);
+      return projected ? projected.toRaw(offset, p.edge === "start" ? -1 : 1) : offset;
     });
   };
 }
@@ -13654,7 +14076,7 @@ function renderDiagram(app, parent, d, path, label, allowMissing = false) {
 
 // src/figure-study-modal.ts
 var FULL = [0, 0, 1, 1];
-var clone = (v) => JSON.parse(JSON.stringify(v));
+var clone2 = (v) => JSON.parse(JSON.stringify(v));
 var clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 var FigureStudyModal = class extends import_obsidian4.Modal {
   constructor(app, api, request, snapshot) {
@@ -13663,7 +14085,7 @@ var FigureStudyModal = class extends import_obsidian4.Modal {
     this.request = request;
     this.snapshot = snapshot;
     this.check(snapshot);
-    this.regions = clone(snapshot.groups[0]?.study?.figure?.regions ?? []);
+    this.regions = clone2(snapshot.groups[0]?.study?.figure?.regions ?? []);
     this.comment = snapshot.groups[0]?.comment ?? "";
   }
   regions;
@@ -13768,7 +14190,7 @@ var FigureStudyModal = class extends import_obsidian4.Modal {
       this.timer = void 0;
     }
     if (this.failed) return;
-    const regions = clone(this.regions), comment2 = this.comment;
+    const regions = clone2(this.regions), comment2 = this.comment;
     this.status?.setText("Saving\u2026");
     this.queue = this.queue.then(async () => {
       if (this.failed) return;
@@ -13802,9 +14224,9 @@ var FigureStudyModal = class extends import_obsidian4.Modal {
     this.host.setAttribute("aria-disabled", String(locked));
   }
   async reloadSaved() {
-    const button = this.reload;
-    if (!button) return;
-    button.disabled = true;
+    const button2 = this.reload;
+    if (!button2) return;
+    button2.disabled = true;
     this.status.setText("Reloading\u2026");
     try {
       await this.queue.catch(() => {
@@ -13812,20 +14234,20 @@ var FigureStudyModal = class extends import_obsidian4.Modal {
       const next = await this.api.inspect(this.request);
       this.check(next);
       this.snapshot = next;
-      this.regions = clone(next.groups[0]?.study?.figure?.regions ?? []);
+      this.regions = clone2(next.groups[0]?.study?.figure?.regions ?? []);
       this.comment = next.groups[0]?.comment ?? "";
       this.instructions.value = this.comment;
       this.selected = "";
       this.failed = false;
       this.queue = Promise.resolve();
       this.pixels = void 0;
-      button.remove();
+      button2.remove();
       this.reload = void 0;
       this.lock(false);
       this.status.setText("Reloaded the saved blanks. Unsaved changes were discarded.");
       this.draw();
     } catch (e) {
-      button.disabled = false;
+      button2.disabled = false;
       this.status.setText("Could not reload: " + String(e) + " Close this window and reopen Add blanks from the saved figure.");
     }
   }
@@ -13836,11 +14258,11 @@ var FigureStudyModal = class extends import_obsidian4.Modal {
     const s = this.snapshot, frame = this.frame(), recovering = this.recovering();
     this.notice.hidden = !recovering;
     this.notice.setText(recovering ? "Some blanks or arrows lie outside the figure\u2019s current crop, so the whole image is shown with the crop outlined. Move them inside the outline or remove them; questions are prepared only when everything is inside the crop." : "");
-    const full = frame === FULL || JSON.stringify(frame) === JSON.stringify(FULL);
+    const full2 = frame === FULL || JSON.stringify(frame) === JSON.stringify(FULL);
     const d = {
       image: s.imagePath,
       alt: s.resolved.title || "Figure",
-      ...full ? {} : { crop: frame },
+      ...full2 ? {} : { crop: frame },
       covers: this.preview ? this.regions.map((r) => ({ ...cropRect(r, frame), color: r.color })) : [],
       labels: this.regions.map((r) => ({ ...cropRect(r, frame), id: r.id, reference: blankReference(this.regions.indexOf(r)), ...r.target ? { target: cropPoint(r.target, frame) } : {} }))
     };
@@ -14020,7 +14442,7 @@ var FigureStudyModal = class extends import_obsidian4.Modal {
       const b = stage.getBoundingClientRect();
       return { x: frame[0] + clamp((ev.clientX - b.left) / b.width, 0, 1) * frame[2], y: frame[1] + clamp((ev.clientY - b.top) / b.height, 0, 1) * frame[3] };
     };
-    const start = point(e), old = clone(r);
+    const start = point(e), old = clone2(r);
     stage.setPointerCapture(e.pointerId);
     const box = stage.querySelector(`[data-label="${CSS.escape(r.id)}"]`) ?? stage.createDiv("study-figure-region");
     box.classList.add("is-selected");
@@ -14106,7 +14528,7 @@ function tableKey(source) {
   return "table-" + (h >>> 0).toString(16);
 }
 function tableCells2(line, offset = 0) {
-  let start = 0, ticks = 0, math = 0;
+  let start = 0, ticks = 0, math2 = 0;
   const parts = [];
   const add = (end) => {
     const value = line.slice(start, end), left = value.length - value.trimStart().length, right = value.trimEnd().length;
@@ -14128,10 +14550,10 @@ function tableCells2(line, offset = 0) {
     }
     if (!ticks && line[i] === "$") {
       const n = line[i + 1] === "$" ? 2 : 1;
-      math = math === n ? 0 : math || n;
+      math2 = math2 === n ? 0 : math2 || n;
       i += n - 1;
     }
-    if (!ticks && !math && line[i] === "|") {
+    if (!ticks && !math2 && line[i] === "|") {
       add(i);
       start = i + 1;
     }
@@ -14180,18 +14602,18 @@ function blankSelection(source, from, to, id3) {
   if (!source.slice(from, to).trim()) throw Error("Select the answer text in the prompt first.");
   if (/\{\{blank:/.test(source.slice(from, to))) throw Error("That selection already contains a blank.");
   const touching = equations(source).filter((q) => from < q.to && to > q.from);
-  let math;
+  let math2;
   if (touching.length) {
     const q = touching[0];
     if (touching.length === 1 && from <= q.bodyFrom && to >= q.bodyTo && (from >= q.from || !source.slice(from, q.from).trim()) && (to <= q.to || !source.slice(q.to, to).trim())) {
       from = q.from;
       to = q.to;
-      math = q.display ? "display" : "inline";
+      math2 = q.display ? "display" : "inline";
     } else if (touching.some((q2) => from > q2.from || to < q2.to)) throw Error("Include the whole equation in your selection.");
   }
-  const text2 = source.slice(from, to), accepted = math ? equations(text2)[0].body.trim() : text2;
+  const text2 = source.slice(from, to), accepted = math2 ? equations(text2)[0].body.trim() : text2;
   const marker = `{{blank:${id3}}}`;
-  return { prompt: source.slice(0, from) + marker + source.slice(to), from, to: from + marker.length, answer: { id: id3, accepted: [accepted], ...math ? { math } : {} } };
+  return { prompt: source.slice(0, from) + marker + source.slice(to), from, to: from + marker.length, answer: { id: id3, accepted: [accepted], ...math2 ? { math: math2 } : {} } };
 }
 function blankTokens(source) {
   return [...source.matchAll(/\{\{blank:([\w-]+)\}\}/g)].map((m) => ({ from: m.index, to: m.index + m[0].length, id: m[1] }));
@@ -14934,7 +15356,7 @@ function registerStudyPracticeLinks(plugin, store, all, open) {
 }
 
 // src/figure-study-api.ts
-var clone2 = (v) => JSON.parse(JSON.stringify(v));
+var clone3 = (v) => JSON.parse(JSON.stringify(v));
 var digest = async (bytes) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)), (b) => b.toString(16).padStart(2, "0")).join("");
 var FigureStudyApi = class {
   constructor(plugin, api, bank, practice) {
@@ -15045,7 +15467,7 @@ var FigureStudyApi = class {
     }
     if (request.expectedFigure && (request.expectedFigure.title !== resolved.title || request.expectedFigure.caption !== resolved.caption)) throw Error("The figure changed. Reopen its editor.");
     await this.api.store.refresh();
-    const groups = clone2(this.api.store.data.comments.filter((c) => c.path === request.path && c.study?.figure && figureKey(c.study.figure) === figureKey(request) && !c.deletedAt && !c.resolved));
+    const groups = clone3(this.api.store.data.comments.filter((c) => c.path === request.path && c.study?.figure && figureKey(c.study.figure) === figureKey(request) && !c.deletedAt && !c.resolved));
     return { source, resolved, imagePath: image.file.path, imageHash: image.hash, naturalWidth: image.width, naturalHeight: image.height, groups, references: groups.flatMap((c) => (c.study?.figure?.regions ?? []).map((r, i) => ({ id: r.id, reference: blankReference(i) }))) };
   }
   async open(request) {
@@ -15067,7 +15489,7 @@ var FigureStudyApi = class {
     if (image.hash !== snapshot.imageHash) throw Error("The image changed. Reopen Add blanks.");
     const before = snapshot.groups;
     if (before.length > 1) throw Error("Multiple active figure groups need review before editing.");
-    const old = before[0], now = (/* @__PURE__ */ new Date()).toISOString(), figure = { figureId: request.figureId, panelPath: request.panelPath, panelOccurrence: request.panelOccurrence, imagePath: snapshot.imagePath, imageHash: image.hash, naturalWidth: image.width, naturalHeight: image.height, regions: clone2(regions) };
+    const old = before[0], now = (/* @__PURE__ */ new Date()).toISOString(), figure = { figureId: request.figureId, panelPath: request.panelPath, panelOccurrence: request.panelOccurrence, imagePath: snapshot.imagePath, imageHash: image.hash, naturalWidth: image.width, naturalHeight: image.height, regions: clone3(regions) };
     const c = { ...old ?? {}, id: old?.id ?? crypto.randomUUID(), path: request.path, quote: "", before: "", after: "", anchors: [], comment: comment2, color: "#3578a8", darkColor: "#a6d9ff", intent: "Figure blanks", markStyle: "highlight", resolved: false, updated: now, study: { version: 1, rule: "figure", figure } };
     if (regions.length) {
       if (!validComment(c)) throw Error("Invalid figure regions.");
@@ -15077,7 +15499,7 @@ var FigureStudyApi = class {
       if (!await unchanged() || (await this.metadata(snapshot.imagePath, request.path)).hash !== image.hash) throw Error("Figure changed while saving.");
       if (all.some((n) => n.path === request.path && n.id !== old?.id && n.study?.figure && figureKey(n.study.figure) === figureKey(request) && !n.deletedAt && !n.resolved)) throw Error("Another figure study group was created. Reopen Add blanks.");
     });
-    return clone2(c);
+    return clone3(c);
   }
   /** Creates immutable content-addressed practice assets; no original file is written. */
   async preview(path, id3, variants) {
@@ -15375,10 +15797,10 @@ function codeGroupSource(c, embeds2) {
 function groupStudyRecords(path, text2, records, embeds2) {
   const groups = /* @__PURE__ */ new Map(), tables = records.some((c) => c.path === path && c.study && !c.code && !c.study.figure) ? sourceTables(text2) : [];
   const tableId = (t2) => key("table", path, t2.from, t2.key);
-  const add = (group, member) => {
-    let g = groups.get(group.id);
+  const add = (group2, member) => {
+    let g = groups.get(group2.id);
     if (!g) {
-      g = { ...group, members: [] };
+      g = { ...group2, members: [] };
       groups.set(g.id, g);
     }
     g.members.push(member);
@@ -15445,8 +15867,8 @@ function adjacentParagraph(gap, side, startsLine = false) {
   gap = withoutStudyPlacements(gap);
   const blockText = startsLine ? "\n" + gap : gap;
   if (/\n[ \t]*(?:>[ \t]*)*(?:#{1,6}\s|[-+*]\s|\d+[.)]\s|`{3,}|~{3,}|\$\$|\[!|!\[|!\{\{|(?:---+|___+|\*\*\*+)\s*$)/m.test(blockText) || gap.includes("|")) return false;
-  const clean = gap.replace(/(^|\n)[ \t]*(?:>[ \t]*)+/g, "$1");
-  const rest = side === "before" ? clean.trimEnd() : clean.trimStart();
+  const clean2 = gap.replace(/(^|\n)[ \t]*(?:>[ \t]*)+/g, "$1");
+  const rest = side === "before" ? clean2.trimEnd() : clean2.trimStart();
   return !/\n[ \t]*\n/.test(rest);
 }
 var codeEmbedsReady = (bridge) => typeof bridge?.annotationEmbeds === "function" && bridge.ready !== false;
@@ -16029,8 +16451,8 @@ function withStudyType(c, type) {
 // src/study-combine.ts
 async function undoStudyCombine(store, id3) {
   await store.refresh();
-  const group = store.data.comments.find((c) => c.id === id3), originals = store.data.comments.filter((c) => c.combinedInto === id3);
-  if (!group || !isStudyMark(group) || isConsumed(group) || group.deletedAt || !originals.length || originals.some((c) => !c.deletedAt || isConsumed(c))) throw Error("This combination can no longer be undone.");
+  const group2 = store.data.comments.find((c) => c.id === id3), originals = store.data.comments.filter((c) => c.combinedInto === id3);
+  if (!group2 || !isStudyMark(group2) || isConsumed(group2) || group2.deletedAt || !originals.length || originals.some((c) => !c.deletedAt || isConsumed(c))) throw Error("This combination can no longer be undone.");
   const stamp = (/* @__PURE__ */ new Date()).toISOString(), after = originals.map((c) => {
     const n = { ...c, resolved: c.deletedWasResolved ?? false, updated: stamp };
     delete n.deletedAt;
@@ -16038,7 +16460,7 @@ async function undoStudyCombine(store, id3) {
     delete n.combinedInto;
     return n;
   });
-  await store.applyStudyEdits([...originals, group], [...after, { ...group, deletedAt: stamp, resolved: true, combinedInto: "undo:" + id3, updated: stamp }], async () => {
+  await store.applyStudyEdits([...originals, group2], [...after, { ...group2, deletedAt: stamp, resolved: true, combinedInto: "undo:" + id3, updated: stamp }], async () => {
   });
 }
 
@@ -16424,9 +16846,9 @@ var TextLeaf = class _TextLeaf extends Text {
   }
   lineInner(target, isLine, line, offset) {
     for (let i = 0; ; i++) {
-      let string3 = this.text[i], end = offset + string3.length;
+      let string4 = this.text[i], end = offset + string4.length;
       if ((isLine ? line : end) >= target)
-        return new Line2(offset, end, line, string3);
+        return new Line2(offset, end, line, string4);
       offset = end + 1;
       line++;
     }
@@ -18579,8 +19001,8 @@ var EditorState = class _EditorState {
   separator](https://codemirror.net/6/docs/ref/#state.EditorState^lineSeparator), create a
   [`Text`](https://codemirror.net/6/docs/ref/#state.Text) instance from the given string.
   */
-  toText(string3) {
-    return Text.of(string3.split(this.facet(_EditorState.lineSeparator) || DefaultSplit));
+  toText(string4) {
+    return Text.of(string4.split(this.facet(_EditorState.lineSeparator) || DefaultSplit));
   }
   /**
   Return the given range of the document as a string.
@@ -19566,29 +19988,29 @@ function findMinIndex(value, array) {
     }
   return found;
 }
-function countColumn(string3, tabSize, to = string3.length) {
+function countColumn(string4, tabSize, to = string4.length) {
   let n = 0;
   for (let i = 0; i < to; ) {
-    if (string3.charCodeAt(i) == 9) {
+    if (string4.charCodeAt(i) == 9) {
       n += tabSize - n % tabSize;
       i++;
     } else {
       n++;
-      i = findClusterBreak2(string3, i);
+      i = findClusterBreak2(string4, i);
     }
   }
   return n;
 }
-function findColumn(string3, col, tabSize, strict) {
+function findColumn(string4, col, tabSize, strict) {
   for (let i = 0, n = 0; ; ) {
     if (n >= col)
       return i;
-    if (i == string3.length)
+    if (i == string4.length)
       break;
-    n += string3.charCodeAt(i) == 9 ? tabSize - n % tabSize : 1;
-    i = findClusterBreak2(string3, i);
+    n += string4.charCodeAt(i) == 9 ? tabSize - n % tabSize : 1;
+    i = findClusterBreak2(string4, i);
   }
-  return strict === true ? -1 : string3.length;
+  return strict === true ? -1 : string4.length;
 }
 
 // node_modules/style-mod/src/style-mod.js
@@ -21636,9 +22058,9 @@ var ContentBuilder = class _ContentBuilder {
     if (this.openStart < 0)
       this.openStart = openStart;
   }
-  static build(text2, from, to, decorations2, dynamicDecorationMap) {
+  static build(text2, from, to, decorations3, dynamicDecorationMap) {
     let builder = new _ContentBuilder(text2, from, to, dynamicDecorationMap);
-    builder.openEnd = RangeSet.spans(decorations2, from, to, builder);
+    builder.openEnd = RangeSet.spans(decorations3, from, to, builder);
     if (builder.openStart < 0)
       builder.openStart = builder.openEnd;
     builder.finish(builder.openEnd);
@@ -24615,7 +25037,7 @@ var HeightMap = class _HeightMap {
   decomposeRight(_from, result) {
     result.push(this);
   }
-  applyChanges(decorations2, oldDoc, oracle, changes) {
+  applyChanges(decorations3, oldDoc, oracle, changes) {
     let me = this, doc2 = oracle.doc;
     for (let i = changes.length - 1; i >= 0; i--) {
       let { fromA, toA, fromB, toB } = changes[i];
@@ -24632,7 +25054,7 @@ var HeightMap = class _HeightMap {
       }
       fromB += start.from - fromA;
       fromA = start.from;
-      let nodes = NodeBuilder.build(oracle.setDoc(doc2), decorations2, fromB, toB);
+      let nodes = NodeBuilder.build(oracle.setDoc(doc2), decorations3, fromB, toB);
       me = replace(me, me.replace(fromA, toA, nodes));
     }
     return me.updateHeight(oracle, 0);
@@ -25117,9 +25539,9 @@ var NodeBuilder = class _NodeBuilder {
   // The returned array uses null to indicate line breaks, but never
   // starts or ends in a line break, or has multiple line breaks next
   // to each other.
-  static build(oracle, decorations2, from, to) {
+  static build(oracle, decorations3, from, to) {
     let builder = new _NodeBuilder(from, oracle);
-    RangeSet.spans(decorations2, from, to, builder, 0);
+    RangeSet.spans(decorations3, from, to, builder, 0);
     return builder.finish(from);
   }
 };
@@ -27757,9 +28179,9 @@ function buildKeymap(bindings, platform = currentPlatform) {
           }]
         };
     }
-    let full = parts.join(" ");
-    checkPrefix(full, false);
-    let binding = scopeObj[full] || (scopeObj[full] = {
+    let full2 = parts.join(" ");
+    checkPrefix(full2, false);
+    let binding = scopeObj[full2] || (scopeObj[full2] = {
       preventDefault: false,
       stopPropagation: false,
       run: ((_b = (_a2 = scopeObj._any) === null || _a2 === void 0 ? void 0 : _a2.run) === null || _b === void 0 ? void 0 : _b.slice()) || []
@@ -28051,10 +28473,10 @@ var LayerView = class {
       this.dom.style.transform = `scale(${1 / scaleX}, ${1 / scaleY})`;
     }
   }
-  draw(markers) {
-    if (markers.length != this.drawn.length || markers.some((p, i) => !sameMarker(p, this.drawn[i]))) {
+  draw(markers2) {
+    if (markers2.length != this.drawn.length || markers2.some((p, i) => !sameMarker(p, this.drawn[i]))) {
       let old = this.dom.firstChild, oldI = 0;
-      for (let marker of markers) {
+      for (let marker of markers2) {
         if (marker.update && old && marker.constructor && this.drawn[oldI].constructor && marker.update(old, this.drawn[oldI])) {
           old = old.nextSibling;
           oldI++;
@@ -28067,7 +28489,7 @@ var LayerView = class {
         old.remove();
         old = next;
       }
-      this.drawn = markers;
+      this.drawn = markers2;
       if (browser.safari && browser.safari_version >= 26)
         this.dom.style.display = this.dom.firstChild ? "" : "none";
     }
@@ -28300,8 +28722,8 @@ GutterMarker.prototype.point = true;
 // src/margin-format.ts
 function marginFormatting(state, covered) {
   const ranges = [], source = state.doc.toString();
-  const { tree } = markdownContext(source);
-  tree.iterate({ enter: (n) => {
+  const { tree: tree2 } = markdownContext(source);
+  tree2.iterate({ enter: (n) => {
     const intersects = covered.filter((r) => n.from < r.to && n.to > r.from);
     let unsafe = intersects.some((r) => r.from <= n.from || r.to >= n.to);
     for (let child = n.node.firstChild; child; child = child.nextSibling) if (["EmphasisMark", "StrikethroughMark", "CodeMark", "LinkMark", "URL"].includes(child.name) && intersects.some((r) => child.from < r.to && child.to > r.from)) unsafe = true;
@@ -28405,19 +28827,19 @@ var Language = class {
     if (!lang || !lang.allowsNesting)
       return [];
     let result = [];
-    let explore = (tree, from) => {
-      if (tree.prop(languageDataProp) == this.data) {
-        result.push({ from, to: from + tree.length });
+    let explore = (tree2, from) => {
+      if (tree2.prop(languageDataProp) == this.data) {
+        result.push({ from, to: from + tree2.length });
         return;
       }
-      let mount = tree.prop(NodeProp.mounted);
+      let mount = tree2.prop(NodeProp.mounted);
       if (mount) {
         if (mount.tree.prop(languageDataProp) == this.data) {
           if (mount.overlay)
             for (let r of mount.overlay)
               result.push({ from: r.from + from, to: r.to + from });
           else
-            result.push({ from, to: from + tree.length });
+            result.push({ from, to: from + tree2.length });
           return;
         } else if (mount.overlay) {
           let size = result.length;
@@ -28426,10 +28848,10 @@ var Language = class {
             return;
         }
       }
-      for (let i = 0; i < tree.children.length; i++) {
-        let ch = tree.children[i];
+      for (let i = 0; i < tree2.children.length; i++) {
+        let ch = tree2.children[i];
         if (ch instanceof Tree)
-          explore(ch, tree.positions[i] + from);
+          explore(ch, tree2.positions[i] + from);
       }
     };
     explore(syntaxTree(state), 0);
@@ -28445,13 +28867,13 @@ var Language = class {
 };
 Language.setState = /* @__PURE__ */ StateEffect.define();
 function topNodeAt(state, pos, side) {
-  let topLang = state.facet(language), tree = syntaxTree(state).topNode;
+  let topLang = state.facet(language), tree2 = syntaxTree(state).topNode;
   if (!topLang || topLang.allowsNesting) {
-    for (let node = tree; node; node = node.enter(pos, side, IterMode.ExcludeBuffers))
+    for (let node = tree2; node; node = node.enter(pos, side, IterMode.ExcludeBuffers))
       if (node.type.isTop)
-        tree = node;
+        tree2 = node;
   }
-  return tree;
+  return tree2;
 }
 var LRLanguage = class _LRLanguage extends Language {
   constructor(data2, parser8, name2) {
@@ -28528,11 +28950,11 @@ var DocInput = class {
 };
 var currentContext = null;
 var ParseContext = class _ParseContext {
-  constructor(parser8, state, fragments = [], tree, treeLen, viewport, skipped, scheduleOn) {
+  constructor(parser8, state, fragments = [], tree2, treeLen, viewport, skipped, scheduleOn) {
     this.parser = parser8;
     this.state = state;
     this.fragments = fragments;
-    this.tree = tree;
+    this.tree = tree2;
     this.treeLen = treeLen;
     this.viewport = viewport;
     this.skipped = skipped;
@@ -28590,16 +29012,16 @@ var ParseContext = class _ParseContext {
   @internal
   */
   takeTree() {
-    let pos, tree;
+    let pos, tree2;
     if (this.parse && (pos = this.parse.parsedPos) >= this.treeLen) {
       if (this.parse.stoppedAt == null || this.parse.stoppedAt > pos)
         this.parse.stopAt(pos);
       this.withContext(() => {
-        while (!(tree = this.parse.advance())) {
+        while (!(tree2 = this.parse.advance())) {
         }
       });
       this.treeLen = pos;
-      this.tree = tree;
+      this.tree = tree2;
       this.fragments = this.withoutTempSkipped(TreeFragment.addTree(this.tree, this.fragments, true));
       this.parse = null;
     }
@@ -28622,13 +29044,13 @@ var ParseContext = class _ParseContext {
   @internal
   */
   changes(changes, newState) {
-    let { fragments, tree, treeLen, viewport, skipped } = this;
+    let { fragments, tree: tree2, treeLen, viewport, skipped } = this;
     this.takeTree();
     if (!changes.empty) {
       let ranges = [];
       changes.iterChangedRanges((fromA, toA, fromB, toB) => ranges.push({ fromA, toA, fromB, toB }));
       fragments = TreeFragment.applyChanges(fragments, ranges);
-      tree = Tree.empty;
+      tree2 = Tree.empty;
       treeLen = 0;
       viewport = { from: changes.mapPos(viewport.from, -1), to: changes.mapPos(viewport.to, 1) };
       if (this.skipped.length) {
@@ -28640,7 +29062,7 @@ var ParseContext = class _ParseContext {
         }
       }
     }
-    return new _ParseContext(this.parser, newState, fragments, tree, treeLen, viewport, skipped, this.scheduleOn);
+    return new _ParseContext(this.parser, newState, fragments, tree2, treeLen, viewport, skipped, this.scheduleOn);
   }
   /**
   @internal
@@ -28997,8 +29419,8 @@ function getIndentation(context, pos) {
     if (result !== void 0)
       return result;
   }
-  let tree = syntaxTree(context.state);
-  return tree.length >= pos ? syntaxIndentation(context, tree, pos) : null;
+  let tree2 = syntaxTree(context.state);
+  return tree2.length >= pos ? syntaxIndentation(context, tree2, pos) : null;
 }
 var IndentContext = class {
   /**
@@ -29104,16 +29526,16 @@ function indentFor(stack, cx, pos) {
 function ignoreClosed(cx) {
   return cx.pos == cx.options.simulateBreak && cx.options.simulateDoubleBreak;
 }
-function indentStrategy(tree) {
-  let strategy = tree.type.prop(indentNodeProp);
+function indentStrategy(tree2) {
+  let strategy = tree2.type.prop(indentNodeProp);
   if (strategy)
     return strategy;
-  let first = tree.firstChild, close;
+  let first = tree2.firstChild, close;
   if (first && (close = first.type.prop(NodeProp.closedBy))) {
-    let last = tree.lastChild, closed = last && close.indexOf(last.name) > -1;
+    let last = tree2.lastChild, closed = last && close.indexOf(last.name) > -1;
     return (cx) => delimitedStrategy(cx, true, 1, void 0, closed && !ignoreClosed(cx) ? last.from : void 0);
   }
-  return tree.parent == null ? topIndent : null;
+  return tree2.parent == null ? topIndent : null;
 }
 function topIndent() {
   return 0;
@@ -29186,15 +29608,15 @@ function isParent(parent, of) {
   return false;
 }
 function bracketedAligned(context) {
-  let tree = context.node;
-  let openToken = tree.childAfter(tree.from), last = tree.lastChild;
+  let tree2 = context.node;
+  let openToken = tree2.childAfter(tree2.from), last = tree2.lastChild;
   if (!openToken)
     return null;
   let sim = context.options.simulateBreak;
   let openLine = context.state.doc.lineAt(openToken.from);
   let lineEnd2 = sim == null || sim <= openLine.from ? openLine.to : Math.min(openLine.to, sim);
   for (let pos = openToken.to; ; ) {
-    let next = tree.childAfter(pos);
+    let next = tree2.childAfter(pos);
     if (!next || next == last)
       return null;
     if (!next.type.isSkipped) {
@@ -29336,14 +29758,14 @@ var TreeHighlighter = class {
     this.decoratedTo = view.viewport.to;
   }
   update(update) {
-    let tree = syntaxTree(update.state), highlighters = getHighlighters(update.state);
+    let tree2 = syntaxTree(update.state), highlighters = getHighlighters(update.state);
     let styleChange = highlighters != getHighlighters(update.startState);
     let { viewport } = update.view, decoratedToMapped = update.changes.mapPos(this.decoratedTo, 1);
-    if (tree.length < viewport.to && !styleChange && tree.type == this.tree.type && decoratedToMapped >= viewport.to) {
+    if (tree2.length < viewport.to && !styleChange && tree2.type == this.tree.type && decoratedToMapped >= viewport.to) {
       this.decorations = this.decorations.map(update.changes);
       this.decoratedTo = decoratedToMapped;
-    } else if (tree != this.tree || update.viewportChanged || styleChange) {
-      this.tree = tree;
+    } else if (tree2 != this.tree || update.viewportChanged || styleChange) {
+      this.tree = tree2;
       this.decorations = this.buildDeco(update.view, highlighters);
       this.decoratedTo = viewport.to;
     }
@@ -29461,12 +29883,12 @@ var bracketMatchingConfig = /* @__PURE__ */ Facet.define({
 var matchingMark = /* @__PURE__ */ Decoration2.mark({ class: "cm-matchingBracket" });
 var nonmatchingMark = /* @__PURE__ */ Decoration2.mark({ class: "cm-nonmatchingBracket" });
 function defaultRenderMatch(match) {
-  let decorations2 = [];
+  let decorations3 = [];
   let mark = match.matched ? matchingMark : nonmatchingMark;
-  decorations2.push(mark.range(match.start.from, match.start.to));
+  decorations3.push(mark.range(match.start.from, match.start.to));
   if (match.end)
-    decorations2.push(mark.range(match.end.from, match.end.to));
-  return decorations2;
+    decorations3.push(mark.range(match.end.from, match.end.to));
+  return decorations3;
 }
 var bracketMatchingState = /* @__PURE__ */ StateField.define({
   create() {
@@ -29475,16 +29897,16 @@ var bracketMatchingState = /* @__PURE__ */ StateField.define({
   update(deco, tr) {
     if (!tr.docChanged && !tr.selection)
       return deco;
-    let decorations2 = [];
+    let decorations3 = [];
     let config = tr.state.facet(bracketMatchingConfig);
     for (let range of tr.state.selection.ranges) {
       if (!range.empty)
         continue;
       let match = matchBrackets(tr.state, range.head, -1, config) || range.head > 0 && matchBrackets(tr.state, range.head - 1, 1, config) || config.afterCursor && (matchBrackets(tr.state, range.head, 1, config) || range.head < tr.state.doc.length && matchBrackets(tr.state, range.head + 1, -1, config));
       if (match)
-        decorations2 = decorations2.concat(config.renderMatch(match, tr.state));
+        decorations3 = decorations3.concat(config.renderMatch(match, tr.state));
     }
-    return Decoration2.set(decorations2, true);
+    return Decoration2.set(decorations3, true);
   },
   provide: (f) => EditorView2.decorations.from(f)
 });
@@ -29513,7 +29935,7 @@ function findHandle(node) {
 }
 function matchBrackets(state, pos, dir, config = {}) {
   let maxScanDistance = config.maxScanDistance || DefaultScanDist, brackets = config.brackets || DefaultBrackets;
-  let tree = syntaxTree(state), node = tree.resolveInner(pos, dir);
+  let tree2 = syntaxTree(state), node = tree2.resolveInner(pos, dir);
   for (let cur = node; cur; cur = cur.parent) {
     let matches = matchingNodes(cur.type, dir, brackets);
     if (matches && cur.from < cur.to) {
@@ -29522,7 +29944,7 @@ function matchBrackets(state, pos, dir, config = {}) {
         return matchMarkedBrackets(state, pos, dir, cur, handle, matches, brackets);
     }
   }
-  return matchPlainBrackets(state, pos, dir, tree, node.type, maxScanDistance, brackets);
+  return matchPlainBrackets(state, pos, dir, tree2, node.type, maxScanDistance, brackets);
 }
 function matchMarkedBrackets(_state, _pos, dir, token, handle, matching, brackets) {
   let parent = token.parent, firstToken = { from: handle.from, to: handle.to };
@@ -29550,7 +29972,7 @@ function matchMarkedBrackets(_state, _pos, dir, token, handle, matching, bracket
     } while (dir < 0 ? cursor.prevSibling() : cursor.nextSibling());
   return { start: firstToken, matched: false };
 }
-function matchPlainBrackets(state, pos, dir, tree, tokenType2, maxScanDistance, brackets) {
+function matchPlainBrackets(state, pos, dir, tree2, tokenType2, maxScanDistance, brackets) {
   let startCh = dir < 0 ? state.sliceDoc(pos - 1, pos) : state.sliceDoc(pos, pos + 1);
   let bracket2 = brackets.indexOf(startCh);
   if (bracket2 < 0 || bracket2 % 2 == 0 != dir > 0)
@@ -29564,7 +29986,7 @@ function matchPlainBrackets(state, pos, dir, tree, tokenType2, maxScanDistance, 
     let basePos = pos + distance * dir;
     for (let pos2 = dir > 0 ? 0 : text2.length - 1, end = dir > 0 ? text2.length : -1; pos2 != end; pos2 += dir) {
       let found = brackets.indexOf(text2[pos2]);
-      if (found < 0 || tree.resolveInner(basePos + pos2, 1).type != tokenType2)
+      if (found < 0 || tree2.resolveInner(basePos + pos2, 1).type != tokenType2)
         continue;
       if (found % 2 == 0 == dir > 0) {
         depth++;
@@ -29579,15 +30001,15 @@ function matchPlainBrackets(state, pos, dir, tree, tokenType2, maxScanDistance, 
   }
   return iter.done ? { start: startToken, matched: false } : null;
 }
-function countCol(string3, end, tabSize, startIndex = 0, startValue = 0) {
+function countCol(string4, end, tabSize, startIndex = 0, startValue = 0) {
   if (end == null) {
-    end = string3.search(/[^\s\u00a0]/);
+    end = string4.search(/[^\s\u00a0]/);
     if (end == -1)
-      end = string3.length;
+      end = string4.length;
   }
   let n = startValue;
   for (let i = startIndex; i < end; i++) {
-    if (string3.charCodeAt(i) == 9)
+    if (string4.charCodeAt(i) == 9)
       n += tabSize - n % tabSize;
     else
       n++;
@@ -29598,8 +30020,8 @@ var StringStream = class {
   /**
   Create a stream.
   */
-  constructor(string3, tabSize, indentUnit2, overrideIndent) {
-    this.string = string3;
+  constructor(string4, tabSize, indentUnit2, overrideIndent) {
+    this.string = string4;
     this.tabSize = tabSize;
     this.indentUnit = indentUnit2;
     this.overrideIndent = overrideIndent;
@@ -29839,29 +30261,29 @@ var StreamLanguage = class _StreamLanguage extends Language {
     return false;
   }
 };
-function findState(lang, tree, off, startPos, before) {
-  let state = off >= startPos && off + tree.length <= before && tree.prop(lang.stateAfter);
+function findState(lang, tree2, off, startPos, before) {
+  let state = off >= startPos && off + tree2.length <= before && tree2.prop(lang.stateAfter);
   if (state)
-    return { state: lang.streamParser.copyState(state), pos: off + tree.length };
-  for (let i = tree.children.length - 1; i >= 0; i--) {
-    let child = tree.children[i], pos = off + tree.positions[i];
+    return { state: lang.streamParser.copyState(state), pos: off + tree2.length };
+  for (let i = tree2.children.length - 1; i >= 0; i--) {
+    let child = tree2.children[i], pos = off + tree2.positions[i];
     let found = child instanceof Tree && pos < before && findState(lang, child, pos, startPos, before);
     if (found)
       return found;
   }
   return null;
 }
-function cutTree(lang, tree, from, to, inside2) {
-  if (inside2 && from <= 0 && to >= tree.length)
-    return tree;
-  if (!inside2 && from == 0 && tree.type == lang.topNode)
+function cutTree(lang, tree2, from, to, inside2) {
+  if (inside2 && from <= 0 && to >= tree2.length)
+    return tree2;
+  if (!inside2 && from == 0 && tree2.type == lang.topNode)
     inside2 = true;
-  for (let i = tree.children.length - 1; i >= 0; i--) {
-    let pos = tree.positions[i], child = tree.children[i], inner;
+  for (let i = tree2.children.length - 1; i >= 0; i--) {
+    let pos = tree2.positions[i], child = tree2.children[i], inner;
     if (pos < to && child instanceof Tree) {
       if (!(inner = cutTree(lang, child, from - pos, to - pos, inside2)))
         break;
-      return !inside2 ? inner : new Tree(tree.type, tree.children.slice(0, i).concat(inner), tree.positions.slice(0, i + 1), pos + inner.length);
+      return !inside2 ? inner : new Tree(tree2.type, tree2.children.slice(0, i).concat(inner), tree2.positions.slice(0, i + 1), pos + inner.length);
     }
   }
   return null;
@@ -29869,9 +30291,9 @@ function cutTree(lang, tree, from, to, inside2) {
 function findStartInFragments(lang, fragments, startPos, endPos, editorState) {
   for (let f of fragments) {
     let from = f.from + (f.openStart ? 25 : 0), to = f.to - (f.openEnd ? 25 : 0);
-    let found = from <= startPos && to > startPos && findState(lang, f.tree, 0 - f.offset, startPos, to), tree;
-    if (found && found.pos <= endPos && (tree = cutTree(lang, f.tree, startPos + f.offset, found.pos + f.offset, false)))
-      return { state: found.state, tree };
+    let found = from <= startPos && to > startPos && findState(lang, f.tree, 0 - f.offset, startPos, to), tree2;
+    if (found && found.pos <= endPos && (tree2 = cutTree(lang, f.tree, startPos + f.offset, found.pos + f.offset, false)))
+      return { state: found.state, tree: tree2 };
   }
   return { state: lang.streamParser.startState(editorState ? getIndentUnit(editorState) : 4), tree: Tree.empty };
 }
@@ -29889,12 +30311,12 @@ var Parse = class {
     this.rangeIndex = 0;
     this.to = ranges[ranges.length - 1].to;
     let context = ParseContext.get(), from = ranges[0].from;
-    let { state, tree } = findStartInFragments(lang, fragments, from, this.to, context === null || context === void 0 ? void 0 : context.state);
+    let { state, tree: tree2 } = findStartInFragments(lang, fragments, from, this.to, context === null || context === void 0 ? void 0 : context.state);
     this.state = state;
-    this.parsedPos = this.chunkStart = from + tree.length;
-    for (let i = 0; i < tree.children.length; i++) {
-      this.chunks.push(tree.children[i]);
-      this.chunkPos.push(tree.positions[i]);
+    this.parsedPos = this.chunkStart = from + tree2.length;
+    for (let i = 0; i < tree2.children.length; i++) {
+      this.chunks.push(tree2.children[i]);
+      this.chunkPos.push(tree2.positions[i]);
     }
     if (context && this.parsedPos < context.viewport.from - 1e5 && ranges.some((r) => r.from <= context.viewport.from && r.to >= context.viewport.from)) {
       this.state = this.lang.streamParser.startState(getIndentUnit(context.state));
@@ -30007,7 +30429,7 @@ var Parse = class {
       this.parsedPos++;
   }
   finishChunk() {
-    let tree = Tree.build({
+    let tree2 = Tree.build({
       buffer: this.chunk,
       start: this.chunkStart,
       length: this.parsedPos - this.chunkStart,
@@ -30016,8 +30438,8 @@ var Parse = class {
       maxBufferLength: 512,
       reused: this.chunkReused
     });
-    tree = new Tree(tree.type, tree.children, tree.positions, tree.length, [[this.lang.stateAfter, this.lang.streamParser.copyState(this.state)]]);
-    this.chunks.push(tree);
+    tree2 = new Tree(tree2.type, tree2.children, tree2.positions, tree2.length, [[this.lang.stateAfter, this.lang.streamParser.copyState(this.state)]]);
+    this.chunks.push(tree2);
     this.chunkPos.push(this.chunkStart - this.ranges[0].from);
     this.chunk = [];
     this.chunkReused = void 0;
@@ -30752,9 +31174,9 @@ var selectLine = ({ state, dispatch }) => {
 };
 var selectParentSyntax = ({ state, dispatch }) => {
   let selection = updateSel(state.selection, (range) => {
-    let tree = syntaxTree(state), stack = tree.resolveStack(range.from, 1);
+    let tree2 = syntaxTree(state), stack = tree2.resolveStack(range.from, 1);
     if (range.empty) {
-      let stackBefore = tree.resolveStack(range.from, -1);
+      let stackBefore = tree2.resolveStack(range.from, -1);
       if (stackBefore.node.from >= stack.node.from && stackBefore.node.to <= stack.node.to)
         stack = stackBefore;
     }
@@ -31176,9 +31598,10 @@ function changeListLevel(outdent = false) {
     const range = state.selection.main;
     let first = state.doc.lineAt(range.from);
     const last = state.doc.lineAt(range.to > range.from && state.doc.lineAt(range.to).from === range.to ? range.to - 1 : range.to);
-    const tree = syntaxTree(state);
+    const tree2 = ensureSyntaxTree(state, state.doc.length, 25);
+    if (!tree2) return true;
     const itemAt = (pos) => {
-      for (let n = tree.resolveInner(pos, -1); n; n = n.parent) {
+      for (let n = tree2.resolveInner(pos, -1); n; n = n.parent) {
         if (n.name === "FencedCode" || n.name === "CodeBlock") return null;
         if (n.name === "ListItem") return n;
       }
@@ -31226,12 +31649,12 @@ function changeListLevel(outdent = false) {
   };
 }
 var newlineInMarginMath = (target) => {
-  const { state } = target, range = state.selection.main, tree = syntaxTree(state);
+  const { state } = target, range = state.selection.main, tree2 = syntaxTree(state);
   let opening = -1, closing = -1;
   for (let i = 1; i <= state.doc.lines; i++) {
     const line = state.doc.line(i);
     let code = false;
-    for (let node = tree.resolveInner(line.to, -1); node; node = node.parent) if (node.name === "FencedCode" || node.name === "CodeBlock") code = true;
+    for (let node = tree2.resolveInner(line.to, -1); node; node = node.parent) if (node.name === "FencedCode" || node.name === "CodeBlock") code = true;
     if (code || !/^\s*\$\$\s*$/.test(line.text)) continue;
     if (opening < 0) opening = line.to;
     else {
@@ -32137,8 +32560,8 @@ var ExternalTokenizer = class {
     this.extend = !!options.extend;
   }
 };
-function readToken2(data2, input, stack, group, precTable, precOffset) {
-  let state = 0, groupMask = 1 << group, { dialect } = stack.p.parser;
+function readToken2(data2, input, stack, group2, precTable, precOffset) {
+  let state = 0, groupMask = 1 << group2, { dialect } = stack.p.parser;
   scan: for (; ; ) {
     if ((groupMask & data2[state]) == 0)
       break;
@@ -32185,8 +32608,8 @@ function overrides(token, prev, tableData, tableOffset) {
 }
 var verbose = typeof process != "undefined" && process.env && /\bparse\b/.test(process.env.LOG);
 var stackIDs = null;
-function cutAt(tree, pos, side) {
-  let cursor = tree.cursor(IterMode.IncludeAnonymous);
+function cutAt(tree2, pos, side) {
+  let cursor = tree2.cursor(IterMode.IncludeAnonymous);
   cursor.moveTo(pos);
   for (; ; ) {
     if (!(side < 0 ? cursor.childBefore(pos) : cursor.childAfter(pos)))
@@ -32196,7 +32619,7 @@ function cutAt(tree, pos, side) {
             cursor.to - 1,
             pos - 25
             /* Lookahead.Margin */
-          )) : Math.min(tree.length, Math.max(
+          )) : Math.min(tree2.length, Math.max(
             cursor.from + 1,
             pos + 25
             /* Lookahead.Margin */
@@ -32204,7 +32627,7 @@ function cutAt(tree, pos, side) {
         if (side < 0 ? cursor.prevSibling() : cursor.nextSibling())
           break;
         if (!cursor.parent())
-          return side < 0 ? 0 : tree.length;
+          return side < 0 ? 0 : tree2.length;
       }
   }
 }
@@ -33271,10 +33694,10 @@ var strings = new ExternalTokenizer((input, stack) => {
     } else if (escapes && input.next == backslash) {
       if (input.pos == start) {
         input.advance();
-        let escaped2 = input.next;
-        if (escaped2 >= 0) {
+        let escaped3 = input.next;
+        if (escaped3 >= 0) {
           input.advance();
-          skipEscape(input, escaped2);
+          skipEscape(input, escaped3);
         }
         input.acceptToken(Escape);
         return;
@@ -34417,8 +34840,8 @@ var cppLanguage = /* @__PURE__ */ LRLanguage.define({
       }),
       /* @__PURE__ */ foldNodeProp.add({
         "DeclarationList CompoundStatement EnumeratorList FieldDeclarationList InitializerList": foldInside,
-        BlockComment(tree) {
-          return { from: tree.from + 2, to: tree.to - 2 };
+        BlockComment(tree2) {
+          return { from: tree2.from + 2, to: tree2.to - 2 };
         }
       })
     ]
@@ -34588,25 +35011,25 @@ function tokenBase(stream, state) {
 function tokenString(quote, style) {
   var close = quote == "(" ? ")" : quote == "{" ? "}" : quote;
   return function(stream, state) {
-    var next, escaped2 = false;
+    var next, escaped3 = false;
     while ((next = stream.next()) != null) {
-      if (next === close && !escaped2) {
+      if (next === close && !escaped3) {
         state.tokens.shift();
         break;
-      } else if (next === "$" && !escaped2 && quote !== "'" && stream.peek() != close) {
-        escaped2 = true;
+      } else if (next === "$" && !escaped3 && quote !== "'" && stream.peek() != close) {
+        escaped3 = true;
         stream.backUp(1);
         state.tokens.unshift(tokenDollar);
         break;
-      } else if (!escaped2 && quote !== close && next === quote) {
+      } else if (!escaped3 && quote !== close && next === quote) {
         state.tokens.unshift(tokenString(quote, style));
         return tokenize(stream, state);
-      } else if (!escaped2 && /['"]/.test(next) && !/['"]/.test(quote)) {
+      } else if (!escaped3 && /['"]/.test(next) && !/['"]/.test(quote)) {
         state.tokens.unshift(tokenStringStart(next, "string"));
         stream.backUp(1);
         break;
       }
-      escaped2 = !escaped2 && next === "\\";
+      escaped3 = !escaped3 && next === "\\";
     }
     return style;
   };
@@ -34724,15 +35147,15 @@ function tokenBase2(stream, state) {
   return "error";
 }
 function tokenString2(stream, state) {
-  var next, end = false, escaped2 = false;
+  var next, end = false, escaped3 = false;
   while ((next = stream.next()) != null) {
-    if (next === '"' && !escaped2) {
+    if (next === '"' && !escaped3) {
       end = true;
       break;
     }
-    escaped2 = !escaped2 && next === "\\";
+    escaped3 = !escaped3 && next === "\\";
   }
-  if (end && !escaped2) {
+  if (end && !escaped3) {
     state.tokenize = tokenBase2;
   }
   return "string";
@@ -36568,22 +36991,22 @@ var javascriptLanguage = /* @__PURE__ */ LRLanguage.define({
       }),
       /* @__PURE__ */ foldNodeProp.add({
         "Block ClassBody SwitchBody EnumBody ObjectExpression ArrayExpression ObjectType": foldInside,
-        BlockComment(tree) {
-          return { from: tree.from + 2, to: tree.to - 2 };
+        BlockComment(tree2) {
+          return { from: tree2.from + 2, to: tree2.to - 2 };
         },
-        JSXElement(tree) {
-          let open = tree.firstChild;
+        JSXElement(tree2) {
+          let open = tree2.firstChild;
           if (!open || open.name == "JSXSelfClosingTag")
             return null;
-          let close = tree.lastChild;
-          return { from: open.to, to: close.type.isError ? tree.to : close.from };
+          let close = tree2.lastChild;
+          return { from: open.to, to: close.type.isError ? tree2.to : close.from };
         },
-        "JSXSelfClosingTag JSXOpenTag"(tree) {
+        "JSXSelfClosingTag JSXOpenTag"(tree2) {
           var _a2;
-          let name2 = (_a2 = tree.firstChild) === null || _a2 === void 0 ? void 0 : _a2.nextSibling, close = tree.lastChild;
+          let name2 = (_a2 = tree2.firstChild) === null || _a2 === void 0 ? void 0 : _a2.nextSibling, close = tree2.lastChild;
           if (!name2 || name2.type.isError)
             return null;
-          return { from: name2.to, to: close.type.isError ? tree.to : close.from };
+          return { from: name2.to, to: close.type.isError ? tree2.to : close.from };
         }
       })
     ]
@@ -36633,8 +37056,8 @@ function findOpenTag(node) {
     node = node.parent;
   }
 }
-function elementName(doc2, tree, max = doc2.length) {
-  for (let ch = tree === null || tree === void 0 ? void 0 : tree.firstChild; ch; ch = ch.nextSibling) {
+function elementName(doc2, tree2, max = doc2.length) {
+  for (let ch = tree2 === null || tree2 === void 0 ? void 0 : tree2.firstChild; ch; ch = ch.nextSibling) {
     if (ch.name == "JSXIdentifier" || ch.name == "JSXBuiltin" || ch.name == "JSXNamespacedName" || ch.name == "JSXMemberExpression")
       return doc2.sliceString(ch.from, Math.min(ch.to, max));
   }
@@ -37114,46 +37537,46 @@ var Schema2 = class {
   }
 };
 Schema2.default = /* @__PURE__ */ new Schema2();
-function elementName2(doc2, tree, max = doc2.length) {
-  if (!tree)
+function elementName2(doc2, tree2, max = doc2.length) {
+  if (!tree2)
     return "";
-  let tag = tree.firstChild;
+  let tag = tree2.firstChild;
   let name2 = tag && tag.getChild("TagName");
   return name2 ? doc2.sliceString(name2.from, Math.min(name2.to, max)) : "";
 }
-function findParentElement(tree, skip = false) {
-  for (; tree; tree = tree.parent)
-    if (tree.name == "Element") {
+function findParentElement(tree2, skip = false) {
+  for (; tree2; tree2 = tree2.parent)
+    if (tree2.name == "Element") {
       if (skip)
         skip = false;
       else
-        return tree;
+        return tree2;
     }
   return null;
 }
-function allowedChildren(doc2, tree, schema4) {
-  let parentInfo = schema4.tags[elementName2(doc2, findParentElement(tree))];
+function allowedChildren(doc2, tree2, schema4) {
+  let parentInfo = schema4.tags[elementName2(doc2, findParentElement(tree2))];
   return (parentInfo === null || parentInfo === void 0 ? void 0 : parentInfo.children) || schema4.allTags;
 }
-function openTags(doc2, tree) {
+function openTags(doc2, tree2) {
   let open = [];
-  for (let parent = findParentElement(tree); parent && !parent.type.isTop; parent = findParentElement(parent.parent)) {
+  for (let parent = findParentElement(tree2); parent && !parent.type.isTop; parent = findParentElement(parent.parent)) {
     let tagName = elementName2(doc2, parent);
     if (tagName && parent.lastChild.name == "CloseTag")
       break;
-    if (tagName && open.indexOf(tagName) < 0 && (tree.name == "EndTag" || tree.from >= parent.firstChild.to))
+    if (tagName && open.indexOf(tagName) < 0 && (tree2.name == "EndTag" || tree2.from >= parent.firstChild.to))
       open.push(tagName);
   }
   return open;
 }
 var identifier3 = /^[:\-\.\w\u00b7-\uffff]*$/;
-function completeTag(state, schema4, tree, from, to) {
+function completeTag(state, schema4, tree2, from, to) {
   let end = /\s*>/.test(state.sliceDoc(to, to + 5)) ? "" : ">";
-  let parent = findParentElement(tree, tree.name == "StartTag" || tree.name == "TagName");
+  let parent = findParentElement(tree2, tree2.name == "StartTag" || tree2.name == "TagName");
   return {
     from,
     to,
-    options: allowedChildren(state.doc, parent, schema4).map((tagName) => ({ label: tagName, type: "type" })).concat(openTags(state.doc, tree).map((tag, i) => ({
+    options: allowedChildren(state.doc, parent, schema4).map((tagName) => ({ label: tagName, type: "type" })).concat(openTags(state.doc, tree2).map((tag, i) => ({
       label: "/" + tag,
       apply: "/" + tag + end,
       type: "type",
@@ -37162,25 +37585,25 @@ function completeTag(state, schema4, tree, from, to) {
     validFor: /^\/?[:\-\.\w\u00b7-\uffff]*$/
   };
 }
-function completeCloseTag(state, tree, from, to) {
+function completeCloseTag(state, tree2, from, to) {
   let end = /\s*>/.test(state.sliceDoc(to, to + 5)) ? "" : ">";
   return {
     from,
     to,
-    options: openTags(state.doc, tree).map((tag, i) => ({ label: tag, apply: tag + end, type: "type", boost: 99 - i })),
+    options: openTags(state.doc, tree2).map((tag, i) => ({ label: tag, apply: tag + end, type: "type", boost: 99 - i })),
     validFor: identifier3
   };
 }
-function completeStartTag(state, schema4, tree, pos) {
+function completeStartTag(state, schema4, tree2, pos) {
   let options = [], level = 0;
-  for (let tagName of allowedChildren(state.doc, tree, schema4))
+  for (let tagName of allowedChildren(state.doc, tree2, schema4))
     options.push({ label: "<" + tagName, type: "type" });
-  for (let open of openTags(state.doc, tree))
+  for (let open of openTags(state.doc, tree2))
     options.push({ label: "</" + open + ">", type: "type", boost: 99 - level++ });
   return { from: pos, to: pos, options, validFor: /^<\/?[:\-\.\w\u00b7-\uffff]*$/ };
 }
-function completeAttrName(state, schema4, tree, from, to) {
-  let elt2 = findParentElement(tree), info = elt2 ? schema4.tags[elementName2(state.doc, elt2)] : null;
+function completeAttrName(state, schema4, tree2, from, to) {
+  let elt2 = findParentElement(tree2), info = elt2 ? schema4.tags[elementName2(state.doc, elt2)] : null;
   let localAttrs = info && info.attrs ? Object.keys(info.attrs) : [];
   let names2 = info && info.globalAttrs === false ? localAttrs : localAttrs.length ? localAttrs.concat(schema4.globalAttrNames) : schema4.globalAttrNames;
   return {
@@ -37190,15 +37613,15 @@ function completeAttrName(state, schema4, tree, from, to) {
     validFor: identifier3
   };
 }
-function completeAttrValue(state, schema4, tree, from, to) {
+function completeAttrValue(state, schema4, tree2, from, to) {
   var _a2;
-  let nameNode = (_a2 = tree.parent) === null || _a2 === void 0 ? void 0 : _a2.getChild("AttributeName");
+  let nameNode = (_a2 = tree2.parent) === null || _a2 === void 0 ? void 0 : _a2.getChild("AttributeName");
   let options = [], token = void 0;
   if (nameNode) {
     let attrName = state.sliceDoc(nameNode.from, nameNode.to);
     let attrs = schema4.globalAttrs[attrName];
     if (!attrs) {
-      let elt2 = findParentElement(tree), info = elt2 ? schema4.tags[elementName2(state.doc, elt2)] : null;
+      let elt2 = findParentElement(tree2), info = elt2 ? schema4.tags[elementName2(state.doc, elt2)] : null;
       attrs = (info === null || info === void 0 ? void 0 : info.attrs) && info.attrs[attrName];
     }
     if (attrs) {
@@ -37219,26 +37642,26 @@ function completeAttrValue(state, schema4, tree, from, to) {
   return { from, to, options, validFor: token };
 }
 function htmlCompletionFor(schema4, context) {
-  let { state, pos } = context, tree = syntaxTree(state).resolveInner(pos, -1), around = tree.resolve(pos);
-  for (let scan = pos, before; around == tree && (before = tree.childBefore(scan)); ) {
+  let { state, pos } = context, tree2 = syntaxTree(state).resolveInner(pos, -1), around = tree2.resolve(pos);
+  for (let scan = pos, before; around == tree2 && (before = tree2.childBefore(scan)); ) {
     let last = before.lastChild;
     if (!last || !last.type.isError || last.from < last.to)
       break;
-    around = tree = before;
+    around = tree2 = before;
     scan = last.from;
   }
-  if (tree.name == "TagName") {
-    return tree.parent && /CloseTag$/.test(tree.parent.name) ? completeCloseTag(state, tree, tree.from, pos) : completeTag(state, schema4, tree, tree.from, pos);
-  } else if (tree.name == "StartTag" || tree.name == "IncompleteTag") {
-    return completeTag(state, schema4, tree, pos, pos);
-  } else if (tree.name == "StartCloseTag" || tree.name == "IncompleteCloseTag") {
-    return completeCloseTag(state, tree, pos, pos);
-  } else if (tree.name == "OpenTag" || tree.name == "SelfClosingTag" || tree.name == "AttributeName") {
-    return completeAttrName(state, schema4, tree, tree.name == "AttributeName" ? tree.from : pos, pos);
-  } else if (tree.name == "Is" || tree.name == "AttributeValue" || tree.name == "UnquotedAttributeValue") {
-    return completeAttrValue(state, schema4, tree, tree.name == "Is" ? pos : tree.from, pos);
+  if (tree2.name == "TagName") {
+    return tree2.parent && /CloseTag$/.test(tree2.parent.name) ? completeCloseTag(state, tree2, tree2.from, pos) : completeTag(state, schema4, tree2, tree2.from, pos);
+  } else if (tree2.name == "StartTag" || tree2.name == "IncompleteTag") {
+    return completeTag(state, schema4, tree2, pos, pos);
+  } else if (tree2.name == "StartCloseTag" || tree2.name == "IncompleteCloseTag") {
+    return completeCloseTag(state, tree2, pos, pos);
+  } else if (tree2.name == "OpenTag" || tree2.name == "SelfClosingTag" || tree2.name == "AttributeName") {
+    return completeAttrName(state, schema4, tree2, tree2.name == "AttributeName" ? tree2.from : pos, pos);
+  } else if (tree2.name == "Is" || tree2.name == "AttributeValue" || tree2.name == "UnquotedAttributeValue") {
+    return completeAttrValue(state, schema4, tree2, tree2.name == "Is" ? pos : tree2.from, pos);
   } else if (context.explicit && (around.name == "Element" || around.name == "Text" || around.name == "Document")) {
-    return completeStartTag(state, schema4, tree, pos);
+    return completeStartTag(state, schema4, tree2, pos);
   } else {
     return null;
   }
@@ -37421,7 +37844,7 @@ var headingProp = /* @__PURE__ */ new NodeProp();
 var commonmark = /* @__PURE__ */ parser.configure({
   props: [
     /* @__PURE__ */ foldNodeProp.add((type) => {
-      return !type.is("Block") || type.is("Document") || isHeading(type) != null || isList(type) ? void 0 : (tree, state) => ({ from: state.doc.lineAt(tree.from).to, to: tree.to });
+      return !type.is("Block") || type.is("Document") || isHeading(type) != null || isList(type) ? void 0 : (tree2, state) => ({ from: state.doc.lineAt(tree2.from).to, to: tree2.to });
     }),
     /* @__PURE__ */ headingProp.add(isHeading),
     /* @__PURE__ */ indentNodeProp.add({
@@ -37469,7 +37892,7 @@ var commonmarkLanguage = /* @__PURE__ */ mkLang(commonmark);
 var extended = /* @__PURE__ */ commonmark.configure([GFM, Subscript, Superscript, Emoji, {
   props: [
     /* @__PURE__ */ foldNodeProp.add({
-      Table: (tree, state) => ({ from: state.doc.lineAt(tree.from).to, to: tree.to })
+      Table: (tree2, state) => ({ from: state.doc.lineAt(tree2.from).to, to: tree2.to })
     })
   ]
 }]);
@@ -37591,12 +38014,12 @@ function normalizeIndent(content2, state) {
   return space5 + content2.slice(blank);
 }
 var insertNewlineContinueMarkup = ({ state, dispatch }) => {
-  let tree = syntaxTree(state), { doc: doc2 } = state;
+  let tree2 = syntaxTree(state), { doc: doc2 } = state;
   let dont = null, changes = state.changeByRange((range) => {
     if (!range.empty || !markdownLanguage.isActiveAt(state, range.from, -1) && !markdownLanguage.isActiveAt(state, range.from, 1))
       return dont = { range };
     let pos = range.from, line = doc2.lineAt(pos);
-    let context = getContext(tree.resolveInner(pos, -1), doc2);
+    let context = getContext(tree2.resolveInner(pos, -1), doc2);
     while (context.length && context[context.length - 1].from > pos - line.from)
       context.pop();
     if (!context.length)
@@ -37684,8 +38107,8 @@ function blankLine(context, state, line) {
   }
   return normalizeIndent(insert2, state);
 }
-function contextNodeForDelete(tree, pos) {
-  let node = tree.resolveInner(pos, -1), scan = pos;
+function contextNodeForDelete(tree2, pos) {
+  let node = tree2.resolveInner(pos, -1), scan = pos;
   if (isMark(node)) {
     scan = node.from;
     node = node.parent;
@@ -37703,12 +38126,12 @@ function contextNodeForDelete(tree, pos) {
   return node;
 }
 var deleteMarkupBackward = ({ state, dispatch }) => {
-  let tree = syntaxTree(state);
+  let tree2 = syntaxTree(state);
   let dont = null, changes = state.changeByRange((range) => {
     let pos = range.from, { doc: doc2 } = state;
     if (range.empty && markdownLanguage.isActiveAt(state, range.from)) {
       let line = doc2.lineAt(pos);
-      let context = getContext(contextNodeForDelete(tree, pos), doc2);
+      let context = getContext(contextNodeForDelete(tree2, pos), doc2);
       if (context.length) {
         let inner = context[context.length - 1];
         let spaceEnd = inner.to - inner.spaceAfter.length + (inner.spaceAfter ? 1 : 0);
@@ -37773,11 +38196,11 @@ function htmlTagCompletion(context) {
   let { state, pos } = context, m = /<[:\-\.\w\u00b7-\uffff]*$/.exec(state.sliceDoc(pos - 25, pos));
   if (!m)
     return null;
-  let tree = syntaxTree(state).resolveInner(pos, -1);
-  while (tree && !tree.type.isTop) {
-    if (tree.name == "CodeBlock" || tree.name == "FencedCode" || tree.name == "ProcessingInstructionBlock" || tree.name == "CommentBlock" || tree.name == "Link" || tree.name == "Image")
+  let tree2 = syntaxTree(state).resolveInner(pos, -1);
+  while (tree2 && !tree2.type.isTop) {
+    if (tree2.name == "CodeBlock" || tree2.name == "FencedCode" || tree2.name == "ProcessingInstructionBlock" || tree2.name == "CommentBlock" || tree2.name == "Link" || tree2.name == "Image")
       return null;
-    tree = tree.parent;
+    tree2 = tree2.parent;
   }
   return {
     from: pos - m[0].length,
@@ -38387,7 +38810,7 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
   const blanks = StateField.define({ create: makeBlanks, update: (old, tr) => tr.docChanged || tr.effects.some((e) => e.is(refreshBlankEffect)) ? makeBlanks(tr.state) : old, provide: (f) => [EditorView2.decorations.from(f), EditorView2.atomicRanges.of((v) => v.state.field(f))] });
   const parse2 = (text2) => options.answers ? fieldEquations(text2, true).filter((q) => q.bodyFrom !== q.from || /[\\_^]/.test(q.body)) : equations(text2);
   const focusChanged = StateEffect.define();
-  const decorations2 = (state, parsed, focused, rawTable, previousFormatting) => {
+  const decorations3 = (state, parsed, focused, rawTable, previousFormatting) => {
     const source2 = state.doc.toString(), rich = options.rich !== false && !options.answers;
     const tables = rich ? richTables(source2).filter((t2) => !t2.raw.includes("{{blank:") && (!rawTable || t2.to < rawTable.from || t2.from > rawTable.to)) : [];
     const images = rich ? imageSpans(source2).filter((i) => !tables.some((t2) => i.from < t2.to && i.to > t2.from) && (!focused || state.readOnly || !state.selection.ranges.some((s) => s.from <= i.to && s.to >= i.from))) : [];
@@ -38406,10 +38829,10 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
     ], true) };
   };
   const highlight2 = HighlightStyle.define([{ tag: tags.keyword, class: "study-code-keyword" }, { tag: tags.string, class: "study-code-string" }, { tag: tags.number, class: "study-code-number" }, { tag: tags.comment, class: "study-code-comment" }, { tag: tags.function(tags.variableName), class: "study-code-function" }]);
-  const math = StateField.define({
+  const math2 = StateField.define({
     create: (state) => {
       const parsed = parse2(state.doc.toString());
-      return { parsed, ...decorations2(state, parsed, false, null), focused: false, rawTable: null };
+      return { parsed, ...decorations3(state, parsed, false, null), focused: false, rawTable: null };
     },
     update: (old, tr) => {
       const effect = tr.effects.find((e) => e.is(focusChanged)), focused = effect?.is(focusChanged) ? effect.value : old.focused;
@@ -38424,7 +38847,7 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
         });
         return !touched;
       }).map((q) => ({ from: tr.changes.mapPos(q.from, 1), to: tr.changes.mapPos(q.to, -1) }))) : old.parsed;
-      return { parsed, ...decorations2(tr.state, parsed, focused, rawTable, composing ? old.formatting.map(tr.changes) : void 0), focused, rawTable };
+      return { parsed, ...decorations3(tr.state, parsed, focused, rawTable, composing ? old.formatting.map(tr.changes) : void 0), focused, rawTable };
     },
     provide: (f) => [EditorView2.decorations.from(f, (s) => s.decorations), EditorView2.atomicRanges.of((v) => v.state.field(f).decorations.update({ filter: (_from, _to, value2) => value2.spec.widget instanceof TableWidget }))]
   });
@@ -38499,7 +38922,7 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
   } }, { key: "Ctrl-Shift-m", run: (v) => {
     open(v.state.selection.main.from, v.state.selection.main.to, true);
     return true;
-  } }, ...defaultKeymap, ...historyKeymap]), EditorView2.lineWrapping, editable2.of([EditorView2.editable.of(true), EditorState.readOnly.of(false)]), EditorView2.contentAttributes.of({ "aria-label": label === "Your response" ? "Your written response" : label, "aria-multiline": "true", role: "textbox" }), math, blanks, EditorView2.updateListener.of((update) => {
+  } }, ...defaultKeymap, ...historyKeymap]), EditorView2.lineWrapping, editable2.of([EditorView2.editable.of(true), EditorState.readOnly.of(false)]), EditorView2.contentAttributes.of({ "aria-label": label === "Your response" ? "Your written response" : label, "aria-multiline": "true", role: "textbox" }), math2, blanks, EditorView2.updateListener.of((update) => {
     if (update.docChanged) {
       source.value = update.state.doc.toString();
       change(source.value);
@@ -38514,7 +38937,7 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
   })] }) });
   followEditorWindow(view, surface, owner);
   if (options.toolbar === false) wrap.querySelector(".study-math-tools")?.remove();
-  wrap.querySelectorAll(".study-math-tools button").forEach((button, i) => button.onclick = () => open(view.state.selection.main.from, view.state.selection.main.to, i === 1));
+  wrap.querySelectorAll(".study-math-tools button").forEach((button2, i) => button2.onclick = () => open(view.state.selection.main.from, view.state.selection.main.to, i === 1));
   owner.register(() => {
     disposed = true;
     generation++;
@@ -38594,10 +39017,10 @@ function embeds(text2) {
       if (!open) open = { start: offset, mark: m[1][0], length: m[1].length, type: m[2].trim(), body: offset + line.length };
       else if (m[1][0] === open.mark && m[1].length >= open.length && !m[2].trim()) {
         if (open.type === "study" || open.type === "study-group") {
-          const body = text2.slice(open.body, offset).trim(), group = open.type === "study-group";
-          const g = group ? parseGroup(body) : { title: body, questions: [body], prompt: void 0 };
+          const body = text2.slice(open.body, offset).trim(), group2 = open.type === "study-group";
+          const g = group2 ? parseGroup(body) : { title: body, questions: [body], prompt: void 0 };
           if (!g.questions.every((id3) => /^[\w-]+$/.test(id3))) throw Error("Invalid question ID.");
-          out.push({ start: open.start, end: offset + value.length, raw: text2.slice(open.start, offset + value.length), title: g.title, prompt: g.prompt, ids: g.questions, group });
+          out.push({ start: open.start, end: offset + value.length, raw: text2.slice(open.start, offset + value.length), title: g.title, prompt: g.prompt, ids: g.questions, group: group2 });
         }
         open = void 0;
       }
@@ -38841,11 +39264,11 @@ async function editGroup(app, path, bank, line, title, tools) {
   const raw = await app.vault.read(file), matches = embeds(raw).filter((b) => b.group && b.title === title), block = matches.find((b) => line !== void 0 && raw.slice(0, b.start).split("\n").length - 1 === line) ?? (matches.length === 1 ? matches[0] : void 0);
   if (!block) throw Error("Group changed. Reopen its controls.");
   const destination = await chapterDestination(app, file);
-  new GroupEditor(app, path, bank, { title: block.title, prompt: block.prompt, questions: block.ids }, async (group) => {
+  new GroupEditor(app, path, bank, { title: block.title, prompt: block.prompt, questions: block.ids }, async (group2) => {
     await app.vault.process(file, (current) => {
       const found = embeds(current).filter((b) => b.raw === block.raw);
       if (found.length !== 1) throw Error("Group changed or has duplicate copies. Reopen its controls.");
-      return replaceEmbed(current, found[0], embedSource(group.questions, group.title, group.prompt));
+      return replaceEmbed(current, found[0], embedSource(group2.questions, group2.title, group2.prompt));
     });
     const leaf = app.workspace.getLeavesOfType("markdown").find((leaf2) => leaf2.view instanceof import_obsidian13.MarkdownView && leaf2.view.file?.path === path);
     if (leaf) await app.workspace.revealLeaf(leaf);
@@ -38999,7 +39422,7 @@ async function manageNote(app, bank, edit, onlyId, sourcePath) {
 }
 
 // src/study-directive-api.ts
-var clone3 = (x) => JSON.parse(JSON.stringify(x));
+var clone4 = (x) => JSON.parse(JSON.stringify(x));
 function overlaps(text2, a2, b) {
   const x = marginLocation(text2, a2), y = marginLocation(text2, b);
   if (!x || !y || x.from >= y.to || y.from >= x.to) return false;
@@ -39064,7 +39487,7 @@ var StudyDirectiveApi = class {
   async inspect(path) {
     const { text: text2 } = await this.source(path);
     await this.store.refresh();
-    return { path, source: text2, hash: await codeHash(text2), vocabulary: discoverVocabulary(text2), tables: sourceTables(text2), directives: clone3(this.store.data.comments.filter((c) => c.study && c.path === path && !c.deletedAt).map((c) => ({ ...c, located: this.located(text2, c), fragments: excerpts(c).map((a2) => ({ ...a2, location: marginLocation(text2, a2), selectedLatex: a2.part?.nodes.map((n) => n.latex) })) }))) };
+    return { path, source: text2, hash: await codeHash(text2), vocabulary: discoverVocabulary(text2), tables: sourceTables(text2), directives: clone4(this.store.data.comments.filter((c) => c.study && c.path === path && !c.deletedAt).map((c) => ({ ...c, located: this.located(text2, c), fragments: excerpts(c).map((a2) => ({ ...a2, location: marginLocation(text2, a2), selectedLatex: a2.part?.nodes.map((n) => n.latex) })) }))) };
   }
   async previewVocabulary(path, cloze = {}) {
     const { text: text2 } = await this.source(path), entries = discoverVocabulary(text2), missing = missingCloze(entries, cloze);
@@ -39085,7 +39508,7 @@ var StudyDirectiveApi = class {
     const { text: text2 } = await this.source(path);
     if (text2 !== expected) throw Error("Note changed. Select the passage again.");
     if (!["text", "table", "question"].includes(rule) || !anchors.length || anchors.length > 128 || anchors.some((a2) => a2.path !== path) || typeof comment2 !== "string") throw Error("Select between 1 and 128 fragments in this note.");
-    const c = withExcerpts({ id: crypto.randomUUID(), path, quote: "", before: "", after: "", comment: comment2, ...studyPalette[rule], markStyle: "highlight", study: { version: 1, rule }, updated: (/* @__PURE__ */ new Date()).toISOString(), resolved: false }, clone3(anchors));
+    const c = withExcerpts({ id: crypto.randomUUID(), path, quote: "", before: "", after: "", comment: comment2, ...studyPalette[rule], markStyle: "highlight", study: { version: 1, rule }, updated: (/* @__PURE__ */ new Date()).toISOString(), resolved: false }, clone4(anchors));
     if (!validComment(c) || !this.located(text2, c)) throw Error("A fragment cannot be anchored unambiguously. Select its full cell or a longer passage.");
     await this.store.applyStudyEdits([], [c], async (comments) => {
       if ((await this.source(path)).text !== text2) throw Error("Note changed while saving.");
@@ -39094,13 +39517,13 @@ var StudyDirectiveApi = class {
         if (comments.some((n) => n.path === path && !n.deletedAt && !n.resolved && n.study?.rule === rule && excerpts(n).some((a2) => anchors.some((b) => overlaps(text2, a2, b))))) throw Error("This passage already has a study blank of that type. Use its existing group or select a separate fragment.");
       }
     });
-    return clone3(c);
+    return clone4(c);
   }
   async changeType(id3, type) {
     await this.store.refresh();
     const found = this.store.data.comments.find((c) => c.id === id3);
     if (!found) throw Error("Study annotation not found.");
-    const before = clone3(found), after = withStudyType(before, type), { text: text2 } = await this.source(before.path), anchors = excerpts(after);
+    const before = clone4(found), after = withStudyType(before, type), { text: text2 } = await this.source(before.path), anchors = excerpts(after);
     if (before.code) throw Error("Use the code annotation API for code groups.");
     await this.store.applyStudyEdits([before], [after], async (comments) => {
       if ((await this.source(before.path)).text !== text2 || !this.located(text2, after)) throw Error("The source changed. Refresh the note first.");
@@ -39109,13 +39532,13 @@ var StudyDirectiveApi = class {
         if (comments.some((c) => c.id !== id3 && c.path === before.path && !c.deletedAt && !c.resolved && c.study?.rule === type && excerpts(c).some((a2) => anchors.some((b) => overlaps(text2, a2, b))))) throw Error("This passage already has a study blank of that type.");
       }
     });
-    return clone3(after);
+    return clone4(after);
   }
   async combine(ids) {
     await this.store.refresh();
     const before = [...new Set(ids)].map((id3) => this.store.data.comments.find((c) => c.id === id3));
     if (before.length < 2 || before.some((c) => !c?.study || c.deletedAt || c.resolved || c.conflictOf)) throw Error("Select at least two active study groups.");
-    const records = clone3(before), first = records[0];
+    const records = clone4(before), first = records[0];
     if (records.some((c) => c.path !== first.path || c.study.rule !== first.study.rule)) throw Error("Combine the same study type within one note.");
     if (records.some((c) => c.study?.figure)) throw Error("Edit figure regions together in Add blanks.");
     const { text: text2 } = await this.source(first.path), anchors = records.flatMap(excerpts);
@@ -39125,14 +39548,14 @@ var StudyDirectiveApi = class {
     await this.store.applyStudyEdits(records, after, async () => {
       if ((await this.source(first.path)).text !== text2) throw Error("Note changed.");
     });
-    return clone3(combined);
+    return clone4(combined);
   }
   async preview(path, variants, options = {}) {
     if (!variants.length || variants.length > 500 || new Set(variants.map((v) => v.key)).size !== variants.length) throw Error("Supply 1\u2013500 variants with distinct keys.");
     const { f, text: text2 } = await this.source(path);
     await this.store.refresh();
     const inventorySignature = this.inventorySignature(path);
-    const ids = [...new Set(variants.flatMap((v) => v.directiveIds))], before = clone3(ids.map((id3) => {
+    const ids = [...new Set(variants.flatMap((v) => v.directiveIds))], before = clone4(ids.map((id3) => {
       const c = this.store.data.comments.find((c2) => c2.id === id3 && c2.path === path && (c2.study || c2.code?.purpose === "question") && !c2.deletedAt && !c2.resolved && !c2.conflictOf);
       if (!c || !c.code && !this.located(text2, c) || this.store.annotationBusy(id3)) throw Error("Study group changed, is ambiguous, or has an open draft: " + id3);
       return c;
@@ -39154,7 +39577,7 @@ var StudyDirectiveApi = class {
         if (!this.figureHooks) throw Error("Figure tools unavailable.");
         await this.figureHooks.variant(v, records);
       }
-      const d = { ...clone3(v.definition), version: 1, id: id3, studySource: { path, directiveIds: v.directiveIds, instructionIds: accounting.instructionIds, variant: v.key, surface: v.surface ?? (records.some((c) => c.code) ? "code" : records.some((c) => c.study?.rule === "table") ? "table" : "text"), ...target ? { target } : {}, ...records[0]?.study?.figure ? { sourceImageHash: records[0].study.figure.imageHash } : {} }, ...destination.scope ? { courseIds: [destination.scope.courseId] } : {}, ...destination.placement ? { chapters: [destination.placement] } : {} };
+      const d = { ...clone4(v.definition), version: 1, id: id3, studySource: { path, directiveIds: v.directiveIds, instructionIds: accounting.instructionIds, variant: v.key, surface: v.surface ?? (records.some((c) => c.code) ? "code" : records.some((c) => c.study?.rule === "table") ? "table" : "text"), ...target ? { target } : {}, ...records[0]?.study?.figure ? { sourceImageHash: records[0].study.figure.imageHash } : {} }, ...destination.scope ? { courseIds: [destination.scope.courseId] } : {}, ...destination.placement ? { chapters: [destination.placement] } : {} };
       const raw = serialize(d, v.prompt, v.explanation ?? "");
       questions.push(parseQuestion(raw, `${destination.folder}/Question-${id3}.md`));
     }
@@ -39169,7 +39592,7 @@ var StudyDirectiveApi = class {
     if (accounting.related.some((m) => this.store.annotationBusy(m.id))) throw Error("Finish editing related instructions before preparing.");
     const token = crypto.randomUUID();
     this.plans.set(token, { codeSources, path, source: text2, before, after, questions, inventory: inventorySignature, instructionIds: accounting.instructionIds, deferredIds: accounting.deferredIds, expires: Date.now() + 6e5 });
-    return { token, questions: clone3(questions), consumedIds: ids, priorVariants, ...accounting };
+    return { token, questions: clone4(questions), consumedIds: ids, priorVariants, ...accounting };
   }
   async apply(token) {
     const p = this.plans.get(token);
@@ -39302,11 +39725,11 @@ var VisibilityControls = class {
       const focused = this.el.ownerDocument.activeElement, key2 = focused?.dataset.visibilityKey;
       this.rows.empty();
       this.buttons.clear();
-      let group = "";
+      let group2 = "";
       for (const entry of [...entries].sort((a2, b) => (a2.study ? annotationStyles.length : annotationStyles.indexOf(a2.style)) - (b.study ? annotationStyles.length : annotationStyles.indexOf(b.style)))) {
         const label = entry.study ? "Study annotations" : styleNames[entry.style];
-        if (label !== group) {
-          group = label;
+        if (label !== group2) {
+          group2 = label;
           this.rows.createDiv({ cls: "study-visibility-heading", text: label });
         }
         const b = this.rows.createEl("button", { text: entry.meaning || "Uncategorized", cls: "study-visibility-type", attr: { type: "button", "aria-label": `Show ${label}: ${entry.meaning || "Uncategorized"}` } });
@@ -39618,10 +40041,10 @@ var RegularSelectionApi = class {
   async undo(id3) {
     await this.store.prepareAnnotationEdits?.([id3]);
     await this.store.refresh();
-    const group = this.store.data.comments.find((c) => c.id === id3), originals = this.store.data.comments.filter((c) => c.combinedInto === id3);
-    if (!group || !regularMark(group) || !originals.length || originals.some((c) => !c.deletedAt)) throw Error("This combination cannot be undone.");
+    const group2 = this.store.data.comments.find((c) => c.id === id3), originals = this.store.data.comments.filter((c) => c.combinedInto === id3);
+    if (!group2 || !regularMark(group2) || !originals.length || originals.some((c) => !c.deletedAt)) throw Error("This combination cannot be undone.");
     const originalText = [...new Set(originals.map((c) => c.comment.trim()).filter(Boolean))].join("\n\n");
-    if (group.comment !== originalText) throw Error("The combined note was edited. Copy its new text before undoing the combination.");
+    if (group2.comment !== originalText) throw Error("The combined note was edited. Copy its new text before undoing the combination.");
     const stamp = (/* @__PURE__ */ new Date()).toISOString(), restored = originals.map((c) => {
       const n = { ...c, resolved: c.deletedWasResolved ?? false, updated: stamp };
       delete n.deletedAt;
@@ -39629,7 +40052,7 @@ var RegularSelectionApi = class {
       delete n.combinedInto;
       return n;
     });
-    await this.store.applyRegularEdits([...originals, group], [...restored, { ...group, deletedAt: stamp, resolved: true, combinedInto: "undo:" + id3, updated: stamp }], async () => {
+    await this.store.applyRegularEdits([...originals, group2], [...restored, { ...group2, deletedAt: stamp, resolved: true, combinedInto: "undo:" + id3, updated: stamp }], async () => {
     });
   }
 };
@@ -39831,20 +40254,25 @@ function readingAnchorApplies(root, a2, knownInfo) {
   const { context, info, el } = found;
   if (el !== root && !a2.sectionSource) return false;
   const entry = index(context.path(), info.text), from = entry.lines[info.lineStart] ?? 0, to = entry.lines[info.lineEnd + 1] ?? info.text.length;
-  if (a2.sectionSource) return info.text.slice(from, to).trimEnd() === a2.sectionSource.trimEnd() && (!a2.renderedRoot || a2.renderedRoot === ownedText(root));
+  if (a2.sectionSource) {
+    const section = info.text.slice(from, to);
+    return (symbolTextProjection(section)?.text ?? section).trimEnd() === a2.sectionSource.trimEnd() && (!a2.renderedRoot || a2.renderedRoot === ownedText(root));
+  }
   const key2 = JSON.stringify([a2.quote, a2.before, a2.after]);
   if (!entry.hits.has(key2)) entry.hits.set(key2, locateMarginAnchor(info.text, a2));
   const hit = entry.hits.get(key2);
   return !!hit && hit.from >= from && hit.to <= to;
 }
 function editorExcerpts(raw, from, to, path) {
+  const projected = symbolTextProjection(raw);
+  if (projected) return editorExcerpts(projected.text, projected.toProjected(from), projected.toProjected(to), path);
   const inside2 = equations(raw).find((q) => from >= q.bodyFrom && to <= q.bodyTo);
   if (inside2) {
     const mj = window.MathJax;
     try {
       const rendered = mj?.tex2chtml(inside2.body, { display: inside2.display });
-      const math = rendered?.querySelector("mjx-math");
-      const part = math && partFromSource(math, inside2.body, from - inside2.bodyFrom, to - inside2.bodyFrom);
+      const math2 = rendered?.querySelector("mjx-math");
+      const part = math2 && partFromSource(math2, inside2.body, from - inside2.bodyFrom, to - inside2.bodyFrom);
       if (part) return [{ id: crypto.randomUUID(), path, quote: inside2.raw, before: raw.slice(Math.max(0, inside2.from - 48), inside2.from), after: raw.slice(inside2.to, inside2.to + 48), kind: "math", part, renderedQuote: "$" + part.nodes.map((n) => n.latex).join(" ") + "$" }];
     } catch {
     }
@@ -39877,7 +40305,7 @@ function sourceAnchor(path, info, quote, before, after, pieces) {
   }
   const a2 = { id: crypto.randomUUID(), path, quote: hit ? section.slice(hit.from, hit.to) : quote, before: hit ? info.text.slice(Math.max(0, from + hit.from - 48), from + hit.from) : before, after: hit ? info.text.slice(from + hit.to, from + hit.to + 48) : after, renderedQuote: quote, renderedBefore: before, renderedAfter: after, kind: "text" };
   if (!hit) a2.sectionSource = section;
-  return a2;
+  return ordinaryAnchor(info.text, a2, hit ? { from: from + hit.from, to: from + hit.to } : void 0);
 }
 function readingExcerpts(selection, path) {
   if (!selection.rangeCount || selection.isCollapsed) return [];
@@ -39914,14 +40342,14 @@ function readingExcerpts(selection, path) {
         anchor.sectionSource = info.text.slice(ix.lines[info.lineStart] ?? 0, ix.lines[info.lineEnd + 1] ?? info.text.length);
         anchor.renderedRoot = raw;
       }
-      result.push(anchor);
+      result.push(ordinaryAnchor(info.text, anchor));
     }
-    const math = Array.from(root.querySelectorAll(".math")).filter((el) => el.closest("[data-study-comment-section]") === root);
+    const math2 = Array.from(root.querySelectorAll(".math")).filter((el) => el.closest("[data-study-comment-section]") === root);
     const entry = index(path, info.text), offset = entry.lines[info.lineStart] ?? 0, section = info.text.slice(offset, entry.lines[info.lineEnd + 1] ?? info.text.length), qs = equations(section);
-    math.forEach((el, i) => {
+    math2.forEach((el, i) => {
       if (range.intersectsNode(el) && qs[i]) {
         const q = qs[i], from = offset + q.from, to = offset + q.to;
-        result.push({ id: crypto.randomUUID(), path, quote: q.raw, before: info.text.slice(Math.max(0, from - 48), from), after: info.text.slice(to, to + 48), kind: "math", ...el.contains(range.startContainer) && el.contains(range.endContainer) ? { part: partFromRange(el.querySelector("mjx-math"), range) } : {} });
+        result.push(ordinaryAnchor(info.text, { id: crypto.randomUUID(), path, quote: q.raw, before: info.text.slice(Math.max(0, from - 48), from), after: info.text.slice(to, to + 48), kind: "math", ...el.contains(range.startContainer) && el.contains(range.endContainer) ? { part: partFromRange(el.querySelector("mjx-math"), range) } : {} }, { from, to }));
       }
     });
   }
@@ -39953,17 +40381,17 @@ function readingTableTarget(root, a2) {
     }
   }
 }
-function readingEquationAnchor(math, path) {
-  const root = math.closest("[data-study-comment-section]");
+function readingEquationAnchor(math2, path) {
+  const root = math2.closest("[data-study-comment-section]");
   if (!root) return;
   const found = sectionContext(root);
   if (!found || found.context.path() !== path) return;
   const { info } = found, entry = index(path, info.text), offset = entry.lines[info.lineStart] ?? 0, qs = equations(info.text.slice(offset, entry.lines[info.lineEnd + 1] ?? info.text.length));
   const elements = Array.from(root.querySelectorAll(".math")).filter((el) => el.closest("[data-study-comment-section]") === root);
-  const q = qs[elements.indexOf(math)];
+  const q = qs[elements.indexOf(math2)];
   if (!q) return;
   const from = offset + q.from, to = offset + q.to;
-  return { id: crypto.randomUUID(), path, quote: q.raw, before: info.text.slice(Math.max(0, from - 48), from), after: info.text.slice(to, to + 48), kind: "math" };
+  return ordinaryAnchor(info.text, { id: crypto.randomUUID(), path, quote: q.raw, before: info.text.slice(Math.max(0, from - 48), from), after: info.text.slice(to, to + 48), kind: "math" }, { from, to });
 }
 function readingTableExcerpts(range, path) {
   const doc2 = range.startContainer.ownerDocument, result = [];
@@ -39992,7 +40420,7 @@ function readingTableExcerpts(range, path) {
         from += at;
         to = from + quote.length;
       } else if (!cell.querySelector(".math") && quote !== (cell.textContent ?? "").trim()) continue;
-      result.push({ id: crypto.randomUUID(), path, quote: info.text.slice(from, to), before: info.text.slice(Math.max(0, from - 96), from), after: info.text.slice(to, to + 96), kind: equations(info.text.slice(from, to)).some((q) => q.raw === info.text.slice(from, to)) ? "math" : "text", ...cell.querySelector("mjx-math")?.contains(range.startContainer) && cell.querySelector("mjx-math")?.contains(range.endContainer) ? { part: partFromRange(cell.querySelector("mjx-math"), range) } : {}, ...cell.querySelector(".math") ? {} : { renderedQuote: quote }, table: { key: source.key, source: source.source, row, column: col, cellText: raw.text } });
+      result.push(ordinaryAnchor(info.text, { id: crypto.randomUUID(), path, quote: info.text.slice(from, to), before: info.text.slice(Math.max(0, from - 96), from), after: info.text.slice(to, to + 96), kind: equations(info.text.slice(from, to)).some((q) => q.raw === info.text.slice(from, to)) ? "math" : "text", ...cell.querySelector("mjx-math")?.contains(range.startContainer) && cell.querySelector("mjx-math")?.contains(range.endContainer) ? { part: partFromRange(cell.querySelector("mjx-math"), range) } : {}, ...cell.querySelector(".math") ? {} : { renderedQuote: quote }, table: { key: source.key, source: source.source, row, column: col, cellText: raw.text } }, { from, to }));
     }
   }
   return result;
@@ -40248,9 +40676,9 @@ function registerStudySelections(plugin, api, onStudyContextMenu) {
           return t2;
         };
         const cellRanges = (cell, a2) => {
-          const math = Array.from(cell.querySelectorAll(".math"));
-          if (a2.kind === "math" && math.length) {
-            return math.map((m) => {
+          const math2 = Array.from(cell.querySelectorAll(".math"));
+          if (a2.kind === "math" && math2.length) {
+            return math2.map((m) => {
               const r = doc2.createRange();
               r.selectNodeContents(m);
               return r;
@@ -40291,8 +40719,8 @@ function registerStudySelections(plugin, api, onStudyContextMenu) {
           if (!readingAnchorApplies(root, a2)) continue;
           if (a2.kind === "math") {
             for (const m of readingMathTargets(root, a2)) {
-              const math = m.querySelector("mjx-math");
-              const nodes2 = a2.part && math ? resolvePart(math, a2.part) : [m];
+              const math2 = m.querySelector("mjx-math");
+              const nodes2 = a2.part && math2 ? resolvePart(math2, a2.part) : [m];
               for (const n of nodes2) {
                 const r = doc2.createRange();
                 r.selectNodeContents(n);
@@ -40915,25 +41343,25 @@ function testYourself(app, questions, title, card, random = Math.random) {
       await RichMarkdown.render(app, q.prompt, prompt, q.path, owner);
       if (!live()) return;
       const area = body.createDiv("study-recall-response");
-      const reveal = actions.createEl("button", { text: "Reveal answer" });
-      actions.prepend(reveal);
+      const reveal2 = actions.createEl("button", { text: "Reveal answer" });
+      actions.prepend(reveal2);
       let input;
       if (q.definition.type === "short-answer") {
         input = area.createEl("textarea", { cls: "study-recall-input", attr: { "aria-label": "Your answer", rows: "5", placeholder: "Write your answer\u2026" } });
         input.addEventListener("keydown", (e) => {
           if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
             e.preventDefault();
-            reveal.click();
+            reveal2.click();
           }
         });
       } else area.createEl("p", { cls: "study-muted", text: "Sketch your answer on paper, then reveal the reference." });
-      reveal.onclick = async () => {
-        if (!live() || reveal.disabled) return;
+      reveal2.onclick = async () => {
+        if (!live() || reveal2.disabled) return;
         if (input && !input.value.trim()) {
           input.focus();
           return;
         }
-        reveal.disabled = true;
+        reveal2.disabled = true;
         if (input) input.readOnly = true;
         const answer = body.createDiv("study-recall-reference");
         answer.createEl("h3", { text: "Reference" });
@@ -40954,7 +41382,7 @@ function testYourself(app, questions, title, card, random = Math.random) {
         if (q.explanation.trim()) await RichMarkdown.render(app, q.explanation, answer.createDiv("markdown-rendered"), q.path, owner);
         assess(body, "Did your answer match?");
       };
-      (input ?? reveal).focus();
+      (input ?? reveal2).focus();
     } else {
       const host = body.createDiv();
       owner.addChild(card(host, q, (correct, kept) => {
@@ -41027,9 +41455,39 @@ function validCodeGrade(q, response, g) {
   return !!c && c.rule === CODE_RULE && c.inputSignature === codeInputHash(q, response) && ["pass", "fail", "unavailable"].includes(c.status) && typeof c.message === "string" && validAttribution(q, c) && g.possible === 1 && g.earned === (c.status === "pass" ? 1 : 0) && !!g.pending === (c.status === "unavailable") && g.details.length === 0;
 }
 
+// src/code-source-impact.ts
+var clone5 = (value) => JSON.parse(JSON.stringify(value));
+async function sourceImpact(store, bridge, source) {
+  await store.refresh();
+  const adapter = store.app.vault.adapter;
+  const reviewPath = store.app.vault.configDir + "/study-studio-review.json";
+  const before = await adapter.exists(reviewPath) ? await adapter.read(reviewPath) : null;
+  const records = store.data.comments.filter((c) => c.code && (!c.deletedAt || c.code.consumed));
+  const targets = [...new Set(records.map((c) => c.code.target))];
+  const matching = /* @__PURE__ */ new Set();
+  for (let offset = 0; offset < targets.length; offset += 500) {
+    const batch = targets.slice(offset, offset + 500), raws = batch.map((target) => "{{" + target + "}}");
+    const found = await bridge.call("inspect-many", { raws });
+    for (let i = 0; i < batch.length; i++) {
+      const result = found[raws[i]];
+      if (result?.path === source) matching.add(batch[i]);
+      else if (result?.error) throw Error("Cannot verify saved code annotation target: " + batch[i]);
+    }
+  }
+  const after = await adapter.exists(reviewPath) ? await adapter.read(reviewPath) : null;
+  if (after !== before) throw Error("Annotations changed during preflight; retry Save.");
+  return {
+    source,
+    guard: { path: reviewPath, sha256: before === null ? null : await codeHash(before) },
+    records: clone5(records.filter((c) => matching.has(c.code.target)).map((c) => ({ id: c.id, note: c.path, purpose: c.code.purpose, consumed: !!c.code.consumed, fragments: codeFragments(c.code).map((f) => ({ start: f.line, end: f.endLine, quote: f.quote })) }))),
+    scope: "current-vault",
+    message: "Saved annotations and question answers are preserved. Edited passages may become unresolved."
+  };
+}
+
 // src/code-annotation-api.ts
 var import_obsidian25 = require("obsidian");
-var clone4 = (x) => JSON.parse(JSON.stringify(x));
+var clone6 = (x) => JSON.parse(JSON.stringify(x));
 var snapshotKey = (s) => JSON.stringify([s.path, s.link.target, s.lines, s.line_numbers, s.signature]);
 var CodeAnnotationApi = class {
   constructor(store, index2, practice, findQuestion) {
@@ -41137,7 +41595,13 @@ var CodeAnnotationApi = class {
     this.check();
     await this.note(path);
     await this.store.refresh();
-    return clone4(this.store.data.comments.filter((c) => c.code && c.path === path && !c.deletedAt));
+    return clone6(this.store.data.comments.filter((c) => c.code && c.path === path && !c.deletedAt));
+  }
+  /** Explicit source-edit preflight. Includes unmounted, hidden and consumed
+   * records across this vault. It never changes anchors or question answers. */
+  async sourceImpact(source) {
+    this.check();
+    return sourceImpact(this.store, this.bridge(), source);
   }
   async inspect(path) {
     const { text: text2 } = await this.note(path);
@@ -41157,7 +41621,7 @@ var CodeAnnotationApi = class {
     await this.store.refresh();
     const c = this.store.data.comments.find((c2) => c2.id === id3 && c2.code);
     if (!c) throw Error("Code annotation not found.");
-    return clone4(c);
+    return clone6(c);
   }
   async create(scope, expected, from, to, purpose = "comment", appearance, comment2 = "") {
     return this.createMany(scope, expected, [{ from, to }], purpose, appearance, comment2);
@@ -41182,7 +41646,7 @@ var CodeAnnotationApi = class {
         return at && fragments.some((f) => directivesConflict({ from: f.offset, to: f.offset + f.quote.length, rule }, { ...at, rule: n.code.rule }));
       }))) throw Error("Blank selections overlap. Nest red inside yellow, or keep them separate.");
     });
-    return clone4(c);
+    return clone6(c);
   }
   async changeType(id3, type) {
     const before = await this.get(id3), after = withStudyType(before, type), scope = { path: before.path, raw: before.code.raw };
@@ -41195,7 +41659,7 @@ var CodeAnnotationApi = class {
         return at && ranges.some((r) => directivesConflict({ ...r, rule: after.code.rule }, { ...at, rule: c.code.rule }));
       }))) throw Error("This change would overlap another blank. Nest red inside yellow, or keep them separate.");
     });
-    return clone4(after);
+    return clone6(after);
   }
   async undoCombine(id3) {
     return undoStudyCombine(this.store, id3);
@@ -41211,13 +41675,13 @@ var CodeAnnotationApi = class {
       return f;
     }).sort((a2, b) => a2.line - b.line || a2.column - b.column);
     if (fragments.length > 128) throw Error("A group supports up to 128 fragments.");
-    const now = (/* @__PURE__ */ new Date()).toISOString(), combined = { ...clone4(first), id: crypto.randomUUID(), comment: before.map((c) => c.comment.trim()).filter(Boolean).join("\n\n"), code: { ...fragments[0], fragments }, updated: now };
+    const now = (/* @__PURE__ */ new Date()).toISOString(), combined = { ...clone6(first), id: crypto.randomUUID(), comment: before.map((c) => c.comment.trim()).filter(Boolean).join("\n\n"), code: { ...fragments[0], fragments }, updated: now };
     const after = [...before.map((c) => ({ ...c, combinedInto: combined.id, deletedAt: now, deletedWasResolved: c.resolved, resolved: true, updated: now })), combined];
     await this.store.applyCodeEdits(before, after, async () => {
       const { s } = await this.read({ path: first.path, raw: first.code.raw }), hash4 = await codeSnapshotHash(s);
       if (fragments.some((f) => !locateCode(f, s, hash4))) throw Error("A fragment changed. Refresh before combining.");
     });
-    return clone4(combined);
+    return clone6(combined);
   }
   async edit(id3, comment2) {
     if (typeof comment2 !== "string") throw Error("Comment must be text.");
@@ -41227,7 +41691,7 @@ var CodeAnnotationApi = class {
     await this.store.applyCodeEdits([old], [next], async () => {
       await this.note(old.path);
     });
-    return clone4(next);
+    return clone6(next);
   }
   async remove(id3) {
     const c = await this.get(id3);
@@ -41302,9 +41766,9 @@ var CodeAnnotationApi = class {
     const inventorySignature = this.inventorySignature(scope.path);
     const { s, note, raw: resolvedRaw } = await this.read(scope), hash4 = await codeSnapshotHash(s);
     const inventory = await studyInventory(scope.path, note.text, this.store.data.comments, this.bridge());
-    const group = inventory.groups.find((g) => g.kind === "code-block" && g.source.raw === resolvedRaw);
-    const available = (group?.members ?? []).map((m) => m.record).filter((c) => c.code?.purpose === "practice-blank");
-    const before = clone4(options.ids ? options.ids.map((id4) => {
+    const group2 = inventory.groups.find((g) => g.kind === "code-block" && g.source.raw === resolvedRaw);
+    const available = (group2?.members ?? []).map((m) => m.record).filter((c) => c.code?.purpose === "practice-blank");
+    const before = clone6(options.ids ? options.ids.map((id4) => {
       const c = available.find((c2) => c2.id === id4);
       if (!c) throw Error("Practice blank not found in this code block: " + id4);
       return c;
@@ -41317,7 +41781,7 @@ var CodeAnnotationApi = class {
     if ([...before, ...accounting.related.map((m) => m.record)].some((c) => this.store.annotationBusy(c.id))) throw Error("Finish the margin edit before creating the question.");
     const generated = buildCodeQuestion(s, hash4, before, options.context), destination = await chapterDestination(this.store.app, note.f);
     if (generated.code.grading) {
-      if (options.cases) generated.code.grading.cases = clone4(options.cases);
+      if (options.cases) generated.code.grading.cases = clone6(options.cases);
       if (options.timeoutMs !== void 0) generated.code.grading.timeoutMs = options.timeoutMs;
       validateCodeGrading(generated.code.grading, generated.answers, false);
       const prepared = await this.bridge().call("check-code", { prepare: true, source: generated.code.source, reference: Object.fromEntries(generated.answers.map((a2) => [a2.id, a2.accepted[0]])), grading: generated.code.grading });
@@ -41368,8 +41832,8 @@ var CodeAnnotationApi = class {
     if (this.plans.size >= 50) this.plans.delete(this.plans.keys().next().value);
     if (inventorySignature !== this.inventorySignature(scope.path)) throw Error("Study instructions changed during preparation; prepare again.");
     if (accounting.related.some((m) => this.store.annotationBusy(m.id))) throw Error("Finish editing related instructions before preparing.");
-    this.plans.set(token, { scope: clone4(scope), before, after, question: question3, snapshot: snapshotKey(s), note: note.text, inventory: inventorySignature, instructionIds: accounting.instructionIds, deferredIds: accounting.deferredIds, expires: Date.now() + 6e5 });
-    return { token, question: clone4(question3), ...outputWarning ? { outputWarning } : {}, consumedIds: before.map((c) => c.id), ...accounting, skipped: [] };
+    this.plans.set(token, { scope: clone6(scope), before, after, question: question3, snapshot: snapshotKey(s), note: note.text, inventory: inventorySignature, instructionIds: accounting.instructionIds, deferredIds: accounting.deferredIds, expires: Date.now() + 6e5 });
+    return { token, question: clone6(question3), ...outputWarning ? { outputWarning } : {}, consumedIds: before.map((c) => c.id), ...accounting, skipped: [] };
   }
   async applyQuestion(token) {
     this.check();
@@ -41430,9 +41894,9 @@ var CodeAnnotationApi = class {
     }
     if (options.constraints) {
       if (options.constraints.some((c) => typeof c.quote !== "string" || c.holes?.some((h) => typeof h.quote !== "string"))) throw Error("Explicitly revised ranges require their exact quoted text.");
-      code.grading.constraints = clone4(options.constraints);
+      code.grading.constraints = clone6(options.constraints);
     }
-    if (options.cases) code.grading.cases = clone4(options.cases);
+    if (options.cases) code.grading.cases = clone6(options.cases);
     if (options.timeoutMs !== void 0) code.grading.timeoutMs = options.timeoutMs;
     const result = await this.bridge().call("check-code", { prepare: true, source: code.source, reference: Object.fromEntries(question3.definition.answers.map((a2) => [a2.id, a2.accepted[0]])), grading: code.grading });
     if (result.status !== "prepared") throw Error(result.message ?? "Grading preparation failed.");
@@ -41448,7 +41912,7 @@ var CodeAnnotationApi = class {
     for (const [key2, p] of this.gradingPlans) if (p.expires < Date.now()) this.gradingPlans.delete(key2);
     if (this.gradingPlans.size >= 20) this.gradingPlans.delete(this.gradingPlans.keys().next().value);
     this.gradingPlans.set(token, { before: text2, question: question3, expires: Date.now() + 6e5 });
-    return { token, question: clone4(question3), ...outputWarning ? { outputWarning } : {} };
+    return { token, question: clone6(question3), ...outputWarning ? { outputWarning } : {} };
   }
   async applyGrading(token) {
     this.check();
@@ -41509,7 +41973,7 @@ function appearancePatch(c, p) {
 }
 
 // src/annotation-api.ts
-var clone5 = (v) => JSON.parse(JSON.stringify(v));
+var clone7 = (v) => JSON.parse(JSON.stringify(v));
 var AnnotationApi = class {
   constructor(store, hasDraft) {
     this.store = store;
@@ -41538,12 +42002,12 @@ var AnnotationApi = class {
   }
   palettes() {
     this.check();
-    return clone5(Object.fromEntries(["highlight", "underline", "text", "sticky"].map((s) => [s, this.store.paletteFor(s)])));
+    return clone7(Object.fromEntries(["highlight", "underline", "text", "sticky"].map((s) => [s, this.store.paletteFor(s)])));
   }
   describe(c, path, source, n) {
-    return { id: c.id, number: n ?? null, path, record: clone5(c), visible: this.store.isAnnotationVisible(c), hasDraft: this.hasDraft(c.id), selections: excerpts(c).map((a2) => {
+    return { id: c.id, number: n ?? null, path, record: clone7(c), visible: this.store.isAnnotationVisible(c), hasDraft: this.hasDraft(c.id), selections: excerpts(c).map((a2) => {
       const hit = a2.path === path ? marginLocation(source, a2) : void 0;
-      return { ...clone5(a2), ...hit ? { start: hit.from, end: hit.to, lineStart: source.slice(0, hit.from).split("\n").length, lineEnd: source.slice(0, Math.max(hit.from, hit.to - 1)).split("\n").length } : {}, located: !!hit };
+      return { ...clone7(a2), ...hit ? { start: hit.from, end: hit.to, lineStart: source.slice(0, hit.from).split("\n").length, lineEnd: source.slice(0, Math.max(hit.from, hit.to - 1)).split("\n").length } : {}, located: !!hit };
     }) };
   }
   async list(path) {
@@ -41570,7 +42034,7 @@ var AnnotationApi = class {
     this.check();
     const item = await this.get(ref), before = item.record;
     if (this.hasDraft(before.id)) throw Error("Annotation has an draft or active editor; finish that edit first.");
-    patch = clone5(patch);
+    patch = clone7(patch);
     if (patch.palette !== void 0) {
       const style = patch.markStyle ?? styleOf(before), swatch = this.store.paletteFor(style).find((p) => p.meaning === patch.palette);
       if (!swatch) throw Error("Palette meaning not found for this style.");
@@ -41621,16 +42085,911 @@ var AnnotationApi = class {
     };
     await this.store.applyAnnotationEdit(plan2.before, after, validate2);
     const current = this.store.data.comments.find((c) => c.id === after.id);
-    const undoToken = same(current, after) ? this.remember({ ...plan2, before: clone5(current), after: plan2.before, expires: Date.now() + 10 * 60 * 1e3 }) : null;
+    const undoToken = same(current, after) ? this.remember({ ...plan2, before: clone7(current), after: plan2.before, expires: Date.now() + 10 * 60 * 1e3 }) : null;
     return { applied: true, id: after.id, undoToken, annotation: await this.get({ path: plan2.path, id: after.id }) };
   }
 };
 function clonePlan(p) {
-  return { ...p, before: clone5(p.before), after: clone5(p.after), sources: new Map(p.sources) };
+  return { ...p, before: clone7(p.before), after: clone7(p.after), sources: new Map(p.sources) };
 }
 
-// src/reference-gutters.ts
+// src/symbols/system.ts
+var import_obsidian30 = require("obsidian");
+var import_view14 = require("@codemirror/view");
+
+// src/symbols/document.ts
+var import_state12 = require("@codemirror/state");
+var refreshSymbols = import_state12.StateEffect.define();
+function scanSymbols(source) {
+  symbolStats.initialScans++;
+  const hasRegistry = source.includes("%% study-symbols"), hasMarks = source.includes("mjx-ss-o-");
+  let block = null, registryError, registryFault;
+  if (hasRegistry) {
+    symbolStats.registryParses++;
+    try {
+      block = registryBlock(source, markdownContext(source).excluded);
+    } catch (e) {
+      registryError = e.message;
+      const from = source.indexOf("%% study-symbols");
+      registryFault = { from, to: source.length, message: registryError };
+    }
+  }
+  const marks2 = [], malformed = [];
+  if (hasMarks) for (const q of equations(source)) {
+    if (!q.body.includes("mjx-ss-o-")) continue;
+    symbolStats.markerParses++;
+    try {
+      for (const m of markers(q.body)) marks2.push({ ...m, from: m.from + q.bodyFrom, to: m.to + q.bodyFrom, bodyFrom: m.bodyFrom + q.bodyFrom, bodyTo: m.bodyTo + q.bodyFrom });
+    } catch (e) {
+      malformed.push({ from: q.bodyFrom, to: q.bodyTo, message: e.message });
+    }
+  }
+  return { block, marks: marks2, registryError, registryFault, malformed, error: registryError ?? malformed[0]?.message ?? null };
+}
+function full(doc2) {
+  symbolStats.fullTextReads++;
+  return scanSymbols(doc2.toString());
+}
+var symbolDocumentField = import_state12.StateField.define({
+  create: (state) => full(state.doc),
+  update(value, tr) {
+    if (tr.effects.some((e) => e.is(refreshSymbols)) || tr.isUserEvent("input.symbols")) return full(tr.newDoc);
+    if (!tr.docChanged) return value;
+    const changes = [];
+    tr.changes.iterChanges((from, to, newFrom, newTo, insert2) => changes.push({ from, to, newFrom, newTo, insert: insert2.toString() }));
+    if (changes.some((c) => c.insert.includes("mjx-ss-o-") || c.insert.includes("%% study-symbols"))) return full(tr.newDoc);
+    const active = !!(value.block || value.registryFault || value.marks.length || value.malformed?.length);
+    const dirty = value.dirty || active && changes.some((c) => /[$`~%\n\r]/.test(c.insert + tr.startState.doc.sliceString(c.from, c.to)));
+    const touched = (from, to) => changes.some((c) => c.from <= to && c.to >= from);
+    let block = value.block, registryError = value.registryError, registryFault = value.registryFault;
+    if (registryFault) {
+      const prior = registryFault;
+      registryFault = { ...prior, from: tr.changes.mapPos(prior.from, -1), to: tr.changes.mapPos(prior.to, 1) };
+      if (touched(prior.from, prior.to)) {
+        return { ...value, registryFault, malformed: (value.malformed ?? []).map((m) => ({ ...m, from: tr.changes.mapPos(m.from, -1), to: tr.changes.mapPos(m.to, 1) })), dirty: true, marks: value.marks.map((m) => ({ ...m, from: tr.changes.mapPos(m.from, 1), to: tr.changes.mapPos(m.to, -1), bodyFrom: tr.changes.mapPos(m.bodyFrom, 1), bodyTo: tr.changes.mapPos(m.bodyTo, -1) })) };
+      }
+    }
+    if (block) {
+      const previous = block;
+      const from = tr.changes.mapPos(block.from, -1), to = tr.changes.mapPos(block.to, 1);
+      if (touched(block.from, block.to)) {
+        symbolStats.registryParses++;
+        try {
+          const parsed = registryBlock(tr.newDoc.sliceString(from, to));
+          block = parsed ? { ...parsed, from: parsed.from + from, to: parsed.to + from } : null;
+          registryError = void 0;
+        } catch (e) {
+          registryError = e.message;
+          block = { ...previous, from, to };
+        }
+      } else block = { ...block, from, to };
+    }
+    const marks2 = [], malformed = [];
+    const parse2 = (from, to) => {
+      symbolStats.markerParses++;
+      try {
+        const raw = tr.newDoc.sliceString(from, to), found = markers(raw);
+        if (!found.length && raw.includes("mjx-ss")) throw Error("Malformed symbol marker.");
+        for (const n of found) marks2.push({ ...n, from: n.from + from, to: n.to + from, bodyFrom: n.bodyFrom + from, bodyTo: n.bodyTo + from });
+      } catch (e) {
+        malformed.push({ from, to, message: e.message });
+      }
+    };
+    for (const m of value.marks) {
+      const from = tr.changes.mapPos(m.from, 1), to = tr.changes.mapPos(m.to, -1);
+      if (to <= from) continue;
+      if (!touched(m.from, m.to)) {
+        marks2.push({ ...m, from, to, bodyFrom: tr.changes.mapPos(m.bodyFrom, 1), bodyTo: tr.changes.mapPos(m.bodyTo, -1) });
+        continue;
+      }
+      parse2(from, to);
+    }
+    for (const prior of value.malformed ?? []) {
+      const from = tr.changes.mapPos(prior.from, -1), to = tr.changes.mapPos(prior.to, 1);
+      if (to <= from) continue;
+      if (touched(prior.from, prior.to)) parse2(from, to);
+      else malformed.push({ ...prior, from, to });
+    }
+    return { block, marks: marks2.sort((a2, b) => a2.from - b.from), registryError, registryFault, malformed, dirty, error: registryError ?? malformed[0]?.message ?? null };
+  }
+});
+function symbolProjection(doc2) {
+  const data2 = doc2.block?.data ?? emptyRegistry();
+  const byId = /* @__PURE__ */ new Map();
+  for (const m of doc2.marks) {
+    const hits = byId.get(m.id) ?? [];
+    hits.push(m);
+    byId.set(m.id, hits);
+  }
+  const occurrences = Object.entries(data2.occ).map(([id3, o]) => ({ ...o, id: id3, locations: byId.get(id3) ?? [], orphan: !byId.has(id3) }));
+  const byDef = /* @__PURE__ */ new Map();
+  for (const o of occurrences) {
+    const list = byDef.get(o.def) ?? [];
+    list.push(o);
+    byDef.set(o.def, list);
+  }
+  return { data: data2, definitions: Object.entries(data2.defs).map(([id3, d]) => ({ ...d, id: id3, occurrences: byDef.get(id3) ?? [] })), unregistered: doc2.marks.filter((m) => !Object.hasOwn(data2.occ, m.id)), error: doc2.error };
+}
+
+// src/symbols/registry-widget.ts
 var import_obsidian27 = require("obsidian");
+var import_state13 = require("@codemirror/state");
+var import_view13 = require("@codemirror/view");
+var reveal = import_state13.StateEffect.define();
+var RegistryWidget = class extends import_view13.WidgetType {
+  constructor(definitions, occurrences) {
+    super();
+    this.definitions = definitions;
+    this.occurrences = occurrences;
+  }
+  eq(other) {
+    return this.definitions === other.definitions && this.occurrences === other.occurrences;
+  }
+  toDOM(view) {
+    const el = view.dom.ownerDocument.createElement("button");
+    el.type = "button";
+    el.className = "study-symbol-registry";
+    el.textContent = `Symbols \xB7 ${this.definitions} definition${this.definitions === 1 ? "" : "s"} \xB7 ${this.occurrences} occurrence${this.occurrences === 1 ? "" : "s"}`;
+    el.title = "Show symbol registry source";
+    el.onclick = () => {
+      const block = view.state.field(symbolDocumentField).block;
+      if (block) {
+        view.dispatch({ effects: reveal.of(true), selection: { anchor: block.from } });
+        view.focus();
+      }
+    };
+    return el;
+  }
+  ignoreEvent() {
+    return true;
+  }
+};
+function decorations2(state, shown) {
+  const block = state.field(symbolDocumentField).block;
+  if (!block || shown || !state.field(import_obsidian27.editorLivePreviewField, false)) return import_view13.Decoration.none;
+  return import_view13.Decoration.set([import_view13.Decoration.replace({ block: true, widget: new RegistryWidget(Object.keys(block.data.defs).length, Object.keys(block.data.occ).length) }).range(block.from, block.to)]);
+}
+var registryDecorationField = import_state13.StateField.define({
+  create: (state) => ({ shown: false, decorations: decorations2(state, false) }),
+  update(value, tr) {
+    let shown = value.shown;
+    for (const effect of tr.effects) if (effect.is(reveal)) shown = effect.value;
+    const block = tr.state.field(symbolDocumentField).block;
+    if (shown && tr.selection && block && !tr.state.selection.ranges.some((s) => s.from <= block.to && s.to >= block.from)) shown = false;
+    if (!tr.docChanged && !tr.selection && !tr.effects.length && tr.startState.field(import_obsidian27.editorLivePreviewField, false) === tr.state.field(import_obsidian27.editorLivePreviewField, false)) return value;
+    return { shown, decorations: decorations2(tr.state, shown) };
+  },
+  provide: (field) => [import_view13.EditorView.decorations.from(field, (v) => v.decorations), import_view13.EditorView.atomicRanges.of((view) => view.state.field(field).decorations)]
+});
+function revealSymbolRegistry(view) {
+  const block = view.state.field(symbolDocumentField, false)?.block;
+  if (!block) return false;
+  view.dispatch({ effects: reveal.of(true), selection: { anchor: block.from }, scrollIntoView: true });
+  return true;
+}
+var lastProtectedNotice = 0;
+var protectSymbolRegistry = import_state13.EditorState.transactionFilter.of((tr) => {
+  if (!tr.docChanged || tr.isUserEvent("input.symbols") || tr.isUserEvent("undo") || tr.isUserEvent("redo") || !tr.startState.field(import_obsidian27.editorLivePreviewField, false) || tr.startState.field(registryDecorationField, false)?.shown) return tr;
+  const block = tr.startState.field(symbolDocumentField, false)?.block;
+  if (!block) return tr;
+  let intersects = false;
+  tr.changes.iterChangedRanges((from, to) => {
+    if (from < block.to && to > block.from || from === to && from > block.from && from < block.to) intersects = true;
+  });
+  if (!intersects) return tr;
+  if (tr.newDoc.toString().includes(tr.startState.doc.sliceString(block.from, block.to))) return tr;
+  if (Date.now() - lastProtectedNotice > 2e3) {
+    lastProtectedNotice = Date.now();
+    queueMicrotask(() => new import_obsidian27.Notice("Symbol records were preserved. Click the Symbols bar to edit their source, or delete definitions in the Symbols panel."));
+  }
+  return [];
+});
+
+// src/symbols/api.ts
+var import_obsidian29 = require("obsidian");
+
+// src/symbols/layout.ts
+var import_obsidian28 = require("obsidian");
+var ALL = ["scriptlevel", "displaystyle", "mathvariant", "mathcolor"];
+var OP = ["form", "lspace", "rspace", "stretchy", "largeop", "movablelimits", "symmetric", "fence", "separator", "accent"];
+function stable(value) {
+  return Object.fromEntries(Object.entries(value).sort(([a2], [b]) => a2.localeCompare(b)));
+}
+function tree(node, id3) {
+  const attrs = { ...node.attributes?.getAllAttributes() }, classes = String(attrs.class ?? "").split(/\s+/), marker = classes.includes(`mjx-ss-o-${id3}`);
+  for (const key2 of Object.keys(attrs)) if (key2.startsWith("data-latex")) delete attrs[key2];
+  if (marker) {
+    const retained = classes.filter((c) => c !== "mjx-ss" && c !== `mjx-ss-o-${id3}`);
+    if (retained.length) attrs.class = retained.join(" ");
+    else delete attrs.class;
+  }
+  return { kind: node.kind, ...node.getText ? { text: node.getText() } : {}, attrs: stable(attrs), computed: stable(Object.fromEntries([...ALL, ...node.kind === "mo" ? OP : []].map((k) => [k, node.attributes?.get(k) ?? null]))), texClass: node.texClass ?? null, prevClass: node.prevClass ?? null, prevLevel: node.prevLevel ?? null, spacing: node.texSpacing?.() ?? "", children: (node.childNodes ?? []).map((n) => tree(n, id3)), ...marker ? { marker: true } : {} };
+}
+function clean(t2) {
+  const { marker: _, ...rest } = t2;
+  return { ...rest, children: t2.children.map(clean) };
+}
+function equal(a2, b) {
+  return JSON.stringify(clean(a2)) === JSON.stringify(clean(b));
+}
+function alignRows(before, after) {
+  if (equal(before, after)) return true;
+  const children = [];
+  for (const child of after.children) {
+    if (child.marker && child.kind === "mrow" && child.children.length > 1 && Object.keys(child.attrs).length === 0) {
+      const first = child.children[0];
+      if (first.prevClass !== null || first.spacing !== "") return false;
+      children.push({ ...first, prevClass: child.prevClass, prevLevel: child.prevLevel, spacing: child.spacing }, ...child.children.slice(1));
+    } else children.push(child);
+  }
+  const a2 = { ...clean(before), children: [] }, b = { ...clean(after), children: [] };
+  if (JSON.stringify(a2) !== JSON.stringify(b) || before.children.length !== children.length) return false;
+  return before.children.every((c, i) => alignRows(c, children[i]));
+}
+async function verifyTagLayout(tex, id3, display) {
+  if (markers(tex).filter((m) => m.id === id3).length !== 1) throw Error("The new symbol marker is not unique.");
+  await (0, import_obsidian28.loadMathJax)();
+  const mj = window.MathJax, doc2 = mj?.startup?.document;
+  if (!doc2?.options?.MathItem || typeof doc2.outputJax?.getBBox !== "function") throw Error("This renderer cannot yet verify symbol tagging. The equation has not been changed.");
+  const convert = (source) => {
+    const input = doc2.inputJax.find((j) => j.name === "TeX");
+    if (!input) throw Error("MathJax TeX input is unavailable.");
+    const item = new doc2.options.MathItem(source, input, display);
+    item.start.node = doc2.adaptor.body(doc2.document);
+    item.setMetrics(16, 8, 640, 1);
+    item.convert(doc2, 20);
+    const bbox = doc2.outputJax.getBBox(item, doc2), root = tree(item.root, id3);
+    const nodes = [];
+    const walk = (n) => {
+      nodes.push(n);
+      for (const c of n.children) walk(c);
+    };
+    walk(root);
+    if (nodes.some((n) => n.kind === "merror")) throw Error("The selected symbol does not form valid LaTeX.");
+    return { root, count: nodes.filter((n) => n.marker).length, bbox: ["w", "h", "d", "ic", "sk", "L", "R"].map((k) => Number(bbox[k] ?? 0)) };
+  };
+  const run = () => {
+    const before = convert(untag(tex, id3)), after = convert(tex);
+    if (after.count !== 1 || !alignRows(before.root, after.root) || before.bbox.some((n, i) => !Number.isFinite(n) || Math.abs(n - after.bbox[i]) > 1e-9)) throw Error("Tagging this selection changes its mathematical grouping or spacing. Select the symbol alone or a complete term.");
+  };
+  if (typeof mj.handleRetriesFor === "function") await mj.handleRetriesFor(run);
+  else run();
+}
+
+// src/symbols/api.ts
+var SymbolApi = class {
+  constructor(plugin) {
+    this.plugin = plugin;
+  }
+  version = 1;
+  plans = /* @__PURE__ */ new Map();
+  disposed = false;
+  onChanged = () => {
+  };
+  dispose() {
+    this.disposed = true;
+    this.plans.clear();
+  }
+  check(path) {
+    if (this.disposed) throw Error("Symbol system was unloaded; reopen the editor.");
+    if (path && this.plugin.app.plugins?.plugins?.["image-gallery"]?.library?.isProtected(path)) throw Error("This is a protected source. Add symbols to a working copy.");
+  }
+  view(path) {
+    return this.plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian29.MarkdownView && v.file?.path === path && v.getMode() === "source");
+  }
+  async source(path) {
+    this.check(path);
+    symbolStats.fullTextReads++;
+    const view = this.view(path);
+    if (view) return view.editor.getValue();
+    const file = this.plugin.app.vault.getAbstractFileByPath(path);
+    if (!(file instanceof import_obsidian29.TFile) || file.extension !== "md") throw Error("Markdown note not found.");
+    return this.plugin.app.vault.read(file);
+  }
+  session(source, path) {
+    this.check(path);
+    symbolStats.apiCalls++;
+    const snapshot = scanSymbols(source);
+    if (snapshot.error) throw Error(snapshot.error);
+    return { ...clone(symbolProjection(snapshot).data), usedIds: snapshot.marks.map((m) => m.id), version: 1 };
+  }
+  async list(path) {
+    symbolStats.apiCalls++;
+    const source = await this.source(path), doc2 = scanSymbols(source);
+    return { ...symbolProjection(doc2), conflicts: conflicts(doc2.block?.data ?? emptyRegistry()), locations: doc2.marks.map((m) => ({ ...m, line: source.slice(0, m.from).split("\n").length })) };
+  }
+  async table(path) {
+    return (await this.list(path)).definitions;
+  }
+  async checkTag(tex, id3, display) {
+    this.check();
+    symbolStats.layoutChecks++;
+    await verifyTagLayout(tex, id3, display);
+  }
+  async planEquationSave(path, source, from, to, expected, replacement, proposal) {
+    this.check(path);
+    symbolStats.apiCalls++;
+    if (source.slice(from, to) !== expected) throw Error("The equation changed while it was open. Your draft is retained.");
+    const q = equations(source).find((q2) => q2.from === from && q2.to === to);
+    if (!q) throw Error("The original equation can no longer be identified.");
+    const oldMarkers = markers(q.body), newEquation = equations(replacement);
+    if (newEquation.length !== 1 || newEquation[0].from !== 0 || newEquation[0].to !== replacement.length) throw Error("The draft must remain one complete equation.");
+    const newMarkers = markers(newEquation[0].body), counts = /* @__PURE__ */ new Map();
+    for (const m of newMarkers) counts.set(m.id, (counts.get(m.id) ?? 0) + 1);
+    if ([...counts.values()].some((n) => n > 1)) throw Error("A symbol tag was duplicated. Give the copy its own occurrence or remove its tag.");
+    const block = registryBlock(source, markdownContext(source).excluded), data2 = clone(block?.data ?? emptyRegistry());
+    const pending = /* @__PURE__ */ new Map();
+    if (!proposal || !Array.isArray(proposal.pending) || proposal.pending.length > 1e3 || !proposal.decisions || typeof proposal.decisions !== "object") throw Error("Invalid symbol edit proposal.");
+    for (const p of proposal.pending) {
+      if (pending.has(p.id)) throw Error("Duplicate proposed symbol ID.");
+      pending.set(p.id, p);
+    }
+    const retained = [...pending.values()].filter((p) => !newMarkers.some((m) => m.id === p.id) && proposal.decisions[p.id] === "keep");
+    const neededDefs = /* @__PURE__ */ new Set([...newMarkers.map((m) => pending.get(m.id)?.def), ...retained.map((p) => p.def)]);
+    const drafts = /* @__PURE__ */ new Map();
+    for (const p of pending.values()) if (p.definition && neededDefs.has(p.def)) {
+      validateDefinition(p.definition);
+      if (Object.hasOwn(data2.defs, p.def)) throw Error("New definition ID already exists.");
+      if (drafts.has(p.def) && JSON.stringify(drafts.get(p.def)) !== JSON.stringify(p.definition)) throw Error("Conflicting drafts for one definition.");
+      drafts.set(p.def, p.definition);
+    }
+    for (const [id3, d] of drafts) data2.defs[id3] = clone(d);
+    for (const m of oldMarkers) {
+      const after = newMarkers.find((n) => n.id === m.id), changed = after && semanticGlyph(after.body) !== semanticGlyph(m.body), decision = proposal.decisions[m.id];
+      if ((!after || changed) && !["keep", "unlink"].includes(decision)) throw Error("Resolve the deleted or replaced symbol tag before saving.");
+      if (decision === "unlink") {
+        if (after) throw Error("Remove the tag wrapper before unlinking its record.");
+        delete data2.occ[m.id];
+      } else if (after && data2.occ[m.id]) {
+        data2.occ[m.id].glyph = after.body;
+        data2.occ[m.id].equation = equationReference(newEquation[0].body);
+      }
+    }
+    const all = scanSymbols(source);
+    if (all.error) throw Error(all.error);
+    const elsewhere = new Set(all.marks.filter((m) => m.from < from || m.to > to).map((m) => m.id));
+    for (const p of retained) {
+      if (elsewhere.has(p.id) || Object.hasOwn(data2.occ, p.id) && !oldMarkers.some((m) => m.id === p.id)) throw Error("This occurrence ID is already used elsewhere.");
+      if (!Object.hasOwn(data2.defs, p.def) || typeof p.glyph !== "string" || !p.glyph.trim()) throw Error("Retained symbol draft has no definition or glyph.");
+      data2.occ[p.id] = { def: p.def, glyph: p.glyph, equation: equationReference(newEquation[0].body) };
+    }
+    for (const m of newMarkers) {
+      const old = oldMarkers.some((n) => n.id === m.id), p = pending.get(m.id);
+      if (elsewhere.has(m.id)) throw Error("This occurrence ID is already used elsewhere in the note. Make this copy a separate occurrence.");
+      if (!old) {
+        if (!p || Object.hasOwn(data2.occ, m.id)) throw Error("New symbol tag has no valid record or reuses an existing ID.");
+        await this.checkTag(newEquation[0].body, m.id, q.display);
+      }
+      if (p) {
+        if (!Object.hasOwn(data2.defs, p.def)) throw Error("The linked definition no longer exists.");
+        data2.occ[m.id] = { def: p.def, glyph: m.body, equation: equationReference(newEquation[0].body) };
+      } else if (!Object.hasOwn(data2.occ, m.id)) throw Error("This tag has no local definition. Link it to a definition before saving.");
+    }
+    const edits = [];
+    if (replacement !== expected) edits.push({ from, to, insert: replacement });
+    if (JSON.stringify(data2) !== JSON.stringify(block?.data ?? emptyRegistry())) edits.push(registryEdit(source, block, data2));
+    return edits;
+  }
+  remember(plan2) {
+    for (const [key2, p] of this.plans) if (p.expires < Date.now()) this.plans.delete(key2);
+    if (this.plans.size >= 10) this.plans.delete(this.plans.keys().next().value);
+    const token = crypto.randomUUID();
+    this.plans.set(token, plan2);
+    return token;
+  }
+  async preview(path, operations) {
+    symbolStats.apiCalls++;
+    if (!Array.isArray(operations) || operations.length > 200) throw Error("Use batches of at most 200 symbol edits.");
+    const source = await this.source(path);
+    let next = source;
+    for (const op of operations) {
+      if (operations.length > 1) await new Promise((resolve) => setTimeout(resolve, 0));
+      const block = registryBlock(next, markdownContext(next).excluded), data2 = clone(block?.data ?? emptyRegistry());
+      if (op.type === "updateDefinition") {
+        if (!Object.hasOwn(data2.defs, op.id)) throw Error("Definition not found.");
+        validateDefinition(op.definition);
+        data2.defs[op.id] = clone(op.definition);
+        next = applyEdits(next, [registryEdit(next, block, data2)]);
+      } else if (op.type === "removeDefinition") {
+        if (!Object.hasOwn(data2.defs, op.id)) throw Error("Definition not found.");
+        const snapshot = scanSymbols(next);
+        if (snapshot.error) throw Error(snapshot.error);
+        const ids = new Set(Object.entries(data2.occ).filter(([, o]) => o.def === op.id).map(([id3]) => id3));
+        const edits2 = snapshot.marks.filter((m) => ids.has(m.id)).map((m) => ({ from: m.from, to: m.to, insert: m.body }));
+        for (const id3 of ids) delete data2.occ[id3];
+        delete data2.defs[op.id];
+        edits2.push(registryEdit(next, block, data2));
+        next = applyEdits(next, edits2);
+      } else if (op.type === "clear") {
+        const snapshot = scanSymbols(next);
+        if (snapshot.error) throw Error(snapshot.error);
+        const edits2 = snapshot.marks.map((m) => ({ from: m.from, to: m.to, insert: m.body }));
+        if (block) edits2.push({ from: block.from, to: block.to, insert: "" });
+        next = applyEdits(next, edits2);
+      } else if (op.type === "define") {
+        const candidates = equations(next).filter((q2) => next.slice(0, q2.from).split("\n").length === op.line);
+        if (candidates.length !== 1) throw Error("Choose a line containing exactly one equation opener.");
+        const q = candidates[0];
+        if (!op.target) throw Error("Give the exact symbol TeX.");
+        const hits = symbolTargetPositions(q.body, op.target);
+        if (!hits.length || hits.length > 1 && op.occurrence === void 0) throw Error("Symbol target is missing or ambiguous; provide its zero-based occurrence.");
+        const at = hits[op.occurrence ?? 0];
+        if (at === void 0) throw Error("Symbol occurrence not found.");
+        const snapshot = scanSymbols(next);
+        if (snapshot.error) throw Error(snapshot.error);
+        const id3 = freshId([...Object.keys(data2.occ), ...snapshot.marks.map((m) => m.id)]), defId = typeof op.definition === "string" ? op.definition : "d-" + freshId(Object.keys(data2.defs).map((k) => k.slice(2)));
+        const raw = q.raw.slice(0, q.bodyFrom - q.from + at) + wrapSymbol(id3, op.target) + q.raw.slice(q.bodyFrom - q.from + at + op.target.length);
+        const edits2 = await this.planEquationSave(path, next, q.from, q.to, q.raw, raw, { pending: [{ id: id3, def: defId, ...typeof op.definition === "string" ? {} : { definition: op.definition } }], decisions: {} });
+        next = applyEdits(next, edits2);
+      } else throw Error("Unknown symbol operation.");
+    }
+    let from = 0;
+    while (from < source.length && from < next.length && source[from] === next[from]) from++;
+    let oldEnd = source.length, newEnd = next.length;
+    while (oldEnd > from && newEnd > from && source[oldEnd - 1] === next[newEnd - 1]) {
+      oldEnd--;
+      newEnd--;
+    }
+    const edits = source === next ? [] : [{ from, to: oldEnd, insert: next.slice(from, newEnd) }];
+    const token = this.remember({ path, source, after: next, edits, expires: Date.now() + 6e5 });
+    return { token, edits, table: symbolProjection(scanSymbols(next)).definitions, conflicts: conflicts(registryBlock(next)?.data ?? emptyRegistry()) };
+  }
+  async apply(token) {
+    this.check();
+    const plan2 = this.plans.get(token);
+    if (!plan2 || plan2.expires < Date.now()) throw Error("Preview expired; preview the change again.");
+    this.plans.delete(token);
+    if (await this.source(plan2.path) !== plan2.source) throw Error("The note changed after preview. Preview again; nothing was written.");
+    const view = this.view(plan2.path);
+    if (view) {
+      const cm = view.editor.cm;
+      if (!cm) throw Error("Open the note in the native editor.");
+      const transaction = cm.state.update({ changes: plan2.edits, userEvent: "input.symbols" });
+      if (transaction.newDoc.toString() !== plan2.after) throw Error("The editor rejected the symbol change. Check protected anchors. Nothing was written.");
+      cm.dispatch(transaction);
+    } else {
+      const file = this.plugin.app.vault.getAbstractFileByPath(plan2.path);
+      if (!(file instanceof import_obsidian29.TFile)) throw Error("Note no longer exists.");
+      await this.plugin.app.vault.process(file, (current) => {
+        this.check(plan2.path);
+        if (current !== plan2.source) throw Error("The note changed; preview again.");
+        return plan2.after;
+      });
+    }
+    symbolStats.writes++;
+    this.onChanged(plan2.path);
+    const undoToken = this.remember({ path: plan2.path, source: plan2.after, after: plan2.source, edits: [{ from: 0, to: plan2.after.length, insert: plan2.source }], expires: Date.now() + 6e5 });
+    return { applied: true, undoToken, table: await this.table(plan2.path) };
+  }
+};
+
+// src/symbols/system.ts
+var VIEW3 = "study-symbols";
+var message = (e) => e instanceof Error ? e.message : String(e);
+function math(host, tex) {
+  try {
+    host.append((0, import_obsidian30.renderMath)(tex, false));
+  } catch {
+    host.setText(tex);
+  }
+}
+function button(host, label, action) {
+  const b = host.createEl("button", { text: label });
+  b.onclick = action;
+  return b;
+}
+var SymbolSystem = class {
+  constructor(plugin) {
+    this.plugin = plugin;
+    this.api = new SymbolApi(plugin);
+    this.api.onChanged = (path) => this.changed(path);
+    plugin.register(() => this.api.dispose());
+    window.__studySymbolsStats = symbolStats;
+    const documents = /* @__PURE__ */ new Map();
+    let alive = true;
+    const attach = (doc2) => {
+      if (!alive || documents.has(doc2)) return;
+      doc2.body.addClass("study-symbols-enabled");
+      const click = (event) => {
+        const target = event.target, tag = target.closest(".mjx-ss");
+        if (!tag || target.closest(".math-studio-host") || doc2.getSelection()?.toString()) return;
+        const id3 = Array.from(tag.classList).find((c) => /^mjx-ss-o-[0-9a-z]{10}$/.test(c))?.slice(9);
+        if (!id3) return;
+        const path = tag.dataset.studySymbolPath ?? plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian30.MarkdownView && v.contentEl.contains(tag))?.getState().file;
+        if (typeof path === "string") void this.snapshot(path).then((doc3) => this.open(path, doc3.block?.data.occ[id3]?.def));
+      };
+      doc2.addEventListener("click", click);
+      documents.set(doc2, () => {
+        doc2.removeEventListener("click", click);
+        doc2.body.removeClass("study-symbols-enabled");
+      });
+    };
+    plugin.registerEvent(plugin.app.workspace.on("window-open", (_container, win) => attach(win.document)));
+    plugin.registerEvent(plugin.app.workspace.on("window-close", (_container, win) => {
+      documents.get(win.document)?.();
+      documents.delete(win.document);
+    }));
+    plugin.app.workspace.onLayoutReady(() => {
+      attach(document);
+      plugin.app.workspace.iterateAllLeaves((l) => attach(l.view.containerEl.ownerDocument));
+    });
+    plugin.register(() => {
+      alive = false;
+      for (const dispose of documents.values()) dispose();
+      documents.clear();
+    });
+    plugin.registerMarkdownPostProcessor((el, ctx) => {
+      for (const mark of Array.from(el.querySelectorAll(".mjx-ss"))) mark.dataset.studySymbolPath = ctx.sourcePath;
+    });
+    plugin.registerView(VIEW3, (leaf) => {
+      const pane = new SymbolsView(leaf, this);
+      this.panes.add(pane);
+      return pane;
+    });
+    const system = this;
+    plugin.registerEditorExtension([symbolDocumentField, registryDecorationField, protectSymbolRegistry, import_view14.ViewPlugin.fromClass(class {
+      constructor(view) {
+        this.view = view;
+      }
+      timer;
+      destroy() {
+        clearTimeout(this.timer);
+      }
+      update(update) {
+        if (update.docChanged) {
+          clearTimeout(this.timer);
+          if (update.state.field(symbolDocumentField).dirty) this.timer = setTimeout(() => {
+            this.timer = void 0;
+            if (this.view.state.field(symbolDocumentField).dirty) this.view.dispatch({ effects: refreshSymbols.of(null) });
+          }, 400);
+        }
+        if (!update.docChanged && !update.transactions.some((t2) => t2.effects.some((e) => e.is(refreshSymbols)))) return;
+        const before = update.startState.field(symbolDocumentField), after = update.state.field(symbolDocumentField);
+        if (after.dirty) return;
+        if (before.block?.data === after.block?.data && before.error === after.error && before.dirty === after.dirty && before.marks.length === after.marks.length && before.marks.every((m, i) => m.id === after.marks[i].id && m.body === after.marks[i].body)) return;
+        const path = update.state.field(import_obsidian30.editorInfoField, false)?.file?.path;
+        if (path) system.changed(path);
+      }
+    })]);
+    plugin.registerEvent(plugin.app.workspace.on("active-leaf-change", (leaf) => {
+      if (leaf?.view instanceof import_obsidian30.MarkdownView && leaf.view.file) for (const pane of this.panes) pane.show(leaf.view.file.path);
+    }));
+    plugin.registerEvent(plugin.app.vault.on("modify", (file) => {
+      if (!(file instanceof import_obsidian30.TFile) || file.extension !== "md") return;
+      const editable2 = plugin.app.workspace.getLeavesOfType("markdown").some((l) => l.view instanceof import_obsidian30.MarkdownView && l.view.file?.path === file.path && l.view.getMode() === "source");
+      if (!editable2) this.changed(file.path);
+    }));
+    plugin.addCommand({ id: "show-symbol-registry-source", name: "Show symbol registry source", editorCallback: (editor) => {
+      const view = editor.cm;
+      if (view) revealSymbolRegistry(view);
+    } });
+    plugin.addCommand({ id: "open-symbols", name: "Open symbol definitions", callback: () => void this.open() });
+    plugin.registerMarkdownCodeBlockProcessor("study-symbols", (source, el, ctx) => {
+      const path = source.trim() || ctx.sourcePath;
+      let disposed = false, stamp = "";
+      const render = async () => {
+        try {
+          const doc2 = await this.snapshot(path);
+          if (disposed) return;
+          const key2 = JSON.stringify(doc2.block?.data ?? null);
+          if (key2 === stamp) return;
+          stamp = key2;
+          el.empty();
+          el.addClass("study-symbol-table");
+          if (doc2.error) {
+            el.setText(doc2.error);
+            return;
+          }
+          const entries = symbolProjection(doc2).definitions, table = el.createEl("table"), head = table.createEl("thead").createEl("tr");
+          for (const label of ["Symbol", "Meaning", "Units", "Code"]) head.createEl("th", { text: label });
+          const body = table.createEl("tbody");
+          for (const d of entries) {
+            const row = body.createEl("tr");
+            math(row.createEl("td"), d.tex);
+            row.createEl("td", { text: d.meaning });
+            row.createEl("td", { text: d.units });
+            const cell = row.createEl("td");
+            for (const c of d.code) {
+              const item = cell.createDiv();
+              item.createEl("small", { text: { python: "Python", wolfram: "Wolfram" }[c.lang] ?? c.lang });
+              item.appendText(" ");
+              item.createEl("code", { text: c.name });
+              if (c.scope) item.createEl("small", { text: " \xB7 " + c.scope });
+            }
+          }
+          if (!entries.length) el.createEl("p", { text: "No symbols defined in this note." });
+          (0, import_obsidian30.finishRenderMath)();
+        } catch (e) {
+          if (!disposed) el.setText(message(e));
+        }
+      };
+      const child = new import_obsidian30.MarkdownRenderChild(el);
+      ctx.addChild(child);
+      child.register(() => {
+        disposed = true;
+      });
+      child.registerEvent(plugin.app.workspace.on("study-symbols-changed", (p) => {
+        if (p === path) void render();
+      }));
+      void render();
+    });
+    plugin.register(() => {
+      for (const pane of this.panes) pane.stop();
+      this.panes.clear();
+    });
+  }
+  api;
+  panes = /* @__PURE__ */ new Set();
+  changed(path) {
+    for (const pane of this.panes) if (pane.path === path) pane.schedule();
+    this.plugin.app.workspace.trigger("study-symbols-changed", path);
+  }
+  forget(pane) {
+    this.panes.delete(pane);
+  }
+  async snapshot(path) {
+    for (const leaf of this.plugin.app.workspace.getLeavesOfType("markdown")) {
+      const view = leaf.view;
+      if (view instanceof import_obsidian30.MarkdownView && view.file?.path === path && view.getMode() === "source") {
+        const state = view.editor.cm?.state;
+        if (state?.field(symbolDocumentField, false)) {
+          if (state.field(symbolDocumentField).dirty) {
+            symbolStats.fullTextReads++;
+            return scanSymbols(state.doc.toString());
+          }
+          return state.field(symbolDocumentField);
+        }
+      }
+    }
+    const file = this.plugin.app.vault.getAbstractFileByPath(path);
+    if (!(file instanceof import_obsidian30.TFile)) throw Error("Note not found.");
+    symbolStats.fullTextReads++;
+    return scanSymbols(await this.plugin.app.vault.cachedRead(file));
+  }
+  async open(path, id3) {
+    const file = path ?? this.plugin.app.workspace.getActiveFile()?.path;
+    if (!file) {
+      new import_obsidian30.Notice("Open a note first.");
+      return;
+    }
+    const leaf = this.plugin.app.workspace.getLeavesOfType(VIEW3)[0] ?? this.plugin.app.workspace.getRightLeaf(false);
+    if (!leaf) return;
+    await leaf.setViewState({ type: VIEW3, active: true });
+    this.plugin.app.workspace.revealLeaf(leaf);
+    const view = leaf.view;
+    await view.show(file, id3);
+  }
+  async jump(path, id3, index2 = 0) {
+    const doc2 = await this.snapshot(path), hit = doc2.marks.filter((m) => m.id === id3)[index2];
+    if (!hit) {
+      new import_obsidian30.Notice("This occurrence is currently missing. Its definition is retained.");
+      return;
+    }
+    const file = this.plugin.app.vault.getAbstractFileByPath(path);
+    if (!(file instanceof import_obsidian30.TFile)) return;
+    const leaf = this.plugin.app.workspace.getLeaf(false);
+    await leaf.openFile(file, { state: { mode: "source" } });
+    const view = leaf.view;
+    view.editor.setSelection(view.editor.offsetToPos(hit.bodyFrom), view.editor.offsetToPos(hit.bodyTo));
+    view.editor.scrollIntoView({ from: view.editor.offsetToPos(hit.from), to: view.editor.offsetToPos(hit.to) }, true);
+  }
+};
+async function registerSymbolSystem(plugin) {
+  const path = plugin.manifest.dir + "/symbol-settings.json";
+  let enabled = true;
+  if (await plugin.app.vault.adapter.exists(path)) {
+    const saved = JSON.parse(await plugin.app.vault.adapter.read(path));
+    enabled = saved.enabled !== false;
+  }
+  class SymbolSettings extends import_obsidian30.PluginSettingTab {
+    display() {
+      this.containerEl.empty();
+      this.containerEl.createEl("h2", { text: "Symbol annotations" });
+      new import_obsidian30.Setting(this.containerEl).setName("Enable symbol definitions").setDesc("Portable symbol tags and their generated tables. Reload Study Studio to apply this setting.").addToggle((t2) => t2.setValue(enabled).onChange(async (value) => {
+        enabled = value;
+        await plugin.app.vault.adapter.write(path, JSON.stringify({ enabled }, null, 2));
+        new import_obsidian30.Notice("Reload Study Studio to apply the symbol setting.");
+      }));
+    }
+  }
+  plugin.addSettingTab(new SymbolSettings(plugin.app, plugin));
+  return enabled ? new SymbolSystem(plugin) : void 0;
+}
+var SymbolsView = class extends import_obsidian30.ItemView {
+  constructor(leaf, system) {
+    super(leaf);
+    this.system = system;
+  }
+  path = "";
+  timer;
+  signature = "";
+  selected;
+  editing = false;
+  epoch = 0;
+  getViewType() {
+    return VIEW3;
+  }
+  getDisplayText() {
+    return "Symbols";
+  }
+  getIcon() {
+    return "tags";
+  }
+  async onOpen() {
+    this.contentEl.addClass("study-symbols-panel");
+    const path = this.app.workspace.getActiveFile()?.path;
+    if (path) await this.show(path);
+  }
+  async onClose() {
+    this.stop();
+    this.system.forget(this);
+  }
+  stop() {
+    if (this.timer !== void 0) window.clearTimeout(this.timer);
+    this.timer = void 0;
+    this.epoch++;
+  }
+  async show(path, id3) {
+    if (this.editing && path !== this.path) return;
+    if (path !== this.path) {
+      this.path = path;
+      this.signature = "";
+    }
+    this.selected = id3;
+    await this.render();
+  }
+  schedule() {
+    if (this.timer !== void 0 || this.editing) return;
+    this.timer = window.setTimeout(() => {
+      this.timer = void 0;
+      void this.render();
+    }, 250);
+  }
+  async render() {
+    if (!this.path || this.editing) return;
+    const epoch = ++this.epoch;
+    try {
+      const doc2 = await this.system.snapshot(this.path);
+      if (epoch !== this.epoch) return;
+      const projection = symbolProjection(doc2), stamp = JSON.stringify([doc2.block?.data, doc2.marks.map((m) => [m.id, m.body]), doc2.error]);
+      if (stamp === this.signature && !this.selected) return;
+      this.signature = stamp;
+      this.contentEl.empty();
+      const head = this.contentEl.createDiv({ cls: "study-symbols-header" });
+      head.createEl("strong", { text: this.path.split("/").pop()?.replace(/\.md$/, "") ?? "Symbols" });
+      head.createEl("small", { text: projection.definitions.length + " definitions" });
+      if (doc2.error) {
+        this.contentEl.createEl("p", { text: doc2.error, cls: "study-symbols-error" });
+        return;
+      }
+      const search = this.contentEl.createEl("input", { type: "search", placeholder: "Find a symbol or meaning\u2026" });
+      search.setAttribute("aria-label", "Find symbol definitions");
+      const rows = this.contentEl.createDiv();
+      const renderRows = () => {
+        rows.empty();
+        const query = search.value.trim().toLocaleLowerCase(), items = projection.definitions.filter((d) => [d.tex, d.meaning, ...d.code.map((c) => c.name)].join(" ").toLocaleLowerCase().includes(query));
+        for (const d of items.slice(0, 100)) this.row(rows, d);
+        if (items.length > 100) rows.createEl("p", { text: "Showing 100 definitions. Narrow the search to find the rest." });
+        if (!items.length) rows.createEl("p", { text: projection.definitions.length ? "No matching definitions." : "Select a symbol in Math Studio and choose Tag symbol. Its definition and generated table will stay together." });
+        (0, import_obsidian30.finishRenderMath)();
+      };
+      search.oninput = renderRows;
+      renderRows();
+      const issues = conflicts(projection.data);
+      for (const issue of issues) this.contentEl.createEl("p", { cls: "study-symbols-warning", text: issue.message });
+      if (projection.unregistered.length) this.contentEl.createEl("p", { cls: "study-symbols-warning", text: projection.unregistered.length + " tags have no local definition. Link them in Math Studio." });
+      if (this.selected) {
+        rows.querySelector(`[data-symbol-id="${this.selected}"]`)?.scrollIntoView({ block: "nearest" });
+        this.selected = void 0;
+      }
+    } catch (e) {
+      if (epoch === this.epoch) this.contentEl.setText(message(e));
+    }
+  }
+  row(host, d) {
+    const row = host.createDiv({ cls: "study-symbol-entry" });
+    row.dataset.symbolId = d.id;
+    const heading2 = row.createDiv({ cls: "study-symbol-entry-heading" });
+    math(heading2.createSpan({ cls: "study-symbol-glyph" }), d.tex);
+    button(heading2, "Edit", () => this.edit(row, d));
+    row.createEl("p", { text: d.meaning });
+    if (d.units) {
+      const units = row.createDiv({ cls: "study-symbol-units" });
+      units.createSpan({ text: "Units " });
+      units.appendText(d.units);
+    }
+    for (const c of d.code) {
+      const line = row.createDiv({ cls: "study-symbol-code" });
+      line.createSpan({ text: c.lang + " " });
+      line.createEl("code", { text: c.name });
+      if (c.scope) line.createEl("small", { text: " \xB7 " + c.scope });
+    }
+    const locations = row.createDiv({ cls: "study-symbol-locations" });
+    const live = d.occurrences.filter((o) => !o.orphan), orphans = d.occurrences.filter((o) => o.orphan);
+    if (live.length) {
+      let index2 = 0;
+      const select = locations.createEl("select");
+      select.setAttribute("aria-label", "Go to symbol occurrence");
+      select.createEl("option", { text: "Go to occurrence\u2026", value: "" });
+      for (const occurrence of live) for (let n = 0; n < occurrence.locations.length; n++) {
+        const option = select.createEl("option", { text: "Occurrence " + ++index2, value: occurrence.id + ":" + n });
+      }
+      select.onchange = () => {
+        if (!select.value) return;
+        const [id3, n] = select.value.split(":");
+        void this.system.jump(this.path, id3, Number(n));
+        select.value = "";
+      };
+    }
+    if (orphans.length || !d.occurrences.length) locations.createSpan({ text: orphans.length ? orphans.length + " missing \xB7 retained" : "No occurrence \xB7 retained" });
+    if (d.occurrences.some((o) => o.locations.length > 1)) row.createEl("small", { text: "A copied tag shares an ID. Separate it in Math Studio.", cls: "study-symbols-warning" });
+  }
+  edit(row, entry) {
+    this.editing = true;
+    row.empty();
+    const d = clone(entry);
+    const fields = {};
+    for (const [key2, label] of [["meaning", "Meaning"], ["units", "Units"], ["concept", "Concept key"]]) {
+      const l = row.createEl("label", { text: label });
+      const input = key2 === "meaning" ? l.createEl("textarea") : l.createEl("input");
+      input.value = d[key2] ?? "";
+      fields[key2] = input;
+    }
+    const code = row.createDiv(), codeInputs = [];
+    const add = (language2 = "", name2 = "", scope = "") => {
+      const line = code.createDiv({ cls: "study-symbol-code-edit" }), lang = line.createEl("input", { placeholder: "Language" }), n = line.createEl("input", { placeholder: "Code name" }), s = line.createEl("input", { placeholder: "Scope (optional)" });
+      lang.value = language2;
+      n.value = name2;
+      s.value = scope;
+      codeInputs.push({ lang, name: n, scope: s });
+    };
+    for (const c of d.code) add(c.lang, c.name, c.scope);
+    button(row, "Add code name", () => add());
+    const error = row.createDiv({ cls: "study-symbols-error" }), footer = row.createDiv({ cls: "study-symbol-edit-actions" });
+    button(footer, "Cancel", () => {
+      this.editing = false;
+      this.signature = "";
+      void this.render();
+    });
+    const save = button(footer, "Save", () => void (async () => {
+      save.disabled = true;
+      try {
+        const definition = { tex: d.tex, meaning: fields.meaning.value.trim(), units: fields.units.value.trim(), ...fields.concept.value.trim() ? { concept: fields.concept.value.trim() } : {}, code: codeInputs.filter((c) => c.lang.value.trim() || c.name.value.trim()).map((c) => ({ lang: c.lang.value.trim(), name: c.name.value.trim(), ...c.scope.value.trim() ? { scope: c.scope.value.trim() } : {} })) };
+        const plan2 = await this.system.api.preview(this.path, [{ type: "updateDefinition", id: entry.id, definition }]);
+        await this.system.api.apply(plan2.token);
+        this.editing = false;
+        this.signature = "";
+        await this.render();
+      } catch (e) {
+        error.setText(message(e));
+        save.disabled = false;
+      }
+    })());
+    save.addClass("mod-cta");
+    const remove2 = button(footer, "Delete definition", () => {
+      error.empty();
+      error.appendText("Remove this definition and its tags from this note? The equation text stays. ");
+      const confirm = button(error, "Delete", () => void (async () => {
+        confirm.disabled = true;
+        try {
+          const plan2 = await this.system.api.preview(this.path, [{ type: "removeDefinition", id: entry.id }]);
+          await this.system.api.apply(plan2.token);
+          this.editing = false;
+          this.signature = "";
+          await this.render();
+        } catch (e) {
+          error.setText(message(e));
+        }
+      })());
+      button(error, "Cancel", () => error.empty());
+    });
+    remove2.addClass("mod-warning");
+    fields.meaning.focus();
+  }
+};
+
+// src/reference-gutters.ts
+var import_obsidian31 = require("obsidian");
 
 // src/reading-readiness.ts
 var cachedText = "";
@@ -41672,7 +43031,7 @@ function registerReferenceGutters(plugin, store) {
   });
   plugin.registerEvent(plugin.app.vault.on("modify", (file) => schedule(file.path)));
   const previews = /* @__PURE__ */ new Map();
-  class Section extends import_obsidian27.MarkdownRenderChild {
+  class Section extends import_obsidian31.MarkdownRenderChild {
     constructor(el, ctx) {
       super(el);
       this.ctx = ctx;
@@ -41751,6 +43110,15 @@ function registerReferenceGutters(plugin, store) {
       if (!readingSectionReady(info)) {
         this.later();
         return;
+      }
+      {
+        const bounds = readingSectionBounds(info, this.ctx.sourcePath), section = info.text.slice(bounds.from, bounds.to);
+        if (isSymbolRegistrySection(section)) {
+          this.gutter?.remove();
+          this.gutter = void 0;
+          el.classList.remove("study-reference-section");
+          return;
+        }
       }
       this.attempt = 0;
       const line = info.lineStart === info.lineEnd ? String(info.lineStart + 1) : `${info.lineStart + 1}\u2013${info.lineEnd + 1}`;
@@ -41875,9 +43243,9 @@ function orderedScripts(text2) {
         result += marker === "_" ? "_" + first.value + "^" + second.value : "_" + second.value + "^" + first.value;
       } else result += marker + first.value;
     } else if (text2[i] === "{") {
-      const group = argument(i);
-      result += group.value;
-      i = group.end;
+      const group2 = argument(i);
+      result += group2.value;
+      i = group2.end;
     } else result += text2[i++];
   }
   return result;
@@ -41895,8 +43263,8 @@ function annotationMatchesSearch(c, rawQuery) {
   ])];
   if (fields.some((s) => s.toLocaleLowerCase().includes(query))) return true;
   if (rawQuery.trim().startsWith('"') || !/[\\$^_{}′]/.test(query)) return false;
-  const math = normalizeSearchMath(query);
-  return !!math && fields.some((s) => normalizeSearchMath(s).includes(math));
+  const math2 = normalizeSearchMath(query);
+  return !!math2 && fields.some((s) => normalizeSearchMath(s).includes(math2));
 }
 
 // src/resize-annotation.ts
@@ -41917,7 +43285,7 @@ function resizePlainAnnotation(source, anchors, from, to) {
   }
   prose += source.slice(at, endRange);
   if (/[$*_`\[\]<>\\=~]/.test(prose)) throw Error("This formatting cannot yet be mapped safely for dragging.");
-  return [{ ...a2, kind: void 0, sectionSource: void 0, quote: source.slice(from, to), before: source.slice(Math.max(0, from - 48), from), after: source.slice(to, to + 48), renderedQuote: void 0, renderedBefore: void 0, renderedAfter: void 0, renderedRoot: void 0 }];
+  return [ordinaryAnchor(source, { ...a2, kind: void 0, sectionSource: void 0, quote: source.slice(from, to), before: source.slice(Math.max(0, from - 48), from), after: source.slice(to, to + 48), renderedQuote: void 0, renderedBefore: void 0, renderedAfter: void 0, renderedRoot: void 0 }, { from, to })];
 }
 
 // src/extend-annotation.ts
@@ -41980,19 +43348,19 @@ function extendAnnotation(source, existing, selection) {
   let start = from;
   for (const match of union.matchAll(/\n\s*\n/g)) {
     const end = from + match.index;
-    if (source.slice(start, end).trim()) pieces.push({ ...merged, id: pieces.length ? crypto.randomUUID() : a2.id, quote: source.slice(start, end), before: source.slice(Math.max(0, start - 48), start), after: source.slice(end, end + 48) });
+    if (source.slice(start, end).trim()) pieces.push(ordinaryAnchor(source, { ...merged, id: pieces.length ? crypto.randomUUID() : a2.id, quote: source.slice(start, end), before: source.slice(Math.max(0, start - 48), start), after: source.slice(end, end + 48) }, { from: start, to: end }));
     start = from + match.index + match[0].length;
   }
-  if (source.slice(start, to).trim()) pieces.push({ ...merged, id: pieces.length ? crypto.randomUUID() : a2.id, quote: source.slice(start, to), before: source.slice(Math.max(0, start - 48), start), after: source.slice(to, to + 48) });
+  if (source.slice(start, to).trim()) pieces.push(ordinaryAnchor(source, { ...merged, id: pieces.length ? crypto.randomUUID() : a2.id, quote: source.slice(start, to), before: source.slice(Math.max(0, start - 48), start), after: source.slice(to, to + 48) }, { from: start, to }));
   return existing.flatMap((a3, i) => i === first ? pieces : included.has(i) ? [] : [{ ...a3 }]);
 }
 
 // src/margin-view.ts
-var import_obsidian28 = require("obsidian");
-var VIEW3 = "study-margin-notes";
+var import_obsidian32 = require("obsidian");
+var VIEW4 = "study-margin-notes";
 function recentMarkdownPath(app) {
-  const active = app.workspace.getActiveViewOfType(import_obsidian28.MarkdownView), recent = app.workspace.getMostRecentLeaf()?.view, file = app.workspace.getActiveFile();
-  return active?.file?.path ?? (recent instanceof import_obsidian28.MarkdownView ? recent.file?.path : void 0) ?? (file?.extension === "md" ? file.path : void 0) ?? app.workspace.getLeavesOfType("markdown").find((l) => l.view instanceof import_obsidian28.MarkdownView && l.view.file)?.view?.file?.path;
+  const active = app.workspace.getActiveViewOfType(import_obsidian32.MarkdownView), recent = app.workspace.getMostRecentLeaf()?.view, file = app.workspace.getActiveFile();
+  return active?.file?.path ?? (recent instanceof import_obsidian32.MarkdownView ? recent.file?.path : void 0) ?? (file?.extension === "md" ? file.path : void 0) ?? app.workspace.getLeavesOfType("markdown").find((l) => l.view instanceof import_obsidian32.MarkdownView && l.view.file)?.view?.file?.path;
 }
 var MarginNotes = class {
   constructor(plugin, store) {
@@ -42009,7 +43377,7 @@ var MarginNotes = class {
   draftStorageBlocked = false;
   revealer;
   busy(id3) {
-    return this.draftStorageBlocked || this.drafts.has(id3) || this.plugin.app.workspace.getLeavesOfType(VIEW3).some((l) => l.view instanceof MarginView && l.view.annotationBusy(id3));
+    return this.draftStorageBlocked || this.drafts.has(id3) || this.plugin.app.workspace.getLeavesOfType(VIEW4).some((l) => l.view instanceof MarginView && l.view.annotationBusy(id3));
   }
   get draftPath() {
     return `${this.plugin.app.vault.configDir}/study-studio-margin-drafts.json`;
@@ -42021,7 +43389,7 @@ var MarginNotes = class {
         for (const d of raw.drafts ?? []) if (validComment(d)) this.drafts.set(d.id, d);
       } catch {
         this.draftStorageBlocked = true;
-        new import_obsidian28.Notice("Margin drafts could not be read. The original draft file was preserved.");
+        new import_obsidian32.Notice("Margin drafts could not be read. The original draft file was preserved.");
       }
     }
   }
@@ -42037,7 +43405,7 @@ var MarginNotes = class {
     const raw = JSON.stringify({ version: 1, drafts: [...this.drafts.values()] }, null, 2);
     this.pending = this.pending.catch(() => {
     }).then(() => this.plugin.app.vault.adapter.write(this.draftPath, raw));
-    void this.pending.catch((e) => new import_obsidian28.Notice("Margin draft could not be saved: " + String(e)));
+    void this.pending.catch((e) => new import_obsidian32.Notice("Margin draft could not be saved: " + String(e)));
   }
   async open(anchor, editing = false, flash = false) {
     const app = this.plugin.app;
@@ -42052,10 +43420,10 @@ var MarginNotes = class {
         this.persist();
       }
     }
-    let leaf = app.workspace.getLeavesOfType(VIEW3)[0];
+    let leaf = app.workspace.getLeavesOfType(VIEW4)[0];
     if (!leaf) {
       leaf = app.workspace.getRightLeaf(false);
-      await leaf.setViewState({ type: VIEW3, active: true });
+      await leaf.setViewState({ type: VIEW4, active: true });
     }
     await app.workspace.revealLeaf(leaf);
     const view = leaf.view;
@@ -42064,12 +43432,12 @@ var MarginNotes = class {
   add(anchors) {
     const c = this.drafts.get(this.selected) ?? this.store.data.comments.find((c2) => c2.id === this.selected);
     if (!c) {
-      new import_obsidian28.Notice("Select a margin note before adding another excerpt.");
+      new import_obsidian32.Notice("Select a margin note before adding another excerpt.");
       void this.open();
       return;
     }
     if (c.code || c.study) {
-      new import_obsidian28.Notice("Code annotations accept code selections only.");
+      new import_obsidian32.Notice("Code annotations accept code selections only.");
       return;
     }
     const next = excerpts(c).map((a2) => ({ ...a2 }));
@@ -42083,7 +43451,7 @@ var MarginNotes = class {
       const c = this.store.data.comments.find((c2) => c2.id === id3);
       if (!c || c.code || c.study || JSON.stringify(c) !== snapshot || this.drafts.has(id3)) throw Error("The annotation changed or has an unsaved draft. Finish that edit before resizing.");
       const file = this.plugin.app.vault.getAbstractFileByPath(excerpts(c)[0]?.path ?? c.path);
-      if (!(file instanceof import_obsidian28.TFile) || await this.plugin.app.vault.read(file) !== source) throw Error("The paper changed while dragging. Select the annotation again.");
+      if (!(file instanceof import_obsidian32.TFile) || await this.plugin.app.vault.read(file) !== source) throw Error("The paper changed while dragging. Select the annotation again.");
       if (JSON.stringify(this.store.data.comments.find((c2) => c2.id === id3)) !== snapshot || this.drafts.has(id3)) throw Error("The annotation changed while dragging.");
       const next = withExcerpts({ ...c }, resizePlainAnnotation(source, excerpts(c), from, to));
       const saved = { ...next, updated: (/* @__PURE__ */ new Date()).toISOString() }, index2 = this.store.data.comments.findIndex((c2) => c2.id === id3);
@@ -42098,24 +43466,24 @@ var MarginNotes = class {
         }
         throw error;
       }
-      new import_obsidian28.Notice("Annotation resized.");
+      new import_obsidian32.Notice("Annotation resized.");
     } catch (e) {
-      new import_obsidian28.Notice(String(e));
+      new import_obsidian32.Notice(String(e));
     }
   }
   async extend(anchors) {
     const c = this.drafts.get(this.selected) ?? this.store.data.comments.find((c2) => c2.id === this.selected);
     if (!c || c.code || c.study || c.kind === "sticky" || c.deletedAt || c.resolved) {
-      new import_obsidian28.Notice("Select an active highlight, underline or text-color annotation in the margin first.");
+      new import_obsidian32.Notice("Select an active highlight, underline or text-color annotation in the margin first.");
       return;
     }
     try {
       const path = anchors[0]?.path, file = this.plugin.app.vault.getAbstractFileByPath(path ?? "");
-      if (!(file instanceof import_obsidian28.TFile)) throw Error("The selected source is unavailable.");
+      if (!(file instanceof import_obsidian32.TFile)) throw Error("The selected source is unavailable.");
       const snapshot = JSON.stringify(c), source = await this.plugin.app.vault.read(file);
       const current = this.drafts.get(c.id) ?? this.store.data.comments.find((x) => x.id === c.id);
       if (JSON.stringify(current) !== snapshot) throw Error("The annotation changed while extending it. Please select the passage again.");
-      const opened = this.plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view).filter((v) => v instanceof import_obsidian28.MarkdownView && v.file?.path === path);
+      const opened = this.plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view).filter((v) => v instanceof import_obsidian32.MarkdownView && v.file?.path === path);
       if (opened.some((v) => v.getMode() === "source" && v.editor.getValue() !== source)) throw Error("Wait for the source note to save before extending its annotation.");
       const next = extendAnnotation(source, excerpts(c), anchors);
       const draft = withExcerpts({ ...c }, next);
@@ -42123,9 +43491,9 @@ var MarginNotes = class {
       this.persist();
       await this.save(draft);
       await this.open(draft);
-      new import_obsidian28.Notice("Annotation extended.");
+      new import_obsidian32.Notice("Annotation extended.");
     } catch (e) {
-      new import_obsidian28.Notice(String(e));
+      new import_obsidian32.Notice(String(e));
     }
   }
   async save(d) {
@@ -42162,14 +43530,14 @@ var MarginNotes = class {
       return;
     }
     const app = this.plugin.app, file = app.vault.getAbstractFileByPath(c.path);
-    if (!(file instanceof import_obsidian28.TFile)) {
-      new import_obsidian28.Notice("The source note is unavailable.");
+    if (!(file instanceof import_obsidian32.TFile)) {
+      new import_obsidian32.Notice("The source note is unavailable.");
       return;
     }
     const existing = marginSourceLeaf(app.workspace, c.path), opened = existing?.view;
     const raw = opened?.getMode() === "source" ? opened.editor.getValue() : await app.vault.cachedRead(file), hits = embeddedStickyStarts(raw, c.id);
     if (hits.length !== 1) {
-      new import_obsidian28.Notice(hits.length ? "This post-it appears more than once in the source note." : "The post-it placement is no longer in the source note.");
+      new import_obsidian32.Notice(hits.length ? "This post-it appears more than once in the source note." : "The post-it placement is no longer in the source note.");
       return;
     }
     await this.revealer.reveal(c.path, raw, hits[0], hits[0], true);
@@ -42177,34 +43545,34 @@ var MarginNotes = class {
   /** Sidecar post-its open at their placement without selecting or editing source text. */
   async jumpPlacement(path, p) {
     const app = this.plugin.app, file = app.vault.getAbstractFileByPath(path);
-    if (!(file instanceof import_obsidian28.TFile)) {
-      new import_obsidian28.Notice("The source note is unavailable.");
+    if (!(file instanceof import_obsidian32.TFile)) {
+      new import_obsidian32.Notice("The source note is unavailable.");
       return;
     }
     const existing = marginSourceLeaf(app.workspace, path), opened = existing?.view;
     const raw = opened?.getMode() === "source" ? opened.editor.getValue() : await app.vault.cachedRead(file), end = locatePlacement(raw, p);
     if (end === void 0) {
-      new import_obsidian28.Notice("The post-it placement has changed or is ambiguous. The note remains in the margin.");
+      new import_obsidian32.Notice("The post-it placement has changed or is ambiguous. The note remains in the margin.");
       return;
     }
     await this.revealer.reveal(path, raw, end, end, true);
   }
   async jump(a2) {
     const app = this.plugin.app, file = app.vault.getAbstractFileByPath(a2.path);
-    if (!(file instanceof import_obsidian28.TFile)) {
-      new import_obsidian28.Notice("The source note is unavailable.");
+    if (!(file instanceof import_obsidian32.TFile)) {
+      new import_obsidian32.Notice("The source note is unavailable.");
       return;
     }
     const opened = marginSourceLeaf(app.workspace, a2.path)?.view;
     const raw = opened?.getMode() === "source" ? opened.editor.getValue() : await app.vault.cachedRead(file), at = marginLocation(raw, a2);
     if (!at) {
-      new import_obsidian28.Notice("The excerpt has changed or is ambiguous. Its saved quotation remains in the margin note.");
+      new import_obsidian32.Notice("The excerpt has changed or is ambiguous. Its saved quotation remains in the margin note.");
       return;
     }
     await this.revealer.reveal(a2.path, raw, at.from, at.to, true);
   }
 };
-var MarginView = class extends import_obsidian28.ItemView {
+var MarginView = class extends import_obsidian32.ItemView {
   constructor(leaf, notes) {
     super(leaf);
     this.notes = notes;
@@ -42248,7 +43616,7 @@ var MarginView = class extends import_obsidian28.ItemView {
       while (this.sourceAgain && !this.closed) {
         this.sourceAgain = false;
         const path = this.notes.file, file = this.app.vault.getAbstractFileByPath(path);
-        if (!(file instanceof import_obsidian28.TFile)) continue;
+        if (!(file instanceof import_obsidian32.TFile)) continue;
         const opened = marginSourceLeaf(this.app.workspace, path)?.view, text2 = opened?.getMode() === "source" ? opened.editor.getValue() : await this.app.vault.cachedRead(file);
         const bridge = this.app.plugins.plugins["code-links"], epoch = this.bridgeEpoch, same2 = path === this.sourcePath && text2 === this.sourceText;
         if (path !== this.notes.file || same2 && bridge === this.sourceBridge && this.embedsComplete) continue;
@@ -42307,7 +43675,7 @@ var MarginView = class extends import_obsidian28.ItemView {
   showResolved = false;
   style;
   getViewType() {
-    return VIEW3;
+    return VIEW4;
   }
   getDisplayText() {
     return "Margin notes";
@@ -42345,7 +43713,7 @@ var MarginView = class extends import_obsidian28.ItemView {
     this.visibilityLink = this.contentEl.createEl("a", { cls: "study-margin-ordinary-toggle", href: "#" });
     this.visibilityLink.onclick = (e) => {
       e.preventDefault();
-      void this.notes.store.setVisibility({ ...this.notes.store.visibility, hideOrdinary: !this.notes.store.visibility.hideOrdinary }).catch((e2) => new import_obsidian28.Notice(String(e2)));
+      void this.notes.store.setVisibility({ ...this.notes.store.visibility, hideOrdinary: !this.notes.store.visibility.hideOrdinary }).catch((e2) => new import_obsidian32.Notice(String(e2)));
     };
     const visibility = new VisibilityControls(this.contentEl, this.notes.store);
     this.register(() => visibility.destroy());
@@ -42359,7 +43727,7 @@ var MarginView = class extends import_obsidian28.ItemView {
         if (card) {
           this.select(card.dataset.marginId);
           this.focusSelected(true);
-        } else new import_obsidian28.Notice("No annotation with that number in this note.");
+        } else new import_obsidian32.Notice("No annotation with that number in this note.");
       }
     };
     this.filter = this.toolbar.createEl("select", { attr: { "aria-label": "Filter margin note type" } });
@@ -42391,7 +43759,7 @@ var MarginView = class extends import_obsidian28.ItemView {
       if (this.closed) return;
       this.bridgeEpoch++;
       this.embedsComplete = false;
-      void this.source().catch((e) => new import_obsidian28.Notice(String(e)));
+      void this.source().catch((e) => new import_obsidian32.Notice(String(e)));
     };
     this.registerEvent(this.app.workspace.on("code-links-ready", ready));
     this.app.workspace.onLayoutReady(ready);
@@ -42402,10 +43770,10 @@ var MarginView = class extends import_obsidian28.ItemView {
       if (file?.extension === "md") {
         this.notes.file = file.path;
         this.update();
-        void this.source().catch((e) => new import_obsidian28.Notice("Could not read annotation source: " + String(e)));
+        void this.source().catch((e) => new import_obsidian32.Notice("Could not read annotation source: " + String(e)));
       }
     }));
-    this.registerDomEvent(this.contentEl.ownerDocument.defaultView, "focus", () => void this.notes.store.refresh().catch((e) => new import_obsidian28.Notice(String(e))));
+    this.registerDomEvent(this.contentEl.ownerDocument.defaultView, "focus", () => void this.notes.store.refresh().catch((e) => new import_obsidian32.Notice(String(e))));
     this.contentEl.addEventListener("keydown", (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
         e.preventDefault();
@@ -42417,10 +43785,10 @@ var MarginView = class extends import_obsidian28.ItemView {
         this.query.focus();
       }
     });
-    const refreshSource = () => void this.source().catch((e) => new import_obsidian28.Notice("Could not read annotation source: " + String(e)));
+    const refreshSource = () => void this.source().catch((e) => new import_obsidian32.Notice("Could not read annotation source: " + String(e)));
     this.registerEvent(this.app.workspace.on("active-leaf-change", (leaf) => {
       const view = leaf?.view;
-      if (view instanceof import_obsidian28.MarkdownView && view.file) {
+      if (view instanceof import_obsidian32.MarkdownView && view.file) {
         if (view.file.path !== this.notes.file) {
           this.notes.file = view.file.path;
           this.update();
@@ -42433,10 +43801,10 @@ var MarginView = class extends import_obsidian28.ItemView {
       if (view.file?.path === this.notes.file) refreshSource();
     }));
     this.registerEvent(this.app.vault.on("modify", (file) => {
-      if (file.path === this.notes.file) void this.source().catch((e) => new import_obsidian28.Notice("Could not read annotation source: " + String(e)));
+      if (file.path === this.notes.file) void this.source().catch((e) => new import_obsidian32.Notice("Could not read annotation source: " + String(e)));
     }));
     this.update();
-    void this.source().catch((e) => new import_obsidian28.Notice("Could not read annotation source: " + String(e)));
+    void this.source().catch((e) => new import_obsidian32.Notice("Could not read annotation source: " + String(e)));
   }
   async onClose() {
     this.closed = true;
@@ -42456,10 +43824,10 @@ var MarginView = class extends import_obsidian28.ItemView {
   select(id3) {
     this.notes.selected = id3;
     for (const [key2, c] of this.cards) c.el.classList.toggle("is-selected", key2 === id3);
-    const escaped2 = CSS.escape(id3);
+    const escaped3 = CSS.escape(id3);
     if (this.style && this.selectedStyle !== id3) {
       this.selectedStyle = id3;
-      this.style.textContent = escaped2 ? `[data-study-comment-ids~="${escaped2}"],[data-study-reading-comment="${escaped2}"],[data-critique-id="${escaped2}"],[data-study-math-ids~="${escaped2}"]{outline:1px solid var(--interactive-accent);outline-offset:2px;}` : "";
+      this.style.textContent = escaped3 ? `[data-study-comment-ids~="${escaped3}"],[data-study-reading-comment="${escaped3}"],[data-critique-id="${escaped3}"],[data-study-math-ids~="${escaped3}"]{outline:1px solid var(--interactive-accent);outline-offset:2px;}` : "";
     }
     this.viewport?.schedule();
   }
@@ -42504,21 +43872,21 @@ var MarginView = class extends import_obsidian28.ItemView {
     } catch (e) {
       failed = true;
       this.cards.get(id3)?.status.setText("Save failed \xB7 draft kept");
-      new import_obsidian28.Notice(String(e));
+      new import_obsidian32.Notice(String(e));
     } finally {
       this.saving.delete(id3);
       if (!failed && this.notes.drafts.has(id3) && this.cards.has(id3)) this.schedule(id3);
     }
   }
   paneMenu(e) {
-    const menu = new import_obsidian28.Menu();
+    const menu = new import_obsidian32.Menu();
     this.notes.store.addVisibilityMenu(menu, { x: e.clientX, y: e.clientY });
     menu.addItem((i) => i.setTitle("New margin note").setIcon("plus").onClick(() => {
       if (this.notes.file) void this.notes.open({ path: this.notes.file, quote: "", before: "", after: "" });
     })).addItem((i) => i.setTitle(this.showResolved ? "Hide resolved notes" : "Show resolved notes").onClick(() => {
       this.showResolved = !this.showResolved;
       this.update();
-    })).addItem((i) => i.setTitle("Undo last note deletion").setIcon("undo").onClick(() => void this.restoreNote())).addItem((i) => i.setTitle("Refresh notes from disk").setIcon("refresh-cw").onClick(() => void this.notes.store.refresh().catch((e2) => new import_obsidian28.Notice(String(e2))))).addItem((i) => i.setTitle("Color meanings\u2026").onClick(() => {
+    })).addItem((i) => i.setTitle("Undo last note deletion").setIcon("undo").onClick(() => void this.restoreNote())).addItem((i) => i.setTitle("Refresh notes from disk").setIcon("refresh-cw").onClick(() => void this.notes.store.refresh().catch((e2) => new import_obsidian32.Notice(String(e2))))).addItem((i) => i.setTitle("Color meanings\u2026").onClick(() => {
       this.app.setting.open();
       this.app.setting.openTabById("study-studio");
     })).addItem((i) => i.setTitle("Hide margin").onClick(() => this.leaf.detach())).showAtPosition({ x: e.clientX, y: e.clientY });
@@ -42546,14 +43914,14 @@ var MarginView = class extends import_obsidian28.ItemView {
       undo2.textContent = "Undo";
       undo2.href = "#";
       fragment.append(undo2);
-      const notice = new import_obsidian28.Notice(fragment, 1e4);
+      const notice = new import_obsidian32.Notice(fragment, 1e4);
       undo2.onclick = (e) => {
         e.preventDefault();
         void this.restoreNote(id3);
         notice.hide();
       };
     } catch (e) {
-      new import_obsidian28.Notice("Could not delete note: " + String(e));
+      new import_obsidian32.Notice("Could not delete note: " + String(e));
     }
   }
   async restoreNote(id3) {
@@ -42589,21 +43957,21 @@ var MarginView = class extends import_obsidian28.ItemView {
     this.select(id3);
     const c = this.current(id3);
     if (!c) return;
-    const menu = import_obsidian28.Menu.forEvent(e);
+    const menu = import_obsidian32.Menu.forEvent(e);
     this.notes.store.addVisibilityMenu(menu, { x: e.clientX, y: e.clientY });
     for (const a2 of excerpts(c)) menu.addItem((i) => i.setTitle("Go to: " + (a2.renderedQuote ?? a2.quote).slice(0, 55)).setIcon("arrow-up-right").onClick(() => void this.notes.jump(a2)));
     if (c.kind === "sticky") menu.addItem((i) => i.setTitle("Go to post-it").setIcon("arrow-up-right").onClick(() => void this.notes.jumpNote(c.id)));
     if (c.code) menu.addItem((i) => i.setTitle("Go to code").onClick(() => void this.notes.jumpNote(c.id)));
     studyTypeItems(menu, c, (type) => this.notes.store.changeStudyType?.(id3, type), this.app, this.containerEl.ownerDocument);
     if (!c.study && (!c.code || c.code.purpose === "comment")) appearanceItems(menu, c, (s) => this.notes.store.paletteFor(s), (patch) => void this.changeAppearance(id3, patch));
-    if (!this.notes.store.isAnnotationVisible(c)) menu.addItem((i) => i.setTitle("Show " + styleNames[styleOf(c)] + " \xB7 " + c.intent + " in main note").setIcon("eye").onClick(() => void this.notes.store.showAnnotation(c).catch((e2) => new import_obsidian28.Notice(String(e2)))));
+    if (!this.notes.store.isAnnotationVisible(c)) menu.addItem((i) => i.setTitle("Show " + styleNames[styleOf(c)] + " \xB7 " + c.intent + " in main note").setIcon("eye").onClick(() => void this.notes.store.showAnnotation(c).catch((e2) => new import_obsidian32.Notice(String(e2)))));
     menu.addItem((i) => i.setTitle("Delete note").setIcon("trash-2").onClick(() => void this.deleteNote(id3)));
     menu.addItem((i) => i.setTitle(c.resolved ? "Reopen note" : "Resolve note").onClick(() => {
       this.draft(id3).resolved = !c.resolved;
       this.schedule(id3);
     }));
     if (this.notes.drafts.has(id3)) menu.addItem((i) => i.setTitle("Discard unsaved changes\u2026").onClick(() => {
-      const modal = new import_obsidian28.Modal(this.app);
+      const modal = new import_obsidian32.Modal(this.app);
       modal.titleEl.setText("Discard unsaved changes?");
       modal.contentEl.createEl("p", { text: "The saved note will remain." });
       modal.contentEl.createEl("button", { text: "Keep writing" }).onclick = () => modal.close();
@@ -42660,8 +44028,8 @@ var MarginView = class extends import_obsidian28.ItemView {
       for (const style of annotationStyles) {
         const values2 = meanings.filter((m) => m.style === style);
         if (!values2.length) continue;
-        const group = this.tab === "study" ? this.filter : this.filter.createEl("optgroup", { attr: { label: styleNames[style] } });
-        for (const m of values2) group.createEl("option", { value: m.key, text: m.meaning || "Uncategorized" });
+        const group2 = this.tab === "study" ? this.filter : this.filter.createEl("optgroup", { attr: { label: styleNames[style] } });
+        for (const m of values2) group2.createEl("option", { value: m.key, text: m.meaning || "Uncategorized" });
       }
       this.filter.value = meanings.some((m) => m.key === selected) ? selected : "";
     }
@@ -42707,6 +44075,7 @@ var MarginView = class extends import_obsidian28.ItemView {
     let cursor = this.list.firstElementChild;
     const matches = /* @__PURE__ */ new Map(), layout = [];
     const addedHeaders = /* @__PURE__ */ new Set();
+    const annotationProjection = symbolTextProjection(this.sourceText);
     for (const c of ordered) {
       let card = this.cards.get(c.id);
       if (!card) {
@@ -42739,7 +44108,7 @@ var MarginView = class extends import_obsidian28.ItemView {
       card.el.dataset.markStyle = c.kind === "sticky" ? "sticky" : c.markStyle ?? "highlight";
       const typeLabel = card.el.querySelector(".study-code-type-label");
       if (typeLabel && c.code) typeLabel.textContent = c.code.purpose === "question" ? "General question" : c.code.rule === "form" ? "Required syntax" : c.code.rule === "behavior" ? "Any working approach" : "Practice blank";
-      const excerpt2 = excerpts(c).find((a2) => a2.path === path), offset2 = this.position(c, lookup), updated = excerpt2?.kind === "math" && Number.isFinite(offset2) && this.sourceText.slice(offset2, offset2 + excerpt2.quote.length) !== excerpt2.quote;
+      const excerpt2 = excerpts(c).find((a2) => a2.path === path), offset2 = this.position(c, lookup), updated = excerpt2?.kind === "math" && Number.isFinite(offset2) && (annotationProjection ? annotationProjection.text.slice(annotationProjection.toProjected(offset2), annotationProjection.toProjected(offset2) + excerpt2.quote.length) : this.sourceText.slice(offset2, offset2 + excerpt2.quote.length)) !== excerpt2.quote;
       card.el.querySelector(".study-margin-hidden-status").textContent = c.code ? "Code annotation" : c.kind === "sticky" && this.sourcePath === path && !Number.isFinite(this.position(c, lookup)) ? "Placement not found in note" : c.kind !== "sticky" && this.sourcePath === path && excerpts(c).length > 0 && !Number.isFinite(this.position(c, lookup)) ? "Passage changed \xB7 saved excerpt retained" : this.notes.store.isAnnotationVisible(c) ? updated ? "Passage updated \xB7 saved excerpt shown" : "" : "Hidden in main note";
       card.el.querySelector(".study-margin-show-annotation").hidden = this.notes.store.isAnnotationVisible(c);
       const visible = isStudyMark(c) === (this.tab === "study") && (numberQuery !== void 0 ? number2 === numberQuery : (this.showResolved || !c.resolved) && (!this.filter.value || typeKey(styleOf(c), c.intent) === this.filter.value) && annotationMatchesSearch(c, rawQuery));
@@ -42830,12 +44199,12 @@ var MarginView = class extends import_obsidian28.ItemView {
     h.oncontextmenu = (e) => {
       e.preventDefault();
       e.stopPropagation();
-      new import_obsidian28.Menu().addItem((i) => i.setTitle(g.kind === "code-block" ? "Go to code" : "Go to source").setIcon(g.kind === "code-block" ? "code" : "arrow-up-right").onClick(() => {
-        const id3 = [...this.memberStacks].find(([, group]) => group === g.id)?.[0];
+      new import_obsidian32.Menu().addItem((i) => i.setTitle(g.kind === "code-block" ? "Go to code" : "Go to source").setIcon(g.kind === "code-block" ? "code" : "arrow-up-right").onClick(() => {
+        const id3 = [...this.memberStacks].find(([, group2]) => group2 === g.id)?.[0];
         if (id3) void this.notes.jumpNote(id3);
       })).showAtPosition({ x: e.clientX, y: e.clientY });
     };
-    this.stackOwners.set(g.id, this.addChild(new import_obsidian28.Component()));
+    this.stackOwners.set(g.id, this.addChild(new import_obsidian32.Component()));
     this.stackHeaders.set(g.id, h);
     return h;
   }
@@ -42914,7 +44283,7 @@ var MarginView = class extends import_obsidian28.ItemView {
   }
   createNote(c) {
     const renders = [];
-    const owner = this.addChild(new import_obsidian28.Component()), el = this.contentEl.ownerDocument.createElement("article");
+    const owner = this.addChild(new import_obsidian32.Component()), el = this.contentEl.ownerDocument.createElement("article");
     el.className = "study-margin-note";
     el.addEventListener("animationend", (e) => {
       if (e.animationName === "study-margin-locate") el.classList.remove("study-navigation-flash");
@@ -43047,7 +44416,7 @@ var MarginView = class extends import_obsidian28.ItemView {
     show.onclick = (e) => {
       e.stopPropagation();
       const current = this.current(c.id);
-      if (current) void this.notes.store.showAnnotation(current).catch((e2) => new import_obsidian28.Notice(String(e2)));
+      if (current) void this.notes.store.showAnnotation(current).catch((e2) => new import_obsidian32.Notice(String(e2)));
     };
     const status = top2.createSpan({ cls: "study-margin-save-status", text: this.notes.drafts.has(c.id) ? "draft" : "" });
     status.setAttribute("aria-live", "polite");
@@ -43078,7 +44447,7 @@ var MarginView = class extends import_obsidian28.ItemView {
     });
     void Promise.all(renders).then(() => {
       if (alive && !this.closed) this.viewport?.track(el, () => this.notes.selected === c.id || !!this.cards.get(c.id)?.editor || this.notes.drafts.has(c.id) || this.saving.has(c.id) || this.saveTimers.has(c.id) || this.busyEditors.has(c.id));
-    }).catch((e) => new import_obsidian28.Notice("Could not render margin note: " + String(e)));
+    }).catch((e) => new import_obsidian32.Notice("Could not render margin note: " + String(e)));
     return { el, owner, signature: JSON.stringify(c), status };
   }
 };
@@ -43093,15 +44462,15 @@ async function registerMarginNotes(plugin, store) {
     }
     notes.persist();
   }));
-  plugin.registerView(VIEW3, (leaf) => new MarginView(leaf, notes));
+  plugin.registerView(VIEW4, (leaf) => new MarginView(leaf, notes));
   store.prepareAnnotationEdits = async (ids) => {
-    for (const id3 of ids) for (const leaf of plugin.app.workspace.getLeavesOfType(VIEW3)) await leaf.view.prepareStudyTypeChange(id3);
+    for (const id3 of ids) for (const leaf of plugin.app.workspace.getLeavesOfType(VIEW4)) await leaf.view.prepareStudyTypeChange(id3);
   };
   plugin.register(() => {
     store.prepareAnnotationEdits = void 0;
   });
   store.changeStudyType = async (id3, type) => {
-    for (const leaf of plugin.app.workspace.getLeavesOfType(VIEW3)) await leaf.view.prepareStudyTypeChange(id3);
+    for (const leaf of plugin.app.workspace.getLeavesOfType(VIEW4)) await leaf.view.prepareStudyTypeChange(id3);
     const c = store.data.comments.find((c2) => c2.id === id3);
     const api = c?.code ? plugin.codeAnnotationApi : plugin.studyDirectiveApi;
     await api.changeType(id3, type);
@@ -43114,7 +44483,7 @@ async function registerMarginNotes(plugin, store) {
     const c = notes.drafts.get(id3) ?? store.data.comments.find((c2) => c2.id === id3);
     if (!c || c.deletedAt) return;
     await notes.open(c);
-    const view = plugin.app.workspace.getLeavesOfType(VIEW3)[0]?.view;
+    const view = plugin.app.workspace.getLeavesOfType(VIEW4)[0]?.view;
     await view?.changeAppearance(id3, patch);
   };
   store.addToMargin = (anchors) => notes.add(anchors);
@@ -43129,12 +44498,12 @@ async function registerMarginNotes(plugin, store) {
     store.resizeMargin = void 0;
   });
   plugin.addCommand({ id: "open-margin-notes", name: "Open margin notes", callback: () => void notes.open() });
-  plugin.addCommand({ id: "refresh-margin-notes", name: "Refresh margin notes from disk", callback: () => void store.refresh().catch((e) => new import_obsidian28.Notice(String(e))) });
+  plugin.addCommand({ id: "refresh-margin-notes", name: "Refresh margin notes from disk", callback: () => void store.refresh().catch((e) => new import_obsidian32.Notice(String(e))) });
   return notes;
 }
 
 // src/vault-window-identity.ts
-var import_obsidian29 = require("obsidian");
+var import_obsidian33 = require("obsidian");
 
 // src/vault-window-title.ts
 function vaultWindowTitle(vault, title) {
@@ -43153,7 +44522,7 @@ function vaultWindowTitle(vault, title) {
 
 // src/vault-window-identity.ts
 function registerVaultWindowIdentity(plugin) {
-  if (!import_obsidian29.Platform.isDesktopApp) return;
+  if (!import_obsidian33.Platform.isDesktopApp) return;
   const identity = plugin.addStatusBarItem();
   identity.addClass("study-vault-identity");
   identity.setText(plugin.app.vault.getName());
@@ -43348,8 +44717,8 @@ function finalGrade(parent, earned, possible) {
 }
 
 // src/exam-model.ts
-var check2 = (ok, message) => {
-  if (!ok) throw Error(message);
+var check2 = (ok, message2) => {
+  if (!ok) throw Error(message2);
 };
 var validId2 = (v) => typeof v === "string" && /^[\w-]+$/.test(v);
 function order(items, shuffle, random) {
@@ -43516,15 +44885,15 @@ function drawingPreview(host, value) {
   }
 }
 function drawingInput(app, host, initial, owner, change, busy) {
-  const dom = host.createDiv("study-drawing-input"), preview = dom.createDiv(), button = dom.createEl("button", { text: initial ? "Edit drawing" : "Draw response" }), status = dom.createEl("p", { attr: { "aria-live": "polite" } });
+  const dom = host.createDiv("study-drawing-input"), preview = dom.createDiv(), button2 = dom.createEl("button", { text: initial ? "Edit drawing" : "Draw response" }), status = dom.createEl("p", { attr: { "aria-live": "polite" } });
   let value = initial, disabled = false, active = false, disposed = false, cleanup = () => {
   };
   drawingPreview(preview, value);
-  button.onclick = async () => {
+  button2.onclick = async () => {
     if (disabled || active) return;
     active = true;
     busy(true);
-    button.disabled = true;
+    button2.disabled = true;
     try {
       const ink = app.plugins?.getPlugin("ink-studio");
       if (!ink?.code || !ink?.css) throw Error("Enable Ink Studio to draw. Existing responses remain available.");
@@ -43544,12 +44913,12 @@ function drawingInput(app, host, initial, owner, change, busy) {
         iframe.remove();
         active = false;
         busy(false);
-        button.disabled = disabled;
-        button.setText(value ? "Edit drawing" : "Draw response");
+        button2.disabled = disabled;
+        button2.setText(value ? "Edit drawing" : "Draw response");
         preview.empty();
         drawingPreview(preview, value);
         preview.show();
-        button.focus();
+        button2.focus();
       };
       const receive = (event) => {
         if (disposed || event.source !== iframe.contentWindow || event.data?.inkStudio !== session) return;
@@ -43583,7 +44952,7 @@ function drawingInput(app, host, initial, owner, change, busy) {
       status.setText(String(e));
       active = false;
       busy(false);
-      button.disabled = disabled;
+      button2.disabled = disabled;
     }
   };
   owner.register(() => {
@@ -43597,7 +44966,7 @@ function drawingInput(app, host, initial, owner, change, busy) {
     return disabled;
   }, set disabled(v) {
     disabled = v;
-    button.disabled = v || active;
+    button2.disabled = v || active;
   } };
 }
 function frameDocument(config, asset, css2, code) {
@@ -43771,8 +45140,8 @@ function shuffledPractice(questions, random = Math.random) {
 }
 
 // src/vocabulary.ts
-var import_obsidian30 = require("obsidian");
-var AddVocabulary = class extends import_obsidian30.Modal {
+var import_obsidian34 = require("obsidian");
+var AddVocabulary = class extends import_obsidian34.Modal {
   constructor(app, courseId, onSaved) {
     super(app);
     this.courseId = courseId;
@@ -43782,10 +45151,10 @@ var AddVocabulary = class extends import_obsidian30.Modal {
     this.titleEl.setText("Add vocabulary");
     let term = "", meaning = "", categories = "", alternatives2 = "";
     this.contentEl.createEl("p", { text: "Describe one meaning clearly. This creates an editable vocabulary note and a linked typed-recall question. Include the article in the term if you want it required." });
-    new import_obsidian30.Setting(this.contentEl).setName("French term or expression").addText((t2) => t2.onChange((v) => term = v));
-    new import_obsidian30.Setting(this.contentEl).setName("Meaning and context").addText((t2) => t2.onChange((v) => meaning = v));
-    new import_obsidian30.Setting(this.contentEl).setName("Categories").setDesc("Comma-separated; create any category you need.").addText((t2) => t2.onChange((v) => categories = v));
-    new import_obsidian30.Setting(this.contentEl).setName("Other accepted French answers").setDesc("Optional, one complete alternative per line.").addTextArea((t2) => t2.onChange((v) => alternatives2 = v));
+    new import_obsidian34.Setting(this.contentEl).setName("French term or expression").addText((t2) => t2.onChange((v) => term = v));
+    new import_obsidian34.Setting(this.contentEl).setName("Meaning and context").addText((t2) => t2.onChange((v) => meaning = v));
+    new import_obsidian34.Setting(this.contentEl).setName("Categories").setDesc("Comma-separated; create any category you need.").addText((t2) => t2.onChange((v) => categories = v));
+    new import_obsidian34.Setting(this.contentEl).setName("Other accepted French answers").setDesc("Optional, one complete alternative per line.").addTextArea((t2) => t2.onChange((v) => alternatives2 = v));
     const error = this.contentEl.createEl("p", { cls: "study-error", attr: { role: "alert" } });
     let saving = false;
     const save = async () => {
@@ -43824,14 +45193,14 @@ ${meaning.trim()}
         }
         this.close();
         this.onSaved();
-        new import_obsidian30.Notice("Vocabulary and recall question saved.");
+        new import_obsidian34.Notice("Vocabulary and recall question saved.");
       } catch (e) {
         error.setText(`Could not save: ${e}`);
       } finally {
         saving = false;
       }
     };
-    new import_obsidian30.Setting(this.contentEl).addButton((b) => b.setButtonText("Save \xB7 Ctrl+Enter").setCta().onClick(() => void save()));
+    new import_obsidian34.Setting(this.contentEl).addButton((b) => b.setButtonText("Save \xB7 Ctrl+Enter").setCta().onClick(() => void save()));
     this.contentEl.addEventListener("keydown", (e) => {
       if (e.ctrlKey && e.key === "Enter") {
         e.preventDefault();
@@ -43847,7 +45216,7 @@ ${meaning.trim()}
 };
 
 // src/learning-ui.ts
-var import_obsidian31 = require("obsidian");
+var import_obsidian35 = require("obsidian");
 
 // src/history-model.ts
 function parseAttempt(raw) {
@@ -43860,7 +45229,7 @@ function parseAttempt(raw) {
   return a2;
 }
 function normalizeHistory(files) {
-  const records = /* @__PURE__ */ new Map(), conflicts = /* @__PURE__ */ new Set(), errors = [];
+  const records = /* @__PURE__ */ new Map(), conflicts2 = /* @__PURE__ */ new Set(), errors = [];
   for (const file of files) {
     try {
       let key2, value, rows2, active = false;
@@ -43876,10 +45245,10 @@ function normalizeHistory(files) {
         active = s.state === "active";
         rows2 = s.entries.filter((e) => s.state === "submitted" || e.submittedAt).map((e) => ({ key: `${key2}:${e.id}`, source: "exam", paths: [file.path], questionId: e.question.definition.id, familyId: e.question.definition.familyId ?? e.question.definition.id, title: e.question.definition.title, concepts: e.question.definition.concepts, chapters: e.question.definition.chapters, course: s.course ?? null, finished: e.submittedAt ?? s.finished, mode: "attempt", classification: "first", assessment: e.result.pending ? "pending" : e.result.basis, earned: e.result.pending ? null : e.result.earned, possible: e.result.possible, activeSeconds: null, examId: s.exam.id, sessionId: s.id, section: e.sectionTitle }));
       }
-      const canonical2 = stable(value), prior = records.get(key2);
+      const canonical2 = stable2(value), prior = records.get(key2);
       if (prior) {
         if (prior.canonical !== canonical2) {
-          conflicts.add(key2);
+          conflicts2.add(key2);
           errors.push(`Conflicting copies of ${key2}: ${file.path}. Excluded from history.`);
         } else for (const row of prior.rows) row.paths.push(file.path);
       } else records.set(key2, { canonical: canonical2, rows: rows2, active });
@@ -43887,7 +45256,7 @@ function normalizeHistory(files) {
       errors.push(`${file.path}: ${String(e)}`);
     }
   }
-  const rows = [...records].filter(([key2]) => !conflicts.has(key2)).flatMap(([, v]) => v.rows).sort((a2, b) => Date.parse(a2.finished) - Date.parse(b.finished) || a2.key.localeCompare(b.key));
+  const rows = [...records].filter(([key2]) => !conflicts2.has(key2)).flatMap(([, v]) => v.rows).sort((a2, b) => Date.parse(a2.finished) - Date.parse(b.finished) || a2.key.localeCompare(b.key));
   const seen = /* @__PURE__ */ new Set();
   for (const row of rows) {
     if (row.assessment === "pending") continue;
@@ -43899,11 +45268,11 @@ function normalizeHistory(files) {
     row.classification = seen.has(key2) ? "retry" : "first";
     seen.add(key2);
   }
-  return { rows, errors, activeSessions: [...records].filter(([key2, v]) => key2.startsWith("exam:") && !conflicts.has(key2) && v.active).length };
+  return { rows, errors, activeSessions: [...records].filter(([key2, v]) => key2.startsWith("exam:") && !conflicts2.has(key2) && v.active).length };
 }
-function stable(value) {
-  if (Array.isArray(value)) return "[" + value.map(stable).join(",") + "]";
-  if (value && typeof value === "object") return "{" + Object.entries(value).sort(([a2], [b]) => a2.localeCompare(b)).map(([k, v]) => JSON.stringify(k) + ":" + stable(v)).join(",") + "}";
+function stable2(value) {
+  if (Array.isArray(value)) return "[" + value.map(stable2).join(",") + "]";
+  if (value && typeof value === "object") return "{" + Object.entries(value).sort(([a2], [b]) => a2.localeCompare(b)).map(([k, v]) => JSON.stringify(k) + ":" + stable2(v)).join(",") + "}";
   return JSON.stringify(value);
 }
 function filterHistory(rows, courseId, kind = "all") {
@@ -43977,7 +45346,7 @@ async function learningView(app, bank, courseId, practice, initial = "review", p
     });
     calendarWrites.set(app, write);
     return write.catch((e) => {
-      new import_obsidian31.Notice(`Calendar could not be saved: ${e}`);
+      new import_obsidian35.Notice(`Calendar could not be saved: ${e}`);
     });
   };
   const draw = async () => {
@@ -44179,7 +45548,7 @@ function attemptColumnLabel(column, count2) {
 }
 
 // src/chapter-home.ts
-var import_obsidian32 = require("obsidian");
+var import_obsidian36 = require("obsidian");
 function registerChapterHome(plugin, navigate) {
   plugin.registerMarkdownCodeBlockProcessor("study-chapter-home", (_source, el, ctx) => {
     const file = plugin.app.vault.getAbstractFileByPath(ctx.sourcePath);
@@ -44192,7 +45561,7 @@ function registerChapterHome(plugin, navigate) {
     const actions = root.createDiv("study-chapter-home-actions");
     const action = (label, icon, detail, run) => {
       const b = actions.createEl("button");
-      (0, import_obsidian32.setIcon)(b.createSpan("study-chapter-action-icon"), icon);
+      (0, import_obsidian36.setIcon)(b.createSpan("study-chapter-action-icon"), icon);
       const text2 = b.createSpan();
       text2.createEl("strong", { text: label });
       text2.createEl("small", { text: detail });
@@ -44211,7 +45580,7 @@ function registerChapterHome(plugin, navigate) {
         card.style.setProperty("--part-color", ["#507b98", "#786494", "#4b8177", "#966958"][i % 4]);
         const cover = card.createDiv("study-part-cover");
         cover.createSpan({ text: String(p.number ?? i + 1).padStart(2, "0") });
-        (0, import_obsidian32.setIcon)(cover.createSpan(), "book-open");
+        (0, import_obsidian36.setIcon)(cover.createSpan(), "book-open");
         const body = card.createDiv("study-part-body");
         body.createEl("small", { text: `PART ${p.number ?? i + 1}` });
         body.createEl("strong", { text: p.title });
@@ -44311,10 +45680,10 @@ function practiceSetRuns(questions, history2, courseId, snapshots = []) {
 }
 
 // src/study-home.ts
-var import_obsidian34 = require("obsidian");
+var import_obsidian38 = require("obsidian");
 
 // src/course-ui.ts
-var import_obsidian33 = require("obsidian");
+var import_obsidian37 = require("obsidian");
 var ROOT = "Study Studio/Courses";
 async function courses(app) {
   const files = app.vault.getMarkdownFiles().filter((f) => f.path.startsWith(ROOT + "/") || app.metadataCache.getFileCache(f)?.frontmatter?.studyCourse);
@@ -44344,7 +45713,7 @@ async function manageCourses(app) {
       await manageCourses(app);
     })().catch((e) => {
       create.disabled = false;
-      new import_obsidian33.Notice(String(e));
+      new import_obsidian37.Notice(String(e));
     });
   };
   for (const { course, file } of entries) {
@@ -44362,8 +45731,8 @@ async function manageCourses(app) {
           return replaceProperty(raw, "studyCourse", { ...current, title: input.value.trim() });
         });
         course.title = input.value.trim();
-        new import_obsidian33.Notice("Course title saved. Historical course labels remain unchanged.");
-      })().catch((e) => new import_obsidian33.Notice(String(e))).finally(() => save.disabled = false);
+        new import_obsidian37.Notice("Course title saved. Historical course labels remain unchanged.");
+      })().catch((e) => new import_obsidian37.Notice(String(e))).finally(() => save.disabled = false);
     };
   }
   if (!entries.length) panel.contentEl.createEl("p", { text: "No courses yet. Existing questions and history remain unassigned." });
@@ -44374,7 +45743,7 @@ async function assignCourses(app, file) {
   const key2 = front?.study ? "study" : front?.studyExam ? "studyExam" : void 0;
   if (!key2) throw Error("Open a question or exam source note first.");
   const definition = key2 === "study" ? parseQuestion(original, file.path).definition : parseExam(original), entries = await courses(app), selected = new Set(definition.courseIds ?? []);
-  const modal = new import_obsidian33.Modal(app);
+  const modal = new import_obsidian37.Modal(app);
   modal.titleEl.setText(`Courses \xB7 ${definition.title}`);
   modal.contentEl.createEl("p", { text: "Membership affects future study choices, not past history. No selection means unassigned. Reopen any already-open editors/cards after saving." });
   const options = new Map(entries.map((e) => [e.course.id, e.course.title]));
@@ -44396,10 +45765,10 @@ async function assignCourses(app, file) {
       return replaceProperty(raw, key2, { ...definition, courseIds, ..."chapters" in definition ? { chapters: definition.chapters?.filter((p) => courseIds.includes(p.courseId)) } : {} });
     }).then(() => {
       modal.close();
-      new import_obsidian33.Notice("Memberships saved. Existing history unchanged.");
+      new import_obsidian37.Notice("Memberships saved. Existing history unchanged.");
     }, (e) => {
       save.disabled = false;
-      new import_obsidian33.Notice(String(e));
+      new import_obsidian37.Notice(String(e));
     });
   };
   modal.open();
@@ -44409,7 +45778,7 @@ async function chooseCourse(app, ids) {
   if ((ids ?? []).some((id3) => !all.some((x) => x.course.id === id3))) throw Error("A course membership references a missing course. Repair it before starting.");
   if (!available.length) return null;
   return new Promise((resolve) => {
-    const modal = new import_obsidian33.Modal(app);
+    const modal = new import_obsidian37.Modal(app);
     let decided = false;
     modal.titleEl.setText("Course for this exam");
     modal.contentEl.createEl("p", { text: "This choice is saved with the session and will not change if memberships change later." });
@@ -44470,13 +45839,13 @@ async function historyView(app) {
       row.createEl("button", { text: "Open original record" }).onclick = () => {
         void (async () => {
           const file = app.vault.getAbstractFileByPath(r.paths[0]);
-          if (!(file instanceof import_obsidian33.TFile)) throw Error("Original record is no longer available.");
+          if (!(file instanceof import_obsidian37.TFile)) throw Error("Original record is no longer available.");
           const raw = await app.vault.read(file), record = new StudioPanel(app);
           record.titleEl.setText("Saved history record");
           record.contentEl.createEl("p", { text: file.path });
           record.contentEl.createEl("pre", { text: raw });
           record.open();
-        })().catch((e) => new import_obsidian33.Notice(String(e)));
+        })().catch((e) => new import_obsidian37.Notice(String(e)));
       };
     }
     if (rows.length > limit) list.createEl("button", { text: "Show 100 more" }).onclick = () => {
@@ -44511,12 +45880,12 @@ function assessmentGrid(records, courseId, chapterId) {
   for (const { session: s, path } of records) {
     if (s.state !== "submitted" || (courseId === "unassigned" ? !!s.course : s.course?.id !== courseId)) continue;
     if (chapterId && assessmentChapter(s, courseId) !== chapterId) continue;
-    const group = groups.get(s.exam.id) ?? { id: s.exam.id, title: s.exam.title, kind: s.exam.kind ?? "Assessment", attempts: [] };
-    if (group.attempts.some((a2) => a2.id === s.id)) continue;
-    group.attempts.push({ id: s.id, date: s.finished, path, ...examScores(s).overall });
-    groups.set(s.exam.id, group);
+    const group2 = groups.get(s.exam.id) ?? { id: s.exam.id, title: s.exam.title, kind: s.exam.kind ?? "Assessment", attempts: [] };
+    if (group2.attempts.some((a2) => a2.id === s.id)) continue;
+    group2.attempts.push({ id: s.id, date: s.finished, path, ...examScores(s).overall });
+    groups.set(s.exam.id, group2);
   }
-  for (const group of groups.values()) group.attempts.sort((a2, b) => Date.parse(a2.date) - Date.parse(b.date) || a2.id.localeCompare(b.id));
+  for (const group2 of groups.values()) group2.attempts.sort((a2, b) => Date.parse(a2.date) - Date.parse(b.date) || a2.id.localeCompare(b.id));
   return [...groups.values()].sort((a2, b) => a2.title.localeCompare(b.title));
 }
 
@@ -44607,13 +45976,13 @@ async function dashboard(app, bank, initialCourse = "all", chapterId, provided) 
             cell.setText("\u2014");
             return;
           }
-          const button = cell.createEl("button", { cls: "study-attempt-cell", attr: { "aria-label": `${e.title}, attempt ${entry.number}, ${new Date(a2.date).toLocaleString()}, ${a2.earned} of ${a2.possible} scored points${a2.pending ? `, ${a2.pending} pending` : ""}` } });
-          scoreCell(button, a2.earned, a2.possible);
-          button.title = `${new Date(a2.date).toLocaleString()} \xB7 ${a2.earned} / ${a2.possible} points${a2.pending ? ` \xB7 ${a2.pending} pending` : ""}`;
-          button.createEl("small", { text: `Attempt ${entry.number}` });
-          button.createEl("small", { text: new Date(a2.date).toLocaleDateString(void 0, { month: "short", day: "numeric" }) });
-          if (a2.pending) button.createSpan({ text: "*", cls: "study-attempt-pending", attr: { "aria-label": `${a2.pending} pending` } });
-          button.onclick = () => void showRecord(a2.path);
+          const button2 = cell.createEl("button", { cls: "study-attempt-cell", attr: { "aria-label": `${e.title}, attempt ${entry.number}, ${new Date(a2.date).toLocaleString()}, ${a2.earned} of ${a2.possible} scored points${a2.pending ? `, ${a2.pending} pending` : ""}` } });
+          scoreCell(button2, a2.earned, a2.possible);
+          button2.title = `${new Date(a2.date).toLocaleString()} \xB7 ${a2.earned} / ${a2.possible} points${a2.pending ? ` \xB7 ${a2.pending} pending` : ""}`;
+          button2.createEl("small", { text: `Attempt ${entry.number}` });
+          button2.createEl("small", { text: new Date(a2.date).toLocaleDateString(void 0, { month: "short", day: "numeric" }) });
+          if (a2.pending) button2.createSpan({ text: "*", cls: "study-attempt-pending", attr: { "aria-label": `${a2.pending} pending` } });
+          button2.onclick = () => void showRecord(a2.path);
         } });
         columns.push({ label: "Change since first (pp)", value: (e) => {
           const a2 = e.attempts[0], b = e.attempts.at(-1);
@@ -44640,23 +46009,23 @@ async function dashboard(app, bank, initialCourse = "all", chapterId, provided) 
         questionView.hidden = true;
         const panes = [concepts, questionView];
         const buttons = ["Concepts & skills", "Question history"].map((label, i) => {
-          const button = tabs.createEl("button", { text: label, attr: { role: "tab", "aria-selected": String(i === 0) } });
-          button.onclick = () => {
+          const button2 = tabs.createEl("button", { text: label, attr: { role: "tab", "aria-selected": String(i === 0) } });
+          button2.onclick = () => {
             panes.forEach((p, j) => p.hidden = i !== j);
             buttons.forEach((b, j) => {
               b.setAttribute("aria-selected", String(i === j));
               b.tabIndex = i === j ? 0 : -1;
             });
           };
-          button.tabIndex = i === 0 ? 0 : -1;
-          button.onkeydown = (e) => {
+          button2.tabIndex = i === 0 ? 0 : -1;
+          button2.onkeydown = (e) => {
             if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
               e.preventDefault();
               buttons[1 - i].click();
               buttons[1 - i].focus();
             }
           };
-          return button;
+          return button2;
         });
         dataGrid(concepts, "Concepts and skills", m.concepts.filter((c) => !c.name.startsWith("Vocabulary: ")), [{ label: "Concept / skill", value: (c) => c.name.replace("Skill: ", "") }, { label: "Scored / total", value: (c) => c.tested, render: (cell, c) => cell.setText(`${c.tested} / ${c.questions}`) }, { label: "First score", value: (c) => c.first.possible ? c.first.earned / c.first.possible : -1, render: (cell, c) => scoreCell(cell, c.first.earned, c.first.possible) }, { label: "Latest score", value: (c) => c.latest.possible ? c.latest.earned / c.latest.possible : -1, render: (cell, c) => scoreCell(cell, c.latest.earned, c.latest.possible) }, { label: "Pending", value: (c) => c.pending }], (c) => c.name);
         dataGrid(questionView, "Question history", m.questions, [{ label: "Question", value: (q) => q.title, render: (cell, q) => {
@@ -44666,9 +46035,9 @@ async function dashboard(app, bank, initialCourse = "all", chapterId, provided) 
           const cells2 = cell.createDiv("study-score-cells");
           if (!q.events.length) cells2.setText("Not practiced");
           for (const e of q.events.slice(-5)) {
-            const button = cells2.createEl("button", { text: e.assessment === "pending" ? "Pending" : e.mode === "reveal" ? "Reveal" : `${e.earned}/${e.possible}`, attr: { title: new Date(e.finished).toLocaleString() } });
-            if (e.mode === "attempt" && e.assessment !== "pending" && e.earned !== null && e.possible !== null) button.addClass(gradeTone(e.earned, e.possible) || "study-muted");
-            button.onclick = () => void showRecord(e.paths[0], e.questionId);
+            const button2 = cells2.createEl("button", { text: e.assessment === "pending" ? "Pending" : e.mode === "reveal" ? "Reveal" : `${e.earned}/${e.possible}`, attr: { title: new Date(e.finished).toLocaleString() } });
+            if (e.mode === "attempt" && e.assessment !== "pending" && e.earned !== null && e.possible !== null) button2.addClass(gradeTone(e.earned, e.possible) || "study-muted");
+            button2.onclick = () => void showRecord(e.paths[0], e.questionId);
           }
         } }, { label: "Last activity", value: (q) => q.lastSeen ?? "", render: (cell, q) => cell.setText(q.lastSeen ? new Date(q.lastSeen).toLocaleDateString() : "\u2014") }], (q) => q.title + " " + (q.events[0]?.chapters?.[0]?.title ?? ""));
         for (const error of history2.errors) body.createEl("p", { text: error, cls: "study-error" });
@@ -44699,7 +46068,7 @@ function registerStudyHome(plugin, hooks) {
     const raw = JSON.stringify(prefs);
     writes = writes.catch(() => {
     }).then(() => plugin.app.vault.adapter.write(prefPath, raw));
-    void writes.catch((e) => new import_obsidian34.Notice(`Could not save Home preferences: ${e}`));
+    void writes.catch((e) => new import_obsidian38.Notice(`Could not save Home preferences: ${e}`));
   };
   let currentCourse = "";
   let opening = false;
@@ -44722,7 +46091,7 @@ function registerStudyHome(plugin, hooks) {
     }
   };
   registerChapterHome(plugin, { course: (id3) => void open(id3), practice: (id3, chapter) => void open(id3, "practice", chapter), grades: (id3, chapter) => void dashboard(plugin.app, hooks.bank, id3, chapter) });
-  class Home extends import_obsidian34.ItemView {
+  class Home extends import_obsidian38.ItemView {
     refreshTimer;
     revision = 0;
     query = "";
@@ -44876,7 +46245,7 @@ function registerStudyHome(plugin, hooks) {
                   cover.setAttribute("aria-hidden", "true");
                   cover.createSpan({ cls: "study-chapter-number", text: String(c.number ?? index2 + 1).padStart(2, "0") });
                   const emblem = cover.createSpan({ cls: "study-chapter-emblem" });
-                  (0, import_obsidian34.setIcon)(emblem, typeof c.icon === "string" ? c.icon : "book-open");
+                  (0, import_obsidian38.setIcon)(emblem, typeof c.icon === "string" ? c.icon : "book-open");
                   if (typeof c.cover === "string") {
                     const image = this.app.metadataCache.getFirstLinkpathDest(c.cover, f.path);
                     if (image && ["svg", "png", "jpg", "jpeg", "webp"].includes(image.extension)) {
@@ -44899,7 +46268,7 @@ function registerStudyHome(plugin, hooks) {
                   card.onclick = () => openNote(f);
                   const context = (e) => {
                     e.preventDefault();
-                    const menu = new import_obsidian34.Menu();
+                    const menu = new import_obsidian38.Menu();
                     menu.addItem((i) => i.setTitle("Open chapter").onClick(() => openNote(f)));
                     menu.addItem((i) => i.setTitle("Chapter gradebook").onClick(() => void dashboard(this.app, hooks.bank, course.id, c.chapterId)));
                     if (qs.length) menu.addItem((i) => i.setTitle("Practice chapter").onClick(() => hooks.practice(qs)));
@@ -45003,11 +46372,11 @@ function registerStudyHome(plugin, hooks) {
               };
               const visible = candidates.filter((item) => match(item.c.title) || item.questions.some((q) => match(q.definition.title + " " + q.prompt + " " + q.definition.concepts.join(" "))));
               for (const item of visible) {
-                const button = index2.createEl("button", { attr: { "aria-pressed": "false" } });
-                button.dataset.chapter = item.c.chapterId;
-                button.createEl("strong", { text: item.c.title });
-                button.createEl("small", { text: `${item.questions.length} questions` });
-                button.onclick = () => drawChapter(item);
+                const button2 = index2.createEl("button", { attr: { "aria-pressed": "false" } });
+                button2.dataset.chapter = item.c.chapterId;
+                button2.createEl("strong", { text: item.c.title });
+                button2.createEl("small", { text: `${item.questions.length} questions` });
+                button2.onclick = () => drawChapter(item);
               }
               if (visible.length) drawChapter(visible.find((item) => item.c.chapterId === this.chapterId) ?? visible[0]);
               else detail.createEl("p", { text: "No matching chapters." });
@@ -45037,7 +46406,7 @@ function registerStudyHome(plugin, hooks) {
                 count2++;
                 const row = body.createDiv("study-home-destination");
                 row.createEl("strong", { text: exam.title });
-                row.createEl("button", { text: active.some((s) => s.exam.id === exam.id) ? "Start new attempt" : "Start" }).onclick = () => void hooks.start(exam).catch((e) => new import_obsidian34.Notice(String(e)));
+                row.createEl("button", { text: active.some((s) => s.exam.id === exam.id) ? "Start new attempt" : "Start" }).onclick = () => void hooks.start(exam).catch((e) => new import_obsidian38.Notice(String(e)));
               }
               if (!count2) body.createEl("p", { text: "No matching assessments." });
             }
@@ -45101,7 +46470,7 @@ function registerStudyHome(plugin, hooks) {
             const menu = (e) => {
               e.preventDefault();
               e.stopPropagation();
-              const menu2 = new import_obsidian34.Menu();
+              const menu2 = new import_obsidian38.Menu();
               menu2.addItem((i) => i.setTitle(prefs.pins.includes(course.id) ? "Unpin course" : "Pin course").setIcon("pin").onClick(() => {
                 prefs.pins = prefs.pins.includes(course.id) ? prefs.pins.filter((x) => x !== course.id) : [...prefs.pins, course.id];
                 save();
@@ -45151,7 +46520,7 @@ function registerStudyHome(plugin, hooks) {
       }
     }
   }
-  class Sidebar extends import_obsidian34.ItemView {
+  class Sidebar extends import_obsidian38.ItemView {
     getViewType() {
       return SIDE;
     }
@@ -45183,10 +46552,10 @@ function registerStudyHome(plugin, hooks) {
       if (!selected) return;
       root.createEl("h4", { text: selected.course.title });
       const action = (label, icon, fn) => {
-        const button = root.createEl("button");
-        (0, import_obsidian34.setIcon)(button.createSpan(), icon);
-        button.createSpan({ text: label });
-        button.onclick = fn;
+        const button2 = root.createEl("button");
+        (0, import_obsidian38.setIcon)(button2.createSpan(), icon);
+        button2.createSpan({ text: label });
+        button2.onclick = fn;
       };
       action("Course overview", "book-open", () => void open(currentCourse));
       action("Gradebook", "chart-no-axes-combined", () => void dashboard(this.app, hooks.bank, currentCourse));
@@ -45238,12 +46607,12 @@ function restoreEmptyAnnotations(comments, removed, busy) {
 }
 
 // src/comment-window.ts
-var import_obsidian35 = require("obsidian");
+var import_obsidian39 = require("obsidian");
 function resizeCommentWindow(modal) {
   const box = modal.modalEl;
   let maximized = false, previous = { width: "", height: "" };
   const toggle = box.createEl("button", { cls: "study-comment-maximize", attr: { "aria-label": "Maximize comment", "title": "Maximize comment" } });
-  (0, import_obsidian35.setIcon)(toggle, "maximize");
+  (0, import_obsidian39.setIcon)(toggle, "maximize");
   toggle.onclick = () => {
     maximized = !maximized;
     if (maximized) {
@@ -45257,7 +46626,7 @@ function resizeCommentWindow(modal) {
     box.classList.toggle("is-maximized", maximized);
     toggle.setAttribute("aria-label", maximized ? "Restore comment size" : "Maximize comment");
     toggle.title = maximized ? "Restore comment size" : "Maximize comment";
-    (0, import_obsidian35.setIcon)(toggle, maximized ? "minimize" : "maximize");
+    (0, import_obsidian39.setIcon)(toggle, maximized ? "minimize" : "maximize");
   };
   for (const edge2 of ["n", "s", "e", "w", "ne", "nw", "se", "sw"]) {
     const handle = box.createDiv({ cls: `study-comment-resize study-comment-resize-${edge2}` });
@@ -45285,7 +46654,7 @@ function resizeCommentWindow(modal) {
 }
 
 // src/review.ts
-var import_obsidian36 = require("obsidian");
+var import_obsidian40 = require("obsidian");
 var ReviewStore = class {
   constructor(app) {
     this.app = app;
@@ -45334,7 +46703,7 @@ var ReviewStore = class {
   }
   async setVisibility(value) {
     if (this.visibilityBlocked) {
-      new import_obsidian36.Notice("Annotation visibility settings could not be read. The original file has been preserved.");
+      new import_obsidian40.Notice("Annotation visibility settings could not be read. The original file has been preserved.");
       return;
     }
     const next = readVisibility(value);
@@ -45349,7 +46718,7 @@ var ReviewStore = class {
   }
   renameVisibilityType(style, old, next) {
     const before = typeKey(style, old), after = typeKey(style, next);
-    if (this.visibility.hiddenTypes.includes(before) || this.visibility.shownTypes?.includes(before)) void this.setVisibility({ ...this.visibility, hiddenTypes: [.../* @__PURE__ */ new Set([...this.visibility.hiddenTypes, ...this.visibility.hiddenTypes.includes(before) ? [after] : []])], ...this.visibility.shownTypes ? { shownTypes: [.../* @__PURE__ */ new Set([...this.visibility.shownTypes, ...this.visibility.shownTypes.includes(before) ? [after] : []])] } : {} }).catch((e) => new import_obsidian36.Notice(String(e)));
+    if (this.visibility.hiddenTypes.includes(before) || this.visibility.shownTypes?.includes(before)) void this.setVisibility({ ...this.visibility, hiddenTypes: [.../* @__PURE__ */ new Set([...this.visibility.hiddenTypes, ...this.visibility.hiddenTypes.includes(before) ? [after] : []])], ...this.visibility.shownTypes ? { shownTypes: [.../* @__PURE__ */ new Set([...this.visibility.shownTypes, ...this.visibility.shownTypes.includes(before) ? [after] : []])] } : {} }).catch((e) => new import_obsidian40.Notice(String(e)));
   }
   visibilityCatalog() {
     const entries = /* @__PURE__ */ new Map();
@@ -45373,7 +46742,7 @@ var ReviewStore = class {
     return this.setVisibility(visibilityAll(this.visibility, show));
   }
   visibilityMenu(position2) {
-    const menu = new import_obsidian36.Menu();
+    const menu = new import_obsidian40.Menu();
     this.populateVisibility(menu);
     const win = (this.app.workspace.getMostRecentLeaf()?.view.containerEl.ownerDocument ?? document).defaultView;
     menu.showAtPosition(position2 ?? { x: win.innerWidth / 2, y: 120 });
@@ -45384,19 +46753,19 @@ var ReviewStore = class {
       menu.addItem((i) => i.setTitle("Click annotations to show handles (Reading)").setChecked(handles.enabled()).onClick(() => handles.toggle()));
       menu.addSeparator();
     }
-    const change = (value) => void this.setVisibility(value).catch((e) => new import_obsidian36.Notice(String(e)));
+    const change = (value) => void this.setVisibility(value).catch((e) => new import_obsidian40.Notice(String(e)));
     menu.addItem((i) => i.setTitle("Show source line ranges (Reading)").setChecked(this.visibility.sourceLines !== false).onClick(() => change({ ...this.visibility, sourceLines: this.visibility.sourceLines === false })));
     menu.addItem((i) => i.setTitle("Show annotation numbers").setChecked(this.visibility.annotationNumbers !== false).onClick(() => change({ ...this.visibility, annotationNumbers: this.visibility.annotationNumbers === false })));
-    menu.addItem((i) => i.setTitle("Hide all").onClick(() => void this.showAllAnnotations(false).catch((e) => new import_obsidian36.Notice(String(e)))));
+    menu.addItem((i) => i.setTitle("Hide all").onClick(() => void this.showAllAnnotations(false).catch((e) => new import_obsidian40.Notice(String(e)))));
     menu.addItem((i) => i.setTitle("Hide ordinary annotations").setChecked(!!this.visibility.hideOrdinary).onClick(() => change({ ...this.visibility, hideOrdinary: !this.visibility.hideOrdinary })));
     const catalog = this.visibilityCatalog();
     for (const style of annotationStyles) {
       const child = menuGroup(menu, "visibility-" + style, styleNames[style], style === "sticky" ? "sticky-note" : style === "underline" ? "underline" : style === "text" ? "type" : "highlighter");
       for (const p of catalog.filter((e) => e.style === style)) {
-        child.addItem((i) => i.setTitle(swatchTitle(style, p, "Show " + (p.meaning || p.color))).setChecked(annotationVisible(p.mark, this.visibility)).onClick(() => void this.toggleVisibleType(p.key).catch((e) => new import_obsidian36.Notice(String(e)))));
+        child.addItem((i) => i.setTitle(swatchTitle(style, p, "Show " + (p.meaning || p.color))).setChecked(annotationVisible(p.mark, this.visibility)).onClick(() => void this.toggleVisibleType(p.key).catch((e) => new import_obsidian40.Notice(String(e)))));
       }
     }
-    menu.addItem((i) => i.setTitle("Show all").onClick(() => void this.showAllAnnotations(true).catch((e) => new import_obsidian36.Notice(String(e)))));
+    menu.addItem((i) => i.setTitle("Show all").onClick(() => void this.showAllAnnotations(true).catch((e) => new import_obsidian40.Notice(String(e)))));
   }
   addVisibilityMenu(menu, _position) {
     const child = menuGroup(menu, "annotation-visibility", "Annotation visibility", "eye");
@@ -45422,12 +46791,12 @@ var ReviewStore = class {
   addClearEmptyMenu(menu, path) {
     if (menu.__studyClearEmpty) return;
     menu.__studyClearEmpty = true;
-    menu.addItem((i) => i.setSection("selection").setTitle("Clear empty annotations in this note").setIcon("eraser").onClick(() => void this.clearEmptyAnnotations(path).catch((e) => new import_obsidian36.Notice("Could not clear annotations: " + String(e)))));
+    menu.addItem((i) => i.setSection("selection").setTitle("Clear empty annotations in this note").setIcon("eraser").onClick(() => void this.clearEmptyAnnotations(path).catch((e) => new import_obsidian40.Notice("Could not clear annotations: " + String(e)))));
   }
   async clearEmptyAnnotations(path) {
     const removed = await this.emptyAnnotationTransaction(path);
     if (!removed.length) {
-      new import_obsidian36.Notice("No empty annotations to clear.");
+      new import_obsidian40.Notice("No empty annotations to clear.");
       return 0;
     }
     const fragment = document.createDocumentFragment();
@@ -45436,13 +46805,13 @@ var ReviewStore = class {
     undo2.textContent = "Undo";
     undo2.href = "#";
     fragment.append(undo2);
-    const notice = new import_obsidian36.Notice(fragment, 15e3);
+    const notice = new import_obsidian40.Notice(fragment, 15e3);
     undo2.onclick = (e) => {
       e.preventDefault();
       void this.emptyAnnotationTransaction(path, removed).then((restored) => {
         notice.hide();
-        new import_obsidian36.Notice(`Restored ${restored.length} annotations.`);
-      }).catch((e2) => new import_obsidian36.Notice("Could not undo: " + String(e2)));
+        new import_obsidian40.Notice(`Restored ${restored.length} annotations.`);
+      }).catch((e2) => new import_obsidian40.Notice("Could not undo: " + String(e2)));
     };
     return removed.length;
   }
@@ -45478,7 +46847,7 @@ var ReviewStore = class {
       await this.openMargin?.(c);
     } catch (e) {
       if (!saved) this.data.comments = this.data.comments.filter((item) => item.id !== c.id);
-      new import_obsidian36.Notice((saved ? "Annotation saved; could not open margin: " : "Could not save annotation: ") + String(e));
+      new import_obsidian40.Notice((saved ? "Annotation saved; could not open margin: " : "Could not save annotation: ") + String(e));
     }
   }
   showAnnotation(c) {
@@ -45488,7 +46857,7 @@ var ReviewStore = class {
     const child = menuGroup(menu, "edit-annotation-" + c.id, "Edit annotation" + (c.intent ? ": " + c.intent : ""), "pencil", "selection");
     if (child.__studyAppearance) return;
     child.__studyAppearance = true;
-    appearanceItems(child, c, (s) => this.paletteFor(s), (patch) => void this.changeAppearance?.(c.id, patch).catch((e) => new import_obsidian36.Notice(String(e))));
+    appearanceItems(child, c, (s) => this.paletteFor(s), (patch) => void this.changeAppearance?.(c.id, patch).catch((e) => new import_obsidian40.Notice(String(e))));
     child.addItem((i) => i.setTitle("Open margin note").setIcon("notebook-pen").onClick(() => this.edit(c)));
   }
   warnHidden(c) {
@@ -45499,10 +46868,10 @@ var ReviewStore = class {
     show.textContent = "Show";
     show.href = "#";
     fragment.append(show);
-    const notice = new import_obsidian36.Notice(fragment, 7e3);
+    const notice = new import_obsidian40.Notice(fragment, 7e3);
     show.onclick = (e) => {
       e.preventDefault();
-      void this.showAnnotation(c).catch((e2) => new import_obsidian36.Notice(String(e2)));
+      void this.showAnnotation(c).catch((e2) => new import_obsidian40.Notice(String(e2)));
       notice.hide();
     };
   }
@@ -45522,7 +46891,7 @@ var ReviewStore = class {
         this.visibility = readVisibility(JSON.parse(await this.app.vault.adapter.read(this.visibilityPath)));
       } catch {
         this.visibilityBlocked = true;
-        new import_obsidian36.Notice("Annotation visibility settings could not be read. All marks are visible; the original file was preserved.");
+        new import_obsidian40.Notice("Annotation visibility settings could not be read. All marks are visible; the original file was preserved.");
       }
     }
     if (await this.app.vault.adapter.exists(this.path)) {
@@ -45547,7 +46916,7 @@ var ReviewStore = class {
   clean(raw) {
     const value = sanitizedReview(raw), invalid = raw.comments.filter((c) => !value.comments.includes(c));
     const signature2 = JSON.stringify(invalid);
-    if (invalid.length && signature2 !== this.reportedInvalid) new import_obsidian36.Notice(`${invalid.length} invalid margin record(s) were left intact in the review file. Other notes remain available.`);
+    if (invalid.length && signature2 !== this.reportedInvalid) new import_obsidian40.Notice(`${invalid.length} invalid margin record(s) were left intact in the review file. Other notes remain available.`);
     this.reportedInvalid = signature2;
     return value;
   }
@@ -45708,7 +47077,7 @@ var ReviewStore = class {
     const content2 = node.ownerDocument.createElement("div");
     content2.className = "markdown-rendered";
     popup.append(content2);
-    const owner = new import_obsidian36.Component();
+    const owner = new import_obsidian40.Component();
     owner.load();
     const rect = node.getBoundingClientRect();
     popup.style.position = "fixed";
@@ -45747,8 +47116,8 @@ var ReviewStore = class {
       void this.save({ paths: /* @__PURE__ */ new Set(), commentIds: /* @__PURE__ */ new Set(), annotations: false }).then(() => {
         host.querySelector(".study-review-status")?.remove();
         if (item.remove) host.createSpan({ cls: "study-review-status", text: "Marked for removal" });
-        new import_obsidian36.Notice(item.remove ? "Marked for review. Question and exam remain unchanged." : "Removal mark cleared.");
-      }).catch((e) => new import_obsidian36.Notice(String(e)));
+        new import_obsidian40.Notice(item.remove ? "Marked for review. Question and exam remain unchanged." : "Removal mark cleared.");
+      }).catch((e) => new import_obsidian40.Notice(String(e)));
     }));
     menu.addItem((i) => i.setTitle(quote ? "Comment on selection\u2026" : "Comment on question\u2026").setIcon("message-square").onClick(() => this.edit({ path: q.path, questionId: q.definition.id, context, quote, before: "", after: "" }, () => this.decorate(host, q.definition.id))));
     const comments = this.data.comments.filter((c) => c.questionId === q.definition.id && !c.resolved);
@@ -45756,11 +47125,11 @@ var ReviewStore = class {
   }
   edit(anchor, saved) {
     if (!anchor.questionId && this.openMargin) {
-      void this.openMargin(anchor, false, !!anchor.id).catch((e) => new import_obsidian36.Notice("Could not open margin note: " + String(e)));
+      void this.openMargin(anchor, false, !!anchor.id).catch((e) => new import_obsidian40.Notice("Could not open margin note: " + String(e)));
       return;
     }
     const draftId = anchor.id ?? crypto.randomUUID();
-    const modal = new import_obsidian36.Modal(this.app);
+    const modal = new import_obsidian40.Modal(this.app);
     modal.modalEl.addClass("study-comment-editor");
     modal.titleEl.setText(anchor.kind === "sticky" ? "Sticky note" : anchor.id ? "Edit comment" : "Add comment");
     if (anchor.quote) modal.contentEl.createEl("blockquote", { text: anchor.quote });
@@ -45783,7 +47152,7 @@ var ReviewStore = class {
       color.value = choices[Number(select.value)].color;
       dark.value = darkCommentColor(choices[Number(select.value)]);
     };
-    const owner = new import_obsidian36.Component();
+    const owner = new import_obsidian40.Component();
     owner.load();
     let busy = false;
     const editor = writtenEditor(this.app, modal.contentEl, anchor.path, anchor.comment ?? "", owner, () => {
@@ -45847,7 +47216,7 @@ var ReviewStore = class {
       void this.openMargin();
       return;
     }
-    const modal = new import_obsidian36.Modal(this.app);
+    const modal = new import_obsidian40.Modal(this.app);
     modal.titleEl.setText("Review queue");
     for (const r of this.data.questions.filter((r2) => r2.remove && (!questionId || r2.questionId === questionId))) {
       const row = modal.contentEl.createDiv();
@@ -45855,13 +47224,13 @@ var ReviewStore = class {
       row.createEl("small", { text: r.context });
       row.createEl("button", { text: "Unmark" }).onclick = () => {
         r.remove = false;
-        void this.save({ paths: /* @__PURE__ */ new Set(), commentIds: /* @__PURE__ */ new Set(), annotations: false }).then(() => row.remove()).catch((e) => new import_obsidian36.Notice(String(e)));
+        void this.save({ paths: /* @__PURE__ */ new Set(), commentIds: /* @__PURE__ */ new Set(), annotations: false }).then(() => row.remove()).catch((e) => new import_obsidian40.Notice(String(e)));
       };
     }
     for (const c of this.data.comments.filter((c2) => !c2.resolved && (!questionId || c2.questionId === questionId))) {
       const row = modal.contentEl.createDiv();
       row.createEl("p", { text: `${c.intent}: ${c.quote || c.questionId || c.path}` });
-      const owner = new import_obsidian36.Component();
+      const owner = new import_obsidian40.Component();
       owner.load();
       const previous = modal.onClose.bind(modal);
       modal.onClose = () => {
@@ -45877,7 +47246,7 @@ var ReviewStore = class {
 };
 
 // src/annotation-handles.ts
-var import_obsidian37 = require("obsidian");
+var import_obsidian41 = require("obsidian");
 function registerAnnotationHandles(plugin, store) {
   const doc2 = plugin.app.workspace.containerEl.ownerDocument, win = doc2.defaultView;
   let enabled = true, cleanup;
@@ -45889,7 +47258,7 @@ function registerAnnotationHandles(plugin, store) {
   const toggle = () => {
     enabled = !enabled;
     close();
-    new import_obsidian37.Notice(enabled ? "Reading annotation handles enabled for this session. Click an annotation to resize it." : "Annotation handles disabled.");
+    new import_obsidian41.Notice(enabled ? "Reading annotation handles enabled for this session. Click an annotation to resize it." : "Annotation handles disabled.");
   };
   store.annotationHandles = { enabled: () => enabled, toggle, open: (mark, id3) => open(mark, void 0, id3) };
   plugin.register(() => {
@@ -45898,8 +47267,8 @@ function registerAnnotationHandles(plugin, store) {
   plugin.addCommand({ id: "experimental-annotation-handles", name: "Toggle Reading annotation handles", callback: toggle });
   plugin.register(close);
   const open = (mark, event, chosenId) => {
-    const refuse = (message) => {
-      if (!event) new import_obsidian37.Notice(message);
+    const refuse = (message2) => {
+      if (!event) new import_obsidian41.Notice(message2);
     };
     if (!mark.isConnected || !mark.closest(".markdown-preview-view")) {
       refuse("The passage changed. Right-click the annotation again.");
@@ -45917,14 +47286,14 @@ function registerAnnotationHandles(plugin, store) {
     }
     const c = store.data.comments.find((c2) => c2.id === id3);
     if (c?.study || c?.code) return;
-    const view = plugin.app.workspace.getActiveViewOfType(import_obsidian37.MarkdownView);
+    const view = plugin.app.workspace.getActiveViewOfType(import_obsidian41.MarkdownView);
     if (!c || !view?.file || view.getMode() !== "preview" || c.path !== view.file.path || c.deletedAt || c.resolved) {
       refuse("Open this annotation\u2019s note in Reading mode and try again.");
       return;
     }
     const p = mark.closest("p");
     if (!p || p.querySelector("code,img")) {
-      new import_obsidian37.Notice("Dragging does not yet support paragraphs with code or images.");
+      new import_obsidian41.Notice("Dragging does not yet support paragraphs with code or images.");
       return;
     }
     const source = view.editor.getValue(), anchors = excerpts(c), old = anchors.length === 1 ? marginLocation(source, anchors[0]) : void 0;
@@ -45932,7 +47301,7 @@ function registerAnnotationHandles(plugin, store) {
       if (!old) throw Error("Dragging currently supports one excerpt.");
       resizePlainAnnotation(source, anchors, old.from, old.to);
     } catch (e) {
-      new import_obsidian37.Notice(String(e));
+      new import_obsidian41.Notice(String(e));
       return;
     }
     let mapping = resizeDOM(p);
@@ -45940,7 +47309,7 @@ function registerAnnotationHandles(plugin, store) {
     const projection = resizeProjection(source), projectedBase = projection.text.indexOf(text2);
     const oldFrom = projection.boundaries.indexOf(old.from), oldTo = projection.boundaries.indexOf(old.to);
     if (projectedBase < 0 || projection.text.indexOf(text2, projectedBase + 1) >= 0 || oldFrom < projectedBase || oldTo > projectedBase + text2.length || oldTo < 0) {
-      new import_obsidian37.Notice("This rendered paragraph cannot yet be mapped safely for dragging.");
+      new import_obsidian41.Notice("This rendered paragraph cannot yet be mapped safely for dragging.");
       return;
     }
     const sourceOffset = (offset) => projection.boundaries[projectedBase + offset];
@@ -46026,14 +47395,14 @@ function registerAnnotationHandles(plugin, store) {
     preview.addEventListener("scroll", cancel);
     win.addEventListener("resize", cancel);
     win.addEventListener("blur", blur);
-    for (const [button, side] of [[start, "start"], [end, "end"]]) {
-      button.onpointerdown = (e) => {
+    for (const [button2, side] of [[start, "start"], [end, "end"]]) {
+      button2.onpointerdown = (e) => {
         if (e.button !== 0) return;
         e.preventDefault();
         e.stopPropagation();
         drag = side;
         origin = { x: e.clientX, y: e.clientY };
-        button.setPointerCapture(e.pointerId);
+        button2.setPointerCapture(e.pointerId);
       };
       const move = (e) => {
         if (drag !== side) return;
@@ -46048,9 +47417,9 @@ function registerAnnotationHandles(plugin, store) {
         start.style.pointerEvents = end.style.pointerEvents = "auto";
         if (!caret || !p.contains(caret.startContainer)) return;
         let offset = mapping.offset(caret.startContainer, caret.startOffset) ?? -1;
-        const math = (caret.startContainer.nodeType === Node.ELEMENT_NODE ? caret.startContainer : caret.startContainer.parentElement)?.closest(".math");
-        if (math && p.contains(math)) {
-          const rect = math.getBoundingClientRect(), start2 = mapping.mathOffsets.get(math);
+        const math2 = (caret.startContainer.nodeType === Node.ELEMENT_NODE ? caret.startContainer : caret.startContainer.parentElement)?.closest(".math");
+        if (math2 && p.contains(math2)) {
+          const rect = math2.getBoundingClientRect(), start2 = mapping.mathOffsets.get(math2);
           if (start2 !== void 0) offset = start2 + (e.clientX > rect.left + rect.width / 2 ? 1 : 0);
         }
         if (offset < 0) return;
@@ -46068,8 +47437,8 @@ function registerAnnotationHandles(plugin, store) {
         selection?.addRange(range());
         draw();
       };
-      button.onpointercancel = cancel;
-      button.onlostpointercapture = () => {
+      button2.onpointercancel = cancel;
+      button2.onlostpointercapture = () => {
         if (drag) close();
       };
       const up = (e) => {
@@ -46134,7 +47503,7 @@ function underlineProseRanges(range, equations3, selections) {
 }
 
 // src/floating-palette.ts
-var import_obsidian38 = require("obsidian");
+var import_obsidian42 = require("obsidian");
 var FloatingPalette = class {
   constructor(plugin, store, apply2, capture) {
     this.plugin = plugin;
@@ -46184,7 +47553,7 @@ var FloatingPalette = class {
     }).then(() => this.plugin.app.vault.adapter.write(this.path, raw));
     void this.pending.catch((e) => {
       this.saved = "";
-      new import_obsidian38.Notice("Could not remember palette position: " + String(e));
+      new import_obsidian42.Notice("Could not remember palette position: " + String(e));
     });
   }
   close(restore = false) {
@@ -46198,7 +47567,7 @@ var FloatingPalette = class {
     if (restore) this.returnFocus?.();
   }
   remember() {
-    const view = this.plugin.app.workspace.getActiveViewOfType(import_obsidian38.MarkdownView);
+    const view = this.plugin.app.workspace.getActiveViewOfType(import_obsidian42.MarkdownView);
     if (view) {
       this.returnFocus = () => {
         this.plugin.app.workspace.setActiveLeaf(view.leaf, { focus: true });
@@ -46225,7 +47594,7 @@ var FloatingPalette = class {
   use(p, keyboard = false) {
     void this.apply(this.style, p).then(() => {
       if (keyboard) this.returnFocus?.();
-    }).catch((e) => new import_obsidian38.Notice(String(e)));
+    }).catch((e) => new import_obsidian42.Notice(String(e)));
   }
   open(style, keyboard = false) {
     const doc2 = this.plugin.app.workspace.getMostRecentLeaf()?.view.containerEl.ownerDocument ?? document, win = doc2.defaultView;
@@ -46250,7 +47619,7 @@ var FloatingPalette = class {
     head.setAttribute("aria-label", "Drag to move; arrow keys move when focused");
     head.tabIndex = 0;
     const close = head.createEl("button", { cls: "clickable-icon", attr: { "aria-label": "Close annotation palette" } });
-    (0, import_obsidian38.setIcon)(close, "x");
+    (0, import_obsidian42.setIcon)(close, "x");
     close.onclick = () => this.close(true);
     el.addEventListener("mousedown", (e) => {
       if (e.target.closest(".study-visibility-controls")) return;
@@ -46266,7 +47635,7 @@ var FloatingPalette = class {
     for (const style2 of annotationStyles) {
       const b = types2.createEl("button", { cls: "clickable-icon", attr: { "aria-label": styleNames[style2], "aria-pressed": String(style2 === this.style) } });
       b.dataset.paletteStyle = style2;
-      (0, import_obsidian38.setIcon)(b, icons[style2]);
+      (0, import_obsidian42.setIcon)(b, icons[style2]);
       b.onclick = (e) => this.choose(style2, e.detail === 0);
     }
     el.createDiv("study-palette-colors");
@@ -46342,7 +47711,7 @@ var FloatingPalette = class {
     });
     el.oncontextmenu = (e) => {
       e.preventDefault();
-      new import_obsidian38.Menu().addItem((i) => i.setTitle("Color meanings\u2026").setIcon("palette").onClick(() => {
+      new import_obsidian42.Menu().addItem((i) => i.setTitle("Color meanings\u2026").setIcon("palette").onClick(() => {
         this.plugin.app.setting.open();
         this.plugin.app.setting.openTabById("study-studio");
       })).showAtMouseEvent(e);
@@ -46382,8 +47751,8 @@ var FloatingPalette = class {
 };
 
 // src/math-annotations.ts
-var import_obsidian39 = require("obsidian");
-var import_view13 = require("@codemirror/view");
+var import_obsidian43 = require("obsidian");
+var import_view15 = require("@codemirror/view");
 var painted = /* @__PURE__ */ new WeakMap();
 function clearMathMarks(root) {
   const old = painted.get(root);
@@ -46393,17 +47762,17 @@ function clearMathMarks(root) {
   }
 }
 function paintMathMarks(root, comments) {
-  const math = root.querySelector("mjx-math,.ML__latex");
-  if (!math) return;
+  const math2 = root.querySelector("mjx-math,.ML__latex");
+  if (!math2) return;
   const signature2 = JSON.stringify(comments.map((c) => [c.id, c.color, c.darkColor, c.markStyle, c[underlineLane], c.excerpt?.part]));
   const old = painted.get(root);
-  if (old?.signature === signature2 && old.math === math) return;
+  if (old?.signature === signature2 && old.math === math2) return;
   clearMathMarks(root);
   const lineGroups = [];
   const targets = /* @__PURE__ */ new Map();
   for (const c of comments) {
     const part = c.excerpt?.part;
-    const nodes = part ? resolvePart(math, part) : [math];
+    const nodes = part ? resolvePart(math2, part) : [math2];
     if (c.markStyle === "underline" && !lineGroups.some((g) => g.comment.id === c.id && g.nodes.length === nodes.length && g.nodes.every((node, i) => node === nodes[i]))) lineGroups.push({ nodes, comment: c });
     for (const n of nodes) {
       const list = targets.get(n) ?? [];
@@ -46412,9 +47781,20 @@ function paintMathMarks(root, comments) {
     }
   }
   const restore = [];
+  const outlined = /* @__PURE__ */ new Set();
+  for (const [node, cs] of targets) if (cs.some((c) => !c.markStyle || c.markStyle === "highlight")) {
+    const ancestor = node.closest(".mjx-ss");
+    if (ancestor && math2.contains(ancestor)) outlined.add(ancestor);
+    for (const symbol of node.querySelectorAll(".mjx-ss")) outlined.add(symbol);
+  }
+  for (const symbol of outlined) {
+    const had = symbol.classList.contains("study-symbol-overlap");
+    symbol.classList.add("study-symbol-overlap");
+    if (!had) restore.push(() => symbol.classList.remove("study-symbol-overlap"));
+  }
   for (const [node, original] of targets) {
     let colored = node, explicit = !!node.querySelector('[style*="color"]');
-    while (colored && math.contains(colored)) {
+    while (colored && math2.contains(colored)) {
       if (colored.style.color) {
         explicit = true;
         break;
@@ -46423,11 +47803,11 @@ function paintMathMarks(root, comments) {
     }
     const cs = explicit ? original.map((c) => c.markStyle === "text" ? { ...c, markStyle: "underline" } : c) : original;
     const attrs = markAttributes(cs), style = root.ownerDocument.createElement("span").style;
-    style.cssText = attrs.style.replace(/var\(--study-highlight-strength,40%\)/g, node === math && comments.some((c) => c.excerpt?.part) ? "24%" : "var(--study-highlight-strength,40%)");
+    style.cssText = attrs.style.replace(/var\(--study-highlight-strength,40%\)/g, node === math2 && comments.some((c) => c.excerpt?.part) ? "24%" : "var(--study-highlight-strength,40%)");
     for (const c of cs.filter((c2) => c2.markStyle === "underline")) {
-      const group = lineGroups.find((g) => g.comment.id === c.id && JSON.stringify(g.comment.excerpt?.part) === JSON.stringify(c.excerpt?.part));
-      if (group) {
-        if (!group.nodes.includes(node)) group.nodes.push(node);
+      const group2 = lineGroups.find((g) => g.comment.id === c.id && JSON.stringify(g.comment.excerpt?.part) === JSON.stringify(c.excerpt?.part));
+      if (group2) {
+        if (!group2.nodes.includes(node)) group2.nodes.push(node);
       } else lineGroups.push({ nodes: [node], comment: c });
     }
     const values2 = [...Array(style.length)].map((_, i) => style.item(i));
@@ -46466,13 +47846,13 @@ function paintMathMarks(root, comments) {
       overlay.replaceChildren();
       const base2 = overlay.getBoundingClientRect(), scale = 1;
       for (const [index2, row] of rows.entries()) for (const c of row) for (const g of lineGroups.filter((g2) => g2.comment.id === c.id)) {
-        const boxes = g.nodes.flatMap((n) => n === math && math.hasAttribute("breakable") ? [...math.children].filter((n2) => n2.tagName !== "MJX-BREAK") : [n]).flatMap((n) => {
+        const boxes = g.nodes.flatMap((n) => n === math2 && math2.hasAttribute("breakable") ? [...math2.children].filter((n2) => n2.tagName !== "MJX-BREAK") : [n]).flatMap((n) => {
           const win2 = root.ownerDocument.defaultView, padding = parseFloat(win2.getComputedStyle(n).paddingBottom) || 0;
           let floor = -Infinity;
-          if (!root.classList.contains("math-block") && n !== math && !math.hasAttribute("breakable")) floor = math.getBoundingClientRect().bottom - (parseFloat(win2.getComputedStyle(math).paddingBottom) || 0);
-          else if (!root.classList.contains("math-block") && math.hasAttribute("breakable")) {
+          if (!root.classList.contains("math-block") && n !== math2 && !math2.hasAttribute("breakable")) floor = math2.getBoundingClientRect().bottom - (parseFloat(win2.getComputedStyle(math2).paddingBottom) || 0);
+          else if (!root.classList.contains("math-block") && math2.hasAttribute("breakable")) {
             let atomic = n;
-            while (atomic.parentElement && atomic.parentElement !== math) atomic = atomic.parentElement;
+            while (atomic.parentElement && atomic.parentElement !== math2) atomic = atomic.parentElement;
             floor = atomic.getBoundingClientRect().bottom - (parseFloat(win2.getComputedStyle(atomic).paddingBottom) || 0);
           }
           return [...n.getClientRects()].filter((r) => r.width).map((r) => ({ left: r.left, right: r.right, top: r.top, bottom: Math.max(r.bottom - padding, floor) }));
@@ -46480,12 +47860,12 @@ function paintMathMarks(root, comments) {
         if (!boxes.length) continue;
         const groups = [];
         for (const r of boxes) {
-          const group = groups.find((g2) => r.top < g2.bottom && r.bottom > g2.top);
-          if (group) {
-            group.left = Math.min(group.left, r.left);
-            group.right = Math.max(group.right, r.right);
-            group.top = Math.min(group.top, r.top);
-            group.bottom = Math.max(group.bottom, r.bottom);
+          const group2 = groups.find((g2) => r.top < g2.bottom && r.bottom > g2.top);
+          if (group2) {
+            group2.left = Math.min(group2.left, r.left);
+            group2.right = Math.max(group2.right, r.right);
+            group2.top = Math.min(group2.top, r.top);
+            group2.bottom = Math.max(group2.bottom, r.bottom);
           } else groups.push({ left: r.left, right: r.right, top: r.top, bottom: r.bottom });
         }
         for (const { left, right, bottom } of groups) {
@@ -46505,7 +47885,7 @@ function paintMathMarks(root, comments) {
       frame = win.requestAnimationFrame(draw);
     });
     resize.observe(root);
-    resize.observe(math);
+    resize.observe(math2);
     if (root.parentElement) resize.observe(root.parentElement);
     const redraw = () => {
       win.cancelAnimationFrame(frame);
@@ -46524,7 +47904,7 @@ function paintMathMarks(root, comments) {
       else root.style.removeProperty("--study-math-pad");
     });
   }
-  painted.set(root, { signature: signature2, math, restore });
+  painted.set(root, { signature: signature2, math: math2, restore });
 }
 function liveEquation(view, root, qs) {
   try {
@@ -46535,18 +47915,18 @@ function liveEquation(view, root, qs) {
   }
 }
 function liveAnchor(view, root) {
-  const info = view.state.field(import_obsidian39.editorInfoField, false), raw = view.state.doc.toString(), q = liveEquation(view, root, equations(raw));
+  const info = view.state.field(import_obsidian43.editorInfoField, false), raw = view.state.doc.toString(), q = liveEquation(view, root, equations(raw));
   if (!info?.file || !q) return;
-  return { id: crypto.randomUUID(), path: info.file.path, quote: q.raw, before: raw.slice(Math.max(0, q.from - 48), q.from), after: raw.slice(q.to, q.to + 48), kind: "math" };
+  return ordinaryAnchor(raw, { id: crypto.randomUUID(), path: info.file.path, quote: q.raw, before: raw.slice(Math.max(0, q.from - 48), q.from), after: raw.slice(q.to, q.to + 48), kind: "math" }, { from: q.from, to: q.to });
 }
 function selectedMathAnchor(markdown2) {
   const selection = markdown2.containerEl.ownerDocument.getSelection();
   if (!selection || selection.isCollapsed || !selection.rangeCount || !markdown2.file) return;
-  const range = selection.getRangeAt(0), start = range.startContainer.nodeType === 1 ? range.startContainer : range.startContainer.parentElement, root = start?.closest(".math"), math = root?.querySelector("mjx-math");
-  if (!root || !math || !markdown2.containerEl.contains(root) || !math.contains(range.startContainer) || !math.contains(range.endContainer)) return;
-  const cm = root.closest(".cm-editor"), view = cm ? import_view13.EditorView.findFromDOM(cm) : void 0, anchor = view ? liveAnchor(view, root) : readingEquationAnchor(root, markdown2.file.path);
+  const range = selection.getRangeAt(0), start = range.startContainer.nodeType === 1 ? range.startContainer : range.startContainer.parentElement, root = start?.closest(".math"), math2 = root?.querySelector("mjx-math");
+  if (!root || !math2 || !markdown2.containerEl.contains(root) || !math2.contains(range.startContainer) || !math2.contains(range.endContainer)) return;
+  const cm = root.closest(".cm-editor"), view = cm ? import_view15.EditorView.findFromDOM(cm) : void 0, anchor = view ? liveAnchor(view, root) : readingEquationAnchor(root, markdown2.file.path);
   if (!anchor) return;
-  const part = partFromRange(math, range);
+  const part = partFromRange(math2, range);
   return { ...anchor, ...part ? { part, renderedQuote: "$" + part.nodes.map((n) => n.latex).join(" ") + "$" } : {} };
 }
 function registerMathAnnotations(plugin, store) {
@@ -46556,7 +47936,7 @@ function registerMathAnnotations(plugin, store) {
   };
   store.listeners.add(refresh);
   plugin.register(() => store.listeners.delete(refresh));
-  plugin.registerEditorExtension(import_view13.ViewPlugin.fromClass(class {
+  plugin.registerEditorExtension(import_view15.ViewPlugin.fromClass(class {
     constructor(view) {
       this.view = view;
       livePainters.add(this.schedule);
@@ -46589,8 +47969,8 @@ function registerMathAnnotations(plugin, store) {
       });
     };
     paint() {
-      const info = this.view.state.field(import_obsidian39.editorInfoField, false);
-      if (!this.view.state.field(import_obsidian39.editorLivePreviewField, false) || !info?.file) return;
+      const info = this.view.state.field(import_obsidian43.editorInfoField, false);
+      if (!this.view.state.field(import_obsidian43.editorLivePreviewField, false) || !info?.file) return;
       const cs = withUnderlineLanes(store.data.comments.filter((c) => !c.resolved && store.isAnnotationVisible(c) && !c.questionId), this.view.state.doc.toString(), info.file.path).flatMap((c) => excerpts(c).filter((a2) => a2.path === info.file.path && (a2.kind === "math" || c.markStyle === "underline")).map((a2) => ({ ...withExcerptLane(c, a2), excerpt: a2 })));
       if (!cs.length && !this.view.contentDOM.querySelector(".study-math-mark")) return;
       if (this.cachedDoc !== this.view.state.doc) {
@@ -46622,16 +48002,16 @@ function registerMathAnnotations(plugin, store) {
     plugin.registerDomEvent(doc2, "contextmenu", (event) => {
       const target = event.target, root = target.closest(".math");
       if (!root || root.closest(".study-margin-pane,.evidence-reader,.evidence-paper,.modal")) return;
-      const math = root.querySelector("mjx-math,.ML__latex");
-      if (!math) return;
-      const cm = root.closest(".cm-editor"), view = cm ? import_view13.EditorView.findFromDOM(cm) : void 0;
-      const markdown2 = plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian39.MarkdownView && v.containerEl.contains(root));
+      const math2 = root.querySelector("mjx-math,.ML__latex");
+      if (!math2) return;
+      const cm = root.closest(".cm-editor"), view = cm ? import_view15.EditorView.findFromDOM(cm) : void 0;
+      const markdown2 = plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian43.MarkdownView && v.containerEl.contains(root));
       const anchor = view ? liveAnchor(view, root) : markdown2?.file ? readingEquationAnchor(root, markdown2.file.path) : void 0;
       if (!anchor) return;
       const selection = doc2.getSelection(), range = selection && !selection.isCollapsed && selection.rangeCount ? selection.getRangeAt(0) : void 0;
-      const selected = !!range && math.contains(range.startContainer) && math.contains(range.endContainer);
+      const selected = !!range && math2.contains(range.startContainer) && math2.contains(range.endContainer);
       if (range && !selected) return;
-      const part = selected ? partFromRange(math, range) : partAtTarget(math, target);
+      const part = selected ? partFromRange(math2, range) : partAtTarget(math2, target);
       const chosen = { ...anchor, ...part ? { part, renderedQuote: "$" + part.nodes.map((n) => n.latex).join(" ") + "$" } : {} };
       const noteIds = /* @__PURE__ */ new Set();
       let ancestor = target;
@@ -46641,7 +48021,7 @@ function registerMathAnnotations(plugin, store) {
       }
       event.studyMarginMenu = true;
       event.preventDefault();
-      const menu = import_obsidian39.Menu.forEvent(event), open = (a2) => store.edit({ path: a2.path, quote: a2.quote, before: a2.before, after: a2.after, anchors: [a2] });
+      const menu = import_obsidian43.Menu.forEvent(event), open = (a2) => store.edit({ path: a2.path, quote: a2.quote, before: a2.before, after: a2.after, anchors: [a2] });
       store.addMarkMenu(menu, { path: chosen.path, quote: chosen.quote, before: chosen.before, after: chosen.after, anchors: [chosen] });
       for (const c of store.data.comments.filter((c2) => noteIds.has(c2.id) && !c2.resolved)) menu.addItem((i) => i.setSection("study-margin").setTitle("Open margin note: " + (c.comment || c.intent).slice(0, 55)).onClick(() => store.edit(c)));
       menu.addItem((i) => i.setSection("study-margin").setTitle(noteIds.size ? selected ? "Add another comment on selection\u2026" : part ? "Add another comment on this symbol\u2026" : "Add another comment on this equation\u2026" : selected ? "Comment on selection\u2026" : part ? "Comment on this symbol\u2026" : "Comment on this equation\u2026").onClick(() => open(chosen)));
@@ -46665,7 +48045,7 @@ function registerMathAnnotations(plugin, store) {
       event.stopImmediatePropagation();
       if (cs.length === 1) store.edit(cs[0]);
       else {
-        const menu = new import_obsidian39.Menu();
+        const menu = new import_obsidian43.Menu();
         for (const c of cs) menu.addItem((i) => i.setTitle((c.intent || "Note") + ": " + (c.comment || c.quote).slice(0, 70)).onClick(() => store.edit(c)));
         menu.showAtMouseEvent(event);
       }
@@ -46707,8 +48087,8 @@ var ReadingCommentCache = class {
 };
 
 // src/comment-settings.ts
-var import_obsidian40 = require("obsidian");
-var CommentSettings = class extends import_obsidian40.PluginSettingTab {
+var import_obsidian44 = require("obsidian");
+var CommentSettings = class extends import_obsidian44.PluginSettingTab {
   constructor(app, plugin, store) {
     super(app, plugin);
     this.store = store;
@@ -46719,17 +48099,17 @@ var CommentSettings = class extends import_obsidian40.PluginSettingTab {
     el.empty();
     el.createEl("h2", { text: "Annotation colors and meanings" });
     el.createEl("p", { text: "Each annotation style has its own color meanings. Existing notes keep their saved meaning and colors." });
-    new import_obsidian40.Setting(el).setName("Annotation style").addDropdown((d) => {
+    new import_obsidian44.Setting(el).setName("Annotation style").addDropdown((d) => {
       for (const style of annotationStyles) d.addOption(style, styleNames[style]);
       d.setValue(this.style).onChange((value) => {
         this.style = value;
         this.display();
       });
     });
-    const persist = () => void this.store.save({ paths: /* @__PURE__ */ new Set(), commentIds: /* @__PURE__ */ new Set(), annotations: false }).catch((e) => new import_obsidian40.Notice(String(e)));
+    const persist = () => void this.store.save({ paths: /* @__PURE__ */ new Set(), commentIds: /* @__PURE__ */ new Set(), annotations: false }).catch((e) => new import_obsidian44.Notice(String(e)));
     const palette = this.store.paletteFor(this.style);
     for (const [index2, entry] of palette.entries()) {
-      const row = new import_obsidian40.Setting(el).setName(`Color ${index2 + 1}`).setDesc("Light \xB7 Dark \xB7 Meaning").addColorPicker((c) => c.setValue(entry.color).onChange((value) => {
+      const row = new import_obsidian44.Setting(el).setName(`Color ${index2 + 1}`).setDesc("Light \xB7 Dark \xB7 Meaning").addColorPicker((c) => c.setValue(entry.color).onChange((value) => {
         entry.color = value;
         persist();
       })).addColorPicker((c) => c.setValue(darkCommentColor(entry)).onChange((value) => {
@@ -46751,7 +48131,7 @@ var CommentSettings = class extends import_obsidian40.PluginSettingTab {
       }));
       row.controlEl.querySelectorAll("input[type=color]").forEach((input, i) => input.setAttribute("aria-label", `${i ? "Dark" : "Light"} color ${index2 + 1}`));
     }
-    new import_obsidian40.Setting(el).addButton((b) => b.setButtonText("Add color").onClick(() => {
+    new import_obsidian44.Setting(el).addButton((b) => b.setButtonText("Add color").onClick(() => {
       palette.push({ color: "#55aa77", meaning: "" });
       persist();
       this.display();
@@ -46764,12 +48144,12 @@ var CommentSettings = class extends import_obsidian40.PluginSettingTab {
 };
 
 // src/annotations.ts
-var import_obsidian43 = require("obsidian");
-var import_view14 = require("@codemirror/view");
-var import_state13 = require("@codemirror/state");
+var import_obsidian47 = require("obsidian");
+var import_view16 = require("@codemirror/view");
+var import_state15 = require("@codemirror/state");
 
 // src/reading-comments.ts
-var import_obsidian41 = require("obsidian");
+var import_obsidian45 = require("obsidian");
 var sectionSelector = "[data-study-comment-section]";
 var markSelector = "[data-study-reading-comment]";
 function readingMarks(root) {
@@ -46810,7 +48190,7 @@ function paintReadingComments(root, comments, handlers2) {
       handlers2.edit(cs[0]);
       return;
     }
-    const menu = new import_obsidian41.Menu();
+    const menu = new import_obsidian45.Menu();
     for (const c of cs) menu.addItem((item) => item.setTitle((c.intent || "Note") + ": " + (c.comment || c.quote).slice(0, 70)).onClick(() => handlers2.edit(c)));
     const box = mark.getBoundingClientRect();
     menu.showAtPosition({ x: box.left, y: box.bottom });
@@ -46883,8 +48263,8 @@ function paintReadingComments(root, comments, handlers2) {
 }
 
 // src/anchor-protection.ts
-var import_obsidian42 = require("obsidian");
-var import_state12 = require("@codemirror/state");
+var import_obsidian46 = require("obsidian");
+var import_state14 = require("@codemirror/state");
 
 // src/anchor-protection-model.ts
 function lostFromRanges(before, after) {
@@ -46917,7 +48297,7 @@ function changedAnchorIds(tr) {
 }
 
 // src/anchor-protection.ts
-var approvedRemoval = import_state12.Annotation.define();
+var approvedRemoval = import_state14.Annotation.define();
 function incoming(plugin, target, ids) {
   const wanted = new Set(ids), found = [];
   for (const file of plugin.app.vault.getMarkdownFiles()) {
@@ -46934,7 +48314,7 @@ function incoming(plugin, target, ids) {
   }
   return found.sort((a2, b) => a2.path.localeCompare(b.path) || a2.line - b.line || a2.id.localeCompare(b.id));
 }
-var RemoveAnchorsModal = class extends import_obsidian42.Modal {
+var RemoveAnchorsModal = class extends import_obsidian46.Modal {
   constructor(plugin, view, file, ids, all) {
     super(plugin.app);
     this.plugin = plugin;
@@ -46959,7 +48339,7 @@ var RemoveAnchorsModal = class extends import_obsidian42.Modal {
     else this.contentEl.createEl("p", { text: "References outside this vault or in unindexed content are not included." });
     this.contentEl.createEl("p", { text: `To confirm, type exactly: ${phrase}` });
     let typed = "";
-    const row = new import_obsidian42.Setting(this.contentEl).setName("Confirmation");
+    const row = new import_obsidian46.Setting(this.contentEl).setName("Confirmation");
     let remove2;
     row.addText((t2) => {
       t2.inputEl.setAttribute("aria-label", "Anchor removal confirmation");
@@ -46968,41 +48348,41 @@ var RemoveAnchorsModal = class extends import_obsidian42.Modal {
         if (remove2) remove2.disabled = typed !== phrase;
       });
     });
-    new import_obsidian42.Setting(this.contentEl).addButton((b) => b.setButtonText("Cancel").onClick(() => this.close())).addButton((b) => {
+    new import_obsidian46.Setting(this.contentEl).addButton((b) => b.setButtonText("Cancel").onClick(() => this.close())).addButton((b) => {
       b.setButtonText("Remove anchors").setWarning();
       remove2 = b.buttonEl;
       remove2.disabled = true;
       b.onClick(() => {
         if (typed !== phrase) return;
-        const info = this.view.state.field(import_obsidian42.editorInfoField, false);
+        const info = this.view.state.field(import_obsidian46.editorInfoField, false);
         if (info?.file?.path !== this.file.path || this.view.state.doc.toString() !== before || JSON.stringify(incoming(this.plugin, this.file, this.ids)) !== signature2) {
-          new import_obsidian42.Notice("The note or its references changed. Reopen the removal dialog to review them.");
+          new import_obsidian46.Notice("The note or its references changed. Reopen the removal dialog to review them.");
           this.close();
           return;
         }
         this.view.dispatch({ changes: anchorRemovalChanges(before, this.ids), annotations: approvedRemoval.of(true), userEvent: "input.anchor-removal" });
         this.close();
-        new import_obsidian42.Notice("Anchors removed. Undo restores them.");
+        new import_obsidian46.Notice("Anchors removed. Undo restores them.");
       });
     });
   }
 };
 function requestAnchorRemoval(plugin, view, ids, all = false) {
-  const file = view.state.field(import_obsidian42.editorInfoField, false)?.file;
+  const file = view.state.field(import_obsidian46.editorInfoField, false)?.file;
   if (!file || !ids.length) return;
   new RemoveAnchorsModal(plugin, view, file, ids, all).open();
 }
 function registerAnchorProtection(plugin) {
   let lastNotice = 0;
-  plugin.registerEditorExtension(import_state12.EditorState.transactionFilter.of((tr) => {
+  plugin.registerEditorExtension(import_state14.EditorState.transactionFilter.of((tr) => {
     if (!tr.docChanged || tr.annotation(approvedRemoval)) return tr;
-    const beforeFile = tr.startState.field(import_obsidian42.editorInfoField, false)?.file;
-    const afterFile = tr.state.field(import_obsidian42.editorInfoField, false)?.file;
+    const beforeFile = tr.startState.field(import_obsidian46.editorInfoField, false)?.file;
+    const afterFile = tr.state.field(import_obsidian46.editorInfoField, false)?.file;
     if (!beforeFile || beforeFile.path !== afterFile?.path) return tr;
     if (!changedAnchorIds(tr).length) return tr;
     if (Date.now() - lastNotice > 2500) {
       lastNotice = Date.now();
-      new import_obsidian42.Notice("Block anchors are protected. Right-click the anchor to remove it, or use \u201CRemove all block anchors from current note\u201D.");
+      new import_obsidian46.Notice("Block anchors are protected. Right-click the anchor to remove it, or use \u201CRemove all block anchors from current note\u201D.");
     }
     return [];
   }));
@@ -47024,9 +48404,9 @@ function registerAnchorProtection(plugin) {
 }
 
 // src/annotations.ts
-var refreshAnnotations = import_state13.StateEffect.define();
+var refreshAnnotations = import_state15.StateEffect.define();
 var excludedReading = ".study-comment-editor,.study-comment-popover,.study-margin-pane,.study-margin-note,.evidence-reader,.evidence-paper,.evidence-editor";
-var AnchorChip = class extends import_view14.WidgetType {
+var AnchorChip = class extends import_view16.WidgetType {
   constructor(id3, plugin) {
     super();
     this.id = id3;
@@ -47044,27 +48424,27 @@ var AnchorChip = class extends import_view14.WidgetType {
     span.oncontextmenu = (event) => {
       event.preventDefault();
       event.stopPropagation();
-      new import_obsidian43.Menu().addItem((i) => i.setTitle(`Remove block anchor ${this.id}\u2026`).setIcon("unlink").onClick(() => requestAnchorRemoval(this.plugin, view, [this.id]))).showAtMouseEvent(event);
+      new import_obsidian47.Menu().addItem((i) => i.setTitle(`Remove block anchor ${this.id}\u2026`).setIcon("unlink").onClick(() => requestAnchorRemoval(this.plugin, view, [this.id]))).showAtMouseEvent(event);
     };
     return span;
   }
 };
 function stickyButton(container, c, store) {
-  const button = container.createEl("button", { cls: "study-sticky-note", attr: { "aria-label": c.resolved ? "Open resolved sticky note" : "Open sticky note" } });
-  (0, import_obsidian43.setIcon)(button, "sticky-note");
-  button.title = c.resolved ? "Resolved sticky note" : "Sticky note";
-  button.classList.toggle("is-resolved", c.resolved);
-  button.style.setProperty("--critique-color", safeColor(c.color));
-  button.style.setProperty("--critique-dark", darkCommentColor(c));
-  button.onclick = (e) => {
+  const button2 = container.createEl("button", { cls: "study-sticky-note", attr: { "aria-label": c.resolved ? "Open resolved sticky note" : "Open sticky note" } });
+  (0, import_obsidian47.setIcon)(button2, "sticky-note");
+  button2.title = c.resolved ? "Resolved sticky note" : "Sticky note";
+  button2.classList.toggle("is-resolved", c.resolved);
+  button2.style.setProperty("--critique-color", safeColor(c.color));
+  button2.style.setProperty("--critique-dark", darkCommentColor(c));
+  button2.onclick = (e) => {
     e.preventDefault();
     e.stopPropagation();
     store.edit(c);
   };
-  button.onmouseenter = () => store.hover(button, c);
-  button.onfocus = () => store.hover(button, c);
-  button.addEventListener("blur", () => button.dispatchEvent(new Event("mouseleave")));
-  return button;
+  button2.onmouseenter = () => store.hover(button2, c);
+  button2.onfocus = () => store.hover(button2, c);
+  button2.addEventListener("blur", () => button2.dispatchEvent(new Event("mouseleave")));
+  return button2;
 }
 function stickyMarker(doc2, c, store) {
   const span = doc2.createElement("span");
@@ -47076,7 +48456,7 @@ function stickyMarker(doc2, c, store) {
   stickyButton(span, c, store);
   return span;
 }
-var StickyWidget = class extends import_view14.WidgetType {
+var StickyWidget = class extends import_view16.WidgetType {
   constructor(c, store) {
     super();
     this.c = c;
@@ -47161,7 +48541,7 @@ function registerAnnotations(plugin, store) {
   const sourceRevisions = /* @__PURE__ */ new Map();
   plugin.registerEvent(plugin.app.vault.on("modify", (file) => {
     const comments = stickies(file.path);
-    if (!comments.length || !(file instanceof import_obsidian43.TFile)) return;
+    if (!comments.length || !(file instanceof import_obsidian47.TFile)) return;
     const revision = {};
     sourceRevisions.delete(file.path);
     sourceRevisions.set(file.path, revision);
@@ -47182,7 +48562,7 @@ function registerAnnotations(plugin, store) {
   plugin.addSettingTab(new CommentSettings(plugin.app, plugin, store));
   const addPlacedSticky = async (path, placement, p = store.paletteFor("sticky")[0]) => {
     if (!placement) {
-      new import_obsidian43.Notice("This position is ambiguous in repeated text. Choose a nearby distinctive passage.");
+      new import_obsidian47.Notice("This position is ambiguous in repeated text. Choose a nearby distinctive passage.");
       return;
     }
     const id3 = crypto.randomUUID(), c = { id: id3, kind: "sticky", path, quote: "", before: "", after: "", comment: "", intent: p?.meaning ?? "", color: p?.color ?? "#e2b714", darkColor: p?.darkColor, updated: (/* @__PURE__ */ new Date()).toISOString(), resolved: false, placement };
@@ -47198,24 +48578,24 @@ function registerAnnotations(plugin, store) {
         const i = store.data.comments.indexOf(c);
         if (i >= 0) store.data.comments.splice(i, 1);
       }
-      new import_obsidian43.Notice((saved ? "Post-it saved, but its margin could not open: " : "Could not save post-it: ") + String(error));
+      new import_obsidian47.Notice((saved ? "Post-it saved, but its margin could not open: " : "Could not save post-it: ") + String(error));
     }
   };
   const editorPoints = /* @__PURE__ */ new WeakMap();
   const addSticky = async (editor, path, p = store.paletteFor("sticky")[0], snapshot) => {
     const raw = editor.getValue();
     if (snapshot && snapshot.text !== raw) {
-      new import_obsidian43.Notice("The passage changed. Select the placement again.");
+      new import_obsidian47.Notice("The passage changed. Select the placement again.");
       return;
     }
     const offset = snapshot?.offset ?? editor.posToOffset(editor.getCursor("to"));
     if (snapshot?.selectionFrom !== void 0 && selectionEndsOnLineBreak(raw, snapshot.selectionFrom, offset)) {
-      new import_obsidian43.Notice("The selection ends on a new line. Place the caret at the intended Post-it position.");
+      new import_obsidian47.Notice("The selection ends on a new line. Place the caret at the intended Post-it position.");
       return;
     }
     const checked = stickyBoundary(raw, offset);
     if (checked.reason) {
-      new import_obsidian43.Notice(checked.reason);
+      new import_obsidian47.Notice(checked.reason);
       return;
     }
     await addPlacedSticky(path, placementFor(raw, checked.offset, checked.offset), p);
@@ -47223,18 +48603,18 @@ function registerAnnotations(plugin, store) {
   const addStickyReading = async (path, snapshot, p = store.paletteFor("sticky")[0]) => {
     try {
       const source = plugin.app.vault.getAbstractFileByPath(path);
-      if (!(source instanceof import_obsidian43.TFile) || await plugin.app.vault.read(source) !== snapshot.text) {
-        new import_obsidian43.Notice("The passage changed. Select it again.");
+      if (!(source instanceof import_obsidian47.TFile) || await plugin.app.vault.read(source) !== snapshot.text) {
+        new import_obsidian47.Notice("The passage changed. Select it again.");
         return;
       }
       const checked = stickyBoundary(snapshot.text, snapshot.offset);
       if (checked.reason) {
-        new import_obsidian43.Notice(checked.reason);
+        new import_obsidian47.Notice(checked.reason);
         return;
       }
       await addPlacedSticky(path, placementFor(snapshot.text, checked.offset, checked.offset), p);
     } catch (error) {
-      new import_obsidian43.Notice("Could not place post-it: " + String(error));
+      new import_obsidian47.Notice("Could not place post-it: " + String(error));
     }
   };
   const stickyMenus = /* @__PURE__ */ new WeakSet();
@@ -47247,7 +48627,7 @@ function registerAnnotations(plugin, store) {
     const snapshot = point ?? { text: editor.getValue(), offset: editor.posToOffset(editor.getCursor("to")), selectionFrom: editor.posToOffset(editor.getCursor("from")) }, path = info.file.path;
     paletteItems(menuGroup(menu, "mark-sticky", "Post-it", "sticky-note"), "sticky", store.paletteFor("sticky"), (p) => {
       if (info.file?.path !== path) {
-        new import_obsidian43.Notice("The note changed. Select the placement again.");
+        new import_obsidian47.Notice("The note changed. Select the placement again.");
         return;
       }
       void addSticky(editor, path, p, snapshot);
@@ -47257,7 +48637,7 @@ function registerAnnotations(plugin, store) {
   plugin.registerMarkdownCodeBlockProcessor("study-sticky", (source, el, ctx) => {
     el.addClass("study-sticky-placement");
     const id3 = source.trim();
-    class Sticky extends import_obsidian43.MarkdownRenderChild {
+    class Sticky extends import_obsidian47.MarkdownRenderChild {
       onload() {
         store.listeners.add(this.render);
         this.register(() => store.listeners.delete(this.render));
@@ -47287,7 +48667,7 @@ function registerAnnotations(plugin, store) {
     }
   }));
   const currentSelection = () => {
-    const view = plugin.app.workspace.getActiveViewOfType(import_obsidian43.MarkdownView);
+    const view = plugin.app.workspace.getActiveViewOfType(import_obsidian47.MarkdownView);
     if (!view?.file) return;
     const path = view.file.path, pending = store.pendingAnnotationSelection?.(path);
     if (pending?.length) {
@@ -47311,18 +48691,18 @@ function registerAnnotations(plugin, store) {
     return { path, quote: first.quote, before: first.before, after: first.after, anchors };
   };
   for (const style of ["highlight", "underline", "text"]) plugin.addCommand({ id: "mark-selection-" + style, name: styleNames[style] + " selection\u2026", checkCallback: (checking) => {
-    if (!plugin.app.workspace.getActiveViewOfType(import_obsidian43.MarkdownView)?.file) return false;
+    if (!plugin.app.workspace.getActiveViewOfType(import_obsidian47.MarkdownView)?.file) return false;
     if (!checking) palette.open(style, true);
     return true;
   } });
   plugin.addCommand({ id: "insert-sticky-note", name: "Insert post-it\u2026", checkCallback: (checking) => {
-    if (!plugin.app.workspace.getActiveViewOfType(import_obsidian43.MarkdownView)?.file) return false;
+    if (!plugin.app.workspace.getActiveViewOfType(import_obsidian47.MarkdownView)?.file) return false;
     if (!checking) palette.open("sticky", true);
     return true;
   } });
   let captured;
   const capture = () => {
-    const view = plugin.app.workspace.getActiveViewOfType(import_obsidian43.MarkdownView);
+    const view = plugin.app.workspace.getActiveViewOfType(import_obsidian47.MarkdownView);
     if (!view?.file) {
       captured = void 0;
       return;
@@ -47360,11 +48740,11 @@ function registerAnnotations(plugin, store) {
   plugin.registerEvent(plugin.app.workspace.on("editor-menu", (menu, editor, info) => {
     if (editor.getSelection() && info.file) {
       const raw = editor.getValue(), from = editor.posToOffset(editor.getCursor("from")), to = editor.posToOffset(editor.getCursor("to")), anchors = editorExcerpts(raw, from, to, info.file.path);
-      if (anchors.length) store.addMarkMenu(menu, { path: info.file.path, quote: raw.slice(from, to), before: raw.slice(Math.max(0, from - 48), from), after: raw.slice(to, to + 48), anchors });
+      if (anchors.length) store.addMarkMenu(menu, ordinaryAnchor(raw, { path: info.file.path, quote: raw.slice(from, to), before: raw.slice(Math.max(0, from - 48), from), after: raw.slice(to, to + 48), anchors }, { from, to }));
       menu.addItem((i) => i.setSection("selection").setTitle("Comment on selection\u2026").setIcon("message-square").onClick(() => {
         const from2 = editor.posToOffset(editor.getCursor("from")), to2 = editor.posToOffset(editor.getCursor("to")), raw2 = editor.getValue();
         const anchors2 = editorExcerpts(raw2, from2, to2, info.file.path);
-        if (anchors2.length) store.edit({ path: info.file.path, quote: raw2.slice(from2, to2), before: raw2.slice(Math.max(0, from2 - 48), from2), after: raw2.slice(to2, to2 + 48), anchors: anchors2 });
+        if (anchors2.length) store.edit(ordinaryAnchor(raw2, { path: info.file.path, quote: raw2.slice(from2, to2), before: raw2.slice(Math.max(0, from2 - 48), from2), after: raw2.slice(to2, to2 + 48), anchors: anchors2 }, { from: from2, to: to2 }));
       }));
     }
   }));
@@ -47372,14 +48752,14 @@ function registerAnnotations(plugin, store) {
     if (change && !change.annotations) return;
     plugin.app.workspace.getLeavesOfType("markdown").forEach((leaf) => {
       const view = leaf.view;
-      if (!(view instanceof import_obsidian43.MarkdownView) || change && !change.paths.has(view.file?.path ?? "")) return;
+      if (!(view instanceof import_obsidian47.MarkdownView) || change && !change.paths.has(view.file?.path ?? "")) return;
       const cm = view.editor?.cm;
       cm?.dispatch({ effects: refreshAnnotations.of(null) });
     });
   };
   store.listeners.add(refresh);
   plugin.register(() => store.listeners.delete(refresh));
-  plugin.registerEditorExtension(import_view14.ViewPlugin.fromClass(class {
+  plugin.registerEditorExtension(import_view16.ViewPlugin.fromClass(class {
     constructor(view) {
       this.view = view;
       view.dom.ownerDocument.defaultView.addEventListener("contextmenu", this.capturePoint, true);
@@ -47387,8 +48767,8 @@ function registerAnnotations(plugin, store) {
       view.dom.ownerDocument.defaultView.addEventListener("pointerdown", this.capturePointer, true);
       this.build();
     }
-    decorations = import_view14.Decoration.none;
-    atomic = import_view14.Decoration.none;
+    decorations = import_view16.Decoration.none;
+    atomic = import_view16.Decoration.none;
     keyboardContext = false;
     captureKey = (event) => {
       editorPoints.delete(this.view);
@@ -47414,11 +48794,11 @@ function registerAnnotations(plugin, store) {
       editorPoints.delete(this.view);
     }
     update(update) {
-      if (update.docChanged || update.selectionSet || update.transactions.some((t2) => t2.effects.some((e) => e.is(refreshAnnotations))) || update.startState.field(import_obsidian43.editorLivePreviewField, false) !== update.state.field(import_obsidian43.editorLivePreviewField, false) || update.startState.field(import_obsidian43.editorInfoField, false)?.file?.path !== update.state.field(import_obsidian43.editorInfoField, false)?.file?.path) this.build();
+      if (update.docChanged || update.selectionSet || update.transactions.some((t2) => t2.effects.some((e) => e.is(refreshAnnotations))) || update.startState.field(import_obsidian47.editorLivePreviewField, false) !== update.state.field(import_obsidian47.editorLivePreviewField, false) || update.startState.field(import_obsidian47.editorInfoField, false)?.file?.path !== update.state.field(import_obsidian47.editorInfoField, false)?.file?.path) this.build();
     }
     build() {
-      const state = this.view.state, info = state.field(import_obsidian43.editorInfoField, false);
-      const live = !!state.field(import_obsidian43.editorLivePreviewField, false);
+      const state = this.view.state, info = state.field(import_obsidian47.editorInfoField, false);
+      const live = !!state.field(import_obsidian47.editorLivePreviewField, false);
       const raw = state.doc.toString(), commentRanges = [], qs = live ? equations(raw) : [], ranges = [], anchors = [];
       for (const c of withUnderlineLanes(store.data.comments.filter((c2) => !c2.resolved && store.isAnnotationVisible(c2) && !c2.questionId), raw, info?.file?.path ?? "")) {
         for (const a2 of excerpts(c).filter((a3) => a3.path === info?.file?.path && !a3.sectionSource && (!live || a3.kind !== "math"))) {
@@ -47429,9 +48809,9 @@ function registerAnnotations(plugin, store) {
           }
         }
       }
-      for (const part of commentSegments(commentRanges)) ranges.push(import_view14.Decoration.mark({ class: markClass(part.comments), attributes: markAttributes(part.comments) }).range(part.from, part.to));
+      for (const part of commentSegments(commentRanges)) ranges.push(import_view16.Decoration.mark({ class: markClass(part.comments), attributes: markAttributes(part.comments) }).range(part.from, part.to));
       if (live) for (const a2 of anchorsFor(state.doc)) {
-        const mark = import_view14.Decoration.replace({ widget: new AnchorChip(a2.id, plugin) }).range(a2.from, a2.to);
+        const mark = import_view16.Decoration.replace({ widget: new AnchorChip(a2.id, plugin) }).range(a2.from, a2.to);
         ranges.push(mark);
         anchors.push(mark);
       }
@@ -47441,12 +48821,12 @@ function registerAnnotations(plugin, store) {
         const p = placementOf(c);
         if (!p) continue;
         const end = lookup(p);
-        if (end !== void 0) ranges.push(import_view14.Decoration.widget({ widget: new StickyWidget(c, store), side: p.edge === "start" ? -1 : 1 }).range(end));
+        if (end !== void 0) ranges.push(import_view16.Decoration.widget({ widget: new StickyWidget(c, store), side: p.edge === "start" ? -1 : 1 }).range(end));
       }
-      this.decorations = import_view14.Decoration.set(ranges, true);
-      this.atomic = import_view14.Decoration.set(anchors, true);
+      this.decorations = import_view16.Decoration.set(ranges, true);
+      this.atomic = import_view16.Decoration.set(anchors, true);
     }
-  }, { decorations: (v) => v.decorations, provide: (p) => import_view14.EditorView.atomicRanges.of((view) => view.plugin(p)?.atomic ?? import_view14.Decoration.none), eventHandlers: { mouseover(event) {
+  }, { decorations: (v) => v.decorations, provide: (p) => import_view16.EditorView.atomicRanges.of((view) => view.plugin(p)?.atomic ?? import_view16.Decoration.none), eventHandlers: { mouseover(event) {
     const node = event.target.closest("[data-critique-id]");
     const c = store.data.comments.find((c2) => c2.id === node?.dataset.critiqueId);
     if (node && c) store.hover(node, c);
@@ -47455,7 +48835,7 @@ function registerAnnotations(plugin, store) {
     const node = event.target.closest("[data-critique-id]");
     const ids = (node?.dataset.studyCommentIds ?? node?.dataset.critiqueId ?? "").split(" "), comments = store.data.comments.filter((c) => ids.includes(c.id));
     if (comments.length) {
-      const menu = import_obsidian43.Menu.forEvent(event);
+      const menu = import_obsidian47.Menu.forEvent(event);
       for (const c of comments) store.addAppearanceMenu(menu, c);
     }
     return false;
@@ -47471,12 +48851,12 @@ function registerAnnotations(plugin, store) {
     let sectionPath = ctx.sourcePath;
     registerReadingContext(el, () => sectionPath, ctx);
     readingOwners.get(el)?.unload();
-    const owner = ownReading(new import_obsidian43.MarkdownRenderChild(el));
+    const owner = ownReading(new import_obsidian47.MarkdownRenderChild(el));
     readingOwners.set(el, owner);
     ctx.addChild(owner);
     owner.registerDomEvent(el, "contextmenu", (event) => {
       if (event.target.closest(".study-card,.study-margin-pane")) return;
-      const menu = import_obsidian43.Menu.forEvent(event), shared = event;
+      const menu = import_obsidian47.Menu.forEvent(event), shared = event;
       event.preventDefault();
       const mark = event.target.closest("[data-study-reading-comment]");
       if (mark) for (const id3 of (mark.dataset.studyCommentIds ?? mark.dataset.studyReadingComment ?? "").split(" ")) {
@@ -47492,7 +48872,7 @@ function registerAnnotations(plugin, store) {
           menu.addItem((i) => i.setSection("selection").setTitle(title).setIcon("move-horizontal").onClick(() => {
             const current = mark.isConnected ? mark : preview?.isConnected ? [...preview.querySelectorAll("[data-study-reading-comment]")].find((m) => (m.dataset.studyCommentIds ?? m.dataset.studyReadingComment ?? "").split(" ").includes(id3)) : void 0;
             if (!current) {
-              new import_obsidian43.Notice("The passage changed. Right-click the annotation again.");
+              new import_obsidian47.Notice("The passage changed. Right-click the annotation again.");
               return;
             }
             store.annotationHandles?.open(current, id3);
@@ -47517,7 +48897,7 @@ function registerAnnotations(plugin, store) {
           stickyMenus.add(menu);
           paletteItems(menuGroup(menu, "mark-sticky", "Post-it", "sticky-note"), "sticky", store.paletteFor("sticky"), (p) => {
             if (!snapshot) {
-              new import_obsidian43.Notice("This position could not be mapped exactly. Place the Post-it in ordinary text, outside links, code, or equations.");
+              new import_obsidian47.Notice("This position could not be mapped exactly. Place the Post-it in ordinary text, outside links, code, or equations.");
               return;
             }
             void addStickyReading(path, snapshot, p);
@@ -47532,7 +48912,7 @@ function registerAnnotations(plugin, store) {
       }
     });
     el.dataset.studyCommentSection = "";
-    class ReadingAnnotations extends import_obsidian43.MarkdownRenderChild {
+    class ReadingAnnotations extends import_obsidian47.MarkdownRenderChild {
       pending = false;
       alive = false;
       stopSelection;
@@ -47551,7 +48931,7 @@ function registerAnnotations(plugin, store) {
         this.alive = false;
         if (this.readinessTimer) clearTimeout(this.readinessTimer);
         this.stopSelection?.();
-        for (const math of el.querySelectorAll(".math")) clearMathMarks(math);
+        for (const math2 of el.querySelectorAll(".math")) clearMathMarks(math2);
         for (const mark of readingMarks(el)) mark.dispatchEvent(new Event("mouseleave"));
       }
       refresh = (change) => this.run(change, false);
@@ -47607,7 +48987,7 @@ function registerAnnotations(plugin, store) {
       }
     }
     owner.addChild(ownReading(new ReadingAnnotations(el)));
-    class ReadingStickies extends import_obsidian43.MarkdownRenderChild {
+    class ReadingStickies extends import_obsidian47.MarkdownRenderChild {
       alive = false;
       readinessTimer;
       readinessAttempt = 0;
@@ -47759,7 +49139,7 @@ function registerAnnotations(plugin, store) {
   return { onStudyContextMenu: (menu, event) => {
     const target = event.target, root = target?.closest?.(".cm-editor");
     if (!root || target?.closest(".cm-embed-block")) return;
-    const cm = import_view14.EditorView.findFromDOM(root), info = cm?.state.field(import_obsidian43.editorInfoField, false);
+    const cm = import_view16.EditorView.findFromDOM(root), info = cm?.state.field(import_obsidian47.editorInfoField, false);
     if (info?.editor) addEditorStickyMenu(menu, info.editor, info);
   } };
 }
@@ -47835,7 +49215,7 @@ function locateTable(hashes, fingerprints, selection) {
 }
 
 // src/evidence-workflow.ts
-var import_view16 = require("@codemirror/view");
+var import_view18 = require("@codemirror/view");
 
 // src/evidence-records.ts
 var safePath = (path) => typeof path === "string" && !!path && !path.startsWith("/") && !path.includes("\\") && !path.split("/").includes("..") && !/^[a-z]+:/i.test(path);
@@ -47908,9 +49288,9 @@ function linkedEvidence(text2) {
 }
 
 // src/evidence-links.ts
-var import_obsidian44 = require("obsidian");
-var import_state14 = require("@codemirror/state");
-var import_view15 = require("@codemirror/view");
+var import_obsidian48 = require("obsidian");
+var import_state16 = require("@codemirror/state");
+var import_view17 = require("@codemirror/view");
 var import_language14 = require("@codemirror/language");
 function linkType(target) {
   let path = target.trim();
@@ -47977,7 +49357,7 @@ function registerEvidenceLinks(plugin) {
       if (type) a2.classList.add(`evidence-link-${type}`);
     }
   });
-  class CitationWidget extends import_view15.WidgetType {
+  class CitationWidget extends import_view17.WidgetType {
     constructor(html2, href) {
       super();
       this.html = html2;
@@ -47989,7 +49369,7 @@ function registerEvidenceLinks(plugin) {
     toDOM(view) {
       const span = view.dom.ownerDocument.createElement("span");
       span.className = "evidence-citation";
-      span.append((0, import_obsidian44.sanitizeHTMLToDom)(this.html));
+      span.append((0, import_obsidian48.sanitizeHTMLToDom)(this.html));
       span.setAttribute("role", "button");
       span.tabIndex = 0;
       span.setAttribute("aria-label", `Open supporting evidence for citation ${span.textContent}`);
@@ -48010,10 +49390,10 @@ function registerEvidenceLinks(plugin) {
   }
   const decorate = (view) => {
     const ranges = [];
-    const renderer = plugin.app.plugins?.plugins?.["obsidian-pandoc-reference-list"], file = view.state.field(import_obsidian44.editorInfoField, false)?.file;
+    const renderer = plugin.app.plugins?.plugins?.["obsidian-pandoc-reference-list"], file = view.state.field(import_obsidian48.editorInfoField, false)?.file;
     const cache5 = file ? renderer?.bibManager?.getCacheForPath(file.path) : null;
     const from = view.state.doc.lineAt(view.viewport.from).from, to = view.state.doc.lineAt(view.viewport.to).to, text2 = view.state.doc.sliceString(from, to);
-    const linked = renderer?.settings.renderCitations && view.state.field(import_obsidian44.editorLivePreviewField, false) ? linkedEvidence(text2) : [];
+    const linked = renderer?.settings.renderCitations && view.state.field(import_obsidian48.editorLivePreviewField, false) ? linkedEvidence(text2) : [];
     const replaced = [];
     for (const f of linked) {
       const start = from + f.citeFrom, end = from + f.to;
@@ -48028,7 +49408,7 @@ function registerEvidenceLinks(plugin) {
       if (view.state.selection.ranges.some((r) => r.from <= end && r.to >= start)) continue;
       const citation = cache5?.citations?.find((c) => c.from === from + f.citeFrom && c.to === from + f.citeTo && sameKeys(c.citations.map((p) => p.id), f.keys));
       if (!citation?.val) continue;
-      ranges.push(import_view15.Decoration.replace({ widget: new CitationWidget(citation.val, f.href) }).range(start, end));
+      ranges.push(import_view17.Decoration.replace({ widget: new CitationWidget(citation.val, f.href) }).range(start, end));
       replaced.push({ from: start, to: end });
     }
     for (const match of text2.matchAll(/\[\[([^\]\n]+)\]\]|\[[^\]\n]*\]\((<?[^\n)]+>?)\)/g)) {
@@ -48043,11 +49423,11 @@ function registerEvidenceLinks(plugin) {
       }
       if (code) continue;
       const type = linkType(match[1] || match[2]);
-      if (type) ranges.push(import_view15.Decoration.mark({ class: `evidence-link-${type}` }).range(start, start + match[0].length));
+      if (type) ranges.push(import_view17.Decoration.mark({ class: `evidence-link-${type}` }).range(start, start + match[0].length));
     }
-    return import_view15.Decoration.set(ranges, true);
+    return import_view17.Decoration.set(ranges, true);
   };
-  plugin.registerEditorExtension(import_state14.Prec.highest(import_view15.ViewPlugin.fromClass(class {
+  plugin.registerEditorExtension(import_state16.Prec.highest(import_view17.ViewPlugin.fromClass(class {
     decorations;
     constructor(view) {
       this.decorations = decorate(view);
@@ -48059,7 +49439,7 @@ function registerEvidenceLinks(plugin) {
 }
 
 // src/evidence-workflow.ts
-var import_obsidian46 = require("obsidian");
+var import_obsidian50 = require("obsidian");
 
 // src/citation-review-report.ts
 function sourceTableLocations(source, tables) {
@@ -48109,11 +49489,11 @@ function citationCandidates(source, quote) {
   return parts.sort((a2, b) => b.overlap - a2.overlap || a2.fromLine - b.fromLine).slice(0, 3).map(({ overlap, ...p }) => ({ ...p, verified: false, method: "shared words; inspect original source before accepting" }));
 }
 function reportIssues(source, selections, messages) {
-  return messages.map((message) => {
-    const index2 = Number(message.match(/^Selection (\d+):/)?.[1]) - 1, s = selections[index2];
+  return messages.map((message2) => {
+    const index2 = Number(message2.match(/^Selection (\d+):/)?.[1]) - 1, s = selections[index2];
     return {
       selectionNumber: index2 + 1,
-      reason: message.replace(/^Selection \d+:\s*/, ""),
+      reason: message2.replace(/^Selection \d+:\s*/, ""),
       kind: s?.quote ? "text" : s?.image ? "figure" : "table",
       savedSelection: s,
       candidatePassages: s?.quote ? citationCandidates(source, s.quote) : [],
@@ -48151,7 +49531,7 @@ function reviewMarkdown(report, jsonName) {
 }
 
 // src/evidence-reader.ts
-var import_obsidian45 = require("obsidian");
+var import_obsidian49 = require("obsidian");
 var READER = "study-evidence-reader";
 function imageFile(app, source, path) {
   const direct = app.metadataCache.getFirstLinkpathDest(paperSourcePath(app, path), paperSourcePath(app, source));
@@ -48179,7 +49559,7 @@ function paint(el, s) {
   el.style.setProperty("--evidence-dark", s.darkColor || s.color || "#247441");
   el.style.setProperty("--evidence-opacity", String(s.opacity ?? 0.15));
 }
-var EvidenceReader = class extends import_obsidian45.ItemView {
+var EvidenceReader = class extends import_obsidian49.ItemView {
   constructor(leaf, choose, edit, identity) {
     super(leaf);
     this.choose = choose;
@@ -48229,7 +49609,7 @@ var EvidenceReader = class extends import_obsidian45.ItemView {
     await this.app.vault.create(jsonName, JSON.stringify(report, null, 2) + "\n");
     const note = await this.app.vault.create(stem + ".md", reviewMarkdown(report, jsonName));
     await this.app.workspace.getLeaf("tab").openFile(note);
-    new import_obsidian45.Notice("Citation review saved as Markdown and JSON.");
+    new import_obsidian49.Notice("Citation review saved as Markdown and JSON.");
   }
   scheduleRefresh() {
     clearTimeout(this.refreshTimer);
@@ -48254,7 +49634,7 @@ var EvidenceReader = class extends import_obsidian45.ItemView {
     this.claim = claim;
     this.paper = paper;
     this.component?.unload();
-    this.component = new import_obsidian45.Component();
+    this.component = new import_obsidian49.Component();
     this.component.load();
     this.contentEl.empty();
     this.contentEl.addClass("evidence-reader");
@@ -48262,8 +49642,8 @@ var EvidenceReader = class extends import_obsidian45.ItemView {
     const toolbar = this.contentEl.createDiv("evidence-toolbar");
     toolbar.oncontextmenu = (e) => {
       e.preventDefault();
-      const menu = new import_obsidian45.Menu();
-      menu.addItem((i) => i.setTitle("Export citation review report").setIcon("file-output").onClick(() => void this.exportReview().catch((error) => new import_obsidian45.Notice(error.message))));
+      const menu = new import_obsidian49.Menu();
+      menu.addItem((i) => i.setTitle("Export citation review report").setIcon("file-output").onClick(() => void this.exportReview().catch((error) => new import_obsidian49.Notice(error.message))));
       menu.showAtMouseEvent(e);
     };
     toolbar.createEl("strong", { text: claim.label });
@@ -48276,7 +49656,7 @@ var EvidenceReader = class extends import_obsidian45.ItemView {
       selectionActions.classList.toggle("is-editing", this.editing);
       if (!this.editing) selectionActions.empty();
       editButton.setText(this.editing ? "Finish selecting" : "Edit selections");
-      new import_obsidian45.Notice(this.editing ? "Select text with the mouse to add a citation selection. Click an existing highlight to replace its passage." : "Selection editing finished.");
+      new import_obsidian49.Notice(this.editing ? "Select text with the mouse to add a citation selection. Click an existing highlight to replace its passage." : "Selection editing finished.");
     };
     const selectionActions = toolbar.createDiv("evidence-selection-actions");
     selectionActions.classList.toggle("is-editing", this.editing);
@@ -48286,7 +49666,7 @@ var EvidenceReader = class extends import_obsidian45.ItemView {
     review.onchange = () => {
       if (review.value === "") return;
       const i = Number(review.value), s = paper.selections[i];
-      const m = new import_obsidian45.Modal(this.app);
+      const m = new import_obsidian49.Modal(this.app);
       m.titleEl.setText("Review citation selection");
       if (s.quote) m.contentEl.createEl("blockquote", { text: s.quote });
       m.contentEl.createEl("p", { text: s.comment || "No comment attached." });
@@ -48300,7 +49680,7 @@ var EvidenceReader = class extends import_obsidian45.ItemView {
         this.replacing = i;
         selectionActions.classList.add("is-editing");
         editButton.setText("Finish selecting");
-        new import_obsidian45.Notice("Select the corrected passage, then choose Replace selection. The old record stays unchanged until you save.");
+        new import_obsidian49.Notice("Select the corrected passage, then choose Replace selection. The old record stays unchanged until you save.");
       };
       m.open();
       review.value = "";
@@ -48308,7 +49688,7 @@ var EvidenceReader = class extends import_obsidian45.ItemView {
     toolbar.createEl("button", { text: mark ? "Clear highlights" : "Show highlights" }).onclick = () => void this.show(claim, paper, !mark);
     toolbar.createEl("button", { text: "Open original" }).onclick = () => void this.app.workspace.openLinkText(paperSourcePath(this.app, paper.path), "", "tab");
     const file = this.app.vault.getAbstractFileByPath(paperSourcePath(this.app, paper.path));
-    if (!(file instanceof import_obsidian45.TFile)) {
+    if (!(file instanceof import_obsidian49.TFile)) {
       this.contentEl.createEl("p", { text: `Unavailable paper: ${paper.path}`, cls: "evidence-error" });
       return;
     }
@@ -48316,7 +49696,7 @@ var EvidenceReader = class extends import_obsidian45.ItemView {
     if (generation !== this.generation) return;
     this.source = source;
     const body = this.contentEl.createDiv("markdown-rendered evidence-paper");
-    await import_obsidian45.MarkdownRenderer.render(this.app, renderablePaper(this.source), body, paperSourcePath(this.app, paper.path), this.component);
+    await import_obsidian49.MarkdownRenderer.render(this.app, renderablePaper(this.source), body, paperSourcePath(this.app, paper.path), this.component);
     if (generation !== this.generation) return;
     body.addEventListener("mouseup", () => {
       if (!this.editing) return;
@@ -48368,8 +49748,8 @@ var EvidenceReader = class extends import_obsidian45.ItemView {
       if (this.issues.length) {
         const errors = toolbar.createEl("details", { cls: "evidence-error" });
         errors.createEl("summary", { text: `${this.issues.length} citation selection${this.issues.length === 1 ? "" : "s"} need review` });
-        for (const message of this.issues) errors.createEl("p", { text: message });
-        const affected = new Set(this.issues.map((message) => Number(message.match(/^Selection (\d+):/)?.[1])));
+        for (const message2 of this.issues) errors.createEl("p", { text: message2 });
+        const affected = new Set(this.issues.map((message2) => Number(message2.match(/^Selection (\d+):/)?.[1])));
         for (const option of Array.from(review.options)) if (option.value !== "" && affected.has(Number(option.value) + 1)) option.textContent = "Needs review \xB7 " + option.textContent;
       }
       const jump = toolbar.createEl("select", { attr: { "aria-label": "Jump to supporting selection" } });
@@ -48386,7 +49766,7 @@ var EvidenceReader = class extends import_obsidian45.ItemView {
     el.setAttribute("aria-label", `Citation selection ${index2 + 1}: ${s.comment || "Open comment"}`);
     el.title = s.comment || "Open citation comment";
     const show = () => {
-      const m = new import_obsidian45.Modal(this.app);
+      const m = new import_obsidian49.Modal(this.app);
       m.titleEl.setText(`Citation source \xB7 ${this.paper?.label}`);
       if (s.quote) m.contentEl.createEl("blockquote", { text: s.quote });
       m.contentEl.createEl("p", { text: s.comment || "No comment attached." });
@@ -48400,7 +49780,7 @@ var EvidenceReader = class extends import_obsidian45.ItemView {
         this.replacing = index2;
         this.contentEl.querySelector(".evidence-selection-actions")?.classList.add("is-editing");
         this.contentEl.querySelector(".evidence-paper")?.classList.add("is-replacing");
-        new import_obsidian45.Notice("Select the replacement passage with the mouse, then choose Replace selection in the toolbar.");
+        new import_obsidian49.Notice("Select the replacement passage with the mouse, then choose Replace selection in the toolbar.");
       };
       resizeCommentWindow(m);
       m.open();
@@ -48491,12 +49871,12 @@ function registerEvidenceWorkflow(plugin) {
       try {
         presets = JSON.parse(await app.vault.adapter.read(presetPath));
       } catch {
-        new import_obsidian46.Notice("Could not read evidence color presets.");
+        new import_obsidian50.Notice("Could not read evidence color presets.");
       }
     }
   });
   let saveQueue = Promise.resolve();
-  const fail = (e) => new import_obsidian46.Notice(e instanceof Error ? e.message : String(e), 1e4);
+  const fail = (e) => new import_obsidian50.Notice(e instanceof Error ? e.message : String(e), 1e4);
   const load = async (file) => {
     if (!safePath(file) || !file.endsWith(".yaml")) throw Error("Evidence file must be a vault-relative .yaml path.");
     const raw = await app.vault.adapter.read(file);
@@ -48518,10 +49898,10 @@ function registerEvidenceWorkflow(plugin) {
     return job;
   };
   function choose(claim, open) {
-    const m = new import_obsidian46.Modal(app);
+    const m = new import_obsidian50.Modal(app);
     m.titleEl.setText(claim.label);
     for (const paper of claim.papers) {
-      const available = app.vault.getAbstractFileByPath(paperSourcePath(app, paper.path)) instanceof import_obsidian46.TFile;
+      const available = app.vault.getAbstractFileByPath(paperSourcePath(app, paper.path)) instanceof import_obsidian50.TFile;
       const b = m.contentEl.createEl("button", { text: `${paper.label} [${paper.citekey}]${available ? "" : " \u2014 file missing"}`, cls: "evidence-paper-choice" });
       b.onclick = () => {
         m.close();
@@ -48569,13 +49949,13 @@ function registerEvidenceWorkflow(plugin) {
     return true;
   } });
   plugin.addCommand({ id: "open-evidence-record", name: "Open Citation Source Viewer", callback: () => {
-    const m = new import_obsidian46.Modal(app);
+    const m = new import_obsidian50.Modal(app);
     m.titleEl.setText("Open Citation Source Viewer");
     let file = lastFile, id3 = lastID, window2 = true;
-    new import_obsidian46.Setting(m.contentEl).setName("Citation record file").addText((t2) => t2.setValue(file).onChange((v) => file = v));
-    new import_obsidian46.Setting(m.contentEl).setName("Claim ID").addText((t2) => t2.setValue(id3).onChange((v) => id3 = v));
-    new import_obsidian46.Setting(m.contentEl).setName("Separate window").addToggle((t2) => t2.setValue(true).onChange((v) => window2 = v));
-    new import_obsidian46.Setting(m.contentEl).addButton((b) => b.setButtonText("Open").onClick(() => {
+    new import_obsidian50.Setting(m.contentEl).setName("Citation record file").addText((t2) => t2.setValue(file).onChange((v) => file = v));
+    new import_obsidian50.Setting(m.contentEl).setName("Claim ID").addText((t2) => t2.setValue(id3).onChange((v) => id3 = v));
+    new import_obsidian50.Setting(m.contentEl).setName("Separate window").addToggle((t2) => t2.setValue(true).onChange((v) => window2 = v));
+    new import_obsidian50.Setting(m.contentEl).addButton((b) => b.setButtonText("Open").onClick(() => {
       m.close();
       void openRecord({ file, id: id3, window: String(window2) });
     }));
@@ -48584,7 +49964,7 @@ function registerEvidenceWorkflow(plugin) {
   function colorEditor(m, s) {
     const redraw = () => {
       box.empty();
-      new import_obsidian46.Setting(box).setName("Color preset").addDropdown((d) => {
+      new import_obsidian50.Setting(box).setName("Color preset").addDropdown((d) => {
         d.addOption("", "Custom");
         Object.keys(presets).filter((k) => k !== "$default").forEach((k) => d.addOption(k, k));
         d.onChange((k) => {
@@ -48595,7 +49975,7 @@ function registerEvidenceWorkflow(plugin) {
         });
       });
       let picker, hex;
-      new import_obsidian46.Setting(box).setName("Color").addColorPicker((p) => {
+      new import_obsidian50.Setting(box).setName("Color").addColorPicker((p) => {
         picker = p;
         p.setValue(s.color || "#247441").onChange((v) => {
           s.color = v;
@@ -48608,10 +49988,10 @@ function registerEvidenceWorkflow(plugin) {
           if (/^#[\da-f]{6}$/i.test(v)) picker.setValue(v);
         });
       });
-      new import_obsidian46.Setting(box).setName("Dark-mode color (optional)").addText((t2) => t2.setPlaceholder("Same color if empty").setValue(s.darkColor || "").onChange((v) => s.darkColor = v || void 0));
-      new import_obsidian46.Setting(box).setName("Fill opacity").addSlider((t2) => t2.setLimits(0, 1, 0.05).setValue(s.opacity ?? 0.15).setDynamicTooltip().onChange((v) => s.opacity = v));
+      new import_obsidian50.Setting(box).setName("Dark-mode color (optional)").addText((t2) => t2.setPlaceholder("Same color if empty").setValue(s.darkColor || "").onChange((v) => s.darkColor = v || void 0));
+      new import_obsidian50.Setting(box).setName("Fill opacity").addSlider((t2) => t2.setLimits(0, 1, 0.05).setValue(s.opacity ?? 0.15).setDynamicTooltip().onChange((v) => s.opacity = v));
       let name2 = "";
-      new import_obsidian46.Setting(box).setName("Save named preset").addText((t2) => t2.setPlaceholder("Your color meaning").onChange((v) => name2 = v)).addButton((b) => b.setButtonText("Save preset").onClick(async () => {
+      new import_obsidian50.Setting(box).setName("Save named preset").addText((t2) => t2.setPlaceholder("Your color meaning").onChange((v) => name2 = v)).addButton((b) => b.setButtonText("Save preset").onClick(async () => {
         try {
           validateSelection(s);
           if (!name2.trim()) throw Error("Enter a preset name.");
@@ -48625,12 +50005,12 @@ function registerEvidenceWorkflow(plugin) {
     };
     const box = m.contentEl.createDiv();
     redraw();
-    new import_obsidian46.Setting(m.contentEl).addButton((b) => b.setButtonText("Use these colors by default").onClick(async () => {
+    new import_obsidian50.Setting(m.contentEl).addButton((b) => b.setButtonText("Use these colors by default").onClick(async () => {
       try {
         validateSelection(s);
         presets.$default = { color: s.color || "#247441", darkColor: s.darkColor, opacity: s.opacity ?? 0.15 };
         await app.vault.adapter.write(presetPath, JSON.stringify(presets, null, 2));
-        new import_obsidian46.Notice("Default evidence colors saved.");
+        new import_obsidian50.Notice("Default evidence colors saved.");
       } catch (e) {
         fail(e);
       }
@@ -48638,7 +50018,7 @@ function registerEvidenceWorkflow(plugin) {
   }
   async function edit(source, selection, index2) {
     const s = { color: "#247441", opacity: 0.15, ...presets.$default, ...selection };
-    const m = new import_obsidian46.Modal(app);
+    const m = new import_obsidian50.Modal(app);
     m.modalEl.addClass("evidence-editor");
     m.titleEl.setText(index2 === void 0 ? "Save citation selection" : "Edit citation selection");
     let file = lastFile, id3 = lastID, key2 = lastKey, label = current?.paper.path === source ? current.paper.label : source.split("/").pop()?.replace(/\.md$/, "") || source, claimLabel = "";
@@ -48649,14 +50029,14 @@ function registerEvidenceWorkflow(plugin) {
     } catch {
     }
     let comment2;
-    new import_obsidian46.Setting(m.contentEl).setName("Comment").setClass("evidence-comment-field").addTextArea((t2) => {
+    new import_obsidian50.Setting(m.contentEl).setName("Comment").setClass("evidence-comment-field").addTextArea((t2) => {
       comment2 = t2.inputEl;
       t2.setPlaceholder("Add a comment on this source passage\u2026").setValue(s.comment || "").onChange((v) => s.comment = v);
     });
     const details = m.contentEl.createEl("details", { cls: "evidence-record-details" });
     details.createEl("summary", { text: "Citation record and selected passage" });
     if (index2 === void 0 && !id3) details.open = true;
-    new import_obsidian46.Setting(details).setName("Citation record file").addText((t2) => t2.setValue(file).onChange(async (v) => {
+    new import_obsidian50.Setting(details).setName("Citation record file").addText((t2) => t2.setValue(file).onChange(async (v) => {
       file = v;
       try {
         snapshot = (await load(v)).raw;
@@ -48664,19 +50044,19 @@ function registerEvidenceWorkflow(plugin) {
         snapshot = "";
       }
     }));
-    new import_obsidian46.Setting(details).setName("Claim ID").addText((t2) => t2.setValue(id3).onChange((v) => id3 = v));
-    new import_obsidian46.Setting(details).setName("Claim label (for new claim)").addText((t2) => t2.onChange((v) => claimLabel = v));
-    new import_obsidian46.Setting(details).setName("Paper citekey").addText((t2) => t2.setValue(key2).onChange((v) => key2 = v));
-    new import_obsidian46.Setting(details).setName("Paper label").addText((t2) => t2.setValue(label).onChange((v) => label = v));
+    new import_obsidian50.Setting(details).setName("Claim ID").addText((t2) => t2.setValue(id3).onChange((v) => id3 = v));
+    new import_obsidian50.Setting(details).setName("Claim label (for new claim)").addText((t2) => t2.onChange((v) => claimLabel = v));
+    new import_obsidian50.Setting(details).setName("Paper citekey").addText((t2) => t2.setValue(key2).onChange((v) => key2 = v));
+    new import_obsidian50.Setting(details).setName("Paper label").addText((t2) => t2.setValue(label).onChange((v) => label = v));
     if (s.quote) {
-      new import_obsidian46.Setting(details).setName("Exact quote").addTextArea((t2) => t2.setValue(s.quote).onChange((v) => s.quote = v));
-      new import_obsidian46.Setting(details).setName("Immediately preceding text (optional)").addTextArea((t2) => t2.setValue(s.before || "").onChange((v) => s.before = v || void 0));
-      new import_obsidian46.Setting(details).setName("Immediately following text (optional)").addTextArea((t2) => t2.setValue(s.after || "").onChange((v) => s.after = v || void 0));
+      new import_obsidian50.Setting(details).setName("Exact quote").addTextArea((t2) => t2.setValue(s.quote).onChange((v) => s.quote = v));
+      new import_obsidian50.Setting(details).setName("Immediately preceding text (optional)").addTextArea((t2) => t2.setValue(s.before || "").onChange((v) => s.before = v || void 0));
+      new import_obsidian50.Setting(details).setName("Immediately following text (optional)").addTextArea((t2) => t2.setValue(s.after || "").onChange((v) => s.after = v || void 0));
     }
     colorEditor(m, s);
     const footer = m.modalEl.createDiv("evidence-editor-footer");
     const output = footer.createDiv();
-    new import_obsidian46.Setting(footer).addButton((b) => b.setButtonText("Save and copy link").setCta().onClick(async () => {
+    new import_obsidian50.Setting(footer).addButton((b) => b.setButtonText("Save and copy link").setCta().onClick(async () => {
       try {
         if (!safePath(file) || !file.endsWith(".yaml") || !id3 || !key2) throw Error("Enter a vault-relative YAML file, claim ID and citekey.");
         validateSelection(s);
@@ -48703,7 +50083,7 @@ function registerEvidenceWorkflow(plugin) {
         await navigator.clipboard.writeText(`[evidence](${uri})`);
         output.setText("Saved and copied. Paste immediately after the Pandoc citation.");
         b.setDisabled(true);
-        new import_obsidian46.Notice("Evidence saved; link copied.");
+        new import_obsidian50.Notice("Evidence saved; link copied.");
         if (leaf && current?.file === file && current?.id === id3) {
           current = { file, id: id3, claim, paper, raw: snapshot, keys: claim.papers.map((p) => p.citekey) };
           await leaf.view.show(claim, paper);
@@ -48756,7 +50136,7 @@ function registerEvidenceWorkflow(plugin) {
   }
   plugin.registerMarkdownPostProcessor((el, ctx) => {
     if (el.closest(".study-margin-pane")) return;
-    const owner = ownReading(new import_obsidian46.MarkdownRenderChild(el));
+    const owner = ownReading(new import_obsidian50.MarkdownRenderChild(el));
     ctx.addChild(owner);
     owner.registerDomEvent(el, "contextmenu", (e) => {
       if (e.target.closest(".modal")) return;
@@ -48767,7 +50147,7 @@ function registerEvidenceWorkflow(plugin) {
       if (shared.studyEvidenceMenu) return;
       shared.studyEvidenceMenu = true;
       e.preventDefault();
-      const menu = import_obsidian46.Menu.forEvent(e);
+      const menu = import_obsidian50.Menu.forEvent(e);
       if (quote) menu.addItem((i) => i.setSection("study-evidence").setTitle("Save selected text as citation source\u2026").onClick(() => void edit(ctx.sourcePath, { quote }).catch(fail)));
       if (img) {
         const src = img.closest(".internal-embed")?.getAttribute("src") || img.getAttribute("src") || "";
@@ -48801,7 +50181,7 @@ function registerEvidenceWorkflow(plugin) {
     const at = next.indexOf(cite), link = next[at + 1];
     let href = link?.matches('a[href^="obsidian://study-evidence"]') ? link.getAttribute("href") : null;
     if (!href && cite.closest(".cm-editor")) {
-      const view = import_view16.EditorView.findFromDOM(cite.closest(".cm-editor"));
+      const view = import_view18.EditorView.findFromDOM(cite.closest(".cm-editor"));
       if (view) {
         const pos = view.posAtDOM(cite), line = view.state.doc.lineAt(pos);
         for (const match of line.text.matchAll(/\[[^\]\n]*@[^\]\n]+\]/g)) {
@@ -48827,7 +50207,7 @@ function registerEvidenceWorkflow(plugin) {
 }
 
 // src/evidence.ts
-var import_obsidian47 = require("obsidian");
+var import_obsidian51 = require("obsidian");
 
 // src/evidence-model.ts
 function parseEvidence(raw) {
@@ -48866,7 +50246,7 @@ function registerEvidence(plugin) {
   };
   const render = (leaf, target) => {
     const view = leaf.view;
-    if (!(view instanceof import_obsidian47.MarkdownView) || view.file?.path !== target.path) {
+    if (!(view instanceof import_obsidian51.MarkdownView) || view.file?.path !== target.path) {
       clear(leaf);
       return;
     }
@@ -48899,7 +50279,7 @@ function registerEvidence(plugin) {
           piece.replaceWith(mark);
           mark.append(piece);
           const show = () => {
-            const modal = new import_obsidian47.Modal(plugin.app);
+            const modal = new import_obsidian51.Modal(plugin.app);
             modal.titleEl.setText("Supporting passage");
             modal.contentEl.createEl("blockquote", { text: passage.quote });
             modal.contentEl.createEl("p", { text: passage.comment || "No comment attached." });
@@ -48938,7 +50318,7 @@ function registerEvidence(plugin) {
       Object.assign(mark.style, { left: `${x * 100}%`, top: `${y * 100}%`, width: `${w * 100}%`, height: `${h * 100}%` });
       mark.title = area.comment || "Supporting area";
       mark.onclick = () => {
-        const modal = new import_obsidian47.Modal(plugin.app);
+        const modal = new import_obsidian51.Modal(plugin.app);
         modal.titleEl.setText("Supporting area");
         modal.contentEl.createEl("p", { text: area.comment || "No comment attached." });
         resizeCommentWindow(modal);
@@ -48946,7 +50326,7 @@ function registerEvidence(plugin) {
       };
     }
     root.querySelector(".study-evidence-highlight,.study-evidence-area")?.scrollIntoView({ block: "center" });
-    if (missed) new import_obsidian47.Notice(`${missed} supporting passage(s) could not be uniquely located. No approximate match was highlighted.`);
+    if (missed) new import_obsidian51.Notice(`${missed} supporting passage(s) could not be uniquely located. No approximate match was highlighted.`);
   };
   const imageTarget = (image) => image.closest(".internal-embed")?.getAttribute("src") || image.getAttribute("src") || "";
   plugin.registerObsidianProtocolHandler("study-evidence", async (params) => {
@@ -48958,7 +50338,7 @@ function registerEvidence(plugin) {
       const target = parseEvidence(params.target || "");
       target.path = paperSourcePath(plugin.app, target.path);
       const file = plugin.app.vault.getAbstractFileByPath(target.path);
-      if (!(file instanceof import_obsidian47.TFile)) throw Error("Source paper is not present in this vault");
+      if (!(file instanceof import_obsidian51.TFile)) throw Error("Source paper is not present in this vault");
       const leaf = plugin.app.workspace.getLeaf(target.window ? "window" : "tab");
       await leaf.openFile(file, { state: { mode: "preview" } });
       await plugin.app.workspace.revealLeaf(leaf);
@@ -48980,7 +50360,7 @@ function registerEvidence(plugin) {
         win.clearTimeout(timer);
       });
     } catch (e) {
-      new import_obsidian47.Notice(e instanceof Error ? e.message : "Invalid evidence link");
+      new import_obsidian51.Notice(e instanceof Error ? e.message : "Invalid evidence link");
     }
   });
   plugin.addCommand({ id: "clear-evidence-highlights", name: "Clear temporary evidence highlights", callback: () => {
@@ -48988,7 +50368,7 @@ function registerEvidence(plugin) {
     for (const leaf of plugin.app.workspace.getLeavesOfType("study-evidence-reader")) void leaf.view.clear();
   } });
   plugin.registerEvent(plugin.app.workspace.on("layout-change", () => {
-    for (const [leaf, target] of active) if (!(leaf.view instanceof import_obsidian47.MarkdownView) || leaf.view.file?.path !== target.path) clear(leaf);
+    for (const [leaf, target] of active) if (!(leaf.view instanceof import_obsidian51.MarkdownView) || leaf.view.file?.path !== target.path) clear(leaf);
   }));
   plugin.register(() => {
     for (const leaf of [...active.keys()]) clear(leaf);
@@ -48996,16 +50376,16 @@ function registerEvidence(plugin) {
   plugin.addCommand({ id: "copy-evidence-link", name: "Copy evidence link to selected passage", editorCheckCallback: (checking, editor, info) => {
     if (!info.file || !editor.getSelection().trim()) return false;
     if (checking) return true;
-    const path = info.file.path, quote = editor.getSelection(), modal = new import_obsidian47.Modal(plugin.app);
+    const path = info.file.path, quote = editor.getSelection(), modal = new import_obsidian51.Modal(plugin.app);
     let comment2 = "", popout = true;
     modal.titleEl.setText("Copy evidence link");
     modal.contentEl.createEl("p", { text: "Select plain rendered text. The link carries the passage and optional comment; nothing is added to the paper." });
-    new import_obsidian47.Setting(modal.contentEl).setName("Comment").addTextArea((t2) => t2.onChange((v) => comment2 = v));
-    new import_obsidian47.Setting(modal.contentEl).setName("Open in separate window").addToggle((t2) => t2.setValue(true).onChange((v) => popout = v));
-    new import_obsidian47.Setting(modal.contentEl).addButton((b) => b.setButtonText("Copy link").setCta().onClick(async () => {
+    new import_obsidian51.Setting(modal.contentEl).setName("Comment").addTextArea((t2) => t2.onChange((v) => comment2 = v));
+    new import_obsidian51.Setting(modal.contentEl).setName("Open in separate window").addToggle((t2) => t2.setValue(true).onChange((v) => popout = v));
+    new import_obsidian51.Setting(modal.contentEl).addButton((b) => b.setButtonText("Copy link").setCta().onClick(async () => {
       await navigator.clipboard.writeText(`[Supporting passage](${evidenceURI(plugin.app.vault.getName(), { path, passages: [{ quote, comment: comment2 }], window: popout })})`);
       modal.close();
-      new import_obsidian47.Notice("Evidence link copied");
+      new import_obsidian51.Notice("Evidence link copied");
     }));
     modal.open();
     return true;
@@ -49013,8 +50393,8 @@ function registerEvidence(plugin) {
 }
 
 // src/note-grouping-ui.ts
-var import_obsidian48 = require("obsidian");
-var NoteGrouping = class extends import_obsidian48.Component {
+var import_obsidian52 = require("obsidian");
+var NoteGrouping = class extends import_obsidian52.Component {
   constructor(host, view, path, ended, complete) {
     super();
     this.host = host;
@@ -49078,7 +50458,7 @@ var NoteGrouping = class extends import_obsidian48.Component {
         await this.complete([...this.selected].map(Number));
         this.unload();
       } catch (e) {
-        new import_obsidian48.Notice(String(e));
+        new import_obsidian52.Notice(String(e));
       } finally {
         this.reviewing = false;
       }
@@ -49105,9 +50485,9 @@ var NoteGrouping = class extends import_obsidian48.Component {
     this.registerEvent(this.host.app.workspace.on("file-open", () => {
       if (this.view.file?.path !== this.path) this.unload();
     }));
-    for (const group of root.querySelectorAll("details.study-embed")) if (!group.open) {
-      this.expanded.push(group);
-      group.open = true;
+    for (const group2 of root.querySelectorAll("details.study-embed")) if (!group2.open) {
+      this.expanded.push(group2);
+      group2.open = true;
     }
     render();
     root.querySelector("input.study-removal-checkbox")?.focus();
@@ -49117,7 +50497,7 @@ var NoteGrouping = class extends import_obsidian48.Component {
     this.bar?.remove();
     this.view.contentEl.removeClass("study-removal-mode");
     this.view.contentEl.querySelectorAll(".study-removal-pick").forEach((el) => el.remove());
-    for (const group of this.expanded) if (group.isConnected) group.open = false;
+    for (const group2 of this.expanded) if (group2.isConnected) group2.open = false;
     this.ended();
   }
 };
@@ -49133,10 +50513,10 @@ function groupOccurrences(source, lines, title, prompt = "") {
 }
 
 // src/note-removal.ts
-var import_obsidian50 = require("obsidian");
+var import_obsidian54 = require("obsidian");
 
 // src/question-deletion.ts
-var import_obsidian49 = require("obsidian");
+var import_obsidian53 = require("obsidian");
 
 // src/deletion-model.ts
 function removeQuestionEmbeds(raw, ids) {
@@ -49160,7 +50540,7 @@ function examUsesQuestions(exam, selected, bank) {
 
 // src/question-deletion.ts
 async function readCurrent(app, file) {
-  const views = app.workspace.getLeavesOfType("markdown").map((l) => l.view).filter((v) => v instanceof import_obsidian49.MarkdownView && v.file?.path === file.path && v.getMode() === "source");
+  const views = app.workspace.getLeavesOfType("markdown").map((l) => l.view).filter((v) => v instanceof import_obsidian53.MarkdownView && v.file?.path === file.path && v.getMode() === "source");
   const sources = views.map((v) => v.editor.getValue());
   if (new Set(sources).size > 1) throw Error(`Open copies of ${file.path} disagree. Save or close those copies first.`);
   return sources[0] ?? await app.vault.read(file);
@@ -49169,7 +50549,7 @@ async function plan(host, questions, bank, notePath) {
   const app = host.app, ids = new Set(questions.map((q) => q.definition.id)), out = { notePath, questions: [], changes: [], blocked: [] };
   for (const q of questions) {
     const file = app.vault.getAbstractFileByPath(q.path);
-    if (!(file instanceof import_obsidian49.TFile)) throw Error(`Question disappeared: ${q.definition.title}`);
+    if (!(file instanceof import_obsidian53.TFile)) throw Error(`Question disappeared: ${q.definition.title}`);
     const raw = await readCurrent(app, file);
     if (raw !== q.raw) throw Error(`Question changed: ${q.definition.title}. Reopen deletion to review its current version.`);
     out.questions.push({ q, file, raw });
@@ -49225,7 +50605,7 @@ async function applyLocked(host, p, recheck) {
       if (await readCurrent(app, c.file) !== c.before) throw Error(`Note changed: ${c.file.path}`);
       for (const leaf of app.workspace.getLeavesOfType("markdown")) {
         const v = leaf.view;
-        if (v instanceof import_obsidian49.MarkdownView && v.file?.path === c.file.path) await v.save();
+        if (v instanceof import_obsidian53.MarkdownView && v.file?.path === c.file.path) await v.save();
       }
       await app.vault.process(c.file, (raw) => {
         if (raw !== c.before) throw Error(`Note changed: ${c.file.path}`);
@@ -49259,9 +50639,9 @@ async function applyLocked(host, p, recheck) {
     throw Error(`${String(error)}. ${restored ? "Changes rolled back." : "Some changes could not be rolled back."} Recovery copy: ${backup.path}`);
   }
   const removed = p.changes.reduce((n, c) => n + c.count, 0);
-  new import_obsidian49.Notice(p.notePath ? `Removed ${removed} question card${removed === 1 ? "" : "s"} from this note. Question files and other notes are unchanged.` : `Moved ${p.questions.length} question${p.questions.length === 1 ? "" : "s"} to vault trash. Recorded history is preserved. Recovery: ${backup.path}`, 12e3);
+  new import_obsidian53.Notice(p.notePath ? `Removed ${removed} question card${removed === 1 ? "" : "s"} from this note. Question files and other notes are unchanged.` : `Moved ${p.questions.length} question${p.questions.length === 1 ? "" : "s"} to vault trash. Recorded history is preserved. Recovery: ${backup.path}`, 12e3);
 }
-var DeleteQuestions = class extends import_obsidian49.Modal {
+var DeleteQuestions = class extends import_obsidian53.Modal {
   constructor(host, questions, done, notePath) {
     super(host.app);
     this.host = host;
@@ -49337,7 +50717,7 @@ var DeleteQuestions = class extends import_obsidian49.Modal {
 };
 
 // src/note-removal.ts
-var NoteRemoval = class extends import_obsidian50.Component {
+var NoteRemoval = class extends import_obsidian54.Component {
   constructor(host, view, path, ended) {
     super();
     this.host = host;
@@ -49399,13 +50779,13 @@ var NoteRemoval = class extends import_obsidian50.Component {
         }
         const bank = await this.host.bank(), questions = bank.filter((q) => this.selected.has(q.definition.id));
         if (!questions.length) {
-          new import_obsidian50.Notice("The selected questions are no longer available.");
+          new import_obsidian54.Notice("The selected questions are no longer available.");
           return;
         }
         const modal = new DeleteQuestions(this.host, questions, () => this.unload(), this.path);
         modal.open();
       } catch (e) {
-        new import_obsidian50.Notice(String(e));
+        new import_obsidian54.Notice(String(e));
       } finally {
         this.reviewing = false;
       }
@@ -49432,9 +50812,9 @@ var NoteRemoval = class extends import_obsidian50.Component {
     this.registerEvent(this.host.app.workspace.on("file-open", () => {
       if (this.view.file?.path !== this.path) this.unload();
     }));
-    for (const group of root.querySelectorAll("details.study-group")) if (!group.open) {
-      this.expanded.push(group);
-      group.open = true;
+    for (const group2 of root.querySelectorAll("details.study-group")) if (!group2.open) {
+      this.expanded.push(group2);
+      group2.open = true;
     }
     render();
     root.querySelector("input.study-removal-checkbox")?.focus();
@@ -49444,13 +50824,13 @@ var NoteRemoval = class extends import_obsidian50.Component {
     this.bar?.remove();
     this.view.contentEl.removeClass("study-removal-mode");
     this.view.contentEl.querySelectorAll(".study-removal-pick").forEach((el) => el.remove());
-    for (const group of this.expanded) if (group.isConnected) group.open = false;
+    for (const group2 of this.expanded) if (group2.isConnected) group2.open = false;
     this.ended();
   }
 };
 
 // src/figure-retirement.ts
-var import_obsidian51 = require("obsidian");
+var import_obsidian55 = require("obsidian");
 var hash3 = async (b) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", b)), (x) => x.toString(16).padStart(2, "0")).join("");
 function registerFigureRetirement(plugin, store) {
   let stopped = false, timer, pending = Promise.resolve();
@@ -49462,7 +50842,7 @@ function registerFigureRetirement(plugin, store) {
   };
   const changed = async (path, f) => {
     const note = plugin.app.vault.getAbstractFileByPath(path);
-    if (!(note instanceof import_obsidian51.TFile)) return false;
+    if (!(note instanceof import_obsidian55.TFile)) return false;
     const bridge = plugin.app.plugins.plugins["slide-studio"]?.scientificStudyBridge;
     if (bridge?.version !== 1) return false;
     const source = await plugin.app.vault.read(note);
@@ -49473,14 +50853,14 @@ function registerFigureRetirement(plugin, store) {
       const paths = bridge.panels(source, f.figureId), hashes = [];
       for (const path2 of paths) {
         const image2 = plugin.app.vault.getAbstractFileByPath(path2) ?? plugin.app.metadataCache.getFirstLinkpathDest(path2, note.path);
-        if (!(image2 instanceof import_obsidian51.TFile)) return false;
+        if (!(image2 instanceof import_obsidian55.TFile)) return false;
         watch(image2.path, path2);
         hashes.push(await hash3(await plugin.app.vault.readBinary(image2)));
       }
       return hashes.includes(f.imageHash) ? false : JSON.stringify([paths, hashes]);
     }
     const image = plugin.app.vault.getAbstractFileByPath(f.imagePath);
-    if (!(image instanceof import_obsidian51.TFile)) return false;
+    if (!(image instanceof import_obsidian55.TFile)) return false;
     const current = await hash3(await plugin.app.vault.readBinary(image));
     return current !== f.imageHash ? current : false;
   };
@@ -49518,13 +50898,13 @@ function registerFigureRetirement(plugin, store) {
     } catch (e) {
       if (!reported.has(key2)) {
         reported.add(key2);
-        new import_obsidian51.Notice("Figure questions need review before retirement: " + String(e), 15e3);
+        new import_obsidian55.Notice("Figure questions need review before retirement: " + String(e), 15e3);
       }
     }
   };
   const run = (notes) => {
     pending = pending.then(() => check3(notes)).catch((e) => {
-      new import_obsidian51.Notice("Could not check figure questions: " + String(e));
+      new import_obsidian55.Notice("Could not check figure questions: " + String(e));
     });
     return pending;
   };
@@ -49557,11 +50937,11 @@ function registerFigureRetirement(plugin, store) {
       if (seen.has(key2)) continue;
       seen.add(key2);
       const note = plugin.app.vault.getAbstractFileByPath(c.path);
-      if (!(note instanceof import_obsidian51.TFile)) continue;
+      if (!(note instanceof import_obsidian55.TFile)) continue;
       try {
         for (const path of bridge.panels(await plugin.app.vault.cachedRead(note), f.figureId)) {
           const image = plugin.app.vault.getAbstractFileByPath(path) ?? plugin.app.metadataCache.getFirstLinkpathDest(path, c.path);
-          if (image instanceof import_obsidian51.TFile) watch(image.path, c.path);
+          if (image instanceof import_obsidian55.TFile) watch(image.path, c.path);
         }
       } catch {
       }
@@ -49584,11 +50964,11 @@ function registerFigureRetirement(plugin, store) {
 }
 
 // src/shortcut-guide.ts
-var import_obsidian52 = require("obsidian");
+var import_obsidian56 = require("obsidian");
 function registerShortcutGuide(plugin) {
   plugin.addCommand({ id: "shortcut-guide", name: "Open keyboard shortcut guide", hotkeys: [{ modifiers: ["Mod", "Alt"], key: "/" }], callback: () => new ShortcutGuide(plugin.app).open() });
 }
-var ShortcutGuide = class extends import_obsidian52.Modal {
+var ShortcutGuide = class extends import_obsidian56.Modal {
   onOpen() {
     this.titleEl.setText("Keyboard shortcuts");
     const runtime = this.app;
@@ -49648,7 +51028,7 @@ var ShortcutGuide = class extends import_obsidian52.Modal {
 };
 
 // src/lab-organizer.ts
-var import_obsidian53 = require("obsidian");
+var import_obsidian57 = require("obsidian");
 
 // src/lab-chapter-moves.ts
 var labChapterMoves = [
@@ -49786,13 +51166,13 @@ async function organizeCourseLab(app) {
     const source = app.vault.getAbstractFileByPath(move.from), destination = app.vault.getAbstractFileByPath(move.to);
     if (source && destination) throw Error(`Both source and destination exist: ${move.from}. Resolve the duplicate first.`);
     const file = source ?? destination;
-    if (!(file instanceof import_obsidian53.TFile)) throw Error(`Missing lab note: ${move.from}`);
+    if (!(file instanceof import_obsidian57.TFile)) throw Error(`Missing lab note: ${move.from}`);
     if ("kind" in move) {
       const raw = await app.vault.read(file);
       const id3 = move.kind === "question" ? parseQuestion(raw, file.path).definition.id : parseExam(raw).id;
       if (id3 !== move.id) throw Error(`Unexpected note identity: ${file.path}`);
     }
-    if (source instanceof import_obsidian53.TFile) pending.push({ file: source, to: move.to });
+    if (source instanceof import_obsidian57.TFile) pending.push({ file: source, to: move.to });
   }
   for (const { file, to } of pending) {
     const parts = to.split("/");
@@ -49814,7 +51194,7 @@ async function organizeCourseLab(app) {
   });
   for (const path of ["Courses/Calculus/Questions", "Courses/French/Questions", "Courses/Python/Questions", "Courses/Fluid Dynamics/Questions", "Courses/Fluid Dynamics/Exams"]) {
     const f = app.vault.getAbstractFileByPath(path);
-    if (f instanceof import_obsidian53.TFolder && !f.children.length) await app.vault.trash(f, true);
+    if (f instanceof import_obsidian57.TFolder && !f.children.length) await app.vault.trash(f, true);
   }
   return pending.length;
 }
@@ -49882,21 +51262,21 @@ async function rubricReview(app, host, q, owner, initial, save) {
     input.value = initial?.[criterion.id]?.toString() ?? "";
     inputs.push(input);
   }
-  const status = host.createEl("p", { cls: "study-written-status", attr: { "aria-live": "polite" } }), button = host.createEl("button", { text: initial ? "Update self-assessment" : "Save self-assessment", cls: "mod-cta" });
-  button.onclick = async () => {
+  const status = host.createEl("p", { cls: "study-written-status", attr: { "aria-live": "polite" } }), button2 = host.createEl("button", { text: initial ? "Update self-assessment" : "Save self-assessment", cls: "mod-cta" });
+  button2.onclick = async () => {
     if (inputs.some((i) => i.value === "")) {
       status.setText("Choose a score for every criterion.");
       inputs.find((i) => i.value === "")?.focus();
       return;
     }
-    button.disabled = true;
+    button2.disabled = true;
     inputs.forEach((i) => i.disabled = true);
     try {
       await save(Object.fromEntries(q.definition.written.rubric.map((r, i) => [r.id, Number(inputs[i].value)])));
     } catch (e) {
       status.hidden = false;
       status.setText(`Could not save: ${String(e)}. Your scores remain here.`);
-      button.disabled = false;
+      button2.disabled = false;
       inputs.forEach((i) => i.disabled = false);
     }
   };
@@ -50098,8 +51478,8 @@ async function orderingField(app, parent, q, initial, owner, changed) {
 }
 
 // src/exam-ui.ts
-var import_obsidian54 = require("obsidian");
-var import_obsidian55 = require("obsidian");
+var import_obsidian58 = require("obsidian");
+var import_obsidian59 = require("obsidian");
 var uid = (prefix) => `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
 function newExam() {
   return { version: 1, id: uid("exam"), title: "New exam", mode: "sections", allowBack: true, shuffleSections: false, sections: [{ id: uid("section"), title: "Section 1", shuffleGroups: false, groups: [{ id: uid("group"), title: "Group 1", shuffleQuestions: false, questions: [] }] }] };
@@ -50192,19 +51572,19 @@ var ExamEditor = class extends StudioPanel {
       this.toggle(section, "Shuffle groups", s.shuffleGroups, (v) => s.shuffleGroups = v);
       this.ordering(section, s, e.sections, (x) => x.title);
       for (const g of s.groups) {
-        const group = section.createDiv("study-exam-group");
-        this.text(group, "Group title", g.title, (v) => g.title = v);
-        this.toggle(group, "Shuffle question slots", g.shuffleQuestions, (v) => g.shuffleQuestions = v);
-        this.ordering(group, g, s.groups, (x) => x.title);
+        const group2 = section.createDiv("study-exam-group");
+        this.text(group2, "Group title", g.title, (v) => g.title = v);
+        this.toggle(group2, "Shuffle question slots", g.shuffleQuestions, (v) => g.shuffleQuestions = v);
+        this.ordering(group2, g, s.groups, (x) => x.title);
         for (const slot of g.questions) {
-          const row = group.createDiv("study-exam-slot");
+          const row = group2.createDiv("study-exam-slot");
           this.select(row, "Question", slot.questionId, this.bank.map((q) => [q.definition.id, q.definition.title]), (v) => slot.questionId = v);
           this.select(row, "Versions to include", String(slot.variants), [["1", "One random family version"], ["2", "Up to two family versions"], ["3", "Up to three family versions"], ["all", "All family versions"], ["exact", "This exact question"]], (v) => slot.variants = v === "exact" || v === "all" ? v : Number(v));
           this.ordering(row, slot, g.questions, (x) => this.bank.find((q) => q.definition.id === x.questionId)?.definition.title ?? x.questionId);
         }
-        this.button(group, "Add question", () => {
+        this.button(group2, "Add question", () => {
           if (!this.bank.length) {
-            new import_obsidian55.Notice("Create a question first.");
+            new import_obsidian59.Notice("Create a question first.");
             return;
           }
           g.questions.push({ id: uid("slot"), questionId: this.bank[0].definition.id, variants: 1 });
@@ -50220,17 +51600,17 @@ var ExamEditor = class extends StudioPanel {
       e.sections.push({ id: uid("section"), title: `Section ${e.sections.length + 1}`, shuffleGroups: false, groups: [{ id: uid("group"), title: "Group 1", shuffleQuestions: false, questions: [] }] });
       this.render();
     });
-    const button = root.createEl("button", { text: "Save exam", cls: "mod-cta" });
-    button.onclick = () => {
+    const button2 = root.createEl("button", { text: "Save exam", cls: "mod-cta" });
+    button2.onclick = () => {
       try {
         validateExam(e);
-        button.disabled = true;
+        button2.disabled = true;
         void this.save(structuredClone(e)).then(() => this.close(), (err) => {
-          button.disabled = false;
-          new import_obsidian55.Notice(String(err));
+          button2.disabled = false;
+          new import_obsidian59.Notice(String(err));
         });
       } catch (err) {
-        new import_obsidian55.Notice(String(err));
+        new import_obsidian59.Notice(String(err));
       }
     };
   }
@@ -50276,7 +51656,7 @@ var ExamRunner = class extends StudioPanel {
   }
   lock() {
     this.contentEl.inert = this.rendering;
-    for (const button of this.controls) button.disabled = this.rendering || this.mathOpen > 0;
+    for (const button2 of this.controls) button2.disabled = this.rendering || this.mathOpen > 0;
   }
   button(parent, label, action) {
     const b = parent.createEl("button", { text: label });
@@ -50287,7 +51667,7 @@ var ExamRunner = class extends StudioPanel {
   async render() {
     const generation = ++this.generation;
     this.owner?.unload();
-    this.owner = new import_obsidian55.Component();
+    this.owner = new import_obsidian59.Component();
     this.owner.load();
     this.mathOpen = 0;
     this.controls = [];
@@ -50312,11 +51692,11 @@ var ExamRunner = class extends StudioPanel {
       for (const sectionId of visible) {
         const entries = s.entries.filter((e) => e.sectionId === sectionId);
         root.createEl("h2", { text: entries[0].sectionTitle });
-        let group = "";
+        let group2 = "";
         for (const entry of entries) {
-          if (entry.groupId !== group) {
+          if (entry.groupId !== group2) {
             root.createEl("h3", { text: entry.groupTitle });
-            group = entry.groupId;
+            group2 = entry.groupId;
           }
           const host = root.createDiv();
           if (entry.submittedAt) {
@@ -50436,7 +51816,7 @@ var ExamRunner = class extends StudioPanel {
     const actions = (event) => {
       event.preventDefault();
       event.stopPropagation();
-      const menu = new import_obsidian54.Menu();
+      const menu = new import_obsidian58.Menu();
       this.reviews?.questionMenu(menu, entry.question, d, `exam:${this.session.id}`);
       const r = d.getBoundingClientRect();
       menu.showAtPosition({ x: "clientX" in event ? event.clientX : r.left, y: "clientY" in event ? event.clientY : r.top });
@@ -50504,7 +51884,7 @@ var ExamRunner = class extends StudioPanel {
     this.generation++;
     this.owner?.unload();
     void this.pending.then(() => this.released(), () => {
-      new import_obsidian55.Notice("The last exam save failed. Resume uses the last saved responses.");
+      new import_obsidian59.Notice("The last exam save failed. Resume uses the last saved responses.");
       this.released();
     });
   }
@@ -50601,8 +51981,8 @@ var QuestionIndex = class {
       await this.flight;
     }
     if (this.errors.size) {
-      const [path, message] = this.errors.entries().next().value;
-      throw Error(`${path}: ${message}`);
+      const [path, message2] = this.errors.entries().next().value;
+      throw Error(`${path}: ${message2}`);
     }
     if (this.duplicates.size) throw Error(`Duplicate question ID: ${this.duplicates.values().next().value}. Give copied questions a new ID.`);
   }
@@ -50622,8 +52002,8 @@ var QuestionIndex = class {
 };
 
 // src/response-math.ts
-var import_obsidian56 = require("obsidian");
-var AnswerMathEditor = class extends import_obsidian56.Modal {
+var import_obsidian60 = require("obsidian");
+var AnswerMathEditor = class extends import_obsidian60.Modal {
   constructor(app, value, path, apply2, restoreFocus) {
     super(app);
     this.value = value;
@@ -50632,7 +52012,7 @@ var AnswerMathEditor = class extends import_obsidian56.Modal {
     this.restoreFocus = restoreFocus;
     this.modalEl.addClass("study-response-math-modal");
   }
-  owner = new import_obsidian56.Component();
+  owner = new import_obsidian60.Component();
   onOpen() {
     this.titleEl.setText("Edit your math answer");
     this.owner.load();
@@ -50853,14 +52233,14 @@ function questionEditorHelp(title, root, d) {
   }
   header.querySelector(".study-author-help-button")?.remove();
   root.querySelector(".study-author-help")?.remove();
-  const button = header.createEl("button", { text: "?", cls: "study-author-help-button", attr: { type: "button", "aria-label": "Question editor help", "aria-expanded": "false", title: "Editor help" } });
+  const button2 = header.createEl("button", { text: "?", cls: "study-author-help-button", attr: { type: "button", "aria-label": "Question editor help", "aria-expanded": "false", title: "Editor help" } });
   const panel = root.createDiv("study-author-help");
   panel.hidden = true;
   panel.tabIndex = 0;
   panel.id = `study-help-${crypto.randomUUID()}`;
   panel.setAttribute("role", "region");
   panel.setAttribute("aria-label", "Question editor help");
-  button.setAttribute("aria-controls", panel.id);
+  button2.setAttribute("aria-controls", panel.id);
   const heading2 = (text2) => panel.createEl("h3", { text: text2 });
   const note = (text2) => panel.createEl("p", { text: text2 });
   const shortcuts = (rows) => {
@@ -50901,13 +52281,13 @@ function questionEditorHelp(title, root, d) {
   note("Drafts remain while the editor tab is open. Save before closing it or restarting Obsidian. Preview does not record a study attempt.");
   const setOpen = (open) => {
     panel.hidden = !open;
-    button.setAttribute("aria-expanded", String(open));
+    button2.setAttribute("aria-expanded", String(open));
   };
-  button.onclick = () => {
+  button2.onclick = () => {
     setOpen(panel.hidden);
     if (!panel.hidden) panel.focus();
   };
-  button.addEventListener("keydown", (event) => {
+  button2.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !panel.hidden) {
       event.preventDefault();
       event.stopPropagation();
@@ -50919,7 +52299,7 @@ function questionEditorHelp(title, root, d) {
       event.preventDefault();
       event.stopPropagation();
       setOpen(false);
-      button.focus();
+      button2.focus();
     }
   });
   return { open: () => {
@@ -50929,13 +52309,13 @@ function questionEditorHelp(title, root, d) {
     return !panel.hidden;
   }, close: () => {
     setOpen(false);
-    button.focus();
+    button2.focus();
   } };
 }
 
 // src/diagram-author.ts
-var import_obsidian57 = require("obsidian");
-var ImagePicker = class extends import_obsidian57.FuzzySuggestModal {
+var import_obsidian61 = require("obsidian");
+var ImagePicker = class extends import_obsidian61.FuzzySuggestModal {
   constructor(app, chosen) {
     super(app);
     this.chosen = chosen;
@@ -50974,8 +52354,8 @@ function diagramAuthor(app, root, d, path, area, rebuild) {
       diagram.image = dest;
       image.value = dest;
       draw();
-      new import_obsidian57.Notice("Image imported into the vault. It remains available if you cancel this question.");
-    })().catch((e) => new import_obsidian57.Notice(String(e)));
+      new import_obsidian61.Notice("Image imported into the vault. It remains available if you cancel this question.");
+    })().catch((e) => new import_obsidian61.Notice(String(e)));
   };
   image.onchange = () => {
     diagram.image = image.value;
@@ -51096,10 +52476,10 @@ function diagramAuthor(app, root, d, path, area, rebuild) {
     const a2 = d.answers.find((a3) => a3.id === label.id);
     area(row, `Answer ${i + 1} \u2014 one accepted answer per line`, a2.accepted.join("\n"), (v) => a2.accepted = v.split("\n").filter((v2) => v2.trim()));
     const mathLabel = row.createEl("label", { text: "Math answer " });
-    const math = mathLabel.createEl("input", { type: "checkbox" });
-    math.checked = !!label.math;
-    math.onchange = () => {
-      label.math = math.checked;
+    const math2 = mathLabel.createEl("input", { type: "checkbox" });
+    math2.checked = !!label.math;
+    math2.onchange = () => {
+      label.math = math2.checked;
       draw();
     };
     const caseLabel = row.createEl("label", { text: "Case sensitive " });
@@ -51133,7 +52513,7 @@ function diagramAuthor(app, root, d, path, area, rebuild) {
 }
 
 // src/code-author.ts
-var import_obsidian58 = require("obsidian");
+var import_obsidian62 = require("obsidian");
 function codeAuthor(root, d, owner, changed = () => {
 }) {
   const notify = changed;
@@ -51223,7 +52603,7 @@ function codeAuthor(root, d, owner, changed = () => {
   make.setAttribute("aria-keyshortcuts", "Control+Shift+B");
   const add = () => {
     if (guarded) {
-      new import_obsidian58.Notice("Re-prepare the marked code to change this question\u2019s blank boundaries.");
+      new import_obsidian62.Notice("Re-prepare the marked code to change this question\u2019s blank boundaries.");
       return;
     }
     try {
@@ -51236,7 +52616,7 @@ function codeAuthor(root, d, owner, changed = () => {
       source.focus();
       source.setSelectionRange(from, from + `{{blank:${id3}}}`.length);
     } catch (e) {
-      new import_obsidian58.Notice(String(e));
+      new import_obsidian62.Notice(String(e));
     }
   };
   source.oninput = () => {
@@ -51260,7 +52640,7 @@ function codeAuthor(root, d, owner, changed = () => {
 }
 
 // src/authoring.ts
-var import_obsidian59 = require("obsidian");
+var import_obsidian63 = require("obsidian");
 
 // src/authoring-model.ts
 var alternatives = (value) => value.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
@@ -51381,7 +52761,7 @@ var QuestionEditor = class extends StudioPanel {
   pausedControls = [];
   liveFields = /* @__PURE__ */ new Map();
   writtenFields = /* @__PURE__ */ new Map();
-  renderComponent = new import_obsidian59.Component();
+  renderComponent = new import_obsidian63.Component();
   closed = false;
   titleInput;
   rankInput;
@@ -51402,7 +52782,7 @@ var QuestionEditor = class extends StudioPanel {
       if (this.mathEditors || this.busy) return;
       event.preventDefault();
       event.stopPropagation();
-      const menu = new import_obsidian59.Menu();
+      const menu = new import_obsidian63.Menu();
       menu.addItem((i) => i.setTitle("1 \xB7 Preview question").onClick(() => void this.previewQuestion()));
       menu.addItem((i) => i.setTitle("2 \xB7 Save question").onClick(() => void this.save(false)));
       menu.addItem((i) => i.setTitle("3 \xB7 Save and open note").onClick(() => void this.save(true)));
@@ -51432,17 +52812,17 @@ var QuestionEditor = class extends StudioPanel {
         else this.removeTableDimension(event.shiftKey);
       }
     }, true);
-    new import_obsidian59.Setting(root).setName("Title").addText(
+    new import_obsidian63.Setting(root).setName("Title").addText(
       (t2) => (this.titleInput = t2.inputEl, t2).setValue(this.definition.title).onChange((v) => (this.definition.title = v, this.validationAttempted && this.validateFields(false)))
     );
     const details = root.createEl("details", { cls: "study-author-details" });
     details.createEl("summary", { text: "Details" });
-    new import_obsidian59.Setting(details).setName("Concepts").addText(
+    new import_obsidian63.Setting(details).setName("Concepts").addText(
       (t2) => t2.setValue(this.definition.concepts.join(", ")).onChange(
         (v) => this.definition.concepts = v.split(",").map((x) => x.trim()).filter(Boolean)
       )
     );
-    new import_obsidian59.Setting(details).setName("Difficulty rank").setDesc("1 = easiest. Rank both versions to set their order; blank leaves it unranked.").addText((t2) => {
+    new import_obsidian63.Setting(details).setName("Difficulty rank").setDesc("1 = easiest. Rank both versions to set their order; blank leaves it unranked.").addText((t2) => {
       this.rankInput = t2.inputEl;
       t2.inputEl.inputMode = "numeric";
       t2.inputEl.setAttribute("aria-label", "Difficulty rank");
@@ -51458,7 +52838,7 @@ var QuestionEditor = class extends StudioPanel {
           const title = catalog.find((c) => c.course.id === id3)?.course.title ?? id3;
           const existing = this.definition.chapters?.find((c) => c.courseId === id3);
           const chapterId = existing?.chapterId ?? `chapter-${crypto.randomUUID().slice(0, 8)}`;
-          new import_obsidian59.Setting(chapters).setName(`Chapter \xB7 ${title}`).addText((text2) => {
+          new import_obsidian63.Setting(chapters).setName(`Chapter \xB7 ${title}`).addText((text2) => {
             const list = chapters.createEl("datalist");
             list.id = `chapters-${crypto.randomUUID()}`;
             const known = /* @__PURE__ */ new Map();
@@ -51560,7 +52940,7 @@ var QuestionEditor = class extends StudioPanel {
     });
   }
   area(parent, label, value, change, rows = 2) {
-    const owner = new import_obsidian59.Component();
+    const owner = new import_obsidian63.Component();
     this.renderComponent.addChild(owner);
     const editor = writtenEditor(this.app, parent, this.file.path, value, owner, (v) => {
       change(v);
@@ -51605,7 +52985,7 @@ var QuestionEditor = class extends StudioPanel {
   renderRules() {
     const root = this.gridHost;
     if (this.mathEditors) {
-      new import_obsidian59.Notice("Finish the active math or drawing editor before changing question structure.");
+      new import_obsidian63.Notice("Finish the active math or drawing editor before changing question structure.");
       return;
     }
     for (const [input, owner] of this.writtenFields) if (root.contains(input)) {
@@ -51619,7 +52999,7 @@ var QuestionEditor = class extends StudioPanel {
     if (["short-answer", "drawing"].includes(d.type)) {
       if (d.type === "drawing") {
         root.createEl("h3", { text: "Reference drawing (hidden until submission)" });
-        const referenceOwner = new import_obsidian59.Component();
+        const referenceOwner = new import_obsidian63.Component();
         this.renderComponent.addChild(referenceOwner);
         const field = drawingInput(this.app, root, d.drawing ? JSON.stringify(d.drawing) : "", referenceOwner, (value) => {
           d.drawing = value ? JSON.parse(value) : void 0;
@@ -51718,7 +53098,7 @@ var QuestionEditor = class extends StudioPanel {
           event.preventDefault();
           event.stopPropagation();
           if (this.mathEditors) return;
-          const m = new import_obsidian59.Menu();
+          const m = new import_obsidian63.Menu();
           m.addItem((item) => item.setTitle("1 \xB7 Add choice after this").onClick(() => this.addChoice(index2 + 1)));
           m.addItem((item) => item.setTitle("2 \xB7 Mark correct").setChecked(d.correct.includes(c.id)).onClick(() => {
             d.correct = d.correct.includes(c.id) ? d.correct.filter((id3) => id3 !== c.id) : [...d.correct, c.id];
@@ -51912,12 +53292,12 @@ var QuestionEditor = class extends StudioPanel {
     if (!this.grid || this.mathEditors) return;
     const active = this.contentEl.ownerDocument.activeElement, cell = active?.closest("[data-table-column]");
     if (!cell || !column && cell.dataset.tableRow === void 0) {
-      new import_obsidian59.Notice("Focus a cell in the row or column to delete.");
+      new import_obsidian63.Notice("Focus a cell in the row or column to delete.");
       return;
     }
     const grid = this.grid, r = Number(cell.dataset.tableRow ?? 0), c = Number(cell.dataset.tableColumn);
     if ((column ? grid.columns.length : grid.rows.length) <= 1) {
-      new import_obsidian59.Notice("Keep at least one row and one column.");
+      new import_obsidian63.Notice("Keep at least one row and one column.");
       return;
     }
     if (column) {
@@ -51954,11 +53334,11 @@ var QuestionEditor = class extends StudioPanel {
       const target = this.tableFields.get(issue.field);
       if (target) issues.push({ target, message: issue.message });
     }
-    for (const { target, message } of issues) {
+    for (const { target, message: message2 } of issues) {
       target.addClass("study-invalid-field");
       target.setAttribute("aria-invalid", "true");
       target.querySelectorAll(".cm-content,input[data-table-blank]").forEach((el) => el.setAttribute("aria-invalid", "true"));
-      const hint = createDiv({ cls: "study-field-error", text: message });
+      const hint = createDiv({ cls: "study-field-error", text: message2 });
       hint.setAttribute("role", "alert");
       target.after(hint);
       this.invalidTargets.push(target);
@@ -51992,7 +53372,7 @@ var QuestionEditor = class extends StudioPanel {
   }
   previewQuestion() {
     if (this.mathEditors) {
-      new import_obsidian59.Notice("Finish the active math or drawing editor before previewing the question.");
+      new import_obsidian63.Notice("Finish the active math or drawing editor before previewing the question.");
       return;
     }
     if (!this.validateFields()) return;
@@ -52058,7 +53438,7 @@ var QuestionEditor = class extends StudioPanel {
   }
   async save(openNote) {
     if (this.mathEditors) {
-      new import_obsidian59.Notice("Finish the active math or drawing editor before saving the question.");
+      new import_obsidian63.Notice("Finish the active math or drawing editor before saving the question.");
       return;
     }
     if (this.busy) return;
@@ -52101,12 +53481,12 @@ var QuestionEditor = class extends StudioPanel {
       let savedFile;
       if (this.createFile) savedFile = await this.createFile(next);
       else {
-        if (!(this.file instanceof import_obsidian59.TFile)) throw Error("Question file is unavailable.");
+        if (!(this.file instanceof import_obsidian63.TFile)) throw Error("Question file is unavailable.");
         savedFile = this.file;
         await this.app.vault.process(savedFile, (current) => checkedReplacement(current, this.original.raw, next));
       }
       this.close();
-      new import_obsidian59.Notice(outputWarning ? "Question saved; output unavailable: " + outputWarning : "Question saved. Reopen practice to load the changes.");
+      new import_obsidian63.Notice(outputWarning ? "Question saved; output unavailable: " + outputWarning : "Question saved. Reopen practice to load the changes.");
       if (openNote) await this.app.workspace.getLeaf("tab").openFile(savedFile);
     } catch (e) {
       if (!this.closed) {
@@ -52128,12 +53508,12 @@ var QuestionEditor = class extends StudioPanel {
 };
 
 // src/main.ts
-var import_obsidian60 = require("obsidian");
+var import_obsidian64 = require("obsidian");
 var ROOT2 = "Study Studio";
 var QUESTIONS = `${ROOT2}/Questions`;
 var ATTEMPTS = `${ROOT2}/Attempts`;
 var errorText = (e) => e instanceof Error ? e.message : String(e);
-var Card = class extends import_obsidian60.MarkdownRenderChild {
+var Card = class extends import_obsidian64.MarkdownRenderChild {
   constructor(el, plugin, q, context, done, preview = false, exam, retryCourse, ephemeral = false, onChecked, retained) {
     super(el);
     this.plugin = plugin;
@@ -52244,18 +53624,18 @@ var Card = class extends import_obsidian60.MarkdownRenderChild {
     const showMenu = (event) => {
       event.preventDefault();
       event.stopPropagation();
-      const menu = new import_obsidian60.Menu();
+      const menu = new import_obsidian64.Menu();
       const blocked = this.editing > 0 || this.working || this.rendering;
-      const reveal2 = Array.from(el.querySelectorAll("button")).find((b) => b.textContent === "Reveal without scoring");
-      if (reveal2) menu.addItem((item) => item.setTitle("1 \xB7 Reveal without scoring").setDisabled(blocked || reveal2.disabled).onClick(() => reveal2.click()));
+      const reveal3 = Array.from(el.querySelectorAll("button")).find((b) => b.textContent === "Reveal without scoring");
+      if (reveal3) menu.addItem((item) => item.setTitle("1 \xB7 Reveal without scoring").setDisabled(blocked || reveal3.disabled).onClick(() => reveal3.click()));
       if (!this.preview || this.exam) this.reviewsMenu(menu, q, el);
       if (!this.exam && (!this.preview || this.ephemeral)) menu.addItem((item) => item.setTitle("3 \xB7 Edit question").setDisabled(blocked).onClick(() => void this.plugin.openQuestion(d.id)));
       if (!this.preview && !this.exam) {
-        menu.addItem((item) => item.setTitle("2 \xB7 Reset question").setDisabled(blocked).onClick(() => void this.plugin.resetPractice(this.context, [d.id]).catch((e) => new import_obsidian60.Notice(errorText(e)))));
+        menu.addItem((item) => item.setTitle("2 \xB7 Reset question").setDisabled(blocked).onClick(() => void this.plugin.resetPractice(this.context, [d.id]).catch((e) => new import_obsidian64.Notice(errorText(e)))));
         const sourcePath = this.plugin.practiceSource(this.context);
-        if (sourcePath) menu.addItem((item) => item.setTitle("4 \xB7 Group or remove from note\u2026").setDisabled(blocked).onClick(() => void this.plugin.bank().then((bank) => manageNote(this.plugin.app, bank, (id3) => void this.plugin.openQuestion(id3), d.id, sourcePath)).catch((e) => new import_obsidian60.Notice(errorText(e)))));
+        if (sourcePath) menu.addItem((item) => item.setTitle("4 \xB7 Group or remove from note\u2026").setDisabled(blocked).onClick(() => void this.plugin.bank().then((bank) => manageNote(this.plugin.app, bank, (id3) => void this.plugin.openQuestion(id3), d.id, sourcePath)).catch((e) => new import_obsidian64.Notice(errorText(e)))));
         if (courseInput) menu.addItem((item) => item.setTitle(`5 \xB7 Course: ${course?.title ?? "Unassigned"}\u2026`).setDisabled(blocked || courseInput.disabled).onClick(() => {
-          const choices = new import_obsidian60.Menu();
+          const choices = new import_obsidian64.Menu();
           for (const [index2, option] of Array.from(courseInput.options).entries()) choices.addItem((item2) => item2.setTitle(`${index2 + 1} \xB7 ${option.text}`).setChecked(option.value === courseInput.value).onClick(() => {
             courseInput.value = option.value;
             courseInput.dispatchEvent(new Event("change"));
@@ -52266,7 +53646,7 @@ var Card = class extends import_obsidian60.MarkdownRenderChild {
       }
       menu.addSeparator();
       menu.addItem((item) => item.setTitle("6 \xB7 Question information").onClick(() => {
-        const modal = new import_obsidian60.Modal(this.plugin.app);
+        const modal = new import_obsidian64.Modal(this.plugin.app);
         modal.titleEl.setText(d.title);
         if (d.concepts.length) modal.contentEl.createEl("p", { text: "Concepts: " + d.concepts.join(" \xB7 ") });
         modal.contentEl.createEl("p", { text: "Course: " + (course?.title ?? "Unassigned") });
@@ -52348,12 +53728,12 @@ var Card = class extends import_obsidian60.MarkdownRenderChild {
           await this.plugin.saveAttempt(record);
           this.plugin.completions[key2] = record;
           ++draftRevision;
-          await this.plugin.putDraft(key2, void 0).catch(() => new import_obsidian60.Notice("Attempt saved; draft cleanup could not be saved."));
+          await this.plugin.putDraft(key2, void 0).catch(() => new import_obsidian64.Notice("Attempt saved; draft cleanup could not be saved."));
         }
         if (courseInput) courseInput.disabled = true;
         return record;
       }, () => {
-        if (!this.preview) void this.plugin.resetPractice(this.context, [d.id]).catch((e) => new import_obsidian60.Notice(errorText(e)));
+        if (!this.preview) void this.plugin.resetPractice(this.context, [d.id]).catch((e) => new import_obsidian64.Notice(errorText(e)));
         else {
           this.unload();
           this.load();
@@ -52391,8 +53771,8 @@ var Card = class extends import_obsidian60.MarkdownRenderChild {
       const measure = wrap.createSpan({ cls: "study-answer-measure", attr: { "aria-hidden": "true" } });
       const answerSize = diagramAnswerSize(parent, wrap, () => {
         if (input.hidden) {
-          const math = preview.querySelector(".math");
-          if (math) return math.getBoundingClientRect().width;
+          const math2 = preview.querySelector(".math");
+          if (math2) return math2.getBoundingClientRect().width;
           measure.textContent = preview.textContent ?? "";
         }
         return measure.getBoundingClientRect().width;
@@ -52489,7 +53869,7 @@ var Card = class extends import_obsidian60.MarkdownRenderChild {
     };
     let clozeCount = 0;
     const mount = (host) => {
-      clozeCount += mountClozeInputs(host, (parent, id3, math) => addInput(parent, id3, "Blank " + id3, math || !!d.answers?.find((a2) => a2.id === id3)?.math));
+      clozeCount += mountClozeInputs(host, (parent, id3, math2) => addInput(parent, id3, "Blank " + id3, math2 || !!d.answers?.find((a2) => a2.id === id3)?.math));
     };
     if (d.type === "blank" || d.type === "table") mount(prompt);
     if (d.type === "blank" && clozeCount !== d.answers.length) throw Error("A blank could not be rendered. Check its math or Markdown formatting.");
@@ -52501,11 +53881,11 @@ var Card = class extends import_obsidian60.MarkdownRenderChild {
       controls.push(...sequence.buttons);
     }
     if (d.type === "choice") {
-      const group = el.createEl("fieldset", { cls: "study-options" }), groupName = `choice-${crypto.randomUUID()}`;
-      group.setAttribute("aria-label", d.correct.length > 1 ? "Select all correct answers" : "Choose one answer");
+      const group2 = el.createEl("fieldset", { cls: "study-options" }), groupName = `choice-${crypto.randomUUID()}`;
+      group2.setAttribute("aria-label", d.correct.length > 1 ? "Select all correct answers" : "Choose one answer");
       for (const id3 of order2) {
         const option = d.choices.find((c) => c.id === id3);
-        const label = group.createEl("label", { cls: "study-option" });
+        const label = group2.createEl("label", { cls: "study-option" });
         const input = label.createEl("input", {
           type: d.correct.length > 1 ? "checkbox" : "radio",
           attr: { name: groupName }
@@ -52595,8 +53975,8 @@ var Card = class extends import_obsidian60.MarkdownRenderChild {
     const actions = el.createDiv("study-actions"), submit = actions.createEl("button", {
       text: "Check answer \xB7 Ctrl+Enter",
       cls: "mod-cta"
-    }), reveal = actions.createEl("button", { text: "Reveal without scoring" });
-    reveal.hidden = true;
+    }), reveal2 = actions.createEl("button", { text: "Reveal without scoring" });
+    reveal2.hidden = true;
     const feedback = el.createDiv("study-feedback");
     feedback.setAttribute("aria-live", "polite");
     let busy = false, finished = false;
@@ -52604,7 +53984,7 @@ var Card = class extends import_obsidian60.MarkdownRenderChild {
       if (busy || finished) return;
       busy = true;
       this.working = true;
-      submit.disabled = reveal.disabled = true;
+      submit.disabled = reveal2.disabled = true;
       controls.forEach((c) => c.disabled = true);
       if (courseInput) courseInput.disabled = true;
       feedback.setText(this.ephemeral ? "Checking answer\u2026" : this.preview ? "Checking preview\u2026" : "Saving locally\u2026");
@@ -52624,7 +54004,7 @@ var Card = class extends import_obsidian60.MarkdownRenderChild {
           await this.plugin.saveAttempt(record);
           this.plugin.completions[key2] = record;
           ++draftRevision;
-          void this.plugin.putDraft(key2, void 0).catch(() => new import_obsidian60.Notice("Attempt saved, but the old draft could not be cleared."));
+          void this.plugin.putDraft(key2, void 0).catch(() => new import_obsidian64.Notice("Attempt saved, but the old draft could not be cleared."));
         }
         draftStatus.empty();
         finished = true;
@@ -52757,7 +54137,7 @@ var Card = class extends import_obsidian60.MarkdownRenderChild {
           const again = feedback.createEl("button", { text: "Try again" });
           if (!prior) again.focus();
           again.onclick = () => {
-            if (!this.preview) void this.plugin.resetPractice(this.context, [d.id]).catch((e) => new import_obsidian60.Notice(errorText(e)));
+            if (!this.preview) void this.plugin.resetPractice(this.context, [d.id]).catch((e) => new import_obsidian64.Notice(errorText(e)));
             else {
               this.unload();
               this.load();
@@ -52770,7 +54150,7 @@ var Card = class extends import_obsidian60.MarkdownRenderChild {
         );
         controls.forEach((c) => c.disabled = false);
         if (courseInput) courseInput.disabled = false;
-        submit.disabled = reveal.disabled = false;
+        submit.disabled = reveal2.disabled = false;
       } finally {
         busy = false;
         this.working = false;
@@ -52782,7 +54162,7 @@ var Card = class extends import_obsidian60.MarkdownRenderChild {
     };
     if (completed) await finish(completed.mode, completed);
     submit.onclick = () => void finish("attempt");
-    reveal.onclick = () => void finish("reveal");
+    reveal2.onclick = () => void finish("reveal");
     this.registerDomEvent(
       el.ownerDocument,
       "keydown",
@@ -52797,7 +54177,7 @@ var Card = class extends import_obsidian60.MarkdownRenderChild {
     );
   }
 };
-var PickQuestion = class extends import_obsidian60.FuzzySuggestModal {
+var PickQuestion = class extends import_obsidian64.FuzzySuggestModal {
   constructor(plugin, questions, choose) {
     super(plugin.app);
     this.plugin = plugin;
@@ -52815,7 +54195,7 @@ var PickQuestion = class extends import_obsidian60.FuzzySuggestModal {
     this.choose(q);
   }
 };
-var CreateQuestion = class extends import_obsidian60.Modal {
+var CreateQuestion = class extends import_obsidian64.Modal {
   constructor(plugin, editor, source) {
     super(plugin.app);
     this.plugin = plugin;
@@ -52847,21 +54227,21 @@ var CreateQuestion = class extends import_obsidian60.Modal {
     const existingGroups = embeds(sourceText ?? "").filter((e) => e.group);
     let targetGroup = -1;
     let titleInput;
-    new import_obsidian60.Setting(this.contentEl).setName("Title").addText((t2) => {
+    new import_obsidian64.Setting(this.contentEl).setName("Title").addText((t2) => {
       titleInput = t2.inputEl;
       t2.setPlaceholder("e.g. Velocity gradient").onChange((v) => title = v);
     });
     const placement = this.contentEl.createEl("details");
     placement.hidden = !existingGroups.length;
     placement.createEl("summary", { text: "Add to an existing group (optional)" });
-    if (existingGroups.length) new import_obsidian60.Setting(placement).setName("Place question").addDropdown((d) => {
+    if (existingGroups.length) new import_obsidian64.Setting(placement).setName("Place question").addDropdown((d) => {
       d.addOption("-1", "Individual card after selection");
       existingGroups.forEach((g, i) => d.addOption(String(i), g.title));
       d.onChange((v) => targetGroup = Number(v));
     });
     const types2 = [["choice", "Multiple choice"], ["blank", "Fill in the blank"], ["table", "Complete the table"], ["code", "Complete the code"], ["diagram", "Label the diagram"], ["ordering", "Put steps in order"], ["short-answer", "Short answer / essay"], ["drawing", "Drawing response"]];
     let typeSelect;
-    new import_obsidian60.Setting(this.contentEl).setName("Question type").setDesc("Tab here, then press 1\u20138 to choose.").addDropdown((d) => {
+    new import_obsidian64.Setting(this.contentEl).setName("Question type").setDesc("Tab here, then press 1\u20138 to choose.").addDropdown((d) => {
       typeSelect = d.selectEl;
       types2.forEach(([id3, label], i) => d.addOption(id3, `${i + 1} \xB7 ${label}`));
       d.setValue(kind).onChange((v) => kind = v);
@@ -52884,10 +54264,10 @@ var CreateQuestion = class extends import_obsidian60.Modal {
     this.contentEl.createEl("p", {
       text: "Ctrl+Enter continues. Your selection stays in the note; saving adds a question after it."
     });
-    new import_obsidian60.Setting(this.contentEl).addButton(
+    new import_obsidian64.Setting(this.contentEl).addButton(
       (b) => b.setButtonText("Continue to question editor").setCta().onClick(async () => {
         if (!title.trim()) {
-          new import_obsidian60.Notice("Enter a question title.");
+          new import_obsidian64.Notice("Enter a question title.");
           return;
         }
         b.setDisabled(true);
@@ -52905,7 +54285,7 @@ var CreateQuestion = class extends import_obsidian60.Modal {
             draft,
             (el, q) => new Card(el, this.plugin, q, "author-preview", void 0, true),
             async (raw) => {
-              const sourceView = this.source ? this.app.workspace.getLeavesOfType("markdown").map((leaf) => leaf.view).find((view) => view instanceof import_obsidian60.MarkdownView && view.file?.path === this.source.path) : void 0;
+              const sourceView = this.source ? this.app.workspace.getLeavesOfType("markdown").map((leaf) => leaf.view).find((view) => view instanceof import_obsidian64.MarkdownView && view.file?.path === this.source.path) : void 0;
               const sourceEditor = sourceView?.getMode() === "source" ? sourceView.editor : void 0;
               const currentSource = this.source ? sourceEditor?.getValue() ?? await this.app.vault.read(this.source) : void 0;
               const canInsert = sourceText !== void 0 && currentSource === sourceText;
@@ -52924,15 +54304,15 @@ var CreateQuestion = class extends import_obsidian60.Modal {
                     return current.slice(0, insertion.at) + insertion.text + current.slice(end);
                   });
                 } catch {
-                  new import_obsidian60.Notice("Question saved. The source note changed; use Insert question card to link it.", 1e4);
+                  new import_obsidian64.Notice("Question saved. The source note changed; use Insert question card to link it.", 1e4);
                 }
               }
-              if (this.source && !canInsert) new import_obsidian60.Notice("Question saved. The note changed while you were editing; use Insert question card to choose its placement.", 1e4);
+              if (this.source && !canInsert) new import_obsidian64.Notice("Question saved. The note changed while you were editing; use Insert question card to choose its placement.", 1e4);
               return f;
             }
           ).open();
         } catch (e) {
-          new import_obsidian60.Notice(errorText(e));
+          new import_obsidian64.Notice(errorText(e));
           b.setDisabled(false);
         }
       })
@@ -52947,7 +54327,7 @@ var CreateQuestion = class extends import_obsidian60.Modal {
     this.contentEl.empty();
   }
 };
-var ReviewSetup = class extends import_obsidian60.Modal {
+var ReviewSetup = class extends import_obsidian64.Modal {
   constructor(plugin, questions, context) {
     super(plugin.app);
     this.plugin = plugin;
@@ -52963,7 +54343,7 @@ var ReviewSetup = class extends import_obsidian60.Modal {
     this.contentEl.createEl("p", {
       text: `${this.questions.length} variants across ${families.size} question families. Choose how many variants from each family to include. Selection is random, without repeats.`
     });
-    new import_obsidian60.Setting(this.contentEl).setName("Variants per family").addDropdown(
+    new import_obsidian64.Setting(this.contentEl).setName("Variants per family").addDropdown(
       (d) => d.addOptions({
         "1": "One",
         "2": "Up to two",
@@ -52971,7 +54351,7 @@ var ReviewSetup = class extends import_obsidian60.Modal {
         "999999": "All"
       }).onChange((v) => count2 = Number(v))
     );
-    new import_obsidian60.Setting(this.contentEl).addButton(
+    new import_obsidian64.Setting(this.contentEl).addButton(
       (b) => b.setButtonText("Start review").setCta().onClick(() => {
         const selected = selectVariants(this.questions, count2);
         this.close();
@@ -52983,7 +54363,7 @@ var ReviewSetup = class extends import_obsidian60.Modal {
     this.contentEl.empty();
   }
 };
-var Review = class extends import_obsidian60.Modal {
+var Review = class extends import_obsidian64.Modal {
   constructor(plugin, questions, context) {
     super(plugin.app);
     this.plugin = plugin;
@@ -53033,16 +54413,16 @@ var Review = class extends import_obsidian60.Modal {
     this.contentEl.empty();
   }
 };
-var StudyStudio = class extends import_obsidian60.Plugin {
+var StudyStudio = class extends import_obsidian64.Plugin {
   configurePractice(questions, title = "Practice", course) {
-    const setup = new import_obsidian60.Modal(this.app);
+    const setup = new import_obsidian64.Modal(this.app);
     setup.titleEl.setText("Practice settings");
     setup.contentEl.createEl("p", { text: `${title} \xB7 ${questions.length} questions` });
     let randomize = false;
     let required = 1;
-    new import_obsidian60.Setting(setup.contentEl).setName("Question order").addDropdown((select) => select.addOption("chapter", "Chapter order").addOption("random", "Random order").setValue("chapter").onChange((value) => randomize = value === "random"));
-    new import_obsidian60.Setting(setup.contentEl).setName("Clear missed questions after").addDropdown((select) => select.addOption("1", "One correct answer").addOption("2", "Two consecutive correct answers").setValue("1").onChange((value) => required = value === "2" ? 2 : 1));
-    new import_obsidian60.Setting(setup.contentEl).addButton((button) => button.setButtonText("Cancel").onClick(() => setup.close())).addButton((button) => button.setButtonText("Start practice").setCta().setDisabled(!questions.length).onClick(() => {
+    new import_obsidian64.Setting(setup.contentEl).setName("Question order").addDropdown((select) => select.addOption("chapter", "Chapter order").addOption("random", "Random order").setValue("chapter").onChange((value) => randomize = value === "random"));
+    new import_obsidian64.Setting(setup.contentEl).setName("Clear missed questions after").addDropdown((select) => select.addOption("1", "One correct answer").addOption("2", "Two consecutive correct answers").setValue("1").onChange((value) => required = value === "2" ? 2 : 1));
+    new import_obsidian64.Setting(setup.contentEl).addButton((button2) => button2.setButtonText("Cancel").onClick(() => setup.close())).addButton((button2) => button2.setButtonText("Start practice").setCta().setDisabled(!questions.length).onClick(() => {
       setup.close();
       const ordered = chapterOrder(questions);
       const context = `practice-set:${course?.id ?? "unassigned"}:${crypto.randomUUID()}`;
@@ -53053,7 +54433,7 @@ var StudyStudio = class extends import_obsidian60.Plugin {
   async openPracticePage(questions, title = "Practice", course, provided, expected = questions.length, savedContext, submittedStamp, reviewState) {
     const context = savedContext ?? `practice-set:${course?.id ?? "unassigned"}:${crypto.randomUUID()}`;
     const frozenFile = this.app.vault.getAbstractFileByPath(practiceSessionPath(context));
-    if (frozenFile instanceof import_obsidian60.TFile) {
+    if (frozenFile instanceof import_obsidian64.TFile) {
       await this.showFrozenPractice(parsePracticeSession(await this.app.vault.read(frozenFile)), provided);
       return;
     }
@@ -53073,15 +54453,15 @@ var StudyStudio = class extends import_obsidian60.Plugin {
     if (expected !== questions.length) top2.createEl("p", { text: `${expected - questions.length} questions are no longer available.`, cls: "study-error" });
     top2.createEl("button", { text: "New set attempt" }).onclick = () => {
       void this.bank().then((bank) => {
-        const full = review.fullIds.flatMap((id3) => {
+        const full2 = review.fullIds.flatMap((id3) => {
           const q = bank.find((q2) => q2.definition.id === id3);
           return q ? [q] : [];
         });
-        this.configurePractice(full, title, course);
+        this.configurePractice(full2, title, course);
       });
     };
     panel.copyLink = () => {
-      void navigator.clipboard.writeText(practiceLink(this.app.vault.getName(), { title, ids: review.fullIds, course: course?.id })).then(() => new import_obsidian60.Notice("Practice set link copied. Opens the set without sharing your answers."), () => new import_obsidian60.Notice("Could not copy the practice link."));
+      void navigator.clipboard.writeText(practiceLink(this.app.vault.getName(), { title, ids: review.fullIds, course: course?.id })).then(() => new import_obsidian64.Notice("Practice set link copied. Opens the set without sharing your answers."), () => new import_obsidian64.Notice("Could not copy the practice link."));
     };
     if (review.round) top2.createEl("p", { text: `Review round ${review.round} \xB7 Clear each question after ${review.required === 1 ? "one correct answer" : "two consecutive correct answers"}. The original set score is unchanged.`, cls: "study-muted" });
     const layout = root.createDiv("study-practice-workspace"), nav2 = layout.createEl("nav", { cls: "study-practice-question-nav", attr: { "aria-label": "Practice questions" } }), body = layout.createDiv("study-practice-question-list");
@@ -53132,9 +54512,9 @@ var StudyStudio = class extends import_obsidian60.Plugin {
         const next = nextReview(questions.map((q) => q.definition.id), questions.map((q) => this.completions[draftKey(context, q.definition.id)]), review);
         if (next.remaining.length) {
           reviewActions.createEl("p", { text: `${next.remaining.length} questions remaining to review.` });
-          const button = reviewActions.createEl("button", { text: review.round ? "Continue review" : "Practice missed questions", cls: "mod-cta" });
-          button.onclick = () => {
-            button.disabled = true;
+          const button2 = reviewActions.createEl("button", { text: review.round ? "Continue review" : "Practice missed questions", cls: "mod-cta" });
+          button2.onclick = () => {
+            button2.disabled = true;
             const selected = chapterOrder(questions.filter((q) => next.remaining.includes(q.definition.id)));
             this.openPracticePage(rankVersions(review.randomize ? shuffledPractice(selected) : selected), title, course, void 0, selected.length, `practice-review:${review.rootContext}:${crypto.randomUUID()}`, void 0, next.state);
           };
@@ -53153,7 +54533,7 @@ var StudyStudio = class extends import_obsidian60.Plugin {
           if (!record || record.mode !== "attempt") throw Error("A response could not be saved. Retry submission.");
         }
         if (!summary().ready) {
-          new import_obsidian60.Notice("Complete the rubric assessment for written responses, then submit the set.");
+          new import_obsidian64.Notice("Complete the rubric assessment for written responses, then submit the set.");
           return;
         }
         const frozen = freezePractice(context, title, course, review, questions.map((q) => this.completions[draftKey(context, q.definition.id)]));
@@ -53169,7 +54549,7 @@ var StudyStudio = class extends import_obsidian60.Plugin {
         this.app.workspace.requestSaveLayout();
         gradeHost.scrollIntoView({ behavior: "smooth", block: "start" });
       } catch (e) {
-        new import_obsidian60.Notice(errorText(e));
+        new import_obsidian64.Notice(errorText(e));
       } finally {
         submitting = false;
         update();
@@ -53184,15 +54564,15 @@ var StudyStudio = class extends import_obsidian60.Plugin {
           await submitAll();
           return;
         }
-        const warning = new import_obsidian60.Modal(this.app);
+        const warning = new import_obsidian64.Modal(this.app);
         warning.titleEl.setText("Unanswered questions");
         warning.contentEl.createEl("p", { text: `Questions ${missing.join(", ")} have unanswered fields. These will receive zero credit; completed fields still earn their normal credit.` });
-        new import_obsidian60.Setting(warning.contentEl).addButton((b) => b.setButtonText("Return to questions").onClick(() => warning.close())).addButton((b) => b.setButtonText("Submit anyway").setCta().onClick(() => {
+        new import_obsidian64.Setting(warning.contentEl).addButton((b) => b.setButtonText("Return to questions").onClick(() => warning.close())).addButton((b) => b.setButtonText("Submit anyway").setCta().onClick(() => {
           warning.close();
           void submitAll();
         }));
         warning.open();
-      })().catch((e) => new import_obsidian60.Notice(errorText(e)));
+      })().catch((e) => new import_obsidian64.Notice(errorText(e)));
     };
     this.practiceResultListeners.add(update);
     panel.register(() => this.practiceResultListeners.delete(update));
@@ -53245,12 +54625,12 @@ var StudyStudio = class extends import_obsidian60.Plugin {
     const folder = `${ROOT2}/Exam sessions`;
     await this.ensureFolder(folder);
     const path = `${folder}/${session.id}.json`, file = this.app.vault.getAbstractFileByPath(path), raw = JSON.stringify(session, null, 2) + "\n";
-    if (file instanceof import_obsidian60.TFile) await this.app.vault.modify(file, raw);
+    if (file instanceof import_obsidian64.TFile) await this.app.vault.modify(file, raw);
     else await this.app.vault.create(path, raw);
   }
   showExam(session) {
     if (this.examWindows.has(session.id)) {
-      new import_obsidian60.Notice("That exam session is already open.");
+      new import_obsidian64.Notice("That exam session is already open.");
       return;
     }
     this.examWindows.add(session.id);
@@ -53288,7 +54668,7 @@ var StudyStudio = class extends import_obsidian60.Plugin {
       this.drafts = drafts;
       this.completions = completions;
       this.noteLocations[path] = id3;
-      void this.persistPractice().catch((e) => new import_obsidian60.Notice("Could not save practice location: " + errorText(e)));
+      void this.persistPractice().catch((e) => new import_obsidian64.Notice("Could not save practice location: " + errorText(e)));
     }
     return this.noteLocations[path];
   }
@@ -53299,7 +54679,7 @@ var StudyStudio = class extends import_obsidian60.Plugin {
       this.expandedNotes.delete(path);
       this.expandedNotes.set(newPath + path.slice(oldPath.length), open);
     }
-    void this.persistPractice().catch((e) => new import_obsidian60.Notice("Could not save moved practice state: " + errorText(e)));
+    void this.persistPractice().catch((e) => new import_obsidian64.Notice("Could not save moved practice state: " + errorText(e)));
   }
   savedData = {};
   draftWrites = Promise.resolve();
@@ -53322,7 +54702,7 @@ var StudyStudio = class extends import_obsidian60.Plugin {
       }
       await this.persistPractice();
       cards.forEach((c) => c.reload());
-      new import_obsidian60.Notice("Practice reset. Recorded history is preserved.");
+      new import_obsidian64.Notice("Practice reset. Recorded history is preserved.");
     } catch (e) {
       for (const key2 of target) {
         if (priorDrafts[key2]) this.drafts[key2] = priorDrafts[key2];
@@ -53355,7 +54735,7 @@ var StudyStudio = class extends import_obsidian60.Plugin {
     this.expandedNotes.set(path, open);
     this.app.workspace.getLeavesOfType("markdown").forEach((leaf) => {
       const view = leaf.view;
-      if (view instanceof import_obsidian60.MarkdownView && view.file?.path === path)
+      if (view instanceof import_obsidian64.MarkdownView && view.file?.path === path)
         view.containerEl.querySelectorAll("details.study-embed").forEach((el) => {
           el.open = open;
         });
@@ -53363,6 +54743,8 @@ var StudyStudio = class extends import_obsidian60.Plugin {
   }
   reviews;
   annotationApi;
+  symbolApi;
+  symbolSystem;
   codeAnnotationApi;
   studyDirectiveApi;
   figureStudyApi;
@@ -53382,10 +54764,10 @@ var StudyStudio = class extends import_obsidian60.Plugin {
       }
     }
     if (!questions.length) {
-      new import_obsidian60.Notice("The linked practice questions are no longer available.");
+      new import_obsidian64.Notice("The linked practice questions are no longer available.");
       return;
     }
-    if (questions.length !== new Set(ids).size) new import_obsidian60.Notice("Some linked questions are unavailable. Showing those that are present.");
+    if (questions.length !== new Set(ids).size) new import_obsidian64.Notice("Some linked questions are unavailable. Showing those that are present.");
     const sourcePaths = [...new Set(questions.map((q) => q.definition.studySource?.path).filter(Boolean))];
     if (sourcePaths.length === 1) this.app.workspace.trigger("study-practice-source", sourcePaths[0]);
     return testYourself(this.app, questions, title, (host, q, checked, kept) => new Card(host, this, q, "test-yourself", void 0, true, void 0, void 0, true, checked, kept));
@@ -53395,6 +54777,8 @@ var StudyStudio = class extends import_obsidian60.Plugin {
     this.reviews = new ReviewStore(this.app);
     this.register(() => this.reviews.closeHoverPreviews());
     await this.reviews.load();
+    this.symbolSystem = await registerSymbolSystem(this);
+    this.symbolApi = this.symbolSystem?.api;
     const marginNotes = await registerMarginNotes(this, this.reviews);
     this.reviews.annotationBusy = (id3) => marginNotes.busy(id3);
     this.annotationApi = new AnnotationApi(this.reviews, (id3) => marginNotes.busy(id3));
@@ -53421,7 +54805,7 @@ var StudyStudio = class extends import_obsidian60.Plugin {
     registerPanelRestorer(this.app, "practice-frozen", (panel, state) => {
       void (async () => {
         const file = this.app.vault.getAbstractFileByPath(practiceSessionPath(String(state.context)));
-        if (!(file instanceof import_obsidian60.TFile)) throw Error("Saved practice session not found.");
+        if (!(file instanceof import_obsidian64.TFile)) throw Error("Saved practice session not found.");
         await this.showFrozenPractice(parsePracticeSession(await this.app.vault.read(file)), panel);
       })().catch((e) => panel.contentEl.setText(errorText(e)));
     });
@@ -53449,24 +54833,24 @@ var StudyStudio = class extends import_obsidian60.Plugin {
           const course = selection.course ? (await courses(this.app)).find((c) => c.course.id === selection.course)?.course : void 0;
           if (selection.course && !course) throw Error("This practice link needs a course not found in this vault. Sync the course files first.");
           this.configurePractice(selection.ids.map((id3) => byId.get(id3)), selection.title, course);
-        })().catch((e) => new import_obsidian60.Notice(errorText(e), 1e4));
+        })().catch((e) => new import_obsidian64.Notice(errorText(e), 1e4));
       });
     });
     registerShortcutGuide(this);
     this.addCommand({ id: "group-note-questions", name: "Group questions on this note\u2026", checkCallback: (checking) => {
-      const view = this.app.workspace.getActiveViewOfType(import_obsidian60.MarkdownView);
+      const view = this.app.workspace.getActiveViewOfType(import_obsidian64.MarkdownView);
       if (!view?.file) return false;
       if (!checking) void this.groupNoteQuestions(view.file.path);
       return true;
     } });
     this.addCommand({ id: "remove-note-questions", name: "Remove questions from this note\u2026", checkCallback: (checking) => {
-      const view = this.app.workspace.getActiveViewOfType(import_obsidian60.MarkdownView);
+      const view = this.app.workspace.getActiveViewOfType(import_obsidian64.MarkdownView);
       if (!view?.file) return false;
       if (!checking) void this.removeNoteQuestions(view.file.path);
       return true;
     } });
-    this.addCommand({ id: "manage-note-questions", name: "Manage questions in this note", hotkeys: [{ modifiers: ["Mod", "Alt"], key: "G" }], callback: () => void this.bank().then((bank) => manageNote(this.app, bank, (id3) => void this.openQuestion(id3))).catch((e) => new import_obsidian60.Notice(errorText(e))) });
-    if (this.app.vault.getName() === "study_studio_lab") this.addCommand({ id: "organize-course-lab", name: "Organize course lab into chapter folders", callback: () => void organizeCourseLab(this.app).then((n) => new import_obsidian60.Notice(`Moved ${n} lab notes into chapter folders.`, 8e3)).catch((e) => new import_obsidian60.Notice(errorText(e), 12e3)) });
+    this.addCommand({ id: "manage-note-questions", name: "Manage questions in this note", hotkeys: [{ modifiers: ["Mod", "Alt"], key: "G" }], callback: () => void this.bank().then((bank) => manageNote(this.app, bank, (id3) => void this.openQuestion(id3))).catch((e) => new import_obsidian64.Notice(errorText(e))) });
+    if (this.app.vault.getName() === "study_studio_lab") this.addCommand({ id: "organize-course-lab", name: "Organize course lab into chapter folders", callback: () => void organizeCourseLab(this.app).then((n) => new import_obsidian64.Notice(`Moved ${n} lab notes into chapter folders.`, 8e3)).catch((e) => new import_obsidian64.Notice(errorText(e), 12e3)) });
     this.registerMarkdownCodeBlockProcessor("study-dashboard", (source, el) => {
       const id3 = source.trim() || "all";
       if (!/^[\w-]+$/.test(id3)) {
@@ -53475,35 +54859,35 @@ var StudyStudio = class extends import_obsidian60.Plugin {
       }
       el.createEl("button", { text: id3 === "all" ? "Open all-course dashboard" : "Open course dashboard", cls: "mod-cta" }).onclick = () => void dashboard(this.app, () => this.bank(), id3);
     });
-    this.addCommand({ id: "study-dashboard", name: "Open study dashboard", callback: () => void dashboard(this.app, () => this.bank()).catch((e) => new import_obsidian60.Notice(errorText(e))) });
+    this.addCommand({ id: "study-dashboard", name: "Open study dashboard", callback: () => void dashboard(this.app, () => this.bank()).catch((e) => new import_obsidian64.Notice(errorText(e))) });
     this.addCommand({ id: "reset-note-practice", name: "Reset all practice questions in this note", checkCallback: (checking) => {
-      const view = this.app.workspace.getActiveViewOfType(import_obsidian60.MarkdownView);
+      const view = this.app.workspace.getActiveViewOfType(import_obsidian64.MarkdownView);
       if (!view?.file) return false;
       if (!checking) {
         const path = view.file.path;
         const source = view.getMode() === "source" ? view.editor.getValue() : void 0;
-        void (source === void 0 ? this.app.vault.read(view.file) : Promise.resolve(source)).then((raw) => this.resetPractice(path, noteQuestionIds(raw))).catch((e) => new import_obsidian60.Notice(errorText(e)));
+        void (source === void 0 ? this.app.vault.read(view.file) : Promise.resolve(source)).then((raw) => this.resetPractice(path, noteQuestionIds(raw))).catch((e) => new import_obsidian64.Notice(errorText(e)));
       }
       return true;
     } });
-    this.addCommand({ id: "manage-courses", name: "Manage courses", callback: () => void manageCourses(this.app).catch((e) => new import_obsidian60.Notice(errorText(e))) });
+    this.addCommand({ id: "manage-courses", name: "Manage courses", callback: () => void manageCourses(this.app).catch((e) => new import_obsidian64.Notice(errorText(e))) });
     this.addCommand({ id: "assign-courses", name: "Assign current note to courses", callback: () => {
       const file = this.app.workspace.getActiveFile();
-      if (file) void assignCourses(this.app, file).catch((e) => new import_obsidian60.Notice(errorText(e)));
-      else new import_obsidian60.Notice("Open a question or exam source note first.");
+      if (file) void assignCourses(this.app, file).catch((e) => new import_obsidian64.Notice(errorText(e)));
+      else new import_obsidian64.Notice("Open a question or exam source note first.");
     } });
     const candidate = (file) => file.extension === "md" && (this.authoredPaths.has(file.path) || file.path.startsWith(QUESTIONS + "/") || !!this.app.metadataCache.getFileCache(file)?.frontmatter?.study);
     this.questionIndex = new QuestionIndex({
       paths: () => this.app.vault.getMarkdownFiles().filter(candidate).map((f) => f.path),
       read: async (path) => {
         const file = this.app.vault.getAbstractFileByPath(path);
-        return file instanceof import_obsidian60.TFile && candidate(file) ? this.app.vault.read(file) : void 0;
+        return file instanceof import_obsidian64.TFile && candidate(file) ? this.app.vault.read(file) : void 0;
       }
     });
     this.register(() => this.questionIndex.dispose());
     this.app.workspace.trigger("study-code-annotations-ready");
     const changed = (file) => {
-      if (file instanceof import_obsidian60.TFile && (candidate(file) || this.questionIndex.has(file.path))) this.questionIndex.invalidate(file.path);
+      if (file instanceof import_obsidian64.TFile && (candidate(file) || this.questionIndex.has(file.path))) this.questionIndex.invalidate(file.path);
     };
     this.registerEvent(this.app.vault.on("create", changed));
     this.registerEvent(this.app.vault.on("modify", changed));
@@ -53511,7 +54895,7 @@ var StudyStudio = class extends import_obsidian60.Plugin {
       changed(file);
       for (const path of this.authoredPaths) if (within(path, file.path)) this.authoredPaths.delete(path);
       for (const path of Object.keys(this.noteLocations)) if (within(path, file.path)) delete this.noteLocations[path];
-      void this.persistPractice().catch((e) => new import_obsidian60.Notice(errorText(e)));
+      void this.persistPractice().catch((e) => new import_obsidian64.Notice(errorText(e)));
     }));
     this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
       for (const path of [...this.authoredPaths]) if (within(path, oldPath)) {
@@ -53521,10 +54905,10 @@ var StudyStudio = class extends import_obsidian60.Plugin {
       try {
         this.renamePractice(oldPath, file.path);
       } catch (e) {
-        new import_obsidian60.Notice(errorText(e));
+        new import_obsidian64.Notice(errorText(e));
       }
       this.questionIndex.invalidate(oldPath);
-      if (file instanceof import_obsidian60.TFile) this.questionIndex.invalidate(file.path);
+      if (file instanceof import_obsidian64.TFile) this.questionIndex.invalidate(file.path);
       else {
         this.questionIndex.invalidatePrefix(oldPath);
         this.questionIndex.discover();
@@ -53540,21 +54924,21 @@ var StudyStudio = class extends import_obsidian60.Plugin {
       }
     }));
     this.addCommand({ id: "question-index-status", name: "Show question index status", callback: () => {
-      void this.questionIndex.ready().then(() => new import_obsidian60.Notice(JSON.stringify(this.questionIndex.stats()), 1e4)).catch((e) => new import_obsidian60.Notice(errorText(e)));
+      void this.questionIndex.ready().then(() => new import_obsidian64.Notice(JSON.stringify(this.questionIndex.stats()), 1e4)).catch((e) => new import_obsidian64.Notice(errorText(e)));
     } });
     this.addCommand({ id: "create-exam", name: "Create exam", callback: () => {
-      void this.editExam().catch((e) => new import_obsidian60.Notice(errorText(e)));
+      void this.editExam().catch((e) => new import_obsidian64.Notice(errorText(e)));
     } });
     this.addCommand({ id: "edit-exam", name: "Edit current exam", editorCallback: (_editor, view) => {
-      if (view.file) void this.editExam(view.file).catch((e) => new import_obsidian60.Notice(errorText(e)));
+      if (view.file) void this.editExam(view.file).catch((e) => new import_obsidian64.Notice(errorText(e)));
     } });
     this.addCommand({ id: "start-exam", name: "Start current exam", editorCallback: (_editor, view) => {
-      if (view.file) void this.app.vault.read(view.file).then((raw) => this.launchExam(parseExam(raw))).catch((e) => new import_obsidian60.Notice(errorText(e)));
+      if (view.file) void this.app.vault.read(view.file).then((raw) => this.launchExam(parseExam(raw))).catch((e) => new import_obsidian64.Notice(errorText(e)));
     } });
     this.addCommand({ id: "resume-exam", name: "Resume exam or view exam results", callback: () => {
       void (async () => {
         const files = this.app.vault.getFiles().filter((f) => f.path.startsWith(`${ROOT2}/Exam sessions/`) && f.extension === "json").sort((a2, b) => b.stat.mtime - a2.stat.mtime);
-        const modal = new import_obsidian60.Modal(this.app);
+        const modal = new import_obsidian64.Modal(this.app);
         modal.titleEl.setText("Exam sessions");
         if (!files.length) modal.contentEl.createEl("p", { text: "No exams started yet." });
         for (const file of files) {
@@ -53569,7 +54953,7 @@ var StudyStudio = class extends import_obsidian60.Plugin {
           }
         }
         modal.open();
-      })().catch((e) => new import_obsidian60.Notice(errorText(e)));
+      })().catch((e) => new import_obsidian64.Notice(errorText(e)));
     } });
     this.registerMarkdownCodeBlockProcessor("study-exam", async (source, el, ctx) => {
       try {
@@ -53582,7 +54966,7 @@ var StudyStudio = class extends import_obsidian60.Plugin {
         const { file, exam } = matches[0];
         el.addClass("study-exam-launcher");
         const sheet = el.createDiv("study-print-sheet study-print-only");
-        const owner = new import_obsidian60.MarkdownRenderChild(sheet);
+        const owner = new import_obsidian64.MarkdownRenderChild(sheet);
         ctx.addChild(owner);
         const printSession = createSession(exam, await this.bank(), "print-preview", () => 0);
         let section = "";
@@ -53599,14 +54983,14 @@ var StudyStudio = class extends import_obsidian60.Plugin {
         const printMenu = (event) => {
           event.preventDefault();
           event.stopPropagation();
-          new import_obsidian60.Menu().addItem((x) => x.setTitle("Show printable question sheet").onClick(() => {
+          new import_obsidian64.Menu().addItem((x) => x.setTitle("Show printable question sheet").onClick(() => {
             sheet.toggleClass("study-print-only", false);
             sheet.scrollIntoView({ block: "start" });
           })).showAtPosition({ x: event.clientX, y: event.clientY });
         };
         el.addEventListener("contextmenu", printMenu);
-        el.createEl("button", { text: "Start new exam", cls: "mod-cta" }).onclick = () => void this.app.vault.read(file).then((raw) => this.launchExam(parseExam(raw))).catch((e) => new import_obsidian60.Notice(errorText(e)));
-        el.createEl("button", { text: "Edit exam" }).onclick = () => void this.editExam(file).catch((e) => new import_obsidian60.Notice(errorText(e)));
+        el.createEl("button", { text: "Start new exam", cls: "mod-cta" }).onclick = () => void this.app.vault.read(file).then((raw) => this.launchExam(parseExam(raw))).catch((e) => new import_obsidian64.Notice(errorText(e)));
+        el.createEl("button", { text: "Edit exam" }).onclick = () => void this.editExam(file).catch((e) => new import_obsidian64.Notice(errorText(e)));
       } catch (e) {
         el.createEl("p", { text: errorText(e), cls: "study-error" });
       }
@@ -53618,7 +55002,7 @@ var StudyStudio = class extends import_obsidian60.Plugin {
     this.drafts = this.savedData.practiceDrafts && typeof this.savedData.practiceDrafts === "object" && !Array.isArray(this.savedData.practiceDrafts) ? this.savedData.practiceDrafts : {};
     this.completions = this.savedData.practiceCompletions && typeof this.savedData.practiceCompletions === "object" && !Array.isArray(this.savedData.practiceCompletions) ? this.savedData.practiceCompletions : {};
     for (const open of [true, false]) this.addCommand({ id: open ? "expand-all-questions" : "collapse-all-questions", name: open ? "Expand all questions in this note" : "Collapse all questions in this note", checkCallback: (checking) => {
-      const view = this.app.workspace.getActiveViewOfType(import_obsidian60.MarkdownView);
+      const view = this.app.workspace.getActiveViewOfType(import_obsidian64.MarkdownView);
       if (!view?.file) return false;
       if (!checking) this.expandNote(view.file.path, open);
       return true;
@@ -53626,14 +55010,14 @@ var StudyStudio = class extends import_obsidian60.Plugin {
     this.registerMarkdownCodeBlockProcessor("study-group", async (source, el, ctx) => {
       try {
         el.addClass("study-note-practice");
-        const group = parseGroup(source), practiceContext = this.practiceContext(ctx.sourcePath);
-        const questions = await Promise.all(group.questions.map((id3) => this.find(id3)));
+        const group2 = parseGroup(source), practiceContext = this.practiceContext(ctx.sourcePath);
+        const questions = await Promise.all(group2.questions.map((id3) => this.find(id3)));
         const details = el.createEl("details", { cls: "study-embed study-group" });
-        const summary = details.createEl("summary", { text: `${group.title} \xB7 ${questions.length} question${questions.length === 1 ? "" : "s"}` });
+        const summary = details.createEl("summary", { text: `${group2.title} \xB7 ${questions.length} question${questions.length === 1 ? "" : "s"}` });
         const groupMenu = (event) => {
           event.preventDefault();
           event.stopPropagation();
-          const menu = new import_obsidian60.Menu().addItem((item) => item.setTitle("1 \xB7 Reset group practice").setIcon("rotate-ccw").onClick(() => void this.resetPractice(practiceContext, group.questions).catch((e) => new import_obsidian60.Notice(errorText(e))))).addItem((item) => item.setTitle("2 \xB7 Remove multiple questions from this note\u2026").setIcon("trash").onClick(() => void this.removeNoteQuestions(ctx.sourcePath))).addItem((item) => item.setTitle("3 \xB7 Edit group and parent prompt\u2026").setIcon("pencil").onClick(() => void this.bank().then((bank) => editGroup(this.app, ctx.sourcePath, bank, ctx.getSectionInfo(el)?.lineStart, group.title, this.groupTools(ctx.sourcePath))).catch((e) => new import_obsidian60.Notice(errorText(e)))));
+          const menu = new import_obsidian64.Menu().addItem((item) => item.setTitle("1 \xB7 Reset group practice").setIcon("rotate-ccw").onClick(() => void this.resetPractice(practiceContext, group2.questions).catch((e) => new import_obsidian64.Notice(errorText(e))))).addItem((item) => item.setTitle("2 \xB7 Remove multiple questions from this note\u2026").setIcon("trash").onClick(() => void this.removeNoteQuestions(ctx.sourcePath))).addItem((item) => item.setTitle("3 \xB7 Edit group and parent prompt\u2026").setIcon("pencil").onClick(() => void this.bank().then((bank) => editGroup(this.app, ctx.sourcePath, bank, ctx.getSectionInfo(el)?.lineStart, group2.title, this.groupTools(ctx.sourcePath))).catch((e) => new import_obsidian64.Notice(errorText(e)))));
           const rect = summary.getBoundingClientRect();
           menu.showAtPosition({ x: "clientX" in event ? event.clientX : rect.left, y: "clientY" in event ? event.clientY : rect.bottom });
         };
@@ -53642,10 +55026,10 @@ var StudyStudio = class extends import_obsidian60.Plugin {
           if (event.ctrlKey && event.code === "Space" && !event.altKey && !event.metaKey && !event.shiftKey) groupMenu(event);
         });
         const host = details.createDiv();
-        if (group.prompt) {
-          const parent = host.createDiv("study-group-prompt"), owner = new import_obsidian60.MarkdownRenderChild(parent);
+        if (group2.prompt) {
+          const parent = host.createDiv("study-group-prompt"), owner = new import_obsidian64.MarkdownRenderChild(parent);
           ctx.addChild(owner);
-          await RichMarkdown.render(this.app, group.prompt, parent, ctx.sourcePath, owner);
+          await RichMarkdown.render(this.app, group2.prompt, parent, ctx.sourcePath, owner);
         }
         let loaded = false;
         const load = () => {
@@ -53664,12 +55048,12 @@ var StudyStudio = class extends import_obsidian60.Plugin {
     this.addCommand({ id: "insert-question-group", name: "Insert question group", editorCallback: (editor, view) => {
       const raw = editor.getValue(), from = editor.getCursor("from"), to = editor.getCursor("to"), path = view.file?.path ?? "";
       void Promise.all([this.bank(), chapterDestination(this.app, view.file ?? void 0)]).then(([bank, destination]) => {
-        new GroupEditor(this.app, path, bank, { title: "", questions: [] }, async (group) => {
+        new GroupEditor(this.app, path, bank, { title: "", questions: [] }, async (group2) => {
           if (view.file?.path !== path || editor.getValue() !== raw) throw Error("Note changed. Reopen Insert question group.");
-          editor.replaceRange("\n" + embedSource(group.questions, group.title, group.prompt) + "\n", from, to);
-          if (view instanceof import_obsidian60.MarkdownView) await this.app.workspace.revealLeaf(view.leaf);
+          editor.replaceRange("\n" + embedSource(group2.questions, group2.title, group2.prompt) + "\n", from, to);
+          if (view instanceof import_obsidian64.MarkdownView) await this.app.workspace.revealLeaf(view.leaf);
         }, destination.scope, this.groupTools(path)).open();
-      }).catch((e) => new import_obsidian60.Notice(errorText(e)));
+      }).catch((e) => new import_obsidian64.Notice(errorText(e)));
     } });
     this.registerMarkdownCodeBlockProcessor(
       "study",
@@ -53704,7 +55088,7 @@ var StudyStudio = class extends import_obsidian60.Plugin {
             if (loaded) return;
             event.preventDefault();
             event.stopPropagation();
-            const menu = new import_obsidian60.Menu();
+            const menu = new import_obsidian64.Menu();
             menu.addItem((i) => i.setTitle("3 \xB7 Edit question").onClick(() => void this.openQuestion(id3)));
             menu.addItem((i) => i.setTitle("7 \xB7 Remove from this note\u2026").onClick(() => void this.removeNoteQuestions(ctx.sourcePath, [id3])));
             menu.addItem((i) => i.setTitle("9 \xB7 Delete question everywhere\u2026").setIcon("trash").onClick(() => void this.deleteQuestions([id3])));
@@ -53741,7 +55125,7 @@ var StudyStudio = class extends import_obsidian60.Plugin {
             (el, q) => new Card(el, this, q, "author-preview", void 0, true)
           ).open();
         } catch (e) {
-          new import_obsidian60.Notice(errorText(e));
+          new import_obsidian64.Notice(errorText(e));
         }
       }
     });
@@ -53764,12 +55148,12 @@ var StudyStudio = class extends import_obsidian60.Plugin {
       editorCallback: (editor, view) => {
         const source = editor.getValue(), from = editor.getCursor("from"), to = editor.getCursor("to");
         void Promise.all([this.bank(), chapterDestination(this.app, view.file ?? void 0)]).then(([bank, destination]) => new ScopedQuestionPicker(this.app, bank, destination.scope, (q) => {
-          if (this.app.workspace.getActiveViewOfType(import_obsidian60.MarkdownView) !== view || editor.getValue() !== source) {
-            new import_obsidian60.Notice("Note changed. Reopen Insert question card.");
+          if (this.app.workspace.getActiveViewOfType(import_obsidian64.MarkdownView) !== view || editor.getValue() !== source) {
+            new import_obsidian64.Notice("Note changed. Reopen Insert question card.");
             return;
           }
           editor.replaceRange("\n" + embedSource([q.definition.id]) + "\n", from, to);
-        }, "Insert question card").open()).catch((e) => new import_obsidian60.Notice(errorText(e)));
+        }, "Insert question card").open()).catch((e) => new import_obsidian64.Notice(errorText(e)));
       }
     });
     this.addCommand({
@@ -53802,11 +55186,11 @@ var StudyStudio = class extends import_obsidian60.Plugin {
             { line: 0, ch: 0 },
             editor.offsetToPos(raw.length)
           );
-          new import_obsidian60.Notice(
+          new import_obsidian64.Notice(
             "Selection is now a blank; its answer was saved in properties."
           );
         } catch (e) {
-          new import_obsidian60.Notice(errorText(e));
+          new import_obsidian64.Notice(errorText(e));
         }
       }
     });
@@ -53821,7 +55205,7 @@ var StudyStudio = class extends import_obsidian60.Plugin {
             view.file?.path ?? ""
           ).open();
         } catch (e) {
-          new import_obsidian60.Notice(errorText(e));
+          new import_obsidian64.Notice(errorText(e));
         }
       }
     });
@@ -53841,10 +55225,10 @@ var StudyStudio = class extends import_obsidian60.Plugin {
             serialize(d, q.prompt, q.explanation)
           );
           await this.app.workspace.getLeaf("tab").openFile(file);
-          new import_obsidian60.Notice(
+          new import_obsidian64.Notice(
             "Variant created. Edit its prompt, blanks and answers; family ID stays shared."
           );
-        })().catch((e) => new import_obsidian60.Notice(errorText(e)));
+        })().catch((e) => new import_obsidian64.Notice(errorText(e)));
       }
     });
     this.addCommand({
@@ -53867,7 +55251,7 @@ var StudyStudio = class extends import_obsidian60.Plugin {
             ),
             view.file?.path ?? ""
           ).open();
-        })().catch((e) => new import_obsidian60.Notice(errorText(e)));
+        })().catch((e) => new import_obsidian64.Notice(errorText(e)));
       }
     });
     this.addCommand({
@@ -53876,7 +55260,7 @@ var StudyStudio = class extends import_obsidian60.Plugin {
       callback: () => {
         void this.bank().then((bank) => {
           if (!bank.length) {
-            new import_obsidian60.Notice("Create a question first.");
+            new import_obsidian64.Notice("Create a question first.");
             return;
           }
           new PickQuestion(
@@ -53884,13 +55268,13 @@ var StudyStudio = class extends import_obsidian60.Plugin {
             bank,
             (q) => new Review(this, [q], "question-bank").open()
           ).open();
-        }).catch((e) => new import_obsidian60.Notice(errorText(e)));
+        }).catch((e) => new import_obsidian64.Notice(errorText(e)));
       }
     });
     this.addCommand({
       id: "history",
       name: "Show review history",
-      callback: () => void this.history().catch((e) => new import_obsidian60.Notice(errorText(e)))
+      callback: () => void this.history().catch((e) => new import_obsidian64.Notice(errorText(e)))
     });
     this.addRibbonIcon(
       "graduation-cap",
@@ -53902,13 +55286,13 @@ var StudyStudio = class extends import_obsidian60.Plugin {
             bank,
             (q) => new Review(this, [q], "question-bank").open()
           ).open()
-        ).catch((e) => new import_obsidian60.Notice(errorText(e)));
+        ).catch((e) => new import_obsidian64.Notice(errorText(e)));
       }
     );
   }
   async ensureFolder(path) {
     let parent = "";
-    for (const part of (0, import_obsidian60.normalizePath)(path).split("/")) {
+    for (const part of (0, import_obsidian64.normalizePath)(path).split("/")) {
       parent = parent ? `${parent}/${part}` : part;
       if (!this.app.vault.getAbstractFileByPath(parent)) {
         try {
@@ -53933,18 +55317,18 @@ var StudyStudio = class extends import_obsidian60.Plugin {
     try {
       const bank = await this.bank(), questions = bank.filter((q) => ids.includes(q.definition.id));
       if (!questions.length) {
-        new import_obsidian60.Notice("No saved questions to delete.");
+        new import_obsidian64.Notice("No saved questions to delete.");
         return;
       }
       new DeleteQuestions(this, questions, done).open();
     } catch (e) {
-      new import_obsidian60.Notice(errorText(e));
+      new import_obsidian64.Notice(errorText(e));
     }
   }
   groupingMode;
   async groupNoteQuestions(path) {
     try {
-      const view = this.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian60.MarkdownView && v.file?.path === path);
+      const view = this.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian64.MarkdownView && v.file?.path === path);
       if (!view?.file) return;
       const file = view.file;
       this.groupingMode?.unload();
@@ -53955,12 +55339,12 @@ var StudyStudio = class extends import_obsidian60.Plugin {
       }, async (lines) => {
         const bank = await this.bank(), destination = await chapterDestination(this.app, file), blocks = embeds(snapshot).filter((b) => !b.group && lines.includes(snapshot.slice(0, b.start).split("\n").length - 1));
         groupOccurrences(snapshot, lines, "New group");
-        new GroupEditor(this.app, path, bank, { title: "", questions: blocks.flatMap((b) => b.ids) }, async (group) => {
+        new GroupEditor(this.app, path, bank, { title: "", questions: blocks.flatMap((b) => b.ids) }, async (group2) => {
           await this.app.vault.process(file, (current) => {
             if (current !== snapshot) throw Error("Note changed. Cancel and select its questions again.");
-            const grouped = groupOccurrences(current, lines, group.title, group.prompt), target = embeds(grouped).find((b) => b.group && b.title === group.title && b.start === blocks[0].start);
+            const grouped = groupOccurrences(current, lines, group2.title, group2.prompt), target = embeds(grouped).find((b) => b.group && b.title === group2.title && b.start === blocks[0].start);
             if (!target) throw Error("Group position changed.");
-            return replaceEmbed(grouped, target, embedSource(group.questions, group.title, group.prompt));
+            return replaceEmbed(grouped, target, embedSource(group2.questions, group2.title, group2.prompt));
           });
           await this.app.workspace.revealLeaf(view.leaf);
         }, destination.scope, this.groupTools(path)).open();
@@ -53968,13 +55352,13 @@ var StudyStudio = class extends import_obsidian60.Plugin {
       this.groupingMode = mode;
       this.addChild(mode);
     } catch (e) {
-      new import_obsidian60.Notice(errorText(e));
+      new import_obsidian64.Notice(errorText(e));
     }
   }
   groupTools(path) {
     return { preview: (host, q) => new Card(host, this, q, "group-preview", void 0, true), create: (kind, accept) => {
       void (async () => {
-        const source = this.app.vault.getAbstractFileByPath(path), destination = await chapterDestination(this.app, source instanceof import_obsidian60.TFile ? source : void 0), id3 = crypto.randomUUID(), questionPath = `${destination.folder}/Question-${id3}.md`, draft = intakeDraft(kind, id3, "New question", "", questionPath);
+        const source = this.app.vault.getAbstractFileByPath(path), destination = await chapterDestination(this.app, source instanceof import_obsidian64.TFile ? source : void 0), id3 = crypto.randomUUID(), questionPath = `${destination.folder}/Question-${id3}.md`, draft = intakeDraft(kind, id3, "New question", "", questionPath);
         draft.definition.title = "";
         if (destination.scope) draft.definition.courseIds = [destination.scope.courseId];
         if (destination.placement) draft.definition.chapters = [destination.placement];
@@ -53985,18 +55369,18 @@ var StudyStudio = class extends import_obsidian60.Plugin {
           accept(parseQuestion(raw, questionPath));
           return file;
         }).open();
-      })().catch((e) => new import_obsidian60.Notice(errorText(e)));
+      })().catch((e) => new import_obsidian64.Notice(errorText(e)));
     } };
   }
   removalMode;
   async removeNoteQuestions(path, selected) {
     try {
       const file = this.app.vault.getAbstractFileByPath(path);
-      if (!(file instanceof import_obsidian60.TFile)) return;
-      const view = this.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian60.MarkdownView && v.file?.path === path);
+      if (!(file instanceof import_obsidian64.TFile)) return;
+      const view = this.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian64.MarkdownView && v.file?.path === path);
       if (!selected) {
         if (!view) {
-          new import_obsidian60.Notice("Open this note to select its questions.");
+          new import_obsidian64.Notice("Open this note to select its questions.");
           return;
         }
         this.removalMode?.unload();
@@ -54011,26 +55395,26 @@ var StudyStudio = class extends import_obsidian60.Plugin {
       const ids = selected ?? embeds(view?.editor.getValue() ?? await this.app.vault.read(file)).flatMap((b) => b.ids);
       const bank = await this.bank(), questions = bank.filter((q) => ids.includes(q.definition.id));
       if (!questions.length) {
-        new import_obsidian60.Notice("No question cards in this note.");
+        new import_obsidian64.Notice("No question cards in this note.");
         return;
       }
       new DeleteQuestions(this, questions, () => {
       }, path).open();
     } catch (e) {
-      new import_obsidian60.Notice(errorText(e));
+      new import_obsidian64.Notice(errorText(e));
     }
   }
   async openQuestion(id3) {
-    const origin = this.app.workspace.getActiveViewOfType(import_obsidian60.MarkdownView)?.leaf;
+    const origin = this.app.workspace.getActiveViewOfType(import_obsidian64.MarkdownView)?.leaf;
     try {
       const q = await this.find(id3);
       const file = this.app.vault.getAbstractFileByPath(q.path);
-      if (file instanceof import_obsidian60.TFile) new QuestionEditor(this.app, file, q, (el, draft) => new Card(el, this, draft, "author-preview", void 0, true), void 0, (done) => void this.deleteQuestions([id3], () => {
+      if (file instanceof import_obsidian64.TFile) new QuestionEditor(this.app, file, q, (el, draft) => new Card(el, this, draft, "author-preview", void 0, true), void 0, (done) => void this.deleteQuestions([id3], () => {
         done();
         if (origin) void this.app.workspace.revealLeaf(origin);
       })).open();
     } catch (e) {
-      new import_obsidian60.Notice(errorText(e));
+      new import_obsidian64.Notice(errorText(e));
     }
   }
   async saveAttempt(attempt) {

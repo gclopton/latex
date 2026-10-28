@@ -1,7 +1,7 @@
 {
   "id": "code-links",
   "name": "Code Links",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "minAppVersion": "1.8.0",
   "description": "Code links, tracked excerpts and scrollable research evidence with Neovim navigation.",
   "author": "Grady Clopton",

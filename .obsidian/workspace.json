@@ -1,0 +1,237 @@
+{
+  "main": {
+    "id": "ca5b92541d2790b9",
+    "type": "split",
+    "children": [
+      {
+        "id": "e63eb62fc5ddb9a5",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "d76aca647a4586ff",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Phase 2 Checkpoint 2 Demo.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Phase 2 Checkpoint 2 Demo"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "ebbc7536dedd5371",
+    "type": "split",
+    "children": [
+      {
+        "id": "92d64bcf019b0471",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "dd1362e2dda27645",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "74ac4a4791dd6b8e",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "b7ffdf1ea6885285",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "5f35b7f42d8f45b6",
+    "type": "split",
+    "children": [
+      {
+        "id": "348034a70d463f0a",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "9219cb018b9f5056",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "Phase 2 Checkpoint 2 Demo.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for Phase 2 Checkpoint 2 Demo"
+            }
+          },
+          {
+            "id": "1e9432f9bb491bb0",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "Phase 2 Checkpoint 2 Demo.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from Phase 2 Checkpoint 2 Demo"
+            }
+          },
+          {
+            "id": "47225626ab5eb23f",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "e9a9ee54074036bb",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "Phase 2 Checkpoint 2 Demo.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of Phase 2 Checkpoint 2 Demo"
+            }
+          },
+          {
+            "id": "2c43a51cd0411909",
+            "type": "leaf",
+            "state": {
+              "type": "research-outline",
+              "state": {},
+              "icon": "lines-of-text",
+              "title": "Quiet Outline"
+            }
+          },
+          {
+            "id": "7180143363b197b7",
+            "type": "leaf",
+            "state": {
+              "type": "calendar",
+              "state": {},
+              "icon": "calendar-with-checkmark",
+              "title": "Calendar"
+            }
+          }
+        ],
+        "currentTab": 4
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "audio-recorder:Start/stop recording": false,
+      "bases:Create new base": false,
+      "obsidian-markdown-formatting-assistant-plugin:Open Markdown Formatting Assistant": false,
+      "ketcher:Create new structure": false,
+      "obsidian-excalidraw-plugin:Create new drawing": false,
+      "obsidian-advanced-slides:Show Slide Preview": false,
+      "terminal:Open terminal": false,
+      "cloze:Toggle all clozes": false,
+      "dbfolder:Create a new database table": false,
+      "modalforms:Edit forms": false,
+      "markdown-table-editor:Open Markdown Table Editor": false,
+      "callout-outline:Open callout outline": false
+    }
+  },
+  "active": "d76aca647a4586ff",
+  "lastOpenFiles": [
+    "Phase 2 Checkpoint 2 Demo.md",
+    "Codex Actual UI Test.md",
+    "docs/12 Review Checkpoints.md",
+    "docs/00 Overview and Doc Map.md",
+    "docs/assets/mathcha-nested-matrix-inline.png",
+    "docs/assets/mathcha-lifecycle-4-matrix-in-sentence.png",
+    "docs/assets/mathcha-lifecycle-3-palette-in-field.png",
+    "docs/assets/mathcha-lifecycle-2-empty-inline-field.png",
+    "docs/assets/mathcha-lifecycle-1-text-palette.png",
+    "docs/assets/mathcha-palette-inside-numerator.png",
+    "docs/assets/mathcha-derivation-exemplar.png",
+    "docs/assets/mathcha-iint-expanded-boxes.png",
+    "docs/assets/mathcha-iint-inline-boxes.png",
+    "docs/assets/mathcha-palette-categories.png",
+    "docs/assets",
+    "docs/11 Spike A Battery.md",
+    "docs/10 Core Template Catalog.md",
+    "docs/09 Dev Environment and Build Loop.md",
+    "docs/08 Agent Working Agreements.md",
+    "docs/07 Repo Conventions and Contracts.md",
+    "docs/06 Testing Strategy.md",
+    "docs/05 Build Phases.md",
+    "docs/decisions/Open Decisions.md",
+    "docs/decisions",
+    "docs/04 Spikes and Risks.md",
+    "docs/03 Template System and Suggestion Box.md",
+    "docs/02 Architecture.md",
+    "docs/01 Behavioral Specification.md",
+    "docs"
+  ]
+}

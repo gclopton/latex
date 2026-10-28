@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "plugin": "study-studio",
+  "pluginId": "study-studio",
+  "sourceCommit": "9c56edd7b120015404edee636458a15d6c28f484",
+  "release": "code-edit-20261025",
+  "releaseIdentity": "code-edit-20261025-9c56edd7b120",
+  "files": {
+    "main.js": "c4c3b6f4cbd7281e43d69a9a7c504ceea7c4cf2c9db4e1893e6d311ee8be3b16",
+    "styles.css": "caa972e16d9bb7945e653e59577a8d69c5da1f09e909174344e51fba76e14d5e",
+    "manifest.json": "e827d117574f453216d4f26a333a6be8b79004a73b85896d1d28a45d4627006e",
+    "evidence-export.lua": "01502ed558507f36104721a3d89d81b0af5d758f228aa089c33c1615aa6a7667"
+  }
+}

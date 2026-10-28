@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "plugin": "code-links",
+  "pluginId": "code-links",
+  "sourceCommit": "fe228561b2216bcbb480edf38637eaf1e23d8903",
+  "release": "code-edit-20261025",
+  "releaseIdentity": "code-edit-20261025-fe228561b221",
+  "files": {
+    "main.js": "c820ea208c02aa44b759ed13fdf202c2ddba3c3f2af762472fdc8a609efc4a5e",
+    "styles.css": "83828f3a91e27bb8b22d8daf46de84bc799a431f25837237f4ab205f0b47937b",
+    "manifest.json": "930e0fc442f67c5800ac779b349183dab22a9c439db5306146590827007b8aac"
+  }
+}

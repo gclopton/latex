@@ -57,6 +57,374 @@
     return `\\begin{array}{${alignment === "left" ? "l" : "r"}}${rows2.map((x) => "\\displaystyle " + x).join("\\\\ ")}\\end{array}`;
   }
 
+  // src/compact-ui.ts
+  var paths = {
+    sigma: '<path d="M18 4H6l7 8-7 8h12"/>',
+    matrix: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M4 15h16M9 4v16M15 4v16"/>',
+    text: '<path d="M4 5h16M12 5v15M8 20h8M4 5v3M20 5v3"/>',
+    color: '<circle cx="12" cy="12" r="8"/><path d="M12 4v16"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/>',
+    tag: '<path d="M20 13 13 20a2 2 0 0 1-3 0l-7-7V3h10l7 7a2 2 0 0 1 0 3Z"/><circle cx="7.5" cy="7.5" r="1"/>',
+    layout: '<path d="M4 5h16M7 10h10M4 15h16M7 20h10"/>',
+    undo: '<path d="M3 10h10a7 7 0 0 1 7 7M3 10l5-5M3 10l5 5"/>',
+    redo: '<path d="M21 10H11a7 7 0 0 0-7 7M21 10l-5-5M21 10l-5 5"/>',
+    more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>'
+  };
+  function icon(button2, name, label2) {
+    button2.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]}</svg>`;
+    button2.title = label2;
+    button2.setAttribute("aria-label", label2);
+    button2.classList.add("tool");
+  }
+  function compactUI(e) {
+    const { bar: bar2, mf: mf2, resize: resize2 } = e, doc = bar2.ownerDocument;
+    const style2 = doc.createElement("style");
+    style2.textContent = `
+ body{padding:8px;font-size:13px}button,input,select{font-size:12px}button{min-height:26px;padding:3px 10px}.bar{gap:2px;margin:0 0 6px}.math-wrap{padding:2px;margin:0}
+ .toolbar{display:flex;flex-wrap:nowrap;align-items:center;gap:2px;height:28px;position:relative}.tool{display:inline-flex;flex:none;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:0;background:transparent;color:var(--text-muted);border-radius:5px;cursor:pointer}.tool:hover{background:var(--background-modifier-hover);color:var(--text-normal)}.tool.active{color:var(--interactive-accent);background:color-mix(in srgb,var(--interactive-accent) 16%,transparent)}.tool-separator{width:1px;height:14px;margin:0 4px;background:var(--background-modifier-border);flex:none}.toolbar .more-tool{margin-left:auto}
+ math-field{min-height:${e.display ? 76 : 56}px;padding:10px 14px;font-size:22px;border-color:var(--background-modifier-border);border-radius:6px}math-field::part(container){align-items:center;min-height:52px}math-field::part(content){align-self:center}math-field:focus-within{border-color:var(--interactive-accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--interactive-accent) 25%,transparent)}math-field::part(menu-toggle){display:none}
+ .context-line{min-height:18px;margin:4px 2px 0;display:flex;align-items:center;font-size:11px;color:var(--text-muted)}.context-line[hidden]{display:none}.context-line .hint{margin:0;font-size:11px}.context-line button{border:0;background:none;padding:0 4px;color:var(--text-muted);min-height:18px;font-size:11px}.error:empty{display:none}.error{font-size:12px;line-height:1.45;margin:4px 2px;overflow-wrap:anywhere}
+ .footer{margin-top:4px;gap:6px;min-height:26px}.footer button{height:26px;font-size:12px;padding:2px 12px}.footer button:not(.primary){background:transparent;border-color:transparent}.footer #status{font-size:11px;color:var(--text-muted)}
+ .drawer{margin:6px 0 0!important;width:100%!important;border:1px solid var(--background-modifier-border);border-radius:6px;background:var(--background-secondary);padding:8px!important;box-shadow:none!important}.drawer[hidden],.menu[hidden],.context-line [hidden]{display:none!important}.drawer-head{display:flex;align-items:center;gap:6px;min-height:24px;margin-bottom:6px;font-size:12px;font-weight:600}.drawer-close{margin-left:auto;min-height:22px;width:22px;padding:0;border:0;background:transparent;font-size:16px;color:var(--text-muted)}
+ .palette .grid{max-height:192px}.palette .template{height:32px;font-size:12px;padding:3px 8px;gap:8px}.palette .template .preview{order:-1;font-size:18px;min-width:72px;max-width:120px;overflow:hidden}.template-name{flex:1}.palette .search{height:28px;margin-bottom:6px}.palette .categories{gap:2px;padding-bottom:4px;margin-bottom:4px;flex-wrap:nowrap}.palette .categories button{min-width:0;flex:1;padding:4px;font-size:11px}.palette .categories button>span:last-child{display:none}.palette .modes{margin:4px 0 0;padding:3px 0 0;gap:2px}.palette .modes button{font-size:11px;padding:3px}.palette-label{display:none}
+ .colors .swatches{gap:6px;margin:6px 0 10px;flex-wrap:nowrap}.colors .swatch{width:22px;height:22px;min-height:22px;padding:2px}.colors .color-custom{gap:5px;font-size:11px}.colors .color-custom input[type=color]{width:30px;height:26px}.colors .color-custom input[type=text]{width:78px;height:26px}.colors>.hint,.matrix>.hint,.tags>.hint{display:none}.colors>strong{display:none}.colors .color-error:empty{display:none}.color-error{min-height:0}
+ .matrix label{font-size:11px;margin-right:6px;gap:4px}.matrix input{width:42px;padding:4px}.matrix .bar{margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.matrix .bar button{font-size:11px;padding:3px 4px}.tags input{width:100px}.tags select{max-width:190px}.menu{position:relative;margin:4px 0 6px 0;padding:4px;border:1px solid var(--background-modifier-border);background:var(--background-secondary);border-radius:6px}.menu button{display:flex;width:100%;text-align:left;align-items:center;background:transparent;border:0;border-radius:3px;height:28px;padding:4px 9px}.menu button:hover{background:var(--background-modifier-hover)}.menu .native{margin:0}.shortcut-drawer{line-height:1.6;color:var(--text-muted)}.shortcut-drawer .hint{font-size:12px;margin:0}.math-source-fallback{margin:0;padding:12px;white-space:pre-wrap;max-height:220px;overflow:auto;font:13px monospace;border:1px solid var(--background-modifier-border);border-radius:6px}
+ @media(max-width:380px){.toolbar .history-tool{display:none}.menu .history-menu{display:flex}.tool-separator{margin:0 2px}}@media(min-width:381px){.menu .history-menu{display:none}}
+ `;
+    doc.head.append(style2);
+    const old = Array.from(bar2.querySelectorAll("button")), find = (name) => old.find((b) => b.textContent === name);
+    const palette2 = find("Palette \\"), matrix3 = find("Matrix"), color = find("Color"), undo = find("Undo"), redo = find("Redo"), number = find("Equation number"), copy = find("Copy LaTeX"), native = find("Native LaTeX");
+    const menu = doc.createElement("div");
+    menu.className = "menu";
+    menu.hidden = true;
+    const layoutMenu = e.layout;
+    layoutMenu.className = "menu";
+    layoutMenu.hidden = true;
+    layoutMenu.querySelector("span")?.remove();
+    const shortcuts = doc.createElement("div");
+    shortcuts.className = "drawer shortcut-drawer";
+    shortcuts.hidden = true;
+    shortcuts.append(e.hint);
+    const drawers = [e.palette, e.colors, e.matrix, e.tags, shortcuts];
+    let saved = null;
+    let specialContext = false;
+    const close = (restore = false) => {
+      for (const panel of [...drawers, menu, layoutMenu]) panel.hidden = true;
+      for (const b of Array.from(bar2.querySelectorAll("button"))) b.classList.remove("active");
+      if (restore) {
+        if (saved) mf2.selection = saved;
+        mf2.focus();
+      }
+      resize2();
+    };
+    const open = (panel) => {
+      saved = structuredClone(mf2.selection);
+      for (const other of [...drawers, menu, layoutMenu]) if (other !== panel) other.hidden = true;
+      panel.hidden = false;
+      for (const b of Array.from(bar2.querySelectorAll("button"))) if (b !== text) b.classList.remove("active");
+      for (const [b, p] of [[palette2, e.palette], [color, e.colors], [matrix3, e.matrix]]) if (p === panel) b.classList.add("active");
+      resize2();
+    };
+    for (const [panel, title] of [[e.palette, "Insert"], [e.colors, "Text color"], [e.matrix, "Matrix"], [e.tags, "Equation number"], [shortcuts, "Keyboard shortcuts"]]) {
+      panel.classList.add("drawer");
+      const head = doc.createElement("div");
+      head.className = "drawer-head";
+      head.textContent = title;
+      const x = doc.createElement("button");
+      x.textContent = "\xD7";
+      x.title = "Close " + title;
+      x.setAttribute("aria-label", x.title);
+      x.className = "drawer-close";
+      x.onclick = () => close(true);
+      head.append(x);
+      panel.prepend(head);
+    }
+    for (const [b, panel] of [[palette2, e.palette], [matrix3, e.matrix], [color, e.colors], [number, e.tags]]) {
+      b.addEventListener("mousedown", () => {
+        saved = structuredClone(mf2.selection);
+      });
+      b.addEventListener("click", () => {
+        if (!panel.hidden) {
+          for (const other of [...drawers, menu, layoutMenu]) if (other !== panel) other.hidden = true;
+          b.classList.add("active");
+        }
+        resize2();
+      });
+    }
+    bar2.replaceChildren();
+    bar2.className = "toolbar";
+    const add = (b, name, label2) => {
+      icon(b, name, label2);
+      b.addEventListener("mousedown", (event) => event.preventDefault());
+      bar2.append(b);
+      return b;
+    };
+    const make = (name, label2, fn) => {
+      const b = doc.createElement("button");
+      b.type = "button";
+      b.onclick = fn;
+      return add(b, name, label2);
+    };
+    const separator = () => {
+      const s = doc.createElement("span");
+      s.className = "tool-separator";
+      bar2.append(s);
+    };
+    add(palette2, "sigma", "Insert symbols (\\ or Ctrl+Space)");
+    add(matrix3, "matrix", "Matrix");
+    const text = make("text", "Text mode", () => {
+      close();
+      mf2.focus();
+      mf2.executeCommand(["switchMode", mf2.mode === "text" ? "math" : "text"]);
+    });
+    text.disabled = !!e.blocked;
+    mf2.addEventListener("mode-change", () => text.classList.toggle("active", mf2.mode === "text"));
+    separator();
+    add(color, "color", "Text color (Cmd/Ctrl+Shift+C)");
+    const symbolSlot = doc.createElement("span");
+    symbolSlot.style.display = "contents";
+    bar2.append(symbolSlot);
+    if (e.display) {
+      separator();
+      make("layout", "Equation layout", () => {
+        const wasOpen = !layoutMenu.hidden;
+        close();
+        if (!wasOpen) open(layoutMenu);
+      }).disabled = !!e.blocked;
+    }
+    separator();
+    add(undo, "undo", "Undo").classList.add("history-tool");
+    add(redo, "redo", "Redo").classList.add("history-tool");
+    const more = make("more", "More equation actions", () => {
+      const wasOpen = !menu.hidden;
+      close();
+      if (!wasOpen) open(menu);
+    });
+    more.classList.add("more-tool");
+    if (e.display) menu.append(number);
+    menu.append(copy, native);
+    const action = (label2, fn, cls = "") => {
+      const b = doc.createElement("button");
+      b.textContent = label2;
+      b.className = cls;
+      b.onmousedown = (event) => event.preventDefault();
+      b.onclick = fn;
+      menu.append(b);
+      return b;
+    };
+    action("Undo", () => {
+      close();
+      undo.click();
+    }, "history-menu").disabled = !!e.blocked;
+    action("Redo", () => {
+      close();
+      redo.click();
+    }, "history-menu").disabled = !!e.blocked;
+    action("Math controls\u2026", () => {
+      close();
+      mf2.focus();
+      const r = mf2.getBoundingClientRect();
+      mf2.showMenu({ location: { x: r.left + 16, y: r.top + 20 }, modifiers: { alt: false, control: false, shift: false, meta: false } });
+    }).disabled = !!e.blocked;
+    action("Keyboard shortcuts", () => open(shortcuts));
+    const context = doc.createElement("div");
+    context.className = "context-line";
+    const defaultHint = doc.createElement("span");
+    defaultHint.textContent = "\u21E7\u21B5 Save \xB7 Esc Cancel \xB7 \\ Insert";
+    context.append(e.textHint, defaultHint);
+    const contextUpdate = () => {
+      context.hidden = specialContext;
+      defaultHint.hidden = specialContext || mf2.mode === "text";
+      e.textHint.hidden = specialContext || mf2.mode !== "text";
+      text.classList.toggle("active", mf2.mode === "text");
+    };
+    mf2.addEventListener("mode-change", contextUpdate);
+    contextUpdate();
+    e.save.textContent = "Save";
+    e.save.title = "Save equation (Shift+Enter)";
+    e.cancel.title = "Cancel (Esc)";
+    e.status.textContent = "";
+    doc.body.replaceChildren(bar2, menu, layoutMenu, e.wrap, context, ...drawers, e.error, e.footer);
+    for (const b of Array.from(layoutMenu.querySelectorAll("button"))) {
+      b.onmousedown = (event) => event.preventDefault();
+      b.addEventListener("click", () => close());
+    }
+    doc.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && [...drawers, menu, layoutMenu].some((p) => !p.hidden)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        close(true);
+      }
+    }, true);
+    if (e.blocked) {
+      const pre = doc.createElement("pre");
+      pre.className = "math-source-fallback";
+      pre.textContent = mf2.value;
+      e.wrap.after(pre);
+      e.save.hidden = true;
+      native.textContent = "Edit LaTeX source";
+      native.className = "primary";
+      e.footer.append(native);
+    }
+    return { open, close, context, defaultHint, setSymbolContext(active) {
+      specialContext = active;
+      contextUpdate();
+    }, addSymbolControl(handler) {
+      const b = doc.createElement("button");
+      icon(b, "tag", "Tag symbol (Cmd/Ctrl+Shift+Y)");
+      b.onmousedown = (event) => event.preventDefault();
+      b.onclick = handler;
+      symbolSlot.append(b);
+      return b;
+    }, addDrawer(panel) {
+      drawers.push(panel);
+      panel.classList.add("drawer");
+      e.error.before(panel);
+    } };
+  }
+
+  // src/symbol-model.ts
+  var ID = /^[0-9a-z]{10}$/;
+  var clone = (value) => JSON.parse(JSON.stringify(value));
+  function escaped(s, i) {
+    let n = 0;
+    while (i > 0 && s[--i] === "\\") n++;
+    return n % 2 === 1;
+  }
+  function group(s, at) {
+    if (s[at] !== "{") return null;
+    let depth = 1;
+    for (let i = at + 1; i < s.length; i++) {
+      if (escaped(s, i)) continue;
+      if (s[i] === "%") {
+        const next = s.indexOf("\n", i);
+        if (next < 0) return null;
+        i = next;
+        continue;
+      }
+      if (s[i] === "{") depth++;
+      if (s[i] === "}" && !--depth) return { from: at, to: i + 1, body: s.slice(at + 1, i) };
+    }
+    return null;
+  }
+  function markers(tex) {
+    const out = [];
+    const command = /\\class\b/g;
+    let match;
+    while (match = command.exec(tex)) {
+      const from = match.index;
+      if (escaped(tex, from)) continue;
+      const line = tex.lastIndexOf("\n", from) + 1;
+      let commented = false;
+      for (let k = line; k < from; k++) if (tex[k] === "%" && !escaped(tex, k)) {
+        commented = true;
+        break;
+      }
+      if (commented) continue;
+      let at = command.lastIndex;
+      while (/\s/.test(tex[at] ?? "") && at < tex.length) at++;
+      const cls = group(tex, at);
+      if (!cls) continue;
+      const tokens = cls.body.trim().split(/\s+/);
+      if (!tokens.some((t) => t === "mjx-ss" || t.startsWith("mjx-ss-o-"))) continue;
+      const id = /^mjx-ss mjx-ss-o-([0-9a-z]{10})$/.exec(cls.body)?.[1];
+      if (!id) throw Error("Malformed symbol marker. Keep its source intact and repair the ID.");
+      at = cls.to;
+      while (/\s/.test(tex[at] ?? "") && at < tex.length) at++;
+      const body = group(tex, at);
+      if (!body) throw Error("Unclosed symbol marker.");
+      if (out.some((m) => from > m.from && from < m.to)) throw Error("Nested symbol tags are not supported.");
+      out.push({ id, from, to: body.to, bodyFrom: at + 1, bodyTo: body.to - 1, body: body.body });
+    }
+    return out;
+  }
+  function wrapSymbol(id, tex) {
+    if (!ID.test(id)) throw Error("Invalid occurrence ID.");
+    if (!tex.trim()) throw Error("Select a symbol first.");
+    if (markers(tex).length) throw Error("This selection already contains a symbol tag.");
+    return `\\class{mjx-ss mjx-ss-o-${id}}{${tex}}`;
+  }
+  function applyEdits(source, edits) {
+    const sorted = [...edits].sort((a, b) => a.from - b.from || a.to - b.to);
+    let last = 0, out = "";
+    for (const edit of sorted) {
+      if (edit.from < last || edit.to < edit.from || edit.to > source.length) throw Error("Overlapping or invalid symbol edits.");
+      out += source.slice(last, edit.from) + edit.insert;
+      last = edit.to;
+    }
+    return out + source.slice(last);
+  }
+  function semanticGlyph(tex) {
+    let out = "";
+    for (let i = 0; i < tex.length; ) {
+      const color = /^\\(textcolor|color)(?![A-Za-z])/.exec(tex.slice(i));
+      if (color) {
+        let at = i + color[0].length;
+        while (/\s/.test(tex[at] ?? "") && at < tex.length) at++;
+        if (tex[at] === "[") {
+          const end = tex.indexOf("]", at);
+          if (end < 0) return tex;
+          at = end + 1;
+        }
+        const name = group(tex, at);
+        if (name) {
+          if (color[1] === "color") {
+            i = name.to;
+            continue;
+          }
+          let bodyAt = name.to;
+          while (/\s/.test(tex[bodyAt] ?? "") && bodyAt < tex.length) bodyAt++;
+          const body = group(tex, bodyAt);
+          if (body) {
+            out += semanticGlyph(body.body);
+            i = body.to;
+            continue;
+          }
+        }
+      }
+      out += tex[i++];
+    }
+    const normalize = (s) => s.replace(/\s+/g, "").replace(/\\(?:left|right|displaystyle|textstyle|scriptstyle|scriptscriptstyle)\b/g, "").replace(/\\[,;!:]/g, "").replace(/([_^])\{([A-Za-z0-9])\}/g, "$1$2").replace(/\^\{\\prime\}|\^\\prime\b/g, "'");
+    let normalized = "", last = 0;
+    const text = /\\(?:text|mbox|operatorname)\b\s*/g;
+    let hit;
+    while (hit = text.exec(out)) {
+      const body = group(out, text.lastIndex);
+      if (!body) continue;
+      normalized += normalize(out.slice(last, hit.index)) + out.slice(hit.index, body.to);
+      last = body.to;
+      text.lastIndex = body.to;
+    }
+    return normalized + normalize(out.slice(last));
+  }
+  function freshId(existing) {
+    const used = new Set(existing);
+    for (let i = 0; i < 100; i++) {
+      const bytes = crypto.getRandomValues(new Uint8Array(10));
+      const id = Array.from(bytes, (n) => (n % 36).toString(36)).join("");
+      if (!used.has(id)) return id;
+    }
+    throw Error("Unable to allocate a unique symbol ID.");
+  }
+
+  // src/symbol-selection.ts
+  function findTaggedRange(info, start, end) {
+    for (let at = 0; at < info.length; at++) {
+      const value = info[at], latex = value?.latex?.trim();
+      if (!latex?.includes("mjx-ss-o-")) continue;
+      let hits;
+      try {
+        hits = markers(latex);
+      } catch {
+        continue;
+      }
+      if (hits.length !== 1 || hits[0].from !== 0 || hits[0].to !== latex.length) continue;
+      let before = at - 1;
+      while (before > 0 && (info[before]?.depth ?? 0) > (value?.depth ?? 0)) before--;
+      if (start >= before && end <= at) return { id: hits[0].id, range: [before, at] };
+    }
+    return null;
+  }
+
   // node_modules/mathlive/mathlive.mjs
   var __defProp = Object.defineProperty;
   var __defProps = Object.defineProperties;
@@ -8839,21 +9207,21 @@ M500 241 v40 H399408 v-40z M500 435 v40 H400000 v-40z`
       const result = `<span class="ML__stretchy" style="height:${height2}em"><svg width="100%" height="${height2}em" viewBox="0 0 ${vbWidth} ${vbHeight}" preserveAspectRatio="none" ><path fill="currentcolor" d="${PATHS[svgBodyName]}"></path></svg></span>`;
       return `<span style="display:inline-block;height:${Math.floor(100 * height2 / 2) / 100}em;min-width:0">${result}</span>`;
     }
-    const [paths, minWidth, viewBoxHeight, align3] = SVG_BODY[svgBodyName];
+    const [paths2, minWidth, viewBoxHeight, align3] = SVG_BODY[svgBodyName];
     let widthClasses;
     let aligns;
     const height = viewBoxHeight / 1e3;
-    if (paths.length === 3) {
+    if (paths2.length === 3) {
       widthClasses = ["slice-1-of-3", "slice-2-of-3", "slice-3-of-3"];
       aligns = ["xMinYMin", "xMidYMin", "xMaxYMin"];
-    } else if (paths.length === 2) {
+    } else if (paths2.length === 2) {
       widthClasses = ["slice-1-of-2", "slice-2-of-2"];
       aligns = ["xMinYMin", "xMaxYMin"];
     } else {
       widthClasses = ["slice-1-of-1"];
       aligns = [align3];
     }
-    const body = paths.map(
+    const body = paths2.map(
       (path, i) => `<span class="${widthClasses[i]}" style=height:${height}em><svg width=400em height=${height}em viewBox="0 0 400000 ${viewBoxHeight}" preserveAspectRatio="${aligns[i]} slice"><path fill="currentcolor" d="${PATHS[path]}"></path></svg></span>`
     ).join("");
     return `<span style="display:inline-block;height:${height}em;min-width:${minWidth}em;">${body}</span>`;
@@ -25406,9 +25774,9 @@ Note there are a different set of tooltip rules for the keyboard toggle
       let cursor = model.at(model.position);
       if (cursor instanceof LatexGroupAtom) cursor = cursor.lastChild;
       if (!(cursor.parent instanceof LatexGroupAtom)) {
-        const group = new LatexGroupAtom();
-        cursor.parent.addChildAfter(group, cursor);
-        cursor = group.firstChild;
+        const group2 = new LatexGroupAtom();
+        cursor.parent.addChildAfter(group2, cursor);
+        cursor = group2.firstChild;
       }
       const lastNewAtom = cursor.parent.addChildrenAfter(newAtoms, cursor);
       model.silenceNotifications = saveSilenceNotifications;
@@ -25604,12 +25972,12 @@ Note there are a different set of tooltip rules for the keyboard toggle
     return model.offsetOf(atom.body[atom.body.length - 1]);
   }
   function removeSuggestion(mathfield) {
-    const group = getLatexGroupBody(mathfield.model).filter(
+    const group2 = getLatexGroupBody(mathfield.model).filter(
       (x) => x.isSuggestion
     );
-    if (group.length === 0) return;
-    mathfield.model.position = mathfield.model.offsetOf(group[0].leftSibling);
-    for (const atom of group) atom.parent.removeChild(atom);
+    if (group2.length === 0) return;
+    mathfield.model.position = mathfield.model.offsetOf(group2[0].leftSibling);
+    for (const atom of group2) atom.parent.removeChild(atom);
   }
   function updateAutocomplete(mathfield, options) {
     var _a3;
@@ -33775,9 +34143,9 @@ data-command='["setEnvironment","pmatrix"]'>
     return "type" in item && item.type === "heading";
   }
   var ICON_CATALOG = {};
-  function icon(name) {
-    let icon2 = ICON_CATALOG[name];
-    if (!icon2) {
+  function icon2(name) {
+    let icon22 = ICON_CATALOG[name];
+    if (!icon22) {
       let markup;
       switch (name) {
         case "checkmark":
@@ -33794,14 +34162,14 @@ data-command='["setEnvironment","pmatrix"]'>
         const template = document.createElement("template");
         template.innerHTML = markup;
         ICON_CATALOG[name] = template;
-        icon2 = template;
+        icon22 = template;
       }
     }
-    if (icon2) {
-      if ("content" in icon2)
-        return icon2.content.cloneNode(true);
+    if (icon22) {
+      if ("content" in icon22)
+        return icon22.content.cloneNode(true);
       const element = document.createElement("svg");
-      element.innerHTML = icon2.innerHTML;
+      element.innerHTML = icon22.innerHTML;
       return element;
     }
     return void 0;
@@ -33951,10 +34319,10 @@ data-command='["setEnvironment","pmatrix"]'>
       else li.removeAttribute("aria-disabled");
       if (this.checked === true) {
         li.setAttribute("aria-checked", "true");
-        li.append(icon("checkmark"));
+        li.append(icon2("checkmark"));
       } else if (this.checked === "mixed") {
         li.setAttribute("aria-checked", "mixed");
-        li.append(icon("mixedmark"));
+        li.append(icon2("mixedmark"));
       } else li.removeAttribute("aria-checked");
       if (this.ariaLabel) li.setAttribute("aria-label", this.ariaLabel);
       const span = document.createElement("span");
@@ -33970,7 +34338,7 @@ data-command='["setEnvironment","pmatrix"]'>
         kbd.innerHTML = getKeybindingMarkup(this._declaration.keyboardShortcut);
         li.append(kbd);
       }
-      if (this.type === "submenu") li.append(icon("trailing-chevron"));
+      if (this.type === "submenu") li.append(icon2("trailing-chevron"));
     }
     get element() {
       if (this._element) return this._element;
@@ -42794,6 +43162,364 @@ If you are using Vue, this may be because you are using the runtime-only build o
     return globalThis[Symbol.for("io.cortexjs.mathlive")];
   }
 
+  // src/symbol-editor.ts
+  function symbolEditor(o) {
+    const { mf: mf2, ui } = o, doc = mf2.ownerDocument, context = o.context;
+    const originalDefinitions = new Set(Object.keys(context?.defs ?? {}));
+    const pending = /* @__PURE__ */ new Map(), accepted = /* @__PURE__ */ new Map();
+    const originals = markers(o.initial), known = new Map(originals.map((m) => [m.id, m.body]));
+    const used = /* @__PURE__ */ new Set([...context?.usedIds ?? [], ...Object.keys(context?.occ ?? {})]);
+    let selection2 = null, selectedTex = "", editingId, busy = false, problem = "";
+    const drawer = doc.createElement("div");
+    drawer.className = "symbol-drawer";
+    drawer.hidden = true;
+    ui.addDrawer(drawer);
+    const status2 = doc.createElement("div");
+    status2.className = "symbol-context";
+    ui.context.after(status2);
+    const warning = doc.createElement("div");
+    warning.className = "symbol-warning";
+    warning.hidden = true;
+    status2.after(warning);
+    const style2 = doc.createElement("style");
+    style2.textContent = `.symbol-context:empty{display:none}.symbol-context{font-size:11px;color:var(--text-muted);margin:3px 2px;display:flex;gap:6px;align-items:center}.symbol-context button{border:0;background:transparent;padding:0 4px;min-height:18px;font-size:11px;color:var(--text-muted)}.symbol-warning{font-size:12px;padding:6px 8px;border-left:2px solid var(--text-warning,#d7ac60);margin-top:5px}.symbol-warning[hidden]{display:none}.symbol-warning button{font-size:11px;margin:4px 4px 0 0;padding:2px 7px}.symbol-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;font-weight:600}.symbol-preview{font-size:19px;margin-right:4px}.symbol-head button{margin-left:auto;border:0;background:none}.symbol-tabs{display:flex;gap:4px;margin-bottom:8px}.symbol-tabs button{flex:1;border:0;background:transparent;border-radius:3px}.symbol-tabs .active{box-shadow:inset 0 -2px var(--interactive-accent);color:var(--text-normal)}.symbol-drawer input{width:100%;min-width:0;height:28px;padding:4px 7px}.symbol-fields{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}.symbol-fields label,.symbol-meaning{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--text-muted)}.symbol-actions{display:flex;justify-content:flex-end;margin-top:8px}.symbol-error{font-size:12px;color:var(--text-error);margin-top:6px}.symbol-results{max-height:150px;overflow:auto;margin-top:6px}.symbol-results button{display:flex;width:100%;gap:7px;align-items:center;text-align:left;border:0;background:transparent;font-size:12px;min-height:30px;height:auto;padding:4px 6px}.symbol-results button:hover{background:var(--background-modifier-hover)}.symbol-results small{color:var(--text-muted);margin-left:auto;max-width:40%;overflow:hidden;text-overflow:ellipsis}.symbol-summary{font-size:13px;line-height:1.5}@media(min-width:560px){.symbol-fields{grid-template-columns:1fr 1fr 1fr}}`;
+    style2.textContent += `.symbol-head{margin-bottom:6px}.symbol-head>button{margin-left:auto}.symbol-tabs{margin:0 0 0 auto;display:inline-flex;background:var(--background-primary);border:1px solid var(--background-modifier-border);border-radius:5px;padding:2px;gap:0}.symbol-tabs button{min-height:22px;height:22px;padding:1px 10px;font-size:11px;box-shadow:none}.symbol-tabs button.active{background:var(--background-modifier-hover);box-shadow:none}.symbol-head .symbol-tabs+button{margin-left:0}.symbol-meaning{display:flex;flex-direction:row;align-items:flex-end;gap:6px}.symbol-meaning>label{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}.symbol-actions{margin:0}.symbol-fields{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.symbol-drawer input{height:26px}.symbol-fields label{font-size:10px}.symbol-warning .symbol-preview{font-size:14px;margin:0}.symbol-warning-actions{display:inline-flex;gap:3px;flex-wrap:nowrap}.symbol-warning button{background:transparent;border:0;padding:0 3px;min-height:20px;margin:0;color:var(--text-muted);text-decoration:underline}.symbol-warning{line-height:1.6}.symbol-context .symbol-preview{font-size:14px}@media(max-width:380px){.symbol-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}`;
+    doc.head.append(style2);
+    const tint = doc.createElement("style");
+    tint.textContent = ".mjx-ss{box-shadow:inset 0 0 0 100vmax var(--study-symbol-fill,rgba(151,104,215,.28));border-radius:2px}";
+    mf2.shadowRoot?.append(tint);
+    const button2 = (host, label2, fn) => {
+      const b = doc.createElement("button");
+      b.type = "button";
+      b.textContent = label2;
+      b.onclick = fn;
+      host.append(b);
+      return b;
+    };
+    const glyph = (host, tex) => {
+      const span = doc.createElement("span");
+      span.className = "symbol-preview";
+      span.innerHTML = convertLatexToMarkup(tex);
+      host.append(span);
+    };
+    const current = () => markers(mf2.getValue());
+    const definition = (id) => {
+      const p = pending.get(id);
+      return p?.definition ?? context?.defs[p?.def ?? context?.occ[id]?.def];
+    };
+    function tagRange() {
+      const start = Math.min(...mf2.selection.ranges.flat()), end = Math.max(...mf2.selection.ranges.flat());
+      const info = Array.from({ length: mf2.lastOffset + 1 }, (_, i) => mf2.getElementInfo(i));
+      return findTaggedRange(info, start, end);
+    }
+    function replaceMarker(hit, insert2) {
+      const position = mf2.position;
+      mf2.insert(applyEdits(mf2.getValue(), [{ from: hit.from, to: hit.to, insert: insert2 }]), { format: "latex", insertionMode: "replaceAll", selectionMode: "after" });
+      mf2.position = Math.min(position, mf2.lastOffset);
+      analyse();
+    }
+    function unlink(id) {
+      for (const hit of current().filter((m) => m.id === id).reverse()) replaceMarker(hit, hit.body);
+      if (originals.some((m) => m.id === id)) accepted.set(id, { choice: "unlink", body: null });
+      else {
+        accepted.delete(id);
+        known.delete(id);
+      }
+      pending.delete(id);
+      ui.close();
+      analyse();
+    }
+    function analyse() {
+      if (busy) return;
+      warning.replaceChildren();
+      warning.hidden = true;
+      problem = "";
+      let hits;
+      try {
+        hits = current();
+      } catch (e) {
+        problem = e.message;
+        hits = [];
+      }
+      const count = /* @__PURE__ */ new Map();
+      for (const m of hits) {
+        const list = count.get(m.id) ?? [];
+        list.push(m);
+        count.set(m.id, list);
+      }
+      const duplicate = Array.from(count.values()).find((list) => list.length > 1);
+      if (duplicate) {
+        const hit = duplicate[duplicate.length - 1], d = definition(hit.id);
+        problem = "A pasted symbol shares another tag\u2019s ID.";
+        warning.append(problem);
+        button2(warning, "Separate copy", () => {
+          if (!d) {
+            open(hit.id);
+            return;
+          }
+          const id = freshId(used);
+          used.add(id);
+          const def = pending.get(hit.id)?.def ?? context.occ[hit.id].def;
+          pending.set(id, { id, def, glyph: hit.body });
+          known.set(id, hit.body);
+          replaceMarker(hit, wrapSymbol(id, hit.body));
+        });
+        button2(warning, "Remove copy tag", () => replaceMarker(hit, hit.body));
+      }
+      if (!problem) for (const [id, body] of known) {
+        const hit = count.get(id)?.[0], semantic = hit ? semanticGlyph(hit.body) : null, decision = accepted.get(id);
+        if (semantic !== null && semantic === semanticGlyph(body)) continue;
+        if (decision && decision.body === semantic) continue;
+        problem = hit ? "A tagged symbol was changed." : "A tagged symbol was deleted.";
+        glyph(warning, definition(id)?.tex ?? body);
+        warning.append(" (" + (definition(id)?.meaning ?? "Symbol") + ") " + (hit ? "changed" : "deleted") + " \xB7 ");
+        const actions = doc.createElement("span");
+        actions.className = "symbol-warning-actions";
+        warning.append(actions);
+        button2(actions, "Undo", () => {
+          mf2.executeCommand("undo");
+          analyse();
+        });
+        button2(actions, hit ? "Keep definition" : "Keep as orphan", () => {
+          accepted.set(id, { choice: "keep", body: semantic });
+          analyse();
+        });
+        button2(actions, hit ? "Remove tag" : "Delete record", () => unlink(id));
+        break;
+      }
+      if (!problem && context) {
+        const unregistered = hits.find((m) => !context.occ[m.id] && !pending.has(m.id));
+        if (unregistered) {
+          problem = "This symbol tag has no definition in this note.";
+          warning.append(problem);
+          button2(warning, "Link definition", () => open(unregistered.id));
+          button2(warning, "Remove tag", () => unlink(unregistered.id));
+        }
+      }
+      if (problem && !warning.childNodes.length) warning.textContent = problem;
+      warning.hidden = !problem;
+      o.save.disabled = o.blocked || !!problem || busy;
+      o.resize();
+    }
+    function rowPreview(id) {
+      const d = definition(id);
+      status2.replaceChildren();
+      ui.setSymbolContext(!!d);
+      if (!d) return;
+      glyph(status2, d.tex);
+      const text = doc.createElement("span");
+      text.textContent = d.meaning;
+      status2.append(text, " \xB7 ");
+      button2(status2, "Edit tag", () => open(id));
+    }
+    function open(id) {
+      if (busy) return;
+      drawer.replaceChildren();
+      selection2 = structuredClone(mf2.selection);
+      const existing = id ? { id } : tagRange();
+      editingId = existing?.id;
+      selectedTex = editingId ? current().find((m) => m.id === editingId)?.body ?? "" : mf2.getValue(selection2, "latex");
+      ui.open(drawer);
+      const head = doc.createElement("div");
+      head.className = "symbol-head";
+      if (selectedTex) glyph(head, selectedTex);
+      head.append("Tag symbol");
+      button2(head, "\xD7", () => ui.close(true)).setAttribute("aria-label", "Close symbol panel");
+      drawer.append(head);
+      const error2 = doc.createElement("div");
+      error2.className = "symbol-error";
+      if (!context || context.version !== 1) {
+        error2.textContent = "Enable the matching Study Studio symbol system to define symbols.";
+        drawer.append(error2);
+        o.resize();
+        return;
+      }
+      if (editingId && definition(editingId)) {
+        const summary = doc.createElement("div");
+        summary.className = "symbol-summary";
+        summary.textContent = definition(editingId).meaning;
+        drawer.append(summary);
+        button2(drawer, "Change definition", () => choices());
+        button2(drawer, "Remove tag", () => unlink(editingId));
+        const margin = button2(drawer, "Open in Symbols", o.openMargin);
+        margin.disabled = pending.has(editingId);
+        margin.title = margin.disabled ? "Save this equation first." : "Open the definition in the margin";
+        drawer.append(error2);
+        o.resize();
+        return;
+      }
+      if (!editingId && (!selectedTex.trim() || mf2.selectionIsCollapsed)) {
+        error2.textContent = "Select the symbol you want to define, then choose Tag symbol.";
+        drawer.append(error2);
+        o.resize();
+        return;
+      }
+      if (!editingId && markers(selectedTex).length) {
+        error2.textContent = "This selection already contains a tag. Select one tagged symbol to edit it.";
+        drawer.append(error2);
+        o.resize();
+        return;
+      }
+      choices();
+      function choices() {
+        while (drawer.children.length > 1) drawer.lastElementChild.remove();
+        const tabs = doc.createElement("div");
+        tabs.className = "symbol-tabs";
+        head.querySelector(".symbol-tabs")?.remove();
+        head.insertBefore(tabs, head.lastElementChild);
+        const body = doc.createElement("div");
+        drawer.append(body);
+        drawer.append(error2);
+        const link = button2(tabs, "Link", () => render2("link")), create = button2(tabs, "New", () => render2("new"));
+        function render2(mode) {
+          body.replaceChildren();
+          error2.textContent = "";
+          link.classList.toggle("active", mode === "link");
+          create.classList.toggle("active", mode === "new");
+          if (mode === "link") {
+            const search2 = doc.createElement("input");
+            search2.type = "search";
+            search2.placeholder = "Find a meaning or code name\u2026";
+            search2.setAttribute("aria-label", "Find existing symbol");
+            body.append(search2);
+            const list = doc.createElement("div");
+            list.className = "symbol-results";
+            body.append(list);
+            const renderList = () => {
+              list.replaceChildren();
+              const query = search2.value.toLocaleLowerCase();
+              const defs = Object.entries(context.defs).filter(([, d]) => [d.tex, d.meaning, ...d.code.map((c) => c.name)].join(" ").toLocaleLowerCase().includes(query)).sort(([, a], [, b]) => Number(semanticGlyph(b.tex) === semanticGlyph(selectedTex)) - Number(semanticGlyph(a.tex) === semanticGlyph(selectedTex)));
+              for (const [id2, d] of defs) {
+                const b = button2(list, "", () => void commitTag(id2, void 0, error2));
+                glyph(b, d.tex);
+                b.append(d.meaning);
+                if (d.code[0]) {
+                  const small = doc.createElement("small");
+                  small.textContent = d.code[0].name;
+                  b.append(small);
+                }
+              }
+              if (!defs.length) list.textContent = "No matching definitions. Choose New to define this symbol.";
+            };
+            search2.oninput = renderList;
+            search2.onkeydown = (e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                list.querySelector("button")?.click();
+              }
+            };
+            renderList();
+            search2.focus();
+          } else {
+            const field = (host, label2) => {
+              const l = doc.createElement("label");
+              l.textContent = label2;
+              const input = doc.createElement("input");
+              l.append(input);
+              host.append(l);
+              return input;
+            };
+            const meaningWrap = doc.createElement("div");
+            meaningWrap.className = "symbol-meaning";
+            body.append(meaningWrap);
+            const meaning = field(meaningWrap, "Meaning");
+            const fields = doc.createElement("div");
+            fields.className = "symbol-fields";
+            body.append(fields);
+            const units = field(fields, "Units"), python = field(fields, "Python"), wolfram = field(fields, "Wolfram");
+            const actions = doc.createElement("div");
+            actions.className = "symbol-actions";
+            meaningWrap.append(actions);
+            const submit = () => {
+              if (!meaning.value.trim()) {
+                error2.textContent = "Give this symbol a meaning.";
+                meaning.focus();
+                return;
+              }
+              const id2 = "d-" + freshId(Object.keys(context.defs).map((k) => k.slice(2)));
+              void commitTag(id2, { tex: selectedTex, meaning: meaning.value.trim(), units: units.value.trim(), code: [{ lang: "python", name: python.value.trim() }, { lang: "wolfram", name: wolfram.value.trim() }].filter((c) => c.name) }, error2);
+            };
+            button2(actions, "Tag", submit);
+            for (const input of [meaning, units, python, wolfram]) input.onkeydown = (e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                e.stopPropagation();
+                submit();
+              }
+            };
+            meaning.focus();
+          }
+          o.resize();
+        }
+        render2(Object.keys(context.defs).length ? "link" : "new");
+      }
+    }
+    async function commitTag(def, definition2, error2) {
+      if (busy || !selection2) return;
+      busy = true;
+      mf2.readOnly = true;
+      o.save.disabled = true;
+      const id = editingId ?? freshId(used);
+      let inserted = false;
+      try {
+        if (!editingId) {
+          mf2.selection = selection2;
+          mf2.insert(wrapSymbol(id, selectedTex), { format: "latex", insertionMode: "replaceSelection", selectionMode: "item" });
+          inserted = true;
+          await o.check(mf2.getValue(), id);
+        }
+        definition2 = definition2 ?? (!originalDefinitions.has(def) ? context?.defs[def] : void 0);
+        const glyph2 = current().find((m) => m.id === id).body;
+        pending.set(id, { id, def, glyph: glyph2, ...definition2 ? { definition: clone(definition2) } : {} });
+        if (definition2 && context) context.defs[def] = clone(definition2);
+        used.add(id);
+        known.set(id, glyph2);
+        accepted.delete(id);
+        ui.close();
+        rowPreview(id);
+        mf2.focus();
+      } catch (e) {
+        if (inserted) {
+          mf2.executeCommand("undo");
+          mf2.selection = selection2;
+        }
+        error2.textContent = e.message;
+      } finally {
+        busy = false;
+        mf2.readOnly = o.blocked;
+        analyse();
+      }
+    }
+    const control = ui.addSymbolControl(() => open());
+    control.disabled = o.blocked;
+    mf2.addEventListener("input", analyse);
+    mf2.addEventListener("selection-change", () => {
+      const caret = mf2.shadowRoot?.querySelector(".ML__caret")?.closest(".mjx-ss"), id = Array.from(caret?.classList ?? []).find((c) => /^mjx-ss-o-[0-9a-z]{10}$/.test(c))?.slice(9);
+      control.classList.toggle("active", !!id);
+      if (id) rowPreview(id);
+      else {
+        status2.replaceChildren();
+        ui.setSymbolContext(false);
+      }
+    });
+    mf2.addEventListener("keydown", (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.code === "KeyY") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        open();
+      }
+    }, true);
+    analyse();
+    return { proposal() {
+      analyse();
+      if (problem || busy) throw Error(problem || "Wait for the symbol check to finish.");
+      return { pending: Array.from(pending.values()), decisions: Object.fromEntries(Array.from(accepted, ([id, a]) => [id, a.choice])) };
+    }, open };
+  }
+
+  // src/build-id.ts
+  var BUILD_ID = "d9012abf5976be09";
+
   // src/model.ts
   function saveableLatex(latex) {
     return latex.replace(/\\placeholder(?:\[[^\]]*\])?\{[^{}]*\}/g, "{}");
@@ -42810,6 +43536,8 @@ If you are using Vue, this may be because you are using the runtime-only build o
   var root = document.documentElement;
   for (const [k, v] of Object.entries(config.colors)) root.style.setProperty(k, v);
   root.style.colorScheme = config.dark ? "dark" : "light";
+  root.style.setProperty("--study-symbol-fill", config.dark ? "rgba(151,104,215,.28)" : "rgba(132,79,193,.18)");
+  root.style.setProperty("--study-symbol-edge", config.dark ? "#9768d7" : "#844fc1");
   var style = document.createElement("style");
   style.textContent = `
 *{box-sizing:border-box}body{margin:0;padding:12px;font:14px system-ui;color:var(--text-normal);background:var(--background-primary)}button,input,select{font:inherit;color:inherit;background:var(--background-secondary);border:1px solid var(--background-modifier-border);border-radius:5px;padding:6px 9px}button{cursor:pointer}button:hover,button:focus-visible{border-color:var(--interactive-accent)}button:disabled{opacity:.45;cursor:default}.bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:10px}.bar small{margin-left:auto;color:var(--text-muted)}math-field{display:block;width:100%;min-height:90px;padding:18px 12px;font-size:25px;background:var(--background-primary);color:var(--text-normal);border:1px solid var(--background-modifier-border);border-radius:6px;--caret-color:var(--interactive-accent);--selection-background-color:var(--background-modifier-hover);--contains-highlight-background-color:var(--background-modifier-hover)}math-field::part(virtual-keyboard-toggle){display:none}.math-wrap{overflow-x:auto;padding:2px}.hint{color:var(--text-muted);font-size:12px;margin:8px 0}.error{color:var(--text-error,#d65b5b);white-space:pre-wrap}.footer{margin-top:8px;display:flex;gap:8px;align-items:center}.primary{background:var(--interactive-accent);color:var(--text-on-accent,#fff)}.palette{border:1px solid var(--background-modifier-border);border-radius:6px;padding:10px;margin:8px 0;background:var(--background-secondary)}.palette[hidden],.tags[hidden],.matrix[hidden]{display:none}.search{width:100%;margin-bottom:8px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:5px;max-height:230px;overflow:auto}.template{height:72px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px;font-size:11px}.template .preview{font-size:20px}.template.selected{outline:2px solid var(--interactive-accent)}.tags,.matrix{padding:8px;border:1px solid var(--background-modifier-border);margin-bottom:8px}.tags label,.matrix label{display:inline-flex;align-items:center;gap:8px;margin-right:10px}.matrix input{width:65px}#status{flex:1}.native{margin-left:auto}.title{font-weight:650}.matrix .bar{margin:8px 0 0}
@@ -42855,7 +43583,7 @@ If you are using Vue, this may be because you are using the runtime-only build o
   mf.value = config.latex;
   mf.setAttribute("aria-label", "Visual equation editor");
   wrap.append(mf);
-  var initialProblem = config.blocked || (mf.errors.length ? "This equation contains unsupported LaTeX. Use Native LaTeX to preserve it." : null);
+  var initialProblem = (config.buildId !== BUILD_ID ? "Math Studio runtime files do not match. Install the complete plugin before saving." : null) || config.blocked || (mf.errors.length ? "This equation contains unsupported LaTeX. Use Native LaTeX to preserve it." : null);
   var palette = el("div", "palette");
   palette.hidden = true;
   var search = el("input", "search");
@@ -42887,6 +43615,7 @@ If you are using Vue, this may be because you are using the runtime-only build o
   var selected = 0;
   var dirty = false;
   var tag = { ...config.tag };
+  var textTemplate = ["Plain text label", "\\text{words}", "\\text{#?}"];
   var templates = [
     ["Fraction", "\\frac{a}{b}", "\\frac{#?}{#?}"],
     ["Square root", "\\sqrt{x}", "\\sqrt{#?}"],
@@ -42919,16 +43648,19 @@ If you are using Vue, this may be because you are using the runtime-only build o
     ["Norm", "\\left\\lVert x\\right\\rVert", "\\left\\lVert#?\\right\\rVert"],
     ...["alpha", "beta", "gamma", "delta", "epsilon", "varepsilon", "zeta", "eta", "theta", "vartheta", "iota", "kappa", "lambda", "mu", "nu", "xi", "pi", "rho", "sigma", "tau", "phi", "varphi", "chi", "psi", "omega", "Gamma", "Delta", "Theta", "Lambda", "Sigma", "Phi", "Psi", "Omega", "infty", "partial", "nabla", "times", "cdot", "otimes", "leq", "geq", "neq", "approx", "equiv", "in", "subset", "to", "Rightarrow", "leftrightarrow"].map((x) => [x, "\\" + x, "\\" + x])
   ];
+  templates.push(textTemplate);
   var filtered = templates;
   function insert(value) {
     mf.focus();
     if (selection) mf.selection = selection;
-    mf.insert(value, { selectionMode: "placeholder" });
+    if (value === textTemplate[2]) mf.executeCommand(["switchMode", "text"]);
+    else mf.insert(value, { mode: "math", format: "latex", selectionMode: "placeholder" });
     dirty = true;
-    palette.hidden = true;
+    compact.close();
     resize();
   }
   function templateCategory(index) {
+    if (templates[index] === textTemplate) return "Basics";
     if (index < 3) return "Basics";
     if (index < 17) return "Calculus";
     if (index < 21) return "Matrices";
@@ -42939,7 +43671,7 @@ If you are using Vue, this may be because you are using the runtime-only build o
   function renderPalette() {
     grid.replaceChildren();
     const query = search.value.trim().toLowerCase();
-    filtered = templates.filter((t, i) => query ? t[0].toLowerCase().includes(query) || t[1].toLowerCase().includes(query) : paletteMode === "All" || (paletteMode === "Composite" ? i < 29 : templateCategory(i) === category));
+    filtered = templates.filter((t, i) => query ? t[0].toLowerCase().includes(query) || t[1].toLowerCase().includes(query) : paletteMode === "All" || (paletteMode === "Composite" ? i < 29 || t === textTemplate : templateCategory(i) === category));
     selected = 0;
     for (const m of Array.from(modes.children)) m.classList.toggle("active", m.textContent === paletteMode);
     categories.hidden = paletteMode !== "Categories";
@@ -42979,9 +43711,8 @@ If you are using Vue, this may be because you are using the runtime-only build o
   var paletteLabel = el("div", "palette-label");
   palette.append(paletteLabel);
   function openPalette() {
-    colorsPanel.hidden = true;
     selection = mf.selection;
-    palette.hidden = false;
+    compact.open(palette);
     search.value = "";
     renderPalette();
     search.focus();
@@ -42990,7 +43721,8 @@ If you are using Vue, this may be because you are using the runtime-only build o
   button(bar, "Palette \\", openPalette);
   button(bar, "Matrix", () => {
     selection = mf.selection;
-    matrix2.hidden = !matrix2.hidden;
+    if (matrix2.hidden) compact.open(matrix2);
+    else compact.close();
     resize();
   });
   button(bar, "Undo", () => {
@@ -43017,7 +43749,7 @@ If you are using Vue, this may be because you are using the runtime-only build o
     mf.applyStyle({ color: value }, { operation: "set" });
     selection = mf.selection;
     dirty = true;
-    colorsPanel.hidden = true;
+    compact.close();
     resize();
   }
   for (const [name, value] of [["Red", "#e53935"], ["Orange", "#ff5f05"], ["Gold", "#d49b00"], ["Green", "#2eaa64"], ["Teal", "#00a6a6"], ["Blue", "#4285f4"], ["Purple", "#a46be0"], ["Pink", "#e765ac"], ["White", "#ffffff"], ["Black", "#000000"]]) {
@@ -43068,10 +43800,7 @@ If you are using Vue, this may be because you are using the runtime-only build o
   function openColors() {
     if (initialProblem) return;
     colorSelection = structuredClone(mf.selection);
-    colorsPanel.hidden = false;
-    palette.hidden = true;
-    matrix2.hidden = true;
-    tags.hidden = true;
+    compact.open(colorsPanel);
     colorError.textContent = "";
     swatches.firstElementChild.focus();
     resize();
@@ -43086,7 +43815,8 @@ If you are using Vue, this may be because you are using the runtime-only build o
     }
   });
   button(bar, "Equation number", () => {
-    tags.hidden = !tags.hidden;
+    if (tags.hidden) compact.open(tags);
+    else compact.close();
     resize();
   }).disabled = !config.display;
   button(bar, "Copy LaTeX", () => send("copy", { latex: initialProblem ? config.latex : mf.getValue() }));
@@ -43193,6 +43923,17 @@ If you are using Vue, this may be because you are using the runtime-only build o
     });
   }
   var hint = el("div", "hint", "Click the equation to edit \u2022 \\ or Ctrl+Space: palette \u2022 Tab / Shift+Tab: placeholders \u2022 Enter: new display row \u2022 Matrix: row/column actions \u2022 Right-click: math controls \u2022 Cmd/Ctrl+Shift+C: color \u2022 Space: spacing \u2022 Shift+Enter or Ctrl/Cmd+Enter: finish \u2022 Esc: cancel");
+  var textHint = el("div", "hint");
+  textHint.hidden = true;
+  textHint.append(el("span", "", "Text mode \xB7 spaces and hyphens are ordinary text. "));
+  button(textHint, "Return to math", () => {
+    mf.focus();
+    mf.executeCommand(["switchMode", "math"]);
+  });
+  mf.addEventListener("mode-change", () => {
+    textHint.hidden = mf.mode !== "text";
+    resize();
+  });
   var error = el("div", "error");
   error.setAttribute("role", "alert");
   var footer = el("div", "footer");
@@ -43201,17 +43942,29 @@ If you are using Vue, this may be because you are using the runtime-only build o
   footer.append(status);
   var cancel = button(footer, "Cancel", () => send("cancel"));
   var save = button(footer, "Save equation", () => commit(), "primary");
-  document.body.append(layout, wrap, palette, colorsPanel, matrix2, tags, hint, error, footer);
+  document.body.append(layout, wrap, textHint, palette, colorsPanel, matrix2, tags, hint, error, footer);
   var initial = mf.getValue();
   var initialTag = JSON.stringify(tag);
+  var symbolControls;
+  var saving = false;
   function commit(native = false) {
+    if (saving) return;
     if (initialProblem || mf.errors.length) {
       error.textContent = initialProblem || "This expression contains unsupported or incomplete LaTeX. Use Native LaTeX to preserve it.";
       resize();
       return;
     }
-    send("save", { native, latex: saveableLatex(mf.getValue()), tag, changed: mf.getValue() !== initial || JSON.stringify(tag) !== initialTag });
-    status.textContent = "Saving\u2026";
+    try {
+      const symbols = symbolControls?.proposal();
+      saving = true;
+      mf.readOnly = true;
+      save.disabled = true;
+      send("save", { native, latex: saveableLatex(mf.getValue()), tag, symbols, changed: mf.getValue() !== initial || JSON.stringify(tag) !== initialTag });
+      status.textContent = "Saving\u2026";
+    } catch (e) {
+      error.textContent = e.message;
+      resize();
+    }
   }
   mf.addEventListener("input", () => {
     dirty = true;
@@ -43301,13 +44054,16 @@ If you are using Vue, this may be because you are using the runtime-only build o
       return;
     }
     if (e.data.type === "error") {
+      saving = false;
+      mf.readOnly = !!initialProblem;
+      save.disabled = !!initialProblem;
       error.textContent = e.data.message;
       status.textContent = "Draft retained.";
       resize();
     }
   });
   function resize() {
-    requestAnimationFrame(() => send("resize", { height: Math.min(780, Math.max(260, document.body.scrollHeight + 8)) }));
+    requestAnimationFrame(() => send("resize", { height: Math.min(780, Math.max(150, document.body.scrollHeight + 2)) }));
   }
   if (initialProblem || mf.errors.length) {
     error.textContent = initialProblem || `This equation is outside the visual editor's supported LaTeX subset. Native LaTeX remains unchanged. (${mf.errors.map((e) => e.code).join(", ")})`;
@@ -43316,11 +44072,31 @@ If you are using Vue, this may be because you are using the runtime-only build o
     wrap.hidden = true;
     for (const b of Array.from(bar.querySelectorAll("button"))) if (!["Native LaTeX", "Copy LaTeX"].includes(b.textContent || "")) b.disabled = true;
   }
+  var compact = compactUI({ bar, mf, wrap, palette, colors: colorsPanel, matrix: matrix2, tags, layout, hint, textHint, error, footer, status, save, cancel, display: config.display, blocked: initialProblem, resize });
+  var checks = /* @__PURE__ */ new Map();
+  window.addEventListener("message", (event) => {
+    if (event.source !== parent || event.data?.mathStudio !== config.id || event.data.type !== "symbol-checked") return;
+    const pending = checks.get(event.data.request);
+    if (!pending) return;
+    checks.delete(event.data.request);
+    clearTimeout(pending.timer);
+    if (event.data.error) pending.reject(Error(event.data.error));
+    else pending.resolve();
+  });
+  symbolControls = initialProblem ? void 0 : symbolEditor({ mf, ui: compact, context: config.symbols, initial: config.latex, save, blocked: false, resize, openMargin: () => send("open-symbols"), check: (latex, id) => new Promise((resolve, reject) => {
+    const request = crypto.randomUUID();
+    const timer = setTimeout(() => {
+      checks.delete(request);
+      reject(Error("The symbol check timed out. No tag was saved."));
+    }, 15e3);
+    checks.set(request, { resolve, reject, timer });
+    send("check-symbol", { request, latex, id });
+  }) });
   new ResizeObserver(resize).observe(document.body);
   requestAnimationFrame(() => {
     mf.focus();
     selection = mf.selection;
     resize();
-    send("ready");
+    send("ready", { buildId: BUILD_ID });
   });
 })();

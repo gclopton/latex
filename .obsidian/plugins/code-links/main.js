@@ -9,9 +9,9 @@ var __export = (target, all) => {
 };
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+    for (let key2 of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key2) && key2 !== except)
+        __defProp(to, key2, { get: () => from[key2], enumerable: !(desc = __getOwnPropDesc(from, key2)) || desc.enumerable });
   }
   return to;
 };
@@ -326,15 +326,15 @@ async function revealCode(plugin, path, id2, raw) {
 }
 
 // main.ts
-var import_obsidian5 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 var import_child_process = require("child_process");
 var import_os2 = require("os");
 var import_fs2 = require("fs");
 var import_path2 = require("path");
 var import_promises2 = require("fs/promises");
-var import_state4 = require("@codemirror/state");
-var import_view4 = require("@codemirror/view");
-var import_language5 = require("@codemirror/language");
+var import_state7 = require("@codemirror/state");
+var import_view7 = require("@codemirror/view");
+var import_language6 = require("@codemirror/language");
 var import_highlight4 = require("@lezer/highlight");
 
 // node_modules/@lezer/lr/dist/index.js
@@ -2447,10 +2447,10 @@ var import_view2 = require("@codemirror/view");
 var import_language = require("@codemirror/language");
 function toSet(chars) {
   let flat = Object.keys(chars).join("");
-  let words = /\w/.test(flat);
-  if (words)
+  let words2 = /\w/.test(flat);
+  if (words2)
     flat = flat.replace(/\w/g, "");
-  return `[${words ? "\\w" : ""}${flat.replace(/[^\w\s]/g, "\\$&")}]`;
+  return `[${words2 ? "\\w" : ""}${flat.replace(/[^\w\s]/g, "\\$&")}]`;
 }
 function prefixMatch(options) {
   let first = /* @__PURE__ */ Object.create(null), rest = /* @__PURE__ */ Object.create(null);
@@ -4521,7 +4521,7 @@ var import_promises = require("fs/promises");
 var import_path = require("path");
 var import_os = require("os");
 var import_crypto = require("crypto");
-var unavailable = /* @__PURE__ */ new Set(["stale-source", "stale-config", "source-missing", "guardian-lost", "interrupted", "checking"]);
+var unavailable = /* @__PURE__ */ new Set(["stale-source", "stale-config", "source-missing", "guardian-lost", "interrupted", "checking", "not-run-revision-changed"]);
 var active = /* @__PURE__ */ new Set(["queued", "running"]);
 var hash2 = (s) => (0, import_crypto.createHash)("sha256").update(s).digest("hex");
 var sourceOnly = (raw) => raw.replace(/^!/, "").replace(/#[^|}]+/, "").replace(/\{height=\d+\}$/, "");
@@ -4632,10 +4632,7 @@ var RunOutputs = class {
     }
   }
   sourceChanged(path) {
-    for (const p of this.panels) if (p.run.spec.source === path) {
-      p.previewChanged();
-      this.changed(p.raw);
-    }
+    for (const p of this.panels) if (p.run.spec.source === path) this.changed(p.raw);
   }
   key(note, raw) {
     return hash2(note + "\0" + raw);
@@ -4644,9 +4641,10 @@ var RunOutputs = class {
     return { open: this.noteDefaults[note] ?? false, lines: 12, ...this.prefs[this.key(note, raw)] };
   }
   setPreference(note, raw, change) {
-    const key = this.key(note, raw);
-    this.prefs[key] = { ...this.prefs[key], ...change };
+    const key2 = this.key(note, raw);
+    this.prefs[key2] = { ...this.prefs[key2], ...change, note };
     this.save();
+    this.plugin.edits?.repaint(note);
   }
   save() {
     clearTimeout(this.saveTimer);
@@ -4666,12 +4664,13 @@ var RunOutputs = class {
   }
   foldAll(note, expanded) {
     this.noteDefaults[note] = expanded;
-    for (const [key, pref] of Object.entries(this.prefs)) if (pref.note === note) delete this.prefs[key].open;
+    for (const [key2, pref] of Object.entries(this.prefs)) if (pref.note === note) delete this.prefs[key2].open;
     for (const p of this.panels) if (p.note === note) {
       delete this.prefs[p.key]?.open;
       p.setExpanded(expanded, false);
     }
     this.save();
+    this.plugin.edits?.repaint(note);
   }
   changed(raw) {
     if (![...this.panels].some((p) => p.raw === raw)) return;
@@ -4709,7 +4708,8 @@ var RunOutputs = class {
         const same = JSON.stringify(signature) === JSON.stringify(rec.source_signature);
         const previous = this.validated.get(id2) || panel.run;
         let value = { ...rec, current_signature: signature, active: active.has(rec.state), valid: same && !rec.changed_during_run };
-        if (rec.changed_during_run) value = { ...value, state: "stale-source", valid: false };
+        if (rec.state === "not-run-revision-changed") value = { ...value, valid: false };
+        else if (rec.changed_during_run) value = { ...value, state: "stale-source", valid: false };
         else if (!same) {
           if (active.has(rec.state)) value = { ...value, state: "stale-source", valid: false };
           else if (previous && previous.run_id === rec.run_id && JSON.stringify(signature) === JSON.stringify(previous.current_signature)) value = { ...previous, ...rec, current_signature: signature, valid: previous.valid, state: previous.state };
@@ -4771,6 +4771,7 @@ var RunOutputs = class {
     await this.plugin.call("run-cancel", { ids: [id2] });
   }
   async runNote(force = false) {
+    await this.plugin.edits?.flushAll();
     const view = this.plugin.app.workspace.getActiveViewOfType(import_obsidian3.MarkdownView);
     if (!view?.file) return;
     const text = view.getMode() === "source" ? view.editor.getValue() : await this.plugin.app.vault.cachedRead(view.file);
@@ -4783,7 +4784,7 @@ var RunOutputs = class {
       return;
     }
     const result = await this.plugin.call("run-start", { raws, force });
-    new import_obsidian3.Notice(`${result.queued.length} queued \xB7 ${result.reused.length} saved results reused`);
+    new import_obsidian3.Notice(`${result.queued.length} queued \xB7 ${result.reused.length} saved results reused${result.skipped?.length ? ` \xB7 ${result.skipped.length} unsaved drafts skipped` : ""}`);
     for (const raw of raws) this.pending.add(raw);
     this.scheduleRefresh();
   }
@@ -4937,7 +4938,7 @@ var OutputPanel = class {
     this.runButton.setAttribute("aria-label", busy ? "Stop run" : "Run whole file");
     this.runButton.title = busy ? "Stop run" : `Run whole file: ${run.spec.source.split("/").pop()}. The entire source runs, including lines outside this excerpt.`;
     const duration = run.duration_s == null ? "" : run.duration_s < 0.1 ? "<0.1 s" : `${run.duration_s.toFixed(1)} s`;
-    const labels = { none: "Not run", queued: "Queued", running: "Running", ok: run.stderr ? "Finished \xB7 warnings" : "Finished", failed: "Failed", stopped: "Stopped", timeout: "Timed out", "worker-lost": "Interrupted", "guardian-lost": "Interrupted \xB7 possible surviving processes", "stale-source": "Source changed \u2014 run again", "stale-config": "Settings changed \u2014 run again", "source-missing": "Source not found", checking: "Checking source\u2026", interrupted: "Interrupted" };
+    const labels = { "not-run-revision-changed": "Not run \u2014 saved source changed", none: "Not run", queued: "Queued", running: "Running", ok: run.stderr ? "Finished \xB7 warnings" : "Finished", failed: "Failed", stopped: "Stopped", timeout: "Timed out", "worker-lost": "Interrupted", "guardian-lost": "Interrupted \xB7 possible surviving processes", "stale-source": "Source changed \u2014 run again", "stale-config": "Settings changed \u2014 run again", "source-missing": "Source not found", checking: "Checking source\u2026", interrupted: "Interrupted" };
     this.statusEl.textContent = (labels[run.state] || run.state) + (duration && !unavailable.has(run.state) ? " \xB7 " + duration : "");
     this.statusEl.title = run.finished_at ? new Date(run.finished_at * 1e3).toLocaleString() : "";
     this.details.dataset.state = run.state;
@@ -5256,17 +5257,2130 @@ var OutputAppearance = class {
   }
 };
 
-// main.ts
-var wolframLanguage = import_language5.StreamLanguage.define(mathematica);
-var wolframClasses = { keyword: "keyword", string: "string", number: "number", comment: "comment", operator: "operator", atom: "special", meta: "special", character: "string", "string.special": "string", "variableName.special": "special", "variableName.constant": "special" };
-var wolframMarks = Object.fromEntries([...new Set(Object.values(wolframClasses))].map((cls) => [cls, import_view4.Decoration.mark({ class: "code-links-wl-" + cls })]));
-var wolframColors = import_view4.ViewPlugin.fromClass(class {
+// inline-edit.ts
+var import_obsidian6 = require("obsidian");
+var import_state6 = require("@codemirror/state");
+var import_view6 = require("@codemirror/view");
+
+// node_modules/@codemirror/commands/dist/index.js
+var import_state4 = require("@codemirror/state");
+var import_view4 = require("@codemirror/view");
+var import_language5 = require("@codemirror/language");
+var import_common4 = require("@lezer/common");
+var toggleComment = (target) => {
+  let { state } = target, line = state.doc.lineAt(state.selection.main.from), config = getConfig(target.state, line.from);
+  return config.line ? toggleLineComment(target) : config.block ? toggleBlockCommentByLine(target) : false;
+};
+function command(f, option) {
+  return ({ state, dispatch }) => {
+    if (state.readOnly)
+      return false;
+    let tr = f(option, state);
+    if (!tr)
+      return false;
+    dispatch(state.update(tr));
+    return true;
+  };
+}
+var toggleLineComment = /* @__PURE__ */ command(
+  changeLineComment,
+  0
+  /* CommentOption.Toggle */
+);
+var toggleBlockComment = /* @__PURE__ */ command(
+  changeBlockComment,
+  0
+  /* CommentOption.Toggle */
+);
+var toggleBlockCommentByLine = /* @__PURE__ */ command(
+  (o, s) => changeBlockComment(o, s, selectedLineRanges(s)),
+  0
+  /* CommentOption.Toggle */
+);
+function getConfig(state, pos) {
+  let data = state.languageDataAt("commentTokens", pos, 1);
+  return data.length ? data[0] : {};
+}
+var SearchMargin = 50;
+function findBlockComment(state, { open: open2, close }, from, to) {
+  let textBefore = state.sliceDoc(from - SearchMargin, from);
+  let textAfter = state.sliceDoc(to, to + SearchMargin);
+  let spaceBefore = /\s*$/.exec(textBefore)[0].length, spaceAfter = /^\s*/.exec(textAfter)[0].length;
+  let beforeOff = textBefore.length - spaceBefore;
+  if (textBefore.slice(beforeOff - open2.length, beforeOff) == open2 && textAfter.slice(spaceAfter, spaceAfter + close.length) == close) {
+    return {
+      open: { pos: from - spaceBefore, margin: spaceBefore && 1 },
+      close: { pos: to + spaceAfter, margin: spaceAfter && 1 }
+    };
+  }
+  let startText, endText;
+  if (to - from <= 2 * SearchMargin) {
+    startText = endText = state.sliceDoc(from, to);
+  } else {
+    startText = state.sliceDoc(from, from + SearchMargin);
+    endText = state.sliceDoc(to - SearchMargin, to);
+  }
+  let startSpace = /^\s*/.exec(startText)[0].length, endSpace = /\s*$/.exec(endText)[0].length;
+  let endOff = endText.length - endSpace - close.length;
+  if (startText.slice(startSpace, startSpace + open2.length) == open2 && endText.slice(endOff, endOff + close.length) == close) {
+    return {
+      open: {
+        pos: from + startSpace + open2.length,
+        margin: /\s/.test(startText.charAt(startSpace + open2.length)) ? 1 : 0
+      },
+      close: {
+        pos: to - endSpace - close.length,
+        margin: /\s/.test(endText.charAt(endOff - 1)) ? 1 : 0
+      }
+    };
+  }
+  return null;
+}
+function selectedLineRanges(state) {
+  let ranges = [];
+  for (let r of state.selection.ranges) {
+    let fromLine = state.doc.lineAt(r.from);
+    let toLine = r.to <= fromLine.to ? fromLine : state.doc.lineAt(r.to);
+    if (toLine.from > fromLine.from && toLine.from == r.to)
+      toLine = r.to == fromLine.to + 1 ? fromLine : state.doc.lineAt(r.to - 1);
+    let last = ranges.length - 1;
+    if (last >= 0 && ranges[last].to > fromLine.from)
+      ranges[last].to = toLine.to;
+    else
+      ranges.push({ from: fromLine.from + /^\s*/.exec(fromLine.text)[0].length, to: toLine.to });
+  }
+  return ranges;
+}
+function changeBlockComment(option, state, ranges = state.selection.ranges) {
+  let tokens = ranges.map((r) => getConfig(state, r.from).block);
+  if (!tokens.every((c) => c))
+    return null;
+  let comments = ranges.map((r, i) => findBlockComment(state, tokens[i], r.from, r.to));
+  if (option != 2 && !comments.every((c) => c)) {
+    return { changes: state.changes(ranges.map((range, i) => {
+      if (comments[i])
+        return [];
+      return [{ from: range.from, insert: tokens[i].open + " " }, { from: range.to, insert: " " + tokens[i].close }];
+    })) };
+  } else if (option != 1 && comments.some((c) => c)) {
+    let changes = [];
+    for (let i = 0, comment; i < comments.length; i++)
+      if (comment = comments[i]) {
+        let token = tokens[i], { open: open2, close } = comment;
+        changes.push({ from: open2.pos - token.open.length, to: open2.pos + open2.margin }, { from: close.pos - close.margin, to: close.pos + token.close.length });
+      }
+    return { changes };
+  }
+  return null;
+}
+function changeLineComment(option, state, ranges = state.selection.ranges) {
+  let lines = [];
+  let prevLine = -1;
+  for (let { from, to } of ranges) {
+    let startI = lines.length, minIndent = 1e9;
+    let token = getConfig(state, from).line;
+    if (!token)
+      continue;
+    for (let pos = from; pos <= to; ) {
+      let line = state.doc.lineAt(pos);
+      if (line.from > prevLine && (from == to || to > line.from)) {
+        prevLine = line.from;
+        let indent2 = /^\s*/.exec(line.text)[0].length;
+        let empty = indent2 == line.length;
+        let comment = line.text.slice(indent2, indent2 + token.length) == token ? indent2 : -1;
+        if (indent2 < line.text.length && indent2 < minIndent)
+          minIndent = indent2;
+        lines.push({ line, comment, token, indent: indent2, empty, single: false });
+      }
+      pos = line.to + 1;
+    }
+    if (minIndent < 1e9) {
+      for (let i = startI; i < lines.length; i++)
+        if (lines[i].indent < lines[i].line.text.length)
+          lines[i].indent = minIndent;
+    }
+    if (lines.length == startI + 1)
+      lines[startI].single = true;
+  }
+  if (option != 2 && lines.some((l) => l.comment < 0 && (!l.empty || l.single))) {
+    let changes = [];
+    for (let { line, token, indent: indent2, empty, single } of lines)
+      if (single || !empty)
+        changes.push({ from: line.from + indent2, insert: token + " " });
+    let changeSet = state.changes(changes);
+    return { changes: changeSet, selection: state.selection.map(changeSet, 1) };
+  } else if (option != 1 && lines.some((l) => l.comment >= 0)) {
+    let changes = [];
+    for (let { line, comment, token } of lines)
+      if (comment >= 0) {
+        let from = line.from + comment, to = from + token.length;
+        if (line.text[to - line.from] == " ")
+          to++;
+        changes.push({ from, to });
+      }
+    return { changes };
+  }
+  return null;
+}
+var fromHistory = /* @__PURE__ */ import_state4.Annotation.define();
+var isolateHistory = /* @__PURE__ */ import_state4.Annotation.define();
+var invertedEffects = /* @__PURE__ */ import_state4.Facet.define();
+var historyConfig = /* @__PURE__ */ import_state4.Facet.define({
+  combine(configs) {
+    return (0, import_state4.combineConfig)(configs, {
+      minDepth: 100,
+      newGroupDelay: 500,
+      joinToEvent: (_t, isAdjacent2) => isAdjacent2
+    }, {
+      minDepth: Math.max,
+      newGroupDelay: Math.min,
+      joinToEvent: (a2, b) => (tr, adj) => a2(tr, adj) || b(tr, adj)
+    });
+  }
+});
+var historyField_ = /* @__PURE__ */ import_state4.StateField.define({
+  create() {
+    return HistoryState.empty;
+  },
+  update(state, tr) {
+    let config = tr.state.facet(historyConfig);
+    let fromHist = tr.annotation(fromHistory);
+    if (fromHist) {
+      let item = HistEvent.fromTransaction(tr, fromHist.selection), from = fromHist.side;
+      let other = from == 0 ? state.undone : state.done;
+      if (item)
+        other = updateBranch(other, other.length, config.minDepth, item);
+      else
+        other = addSelection(other, tr.startState.selection);
+      return new HistoryState(from == 0 ? fromHist.rest : other, from == 0 ? other : fromHist.rest);
+    }
+    let isolate = tr.annotation(isolateHistory);
+    if (isolate == "full" || isolate == "before")
+      state = state.isolate();
+    if (tr.annotation(import_state4.Transaction.addToHistory) === false)
+      return !tr.changes.empty ? state.addMapping(tr.changes.desc) : state;
+    let event = HistEvent.fromTransaction(tr);
+    let time = tr.annotation(import_state4.Transaction.time), userEvent = tr.annotation(import_state4.Transaction.userEvent);
+    if (event)
+      state = state.addChanges(event, time, userEvent, config, tr);
+    else if (tr.selection)
+      state = state.addSelection(tr.startState.selection, time, userEvent, config.newGroupDelay);
+    if (isolate == "full" || isolate == "after")
+      state = state.isolate();
+    return state;
+  },
+  toJSON(value) {
+    return { done: value.done.map((e) => e.toJSON()), undone: value.undone.map((e) => e.toJSON()) };
+  },
+  fromJSON(json) {
+    return new HistoryState(json.done.map(HistEvent.fromJSON), json.undone.map(HistEvent.fromJSON));
+  }
+});
+function history(config = {}) {
+  return [
+    historyField_,
+    historyConfig.of(config),
+    import_view4.EditorView.domEventHandlers({
+      beforeinput(e, view) {
+        let command2 = e.inputType == "historyUndo" ? undo : e.inputType == "historyRedo" ? redo : null;
+        if (!command2)
+          return false;
+        e.preventDefault();
+        return command2(view);
+      }
+    })
+  ];
+}
+function cmd(side, selection) {
+  return function({ state, dispatch }) {
+    if (!selection && state.readOnly)
+      return false;
+    let historyState = state.field(historyField_, false);
+    if (!historyState)
+      return false;
+    let tr = historyState.pop(side, state, selection);
+    if (!tr)
+      return false;
+    dispatch(tr);
+    return true;
+  };
+}
+var undo = /* @__PURE__ */ cmd(0, false);
+var redo = /* @__PURE__ */ cmd(1, false);
+var undoSelection = /* @__PURE__ */ cmd(0, true);
+var redoSelection = /* @__PURE__ */ cmd(1, true);
+var HistEvent = class _HistEvent {
+  constructor(changes, effects, mapped, startSelection, selectionsAfter) {
+    this.changes = changes;
+    this.effects = effects;
+    this.mapped = mapped;
+    this.startSelection = startSelection;
+    this.selectionsAfter = selectionsAfter;
+  }
+  setSelAfter(after) {
+    return new _HistEvent(this.changes, this.effects, this.mapped, this.startSelection, after);
+  }
+  toJSON() {
+    var _a, _b, _c;
+    return {
+      changes: (_a = this.changes) === null || _a === void 0 ? void 0 : _a.toJSON(),
+      mapped: (_b = this.mapped) === null || _b === void 0 ? void 0 : _b.toJSON(),
+      startSelection: (_c = this.startSelection) === null || _c === void 0 ? void 0 : _c.toJSON(),
+      selectionsAfter: this.selectionsAfter.map((s) => s.toJSON())
+    };
+  }
+  static fromJSON(json) {
+    return new _HistEvent(json.changes && import_state4.ChangeSet.fromJSON(json.changes), [], json.mapped && import_state4.ChangeDesc.fromJSON(json.mapped), json.startSelection && import_state4.EditorSelection.fromJSON(json.startSelection), json.selectionsAfter.map(import_state4.EditorSelection.fromJSON));
+  }
+  // This does not check `addToHistory` and such, it assumes the
+  // transaction needs to be converted to an item. Returns null when
+  // there are no changes or effects in the transaction.
+  static fromTransaction(tr, selection) {
+    let effects = none;
+    for (let invert of tr.startState.facet(invertedEffects)) {
+      let result = invert(tr);
+      if (result.length)
+        effects = effects.concat(result);
+    }
+    if (!effects.length && tr.changes.empty)
+      return null;
+    return new _HistEvent(tr.changes.invert(tr.startState.doc), effects, void 0, selection || tr.startState.selection, none);
+  }
+  static selection(selections) {
+    return new _HistEvent(void 0, none, void 0, void 0, selections);
+  }
+};
+function updateBranch(branch, to, maxLen, newEvent) {
+  let start = to + 1 > maxLen + 20 ? to - maxLen - 1 : 0;
+  let newBranch = branch.slice(start, to);
+  newBranch.push(newEvent);
+  return newBranch;
+}
+function isAdjacent(a2, b) {
+  let ranges = [], isAdjacent2 = false;
+  a2.iterChangedRanges((f, t) => ranges.push(f, t));
+  b.iterChangedRanges((_f, _t, f, t) => {
+    for (let i = 0; i < ranges.length; ) {
+      let from = ranges[i++], to = ranges[i++];
+      if (t >= from && f <= to)
+        isAdjacent2 = true;
+    }
+  });
+  return isAdjacent2;
+}
+function eqSelectionShape(a2, b) {
+  return a2.ranges.length == b.ranges.length && a2.ranges.filter((r, i) => r.empty != b.ranges[i].empty).length === 0;
+}
+function conc(a2, b) {
+  return !a2.length ? b : !b.length ? a2 : a2.concat(b);
+}
+var none = [];
+var MaxSelectionsPerEvent = 200;
+function addSelection(branch, selection) {
+  if (!branch.length) {
+    return [HistEvent.selection([selection])];
+  } else {
+    let lastEvent = branch[branch.length - 1];
+    let sels = lastEvent.selectionsAfter.slice(Math.max(0, lastEvent.selectionsAfter.length - MaxSelectionsPerEvent));
+    if (sels.length && sels[sels.length - 1].eq(selection))
+      return branch;
+    sels.push(selection);
+    return updateBranch(branch, branch.length - 1, 1e9, lastEvent.setSelAfter(sels));
+  }
+}
+function popSelection(branch) {
+  let last = branch[branch.length - 1];
+  let newBranch = branch.slice();
+  newBranch[branch.length - 1] = last.setSelAfter(last.selectionsAfter.slice(0, last.selectionsAfter.length - 1));
+  return newBranch;
+}
+function addMappingToBranch(branch, mapping) {
+  if (!branch.length)
+    return branch;
+  let length = branch.length, selections = none;
+  while (length) {
+    let event = mapEvent(branch[length - 1], mapping, selections);
+    if (event.changes && !event.changes.empty || event.effects.length) {
+      let result = branch.slice(0, length);
+      result[length - 1] = event;
+      return result;
+    } else {
+      mapping = event.mapped;
+      length--;
+      selections = event.selectionsAfter;
+    }
+  }
+  return selections.length ? [HistEvent.selection(selections)] : none;
+}
+function mapEvent(event, mapping, extraSelections) {
+  let selections = conc(event.selectionsAfter.length ? event.selectionsAfter.map((s) => s.map(mapping)) : none, extraSelections);
+  if (!event.changes)
+    return HistEvent.selection(selections);
+  let mappedChanges = event.changes.map(mapping), before = mapping.mapDesc(event.changes, true);
+  let fullMapping = event.mapped ? event.mapped.composeDesc(before) : before;
+  return new HistEvent(mappedChanges, import_state4.StateEffect.mapEffects(event.effects, mapping), fullMapping, event.startSelection.map(before), selections);
+}
+var joinableUserEvent = /^(input\.type|delete)($|\.)/;
+var HistoryState = class _HistoryState {
+  constructor(done, undone, prevTime = 0, prevUserEvent = void 0) {
+    this.done = done;
+    this.undone = undone;
+    this.prevTime = prevTime;
+    this.prevUserEvent = prevUserEvent;
+  }
+  isolate() {
+    return this.prevTime ? new _HistoryState(this.done, this.undone) : this;
+  }
+  addChanges(event, time, userEvent, config, tr) {
+    let done = this.done, lastEvent = done[done.length - 1];
+    if (lastEvent && lastEvent.changes && !lastEvent.changes.empty && event.changes && (!userEvent || joinableUserEvent.test(userEvent)) && (!lastEvent.selectionsAfter.length && time - this.prevTime < config.newGroupDelay && config.joinToEvent(tr, isAdjacent(lastEvent.changes, event.changes)) || // For compose (but not compose.start) events, always join with previous event
+    userEvent == "input.type.compose")) {
+      done = updateBranch(done, done.length - 1, config.minDepth, new HistEvent(event.changes.compose(lastEvent.changes), conc(import_state4.StateEffect.mapEffects(event.effects, lastEvent.changes), lastEvent.effects), lastEvent.mapped, lastEvent.startSelection, none));
+    } else {
+      done = updateBranch(done, done.length, config.minDepth, event);
+    }
+    return new _HistoryState(done, none, time, userEvent);
+  }
+  addSelection(selection, time, userEvent, newGroupDelay) {
+    let last = this.done.length ? this.done[this.done.length - 1].selectionsAfter : none;
+    if (last.length > 0 && time - this.prevTime < newGroupDelay && userEvent == this.prevUserEvent && userEvent && /^select($|\.)/.test(userEvent) && eqSelectionShape(last[last.length - 1], selection))
+      return this;
+    return new _HistoryState(addSelection(this.done, selection), this.undone, time, userEvent);
+  }
+  addMapping(mapping) {
+    return new _HistoryState(addMappingToBranch(this.done, mapping), addMappingToBranch(this.undone, mapping), this.prevTime, this.prevUserEvent);
+  }
+  pop(side, state, onlySelection) {
+    let branch = side == 0 ? this.done : this.undone;
+    if (branch.length == 0)
+      return null;
+    let event = branch[branch.length - 1], selection = event.selectionsAfter[0] || state.selection;
+    if (onlySelection && event.selectionsAfter.length) {
+      return state.update({
+        selection: event.selectionsAfter[event.selectionsAfter.length - 1],
+        annotations: fromHistory.of({ side, rest: popSelection(branch), selection }),
+        userEvent: side == 0 ? "select.undo" : "select.redo",
+        scrollIntoView: true
+      });
+    } else if (!event.changes) {
+      return null;
+    } else {
+      let rest = branch.length == 1 ? none : branch.slice(0, branch.length - 1);
+      if (event.mapped)
+        rest = addMappingToBranch(rest, event.mapped);
+      return state.update({
+        changes: event.changes,
+        selection: event.startSelection,
+        effects: event.effects,
+        annotations: fromHistory.of({ side, rest, selection }),
+        filter: false,
+        userEvent: side == 0 ? "undo" : "redo",
+        scrollIntoView: true
+      });
+    }
+  }
+};
+HistoryState.empty = /* @__PURE__ */ new HistoryState(none, none);
+var historyKeymap = [
+  { key: "Mod-z", run: undo, preventDefault: true },
+  { key: "Mod-y", mac: "Mod-Shift-z", run: redo, preventDefault: true },
+  { linux: "Ctrl-Shift-z", run: redo, preventDefault: true },
+  { key: "Mod-u", run: undoSelection, preventDefault: true },
+  { key: "Alt-u", mac: "Mod-Shift-u", run: redoSelection, preventDefault: true }
+];
+function updateSel(sel, by) {
+  return import_state4.EditorSelection.create(sel.ranges.map(by), sel.mainIndex);
+}
+function setSel(state, selection) {
+  return state.update({ selection, scrollIntoView: true, userEvent: "select" });
+}
+function moveSel({ state, dispatch }, how) {
+  let selection = updateSel(state.selection, how);
+  if (selection.eq(state.selection, true))
+    return false;
+  dispatch(setSel(state, selection));
+  return true;
+}
+function rangeEnd(range, forward) {
+  return import_state4.EditorSelection.cursor(forward ? range.to : range.from);
+}
+function cursorByChar(view, forward) {
+  return moveSel(view, (range) => range.empty ? view.moveByChar(range, forward) : rangeEnd(range, forward));
+}
+function ltrAtCursor(view) {
+  return view.textDirectionAt(view.state.selection.main.head) == import_view4.Direction.LTR;
+}
+var cursorCharLeft = (view) => cursorByChar(view, !ltrAtCursor(view));
+var cursorCharRight = (view) => cursorByChar(view, ltrAtCursor(view));
+function cursorByGroup(view, forward) {
+  return moveSel(view, (range) => range.empty ? view.moveByGroup(range, forward) : rangeEnd(range, forward));
+}
+var cursorGroupLeft = (view) => cursorByGroup(view, !ltrAtCursor(view));
+var cursorGroupRight = (view) => cursorByGroup(view, ltrAtCursor(view));
+var segmenter = typeof Intl != "undefined" && Intl.Segmenter ? /* @__PURE__ */ new Intl.Segmenter(void 0, { granularity: "word" }) : null;
+function interestingNode(state, node, bracketProp) {
+  if (node.type.prop(bracketProp))
+    return true;
+  let len = node.to - node.from;
+  return len && (len > 2 || /[^\s,.;:]/.test(state.sliceDoc(node.from, node.to))) || node.firstChild;
+}
+function moveBySyntax(state, start, forward) {
+  let pos = (0, import_language5.syntaxTree)(state).resolveInner(start.head);
+  let bracketProp = forward ? import_common4.NodeProp.closedBy : import_common4.NodeProp.openedBy;
+  for (let at = start.head; ; ) {
+    let next = forward ? pos.childAfter(at) : pos.childBefore(at);
+    if (!next)
+      break;
+    if (interestingNode(state, next, bracketProp))
+      pos = next;
+    else
+      at = forward ? next.to : next.from;
+  }
+  let bracket = pos.type.prop(bracketProp), match, newPos;
+  if (bracket && (match = forward ? (0, import_language5.matchBrackets)(state, pos.from, 1) : (0, import_language5.matchBrackets)(state, pos.to, -1)) && match.matched)
+    newPos = forward ? match.end.to : match.end.from;
+  else
+    newPos = forward ? pos.to : pos.from;
+  return import_state4.EditorSelection.cursor(newPos, forward ? -1 : 1);
+}
+var cursorSyntaxLeft = (view) => moveSel(view, (range) => moveBySyntax(view.state, range, !ltrAtCursor(view)));
+var cursorSyntaxRight = (view) => moveSel(view, (range) => moveBySyntax(view.state, range, ltrAtCursor(view)));
+function cursorByLine(view, forward) {
+  return moveSel(view, (range) => {
+    if (!range.empty)
+      return rangeEnd(range, forward);
+    let moved = view.moveVertically(range, forward);
+    return moved.head != range.head ? moved : view.moveToLineBoundary(range, forward);
+  });
+}
+var cursorLineUp = (view) => cursorByLine(view, false);
+var cursorLineDown = (view) => cursorByLine(view, true);
+function pageInfo(view) {
+  let selfScroll = view.scrollDOM.clientHeight < view.scrollDOM.scrollHeight - 2;
+  let marginTop = 0, marginBottom = 0, height;
+  if (selfScroll) {
+    for (let source of view.state.facet(import_view4.EditorView.scrollMargins)) {
+      let margins = source(view);
+      if (margins === null || margins === void 0 ? void 0 : margins.top)
+        marginTop = Math.max(margins === null || margins === void 0 ? void 0 : margins.top, marginTop);
+      if (margins === null || margins === void 0 ? void 0 : margins.bottom)
+        marginBottom = Math.max(margins === null || margins === void 0 ? void 0 : margins.bottom, marginBottom);
+    }
+    height = view.scrollDOM.clientHeight - marginTop - marginBottom;
+  } else {
+    height = (view.dom.ownerDocument.defaultView || window).innerHeight;
+  }
+  return {
+    marginTop,
+    marginBottom,
+    selfScroll,
+    height: Math.max(view.defaultLineHeight, height - 5)
+  };
+}
+function cursorByPage(view, forward) {
+  let page = pageInfo(view);
+  let { state } = view, selection = updateSel(state.selection, (range) => {
+    return range.empty ? view.moveVertically(range, forward, page.height) : rangeEnd(range, forward);
+  });
+  if (selection.eq(state.selection))
+    return false;
+  let effect;
+  if (page.selfScroll) {
+    let startPos = view.coordsAtPos(state.selection.main.head);
+    let scrollRect = view.scrollDOM.getBoundingClientRect();
+    let scrollTop = scrollRect.top + page.marginTop, scrollBottom = scrollRect.bottom - page.marginBottom;
+    if (startPos && startPos.top > scrollTop && startPos.bottom < scrollBottom)
+      effect = import_view4.EditorView.scrollIntoView(selection.main.head, { y: "start", yMargin: startPos.top - scrollTop });
+  }
+  view.dispatch(setSel(state, selection), { effects: effect });
+  return true;
+}
+var cursorPageUp = (view) => cursorByPage(view, false);
+var cursorPageDown = (view) => cursorByPage(view, true);
+function moveByLineBoundary(view, start, forward) {
+  let line = view.lineBlockAt(start.head), moved = view.moveToLineBoundary(start, forward);
+  if (moved.head == start.head && moved.head != (forward ? line.to : line.from))
+    moved = view.moveToLineBoundary(start, forward, false);
+  if (!forward && moved.head == line.from && line.length) {
+    let space3 = /^\s*/.exec(view.state.sliceDoc(line.from, Math.min(line.from + 100, line.to)))[0].length;
+    if (space3 && start.head != line.from + space3)
+      moved = import_state4.EditorSelection.cursor(line.from + space3);
+  }
+  return moved;
+}
+var cursorLineBoundaryForward = (view) => moveSel(view, (range) => moveByLineBoundary(view, range, true));
+var cursorLineBoundaryBackward = (view) => moveSel(view, (range) => moveByLineBoundary(view, range, false));
+var cursorLineBoundaryLeft = (view) => moveSel(view, (range) => moveByLineBoundary(view, range, !ltrAtCursor(view)));
+var cursorLineBoundaryRight = (view) => moveSel(view, (range) => moveByLineBoundary(view, range, ltrAtCursor(view)));
+var cursorLineStart = (view) => moveSel(view, (range) => import_state4.EditorSelection.cursor(view.lineBlockAt(range.head).from, 1));
+var cursorLineEnd = (view) => moveSel(view, (range) => import_state4.EditorSelection.cursor(view.lineBlockAt(range.head).to, -1));
+function toMatchingBracket(state, dispatch, extend) {
+  let found = false, selection = updateSel(state.selection, (range) => {
+    let matching = (0, import_language5.matchBrackets)(state, range.head, -1) || (0, import_language5.matchBrackets)(state, range.head, 1) || range.head > 0 && (0, import_language5.matchBrackets)(state, range.head - 1, 1) || range.head < state.doc.length && (0, import_language5.matchBrackets)(state, range.head + 1, -1);
+    if (!matching || !matching.end)
+      return range;
+    found = true;
+    let head = matching.start.from == range.head ? matching.end.to : matching.end.from;
+    return extend ? import_state4.EditorSelection.range(range.anchor, head) : import_state4.EditorSelection.cursor(head);
+  });
+  if (!found)
+    return false;
+  dispatch(setSel(state, selection));
+  return true;
+}
+var cursorMatchingBracket = ({ state, dispatch }) => toMatchingBracket(state, dispatch, false);
+function extendSel(target, how) {
+  let selection = updateSel(target.state.selection, (range) => {
+    let head = how(range);
+    return import_state4.EditorSelection.range(range.anchor, head.head, head.goalColumn, head.bidiLevel || void 0);
+  });
+  if (selection.eq(target.state.selection))
+    return false;
+  target.dispatch(setSel(target.state, selection));
+  return true;
+}
+function selectByChar(view, forward) {
+  return extendSel(view, (range) => view.moveByChar(range, forward));
+}
+var selectCharLeft = (view) => selectByChar(view, !ltrAtCursor(view));
+var selectCharRight = (view) => selectByChar(view, ltrAtCursor(view));
+function selectByGroup(view, forward) {
+  return extendSel(view, (range) => view.moveByGroup(range, forward));
+}
+var selectGroupLeft = (view) => selectByGroup(view, !ltrAtCursor(view));
+var selectGroupRight = (view) => selectByGroup(view, ltrAtCursor(view));
+var selectSyntaxLeft = (view) => extendSel(view, (range) => moveBySyntax(view.state, range, !ltrAtCursor(view)));
+var selectSyntaxRight = (view) => extendSel(view, (range) => moveBySyntax(view.state, range, ltrAtCursor(view)));
+function selectByLine(view, forward) {
+  return extendSel(view, (range) => view.moveVertically(range, forward));
+}
+var selectLineUp = (view) => selectByLine(view, false);
+var selectLineDown = (view) => selectByLine(view, true);
+function selectByPage(view, forward) {
+  return extendSel(view, (range) => view.moveVertically(range, forward, pageInfo(view).height));
+}
+var selectPageUp = (view) => selectByPage(view, false);
+var selectPageDown = (view) => selectByPage(view, true);
+var selectLineBoundaryForward = (view) => extendSel(view, (range) => moveByLineBoundary(view, range, true));
+var selectLineBoundaryBackward = (view) => extendSel(view, (range) => moveByLineBoundary(view, range, false));
+var selectLineBoundaryLeft = (view) => extendSel(view, (range) => moveByLineBoundary(view, range, !ltrAtCursor(view)));
+var selectLineBoundaryRight = (view) => extendSel(view, (range) => moveByLineBoundary(view, range, ltrAtCursor(view)));
+var selectLineStart = (view) => extendSel(view, (range) => import_state4.EditorSelection.cursor(view.lineBlockAt(range.head).from));
+var selectLineEnd = (view) => extendSel(view, (range) => import_state4.EditorSelection.cursor(view.lineBlockAt(range.head).to));
+var cursorDocStart = ({ state, dispatch }) => {
+  dispatch(setSel(state, { anchor: 0 }));
+  return true;
+};
+var cursorDocEnd = ({ state, dispatch }) => {
+  dispatch(setSel(state, { anchor: state.doc.length }));
+  return true;
+};
+var selectDocStart = ({ state, dispatch }) => {
+  dispatch(setSel(state, { anchor: state.selection.main.anchor, head: 0 }));
+  return true;
+};
+var selectDocEnd = ({ state, dispatch }) => {
+  dispatch(setSel(state, { anchor: state.selection.main.anchor, head: state.doc.length }));
+  return true;
+};
+var selectAll = ({ state, dispatch }) => {
+  dispatch(state.update({ selection: { anchor: 0, head: state.doc.length }, userEvent: "select" }));
+  return true;
+};
+var selectLine = ({ state, dispatch }) => {
+  let ranges = selectedLineBlocks(state).map(({ from, to }) => import_state4.EditorSelection.range(from, Math.min(to + 1, state.doc.length)));
+  dispatch(state.update({ selection: import_state4.EditorSelection.create(ranges), userEvent: "select" }));
+  return true;
+};
+var selectParentSyntax = ({ state, dispatch }) => {
+  let selection = updateSel(state.selection, (range) => {
+    let tree = (0, import_language5.syntaxTree)(state), stack = tree.resolveStack(range.from, 1);
+    if (range.empty) {
+      let stackBefore = tree.resolveStack(range.from, -1);
+      if (stackBefore.node.from >= stack.node.from && stackBefore.node.to <= stack.node.to)
+        stack = stackBefore;
+    }
+    for (let cur = stack; cur; cur = cur.next) {
+      let { node } = cur;
+      if ((node.from < range.from && node.to >= range.to || node.to > range.to && node.from <= range.from) && cur.next)
+        return import_state4.EditorSelection.range(node.to, node.from);
+    }
+    return range;
+  });
+  if (selection.eq(state.selection))
+    return false;
+  dispatch(setSel(state, selection));
+  return true;
+};
+var simplifySelection = ({ state, dispatch }) => {
+  let cur = state.selection, selection = null;
+  if (cur.ranges.length > 1)
+    selection = import_state4.EditorSelection.create([cur.main]);
+  else if (!cur.main.empty)
+    selection = import_state4.EditorSelection.create([import_state4.EditorSelection.cursor(cur.main.head)]);
+  if (!selection)
+    return false;
+  dispatch(setSel(state, selection));
+  return true;
+};
+function deleteBy(target, by) {
+  if (target.state.readOnly)
+    return false;
+  let event = "delete.selection", { state } = target;
+  let changes = state.changeByRange((range) => {
+    let { from, to } = range;
+    if (from == to) {
+      let towards = by(range);
+      if (towards < from) {
+        event = "delete.backward";
+        towards = skipAtomic(target, towards, false);
+      } else if (towards > from) {
+        event = "delete.forward";
+        towards = skipAtomic(target, towards, true);
+      }
+      from = Math.min(from, towards);
+      to = Math.max(to, towards);
+    } else {
+      from = skipAtomic(target, from, false);
+      to = skipAtomic(target, to, true);
+    }
+    return from == to ? { range } : { changes: { from, to }, range: import_state4.EditorSelection.cursor(from, from < range.head ? -1 : 1) };
+  });
+  if (changes.changes.empty)
+    return false;
+  target.dispatch(state.update(changes, {
+    scrollIntoView: true,
+    userEvent: event,
+    effects: event == "delete.selection" ? import_view4.EditorView.announce.of(state.phrase("Selection deleted")) : void 0
+  }));
+  return true;
+}
+function skipAtomic(target, pos, forward) {
+  if (target instanceof import_view4.EditorView)
+    for (let ranges of target.state.facet(import_view4.EditorView.atomicRanges).map((f) => f(target)))
+      ranges.between(pos, pos, (from, to) => {
+        if (from < pos && to > pos)
+          pos = forward ? to : from;
+      });
+  return pos;
+}
+var deleteByChar = (target, forward, byIndentUnit) => deleteBy(target, (range) => {
+  let pos = range.from, { state } = target, line = state.doc.lineAt(pos), before, targetPos;
+  if (byIndentUnit && !forward && pos > line.from && pos < line.from + 200 && !/[^ \t]/.test(before = line.text.slice(0, pos - line.from))) {
+    if (before[before.length - 1] == "	")
+      return pos - 1;
+    let col = (0, import_state4.countColumn)(before, state.tabSize), drop = col % (0, import_language5.getIndentUnit)(state) || (0, import_language5.getIndentUnit)(state);
+    for (let i = 0; i < drop && before[before.length - 1 - i] == " "; i++)
+      pos--;
+    targetPos = pos;
+  } else {
+    targetPos = (0, import_state4.findClusterBreak)(line.text, pos - line.from, forward, forward) + line.from;
+    if (targetPos == pos && line.number != (forward ? state.doc.lines : 1))
+      targetPos += forward ? 1 : -1;
+    else if (!forward && /[\ufe00-\ufe0f]/.test(line.text.slice(targetPos - line.from, pos - line.from)))
+      targetPos = (0, import_state4.findClusterBreak)(line.text, targetPos - line.from, false, false) + line.from;
+  }
+  return targetPos;
+});
+var deleteCharBackward = (view) => deleteByChar(view, false, true);
+var deleteCharForward = (view) => deleteByChar(view, true, false);
+var deleteByGroup = (target, forward) => deleteBy(target, (range) => {
+  let pos = range.head, { state } = target, line = state.doc.lineAt(pos);
+  let categorize = state.charCategorizer(pos);
+  for (let cat = null; ; ) {
+    if (pos == (forward ? line.to : line.from)) {
+      if (pos == range.head && line.number != (forward ? state.doc.lines : 1))
+        pos += forward ? 1 : -1;
+      break;
+    }
+    let next = (0, import_state4.findClusterBreak)(line.text, pos - line.from, forward) + line.from;
+    let nextChar = line.text.slice(Math.min(pos, next) - line.from, Math.max(pos, next) - line.from);
+    let nextCat = categorize(nextChar);
+    if (cat != null && nextCat != cat)
+      break;
+    if (nextChar != " " || pos != range.head)
+      cat = nextCat;
+    pos = next;
+  }
+  return pos;
+});
+var deleteGroupBackward = (target) => deleteByGroup(target, false);
+var deleteGroupForward = (target) => deleteByGroup(target, true);
+var deleteToLineEnd = (view) => deleteBy(view, (range) => {
+  let lineEnd = view.lineBlockAt(range.head).to;
+  return range.head < lineEnd ? lineEnd : Math.min(view.state.doc.length, range.head + 1);
+});
+var deleteLineBoundaryBackward = (view) => deleteBy(view, (range) => {
+  let lineStart = view.moveToLineBoundary(range, false).head;
+  return range.head > lineStart ? lineStart : Math.max(0, range.head - 1);
+});
+var deleteLineBoundaryForward = (view) => deleteBy(view, (range) => {
+  let lineStart = view.moveToLineBoundary(range, true).head;
+  return range.head < lineStart ? lineStart : Math.min(view.state.doc.length, range.head + 1);
+});
+var splitLine = ({ state, dispatch }) => {
+  if (state.readOnly)
+    return false;
+  let changes = state.changeByRange((range) => {
+    return {
+      changes: { from: range.from, to: range.to, insert: import_state4.Text.of(["", ""]) },
+      range: import_state4.EditorSelection.cursor(range.from)
+    };
+  });
+  dispatch(state.update(changes, { scrollIntoView: true, userEvent: "input" }));
+  return true;
+};
+var transposeChars = ({ state, dispatch }) => {
+  if (state.readOnly)
+    return false;
+  let changes = state.changeByRange((range) => {
+    if (!range.empty || range.from == 0 || range.from == state.doc.length)
+      return { range };
+    let pos = range.from, line = state.doc.lineAt(pos);
+    let from = pos == line.from ? pos - 1 : (0, import_state4.findClusterBreak)(line.text, pos - line.from, false) + line.from;
+    let to = pos == line.to ? pos + 1 : (0, import_state4.findClusterBreak)(line.text, pos - line.from, true) + line.from;
+    return {
+      changes: { from, to, insert: state.doc.slice(pos, to).append(state.doc.slice(from, pos)) },
+      range: import_state4.EditorSelection.cursor(to)
+    };
+  });
+  if (changes.changes.empty)
+    return false;
+  dispatch(state.update(changes, { scrollIntoView: true, userEvent: "move.character" }));
+  return true;
+};
+function selectedLineBlocks(state) {
+  let blocks = [], upto = -1;
+  for (let range of state.selection.ranges) {
+    let startLine = state.doc.lineAt(range.from), endLine = state.doc.lineAt(range.to);
+    if (!range.empty && range.to == endLine.from)
+      endLine = state.doc.lineAt(range.to - 1);
+    if (upto >= startLine.number) {
+      let prev = blocks[blocks.length - 1];
+      prev.to = endLine.to;
+      prev.ranges.push(range);
+    } else {
+      blocks.push({ from: startLine.from, to: endLine.to, ranges: [range] });
+    }
+    upto = endLine.number + 1;
+  }
+  return blocks;
+}
+function moveLine(state, dispatch, forward) {
+  if (state.readOnly)
+    return false;
+  let changes = [], ranges = [];
+  for (let block of selectedLineBlocks(state)) {
+    if (forward ? block.to == state.doc.length : block.from == 0)
+      continue;
+    let nextLine = state.doc.lineAt(forward ? block.to + 1 : block.from - 1);
+    let size = nextLine.length + 1;
+    if (forward) {
+      changes.push({ from: block.to, to: nextLine.to }, { from: block.from, insert: nextLine.text + state.lineBreak });
+      for (let r of block.ranges)
+        ranges.push(import_state4.EditorSelection.range(Math.min(state.doc.length, r.anchor + size), Math.min(state.doc.length, r.head + size)));
+    } else {
+      changes.push({ from: nextLine.from, to: block.from }, { from: block.to, insert: state.lineBreak + nextLine.text });
+      for (let r of block.ranges)
+        ranges.push(import_state4.EditorSelection.range(r.anchor - size, r.head - size));
+    }
+  }
+  if (!changes.length)
+    return false;
+  dispatch(state.update({
+    changes,
+    scrollIntoView: true,
+    selection: import_state4.EditorSelection.create(ranges, state.selection.mainIndex),
+    userEvent: "move.line"
+  }));
+  return true;
+}
+var moveLineUp = ({ state, dispatch }) => moveLine(state, dispatch, false);
+var moveLineDown = ({ state, dispatch }) => moveLine(state, dispatch, true);
+function copyLine(state, dispatch, forward) {
+  if (state.readOnly)
+    return false;
+  let changes = [];
+  for (let block of selectedLineBlocks(state)) {
+    if (forward)
+      changes.push({ from: block.from, insert: state.doc.slice(block.from, block.to) + state.lineBreak });
+    else
+      changes.push({ from: block.to, insert: state.lineBreak + state.doc.slice(block.from, block.to) });
+  }
+  dispatch(state.update({ changes, scrollIntoView: true, userEvent: "input.copyline" }));
+  return true;
+}
+var copyLineUp = ({ state, dispatch }) => copyLine(state, dispatch, false);
+var copyLineDown = ({ state, dispatch }) => copyLine(state, dispatch, true);
+var deleteLine = (view) => {
+  if (view.state.readOnly)
+    return false;
+  let { state } = view, changes = state.changes(selectedLineBlocks(state).map(({ from, to }) => {
+    if (from > 0)
+      from--;
+    else if (to < state.doc.length)
+      to++;
+    return { from, to };
+  }));
+  let selection = updateSel(state.selection, (range) => {
+    let dist = void 0;
+    if (view.lineWrapping) {
+      let block = view.lineBlockAt(range.head), pos = view.coordsAtPos(range.head, range.assoc || 1);
+      if (pos)
+        dist = block.bottom + view.documentTop - pos.bottom + view.defaultLineHeight / 2;
+    }
+    return view.moveVertically(range, true, dist);
+  }).map(changes);
+  view.dispatch({ changes, selection, scrollIntoView: true, userEvent: "delete.line" });
+  return true;
+};
+function isBetweenBrackets(state, pos) {
+  if (/\(\)|\[\]|\{\}/.test(state.sliceDoc(pos - 1, pos + 1)))
+    return { from: pos, to: pos };
+  let context = (0, import_language5.syntaxTree)(state).resolveInner(pos);
+  let before = context.childBefore(pos), after = context.childAfter(pos), closedBy;
+  if (before && after && before.to <= pos && after.from >= pos && (closedBy = before.type.prop(import_common4.NodeProp.closedBy)) && closedBy.indexOf(after.name) > -1 && state.doc.lineAt(before.to).from == state.doc.lineAt(after.from).from && !/\S/.test(state.sliceDoc(before.to, after.from)))
+    return { from: before.to, to: after.from };
+  return null;
+}
+var insertNewlineAndIndent = /* @__PURE__ */ newlineAndIndent(false);
+var insertBlankLine = /* @__PURE__ */ newlineAndIndent(true);
+function newlineAndIndent(atEof) {
+  return ({ state, dispatch }) => {
+    if (state.readOnly)
+      return false;
+    let changes = state.changeByRange((range) => {
+      let { from, to } = range, line = state.doc.lineAt(from);
+      let explode = !atEof && from == to && isBetweenBrackets(state, from);
+      if (atEof)
+        from = to = (to <= line.to ? line : state.doc.lineAt(to)).to;
+      let cx = new import_language5.IndentContext(state, { simulateBreak: from, simulateDoubleBreak: !!explode });
+      let indent2 = (0, import_language5.getIndentation)(cx, from);
+      if (indent2 == null)
+        indent2 = (0, import_state4.countColumn)(/^\s*/.exec(state.doc.lineAt(from).text)[0], state.tabSize);
+      while (to < line.to && /\s/.test(line.text[to - line.from]))
+        to++;
+      if (explode)
+        ({ from, to } = explode);
+      else if (from > line.from && from < line.from + 100 && !/\S/.test(line.text.slice(0, from)))
+        from = line.from;
+      let insert = ["", (0, import_language5.indentString)(state, indent2)];
+      if (explode)
+        insert.push((0, import_language5.indentString)(state, cx.lineIndent(line.from, -1)));
+      return {
+        changes: { from, to, insert: import_state4.Text.of(insert) },
+        range: import_state4.EditorSelection.cursor(from + 1 + insert[1].length)
+      };
+    });
+    dispatch(state.update(changes, { scrollIntoView: true, userEvent: "input" }));
+    return true;
+  };
+}
+function changeBySelectedLine(state, f) {
+  let atLine = -1;
+  return state.changeByRange((range) => {
+    let changes = [];
+    for (let pos = range.from; pos <= range.to; ) {
+      let line = state.doc.lineAt(pos);
+      if (line.number > atLine && (range.empty || range.to > line.from)) {
+        f(line, changes, range);
+        atLine = line.number;
+      }
+      pos = line.to + 1;
+    }
+    let changeSet = state.changes(changes);
+    return {
+      changes,
+      range: import_state4.EditorSelection.range(changeSet.mapPos(range.anchor, 1), changeSet.mapPos(range.head, 1))
+    };
+  });
+}
+var indentSelection = ({ state, dispatch }) => {
+  if (state.readOnly)
+    return false;
+  let updated = /* @__PURE__ */ Object.create(null);
+  let context = new import_language5.IndentContext(state, { overrideIndentation: (start) => {
+    let found = updated[start];
+    return found == null ? -1 : found;
+  } });
+  let changes = changeBySelectedLine(state, (line, changes2, range) => {
+    let indent2 = (0, import_language5.getIndentation)(context, line.from);
+    if (indent2 == null)
+      return;
+    if (!/\S/.test(line.text))
+      indent2 = 0;
+    let cur = /^\s*/.exec(line.text)[0];
+    let norm = (0, import_language5.indentString)(state, indent2);
+    if (cur != norm || range.from < line.from + cur.length) {
+      updated[line.from] = indent2;
+      changes2.push({ from: line.from, to: line.from + cur.length, insert: norm });
+    }
+  });
+  if (!changes.changes.empty)
+    dispatch(state.update(changes, { userEvent: "indent" }));
+  return true;
+};
+var indentMore = ({ state, dispatch }) => {
+  if (state.readOnly)
+    return false;
+  dispatch(state.update(changeBySelectedLine(state, (line, changes) => {
+    changes.push({ from: line.from, insert: state.facet(import_language5.indentUnit) });
+  }), { userEvent: "input.indent" }));
+  return true;
+};
+var indentLess = ({ state, dispatch }) => {
+  if (state.readOnly)
+    return false;
+  dispatch(state.update(changeBySelectedLine(state, (line, changes) => {
+    let space3 = /^\s*/.exec(line.text)[0];
+    if (!space3)
+      return;
+    let col = (0, import_state4.countColumn)(space3, state.tabSize), keep = 0;
+    let insert = (0, import_language5.indentString)(state, Math.max(0, col - (0, import_language5.getIndentUnit)(state)));
+    while (keep < space3.length && keep < insert.length && space3.charCodeAt(keep) == insert.charCodeAt(keep))
+      keep++;
+    changes.push({ from: line.from + keep, to: line.from + space3.length, insert: insert.slice(keep) });
+  }), { userEvent: "delete.dedent" }));
+  return true;
+};
+var toggleTabFocusMode = (view) => {
+  view.setTabFocusMode();
+  return true;
+};
+var emacsStyleKeymap = [
+  { key: "Ctrl-b", run: cursorCharLeft, shift: selectCharLeft, preventDefault: true },
+  { key: "Ctrl-f", run: cursorCharRight, shift: selectCharRight },
+  { key: "Ctrl-p", run: cursorLineUp, shift: selectLineUp },
+  { key: "Ctrl-n", run: cursorLineDown, shift: selectLineDown },
+  { key: "Ctrl-a", run: cursorLineStart, shift: selectLineStart },
+  { key: "Ctrl-e", run: cursorLineEnd, shift: selectLineEnd },
+  { key: "Ctrl-d", run: deleteCharForward },
+  { key: "Ctrl-h", run: deleteCharBackward },
+  { key: "Ctrl-k", run: deleteToLineEnd },
+  { key: "Ctrl-Alt-h", run: deleteGroupBackward },
+  { key: "Ctrl-o", run: splitLine },
+  { key: "Ctrl-t", run: transposeChars },
+  { key: "Ctrl-v", run: cursorPageDown }
+];
+var standardKeymap = /* @__PURE__ */ [
+  { key: "ArrowLeft", run: cursorCharLeft, shift: selectCharLeft, preventDefault: true },
+  { key: "Mod-ArrowLeft", mac: "Alt-ArrowLeft", run: cursorGroupLeft, shift: selectGroupLeft, preventDefault: true },
+  { mac: "Cmd-ArrowLeft", run: cursorLineBoundaryLeft, shift: selectLineBoundaryLeft, preventDefault: true },
+  { key: "ArrowRight", run: cursorCharRight, shift: selectCharRight, preventDefault: true },
+  { key: "Mod-ArrowRight", mac: "Alt-ArrowRight", run: cursorGroupRight, shift: selectGroupRight, preventDefault: true },
+  { mac: "Cmd-ArrowRight", run: cursorLineBoundaryRight, shift: selectLineBoundaryRight, preventDefault: true },
+  { key: "ArrowUp", run: cursorLineUp, shift: selectLineUp, preventDefault: true },
+  { mac: "Cmd-ArrowUp", run: cursorDocStart, shift: selectDocStart },
+  { mac: "Ctrl-ArrowUp", run: cursorPageUp, shift: selectPageUp },
+  { key: "ArrowDown", run: cursorLineDown, shift: selectLineDown, preventDefault: true },
+  { mac: "Cmd-ArrowDown", run: cursorDocEnd, shift: selectDocEnd },
+  { mac: "Ctrl-ArrowDown", run: cursorPageDown, shift: selectPageDown },
+  { key: "PageUp", run: cursorPageUp, shift: selectPageUp },
+  { key: "PageDown", run: cursorPageDown, shift: selectPageDown },
+  { key: "Home", run: cursorLineBoundaryBackward, shift: selectLineBoundaryBackward, preventDefault: true },
+  { key: "Mod-Home", run: cursorDocStart, shift: selectDocStart },
+  { key: "End", run: cursorLineBoundaryForward, shift: selectLineBoundaryForward, preventDefault: true },
+  { key: "Mod-End", run: cursorDocEnd, shift: selectDocEnd },
+  { key: "Enter", run: insertNewlineAndIndent, shift: insertNewlineAndIndent },
+  { key: "Mod-a", run: selectAll },
+  { key: "Backspace", run: deleteCharBackward, shift: deleteCharBackward },
+  { key: "Delete", run: deleteCharForward },
+  { key: "Mod-Backspace", mac: "Alt-Backspace", run: deleteGroupBackward },
+  { key: "Mod-Delete", mac: "Alt-Delete", run: deleteGroupForward },
+  { mac: "Mod-Backspace", run: deleteLineBoundaryBackward },
+  { mac: "Mod-Delete", run: deleteLineBoundaryForward }
+].concat(/* @__PURE__ */ emacsStyleKeymap.map((b) => ({ mac: b.key, run: b.run, shift: b.shift })));
+var defaultKeymap = /* @__PURE__ */ [
+  { key: "Alt-ArrowLeft", mac: "Ctrl-ArrowLeft", run: cursorSyntaxLeft, shift: selectSyntaxLeft },
+  { key: "Alt-ArrowRight", mac: "Ctrl-ArrowRight", run: cursorSyntaxRight, shift: selectSyntaxRight },
+  { key: "Alt-ArrowUp", run: moveLineUp },
+  { key: "Shift-Alt-ArrowUp", run: copyLineUp },
+  { key: "Alt-ArrowDown", run: moveLineDown },
+  { key: "Shift-Alt-ArrowDown", run: copyLineDown },
+  { key: "Escape", run: simplifySelection },
+  { key: "Mod-Enter", run: insertBlankLine },
+  { key: "Alt-l", mac: "Ctrl-l", run: selectLine },
+  { key: "Mod-i", run: selectParentSyntax, preventDefault: true },
+  { key: "Mod-[", run: indentLess },
+  { key: "Mod-]", run: indentMore },
+  { key: "Mod-Alt-\\", run: indentSelection },
+  { key: "Shift-Mod-k", run: deleteLine },
+  { key: "Shift-Mod-\\", run: cursorMatchingBracket },
+  { key: "Mod-/", run: toggleComment },
+  { key: "Alt-A", run: toggleBlockComment },
+  { key: "Ctrl-m", mac: "Shift-Alt-m", run: toggleTabFocusMode }
+].concat(standardKeymap);
+var indentWithTab = { key: "Tab", run: indentMore, shift: indentLess };
+
+// new-script.ts
+var import_obsidian5 = require("obsidian");
+function insertion(text, line) {
+  const lines = text.split("\n");
+  let end = Math.min(line, lines.length - 1), fence = "", start = -1;
+  for (let n = 0; n <= end; n++) {
+    const value = lines[n].replace(/^\s*(?:>\s*)+/, "").trim();
+    if (n === 0 && value === "---") {
+      fence = "---";
+      start = n;
+      continue;
+    }
+    const marker = value.match(/^(`{3,}|~{3,}|\$\$)/)?.[1];
+    if (fence) {
+      if (n > start && (fence === "---" ? value === "---" : value.startsWith(fence))) {
+        fence = "";
+        start = -1;
+      }
+    } else if (marker && !(value.length > marker.length && value.endsWith(marker))) {
+      fence = marker;
+      start = n;
+    }
+  }
+  if (fence) {
+    let closed = false;
+    for (let n = end + 1; n < lines.length; n++) if (lines[n].replace(/^\s*(?:>\s*)+/, "").trim().startsWith(fence)) {
+      end = n;
+      closed = true;
+      break;
+    }
+    if (!closed) throw Error("Close the current code, math, or frontmatter block before inserting.");
+  }
+  if (lines[end].trim()) while (end + 1 < lines.length && lines[end + 1].trim()) end++;
+  const quote = lines[end].match(/^(\s*(?:>\s*)+)/)?.[1] || "";
+  const offset = lines.slice(0, end + 1).join("\n").length;
+  return { offset, prefix: quote };
+}
+function insertionText(text, at, raw) {
+  const tail = text.slice(at.offset), prefix = at.prefix;
+  const after = prefix ? "\n" + prefix + "\n" : tail.startsWith("\n\n") ? "" : tail.startsWith("\n") ? "\n" : "\n\n";
+  return "\n" + prefix + "\n" + prefix + raw + after;
+}
+var NewScriptModal = class extends import_obsidian5.Modal {
+  constructor(plugin, note, editor, after, line) {
+    super(plugin.app);
+    this.plugin = plugin;
+    this.note = note;
+    this.editor = editor;
+    this.after = after;
+    this.line = line;
+    this.identifier = crypto.randomUUID().replace(/-/g, "");
+  }
+  async onOpen() {
+    this.modalEl.addClass("code-links-dialog", "code-links-new-script");
+    this.titleEl.setText("New code block");
+    const file = this.plugin.app.vault.getAbstractFileByPath(this.note);
+    if (!(file instanceof import_obsidian5.TFile)) {
+      new import_obsidian5.Notice("Open a note first");
+      this.close();
+      return;
+    }
+    const expected = this.editor?.getValue() ?? await this.plugin.app.vault.read(file);
+    const selectedLine = this.line ?? this.editor?.getCursor("to").line;
+    const grid = this.contentEl.createDiv("code-links-create-fields");
+    const field = (title, parent = grid) => {
+      const row = parent.createEl("label", { cls: "code-links-create-field" });
+      row.createSpan({ text: title });
+      return row;
+    };
+    const languageRow = field("Language");
+    const lang = languageRow.createEl("select");
+    lang.hidden = true;
+    const choices = languageRow.createDiv("code-links-language-choices");
+    const languageButtons = [];
+    for (const [value, label3] of [["python", "Python"], ["wolfram", "Wolfram"], ["shell", "Shell"]]) {
+      lang.createEl("option", { value, text: label3 });
+      const button = choices.createEl("button", { text: label3, attr: { type: "button" } });
+      languageButtons.push(button);
+      button.dataset.language = value;
+      button.onclick = () => {
+        lang.value = value;
+        lang.dispatchEvent(new Event("change"));
+      };
+    }
+    lang.value = this.plugin.settings.newLanguage || "python";
+    const paintLanguage = () => {
+      for (const button of languageButtons) {
+        const selected = button.dataset.language === lang.value;
+        button.toggleClass("is-active", selected);
+        button.setAttribute("aria-pressed", String(selected));
+      }
+    };
+    paintLanguage();
+    const name = field("Name").createEl("input", { attr: { type: "text", spellcheck: "false", placeholder: "calculation.py" } });
+    const folder = field("Folder").createEl("input", { attr: { type: "text", spellcheck: "false" } });
+    const label2 = field("Label").createEl("input", { attr: { type: "text", placeholder: "Optional" } });
+    const sandboxRow = this.contentEl.createEl("label", { cls: "code-links-create-sandbox" });
+    const sandbox = sandboxRow.createEl("input", { attr: { type: "checkbox" } });
+    sandboxRow.createSpan({ text: "Sandbox only" });
+    sandboxRow.createSpan({ text: "Runs isolated \xB7 no file until saved", cls: "code-links-create-hint" });
+    sandboxRow.title = "Temporary code and output stay on this Mac until you choose Save as script.";
+    const advanced = this.contentEl.createEl("details", { cls: "code-links-create-advanced" });
+    advanced.createEl("summary", { text: "Advanced" });
+    const advancedGrid = advanced.createDiv("code-links-create-fields");
+    const height = field("Visible lines", advancedGrid).createEl("input", { attr: { placeholder: "Auto \xB7 up to 10", inputmode: "numeric" } });
+    const cwd = field("Run from", advancedGrid).createEl("input", { value: "script", attr: { placeholder: "script, root, or vault-relative folder" } });
+    const interpreter = field("Interpreter", advancedGrid).createEl("input", { attr: { placeholder: "Use language default", spellcheck: "false" } });
+    const args = field("Arguments", advancedGrid).createEl("input", { attr: { placeholder: 'JSON list, e.g. ["--steps", "10"]', spellcheck: "false" } });
+    const timeout = field("Timeout (s)", advancedGrid).createEl("input", { attr: { placeholder: "300", inputmode: "numeric" } });
+    const starter = field("Initial code", advancedGrid).createEl("select");
+    starter.createEl("option", { value: "blank", text: "Blank" });
+    starter.createEl("option", { value: "starter", text: "Small starter" });
+    const preview = folder.parentElement.createDiv("code-links-create-preview");
+    const error = this.contentEl.createDiv("code-links-dialog-error");
+    const recovery = this.contentEl.createDiv("code-links-create-recovery");
+    recovery.hidden = true;
+    const footer = this.contentEl.createDiv("code-links-dialog-footer");
+    footer.createEl("button", { text: "Cancel" }).onclick = () => this.close();
+    const create = footer.createEl("button", { text: "Create", cls: "mod-cta" });
+    let suggested = "", busy = false, inserted = false, receipt;
+    const refresh = () => {
+      preview.setText(name.value + (sandbox.checked ? " \xB7 local sandbox, no file yet" : " \xB7 new file"));
+      preview.title = (folder.value ? folder.value + "/" : "") + name.value;
+    };
+    sandbox.onchange = refresh;
+    const defaults = async () => {
+      try {
+        const data = await this.plugin.call("new-defaults", { note: this.note, language: lang.value, folder_rule: this.plugin.settings.newFolderRule });
+        if (!name.value || name.value === suggested) {
+          name.value = data.name;
+          suggested = data.name;
+        } else {
+          name.value = name.value.replace(/\.(py|wl|wls|sh|bash|zsh)$/i, { python: ".py", wolfram: ".wls", shell: ".sh" }[lang.value] || ".py");
+        }
+        if (!folder.value) folder.value = data.folder;
+        refresh();
+      } catch (e) {
+        error.setText(String(e));
+      }
+    };
+    lang.onchange = () => {
+      paintLanguage();
+      void defaults();
+    };
+    name.oninput = folder.oninput = refresh;
+    const insert = async (raw) => {
+      if (this.editor) {
+        if (this.plugin.app.workspace.getActiveFile()?.path !== this.note || this.editor.getValue() !== expected) throw Error("The note changed while this dialog was open. Copy the link or reopen at the new insertion point.");
+        const at = insertion(expected, selectedLine ?? 0), chunk = insertionText(expected, at, raw);
+        this.editor.replaceRange(chunk, this.editor.offsetToPos(at.offset));
+        this.editor.setCursor(this.editor.offsetToPos(at.offset + chunk.length));
+      } else await this.plugin.app.vault.process(file, (text) => {
+        if (text !== expected) throw Error("The note changed while this dialog was open. Copy the link or reopen.");
+        let line = text.split("\n").length - 1;
+        if (this.after) {
+          const position = text.indexOf(this.after);
+          if (position < 0 || position !== text.lastIndexOf(this.after)) throw Error("Select this exact occurrence in editing mode to insert below it.");
+          line = text.slice(0, position + this.after.length).split("\n").length - 1;
+        }
+        const at = insertion(text, line);
+        return text.slice(0, at.offset) + insertionText(text, at, raw) + text.slice(at.offset);
+      });
+    };
+    const submit = async () => {
+      if (busy) return;
+      busy = true;
+      create.disabled = true;
+      error.empty();
+      try {
+        const run = {};
+        if (cwd.value.trim() && cwd.value.trim() !== "script") run.cwd = cwd.value.trim();
+        if (interpreter.value.trim()) run.interpreter = interpreter.value.trim();
+        if (args.value.trim()) run.args = JSON.parse(args.value);
+        if (timeout.value.trim()) run.timeout = Number(timeout.value);
+        receipt = receipt || await this.plugin.call("new-create", { id: this.identifier, note: this.note, language: lang.value, name: name.value, folder: folder.value, label: label2.value, sandbox: sandbox.checked, starter: starter.value === "starter", max_lines: height.value.trim() ? Number(height.value) : void 0, run });
+        await this.plugin.edits.begin(this.note, receipt.raw);
+        if (!inserted) {
+          await insert(receipt.raw);
+          inserted = true;
+        }
+        await this.plugin.call("new-complete", { id: receipt.id });
+        this.plugin.settings.newLanguage = lang.value;
+        await this.plugin.saveSettings();
+        this.close();
+        this.plugin.edits.focusNext(this.note, receipt.raw);
+      } catch (e) {
+        error.setText(String(e).replace(/^Error: /, ""));
+        if (receipt) {
+          recovery.hidden = false;
+          recovery.empty();
+          recovery.createSpan({ text: "Script preserved. " });
+          recovery.createEl("button", { text: "Copy block link" }).onclick = () => void navigator.clipboard.writeText(receipt.raw);
+        }
+      } finally {
+        busy = false;
+        create.disabled = false;
+      }
+    };
+    create.onclick = () => void submit();
+    this.contentEl.onkeydown = (e) => {
+      if (e.key === "Enter" && !e.isComposing && e.target instanceof HTMLInputElement) {
+        e.preventDefault();
+        void submit();
+      }
+    };
+    await defaults();
+    name.focus();
+    name.select();
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
+var SaveSandboxModal = class extends import_obsidian5.Modal {
+  constructor(plugin, initial, save) {
+    super(plugin.app);
+    this.initial = initial;
+    this.save = save;
+  }
+  onOpen() {
+    this.modalEl.addClass("code-links-dialog", "code-links-new-script");
+    this.titleEl.setText("Save as script");
+    const fields = this.contentEl.createDiv("code-links-create-fields");
+    const input = (title, value) => {
+      const row = fields.createEl("label", { cls: "code-links-create-field" });
+      row.createSpan({ text: title });
+      return row.createEl("input", { value, attr: { spellcheck: "false" } });
+    };
+    const name = input("Name", this.initial.name), folder = input("Folder", this.initial.folder);
+    const error = this.contentEl.createDiv("code-links-dialog-error");
+    const footer = this.contentEl.createDiv("code-links-dialog-footer");
+    footer.createEl("button", { text: "Cancel" }).onclick = () => this.close();
+    const save = footer.createEl("button", { text: "Save script", cls: "mod-cta" });
+    const submit = async () => {
+      if (save.disabled) return;
+      save.disabled = true;
+      try {
+        await this.save({ name: name.value, folder: folder.value });
+        this.close();
+      } catch (e) {
+        error.setText(String(e).replace(/^Error: /, ""));
+      } finally {
+        save.disabled = false;
+      }
+    };
+    save.onclick = () => void submit();
+    this.contentEl.onkeydown = (e) => {
+      if (e.key === "Enter" && !e.isComposing) {
+        e.preventDefault();
+        void submit();
+      }
+    };
+    name.focus();
+    name.select();
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
+var DraftLibraryModal = class extends import_obsidian5.Modal {
+  constructor(plugin) {
+    super(plugin.app);
+    this.plugin = plugin;
+  }
+  async onOpen() {
+    this.modalEl.addClass("code-links-dialog");
+    this.titleEl.setText("Drafts and unfinished creations");
+    const host = this.contentEl;
+    host.setText("Loading\u2026");
+    try {
+      const [drafts, created] = await Promise.all([this.plugin.call("edit-list"), this.plugin.call("new-list")]);
+      host.empty();
+      const items = [...drafts.sessions.filter((s) => ["editing", "saving", "promoted"].includes(s.state)), ...created.creations.filter((r) => !r.sandbox)];
+      if (!items.length && !drafts.issues?.length) host.createDiv({ text: "No unfinished drafts or creations." });
+      for (const item of items) {
+        const row = host.createDiv("code-links-draft-row");
+        row.createDiv({ text: item.raw || item.relative, cls: "code-links-draft-name" });
+        row.createDiv({ text: [item.kind === "experiment" ? "Local sandbox" : item.kind || "Script", item.state, item.note].filter(Boolean).join(" \xB7 "), cls: "code-links-create-hint" });
+        const actions = row.createDiv("code-links-draft-actions");
+        if (item.raw) actions.createEl("button", { text: "Copy block link" }).onclick = () => void navigator.clipboard.writeText(item.raw);
+        if (item.note) actions.createEl("button", { text: "Open note" }).onclick = () => {
+          void this.plugin.app.workspace.openLinkText(item.note, "");
+          this.close();
+        };
+      }
+      for (const issue of drafts.issues || []) host.createDiv({ text: "Draft preserved for recovery: " + issue.path + " \u2014 " + issue.error, cls: "code-links-dialog-error" });
+    } catch (error) {
+      host.setText(String(error));
+    }
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
+var RunSettingsModal = class extends import_obsidian5.Modal {
+  constructor(plugin, target, changed) {
+    super(plugin.app);
+    this.plugin = plugin;
+    this.target = target;
+    this.changed = changed;
+  }
+  async onOpen() {
+    this.modalEl.addClass("code-links-dialog", "code-links-new-script");
+    this.titleEl.setText("Script run settings");
+    try {
+      const saved = await this.plugin.call("new-settings", { target: this.target });
+      const fields = this.contentEl.createDiv("code-links-create-fields");
+      const field = (title, value, placeholder) => {
+        const row = fields.createEl("label", { cls: "code-links-create-field" });
+        row.createSpan({ text: title });
+        return row.createEl("input", { value, attr: { placeholder, spellcheck: "false" } });
+      };
+      const cwd = field("Run from", saved.settings.cwd || "script", "script, root, or vault folder");
+      const interpreter = field("Interpreter", saved.settings.interpreter || "", "Language default");
+      const args = field("Arguments", saved.settings.args ? JSON.stringify(saved.settings.args) : "", 'JSON list, e.g. ["--steps", "10"]');
+      const timeout = field("Timeout (s)", saved.settings.timeout?.toString() || "", "300");
+      const error = this.contentEl.createDiv("code-links-dialog-error"), footer = this.contentEl.createDiv("code-links-dialog-footer");
+      footer.createEl("button", { text: "Cancel" }).onclick = () => this.close();
+      const save = footer.createEl("button", { text: "Save settings", cls: "mod-cta" });
+      const submit = async () => {
+        if (save.disabled) return;
+        save.disabled = true;
+        try {
+          const settings = {};
+          if (cwd.value.trim() && cwd.value.trim() !== "script") settings.cwd = cwd.value.trim();
+          if (interpreter.value.trim()) settings.interpreter = interpreter.value.trim();
+          if (args.value.trim()) settings.args = JSON.parse(args.value);
+          if (timeout.value.trim()) settings.timeout = Number(timeout.value);
+          await this.plugin.call("new-settings", { target: this.target, settings, expected_sha256: saved.sha256 });
+          this.changed();
+          this.close();
+        } catch (e) {
+          error.setText(String(e).replace(/^Error: /, ""));
+        } finally {
+          save.disabled = false;
+        }
+      };
+      save.onclick = () => void submit();
+      this.contentEl.onkeydown = (e) => {
+        if (e.key === "Enter" && !e.isComposing) {
+          e.preventDefault();
+          void submit();
+        }
+      };
+    } catch (error) {
+      this.contentEl.setText(String(error));
+    }
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
+
+// edit-fragments.ts
+var import_state5 = require("@codemirror/state");
+var import_view5 = require("@codemirror/view");
+var setSegments = import_state5.StateEffect.define();
+var segments = import_state5.StateField.define({
+  create: () => [],
+  update(value, transaction) {
+    for (const effect of transaction.effects) if (effect.is(setSegments)) return effect.value;
+    return transaction.docChanged ? value.map((s) => ({ ...s, from: transaction.changes.mapPos(s.from, -1), to: transaction.changes.mapPos(s.to, 1) })) : value;
+  }
+});
+var protectGaps = import_state5.EditorState.transactionFilter.of((transaction) => {
+  if (!transaction.docChanged) return transaction;
+  const parts = transaction.startState.field(segments);
+  let valid = true;
+  transaction.changes.iterChanges((from, to) => {
+    if (!parts.some((s) => from >= s.from && to <= s.to)) valid = false;
+  });
+  return valid ? transaction : [];
+});
+function assembled(texts, lines) {
+  let doc = "";
+  const parts = [];
+  texts.forEach((text, index) => {
+    if (index) doc += "\n\u22EF omitted lines \u22EF\n";
+    const from = doc.length;
+    doc += text;
+    parts.push({ from, to: doc.length, line: lines[index] });
+  });
+  return { doc, parts };
+}
+function draftTexts(state) {
+  return state.field(segments).map((s) => state.doc.sliceString(s.from, s.to));
+}
+function sourceLine(number, state) {
+  if (number < 1 || number > state.doc.lines) return String(number);
+  const at = state.doc.line(number).from;
+  const part = state.field(segments).find((s) => at >= s.from && at <= s.to);
+  return part ? String(part.line + number - state.doc.lineAt(part.from).number) : "\xB7";
+}
+var gapStyle = import_view5.ViewPlugin.fromClass(class {
   constructor(view) {
-    this.tree = (0, import_language5.syntaxTree)(view.state);
+    this.decorations = this.build(view);
+  }
+  update(update) {
+    if (update.docChanged) this.decorations = this.build(update.view);
+  }
+  build(view) {
+    return import_view5.Decoration.set(view.state.field(segments).slice(1).map((s) => import_view5.Decoration.line({ class: "code-links-edit-gap" }).range(view.state.doc.lineAt(s.from - 1).from)));
+  }
+}, { decorations: (value) => value.decorations });
+
+// inline-edit.ts
+var key = (note, raw) => JSON.stringify([note, raw]);
+var running = (result) => !!result && ["queued", "starting", "running", "stopping"].includes(result.state);
+var InlineEdits = class {
+  constructor(plugin) {
+    this.plugin = plugin;
+    this.drafts = /* @__PURE__ */ new Map();
+  }
+  async initialize() {
+    if (!this.plugin.settings.inlineEditing) return;
+    const { sessions, issues } = await this.plugin.call("edit-list");
+    if (issues?.length) new import_obsidian6.Notice("Some saved drafts need recovery. Open Code Links: Sandbox drafts and unfinished creations.");
+    for (const session of sessions) if (["editing", "saving"].includes(session.state)) this.remember(session);
+  }
+  remember(session) {
+    const d = { session, editable: new import_state6.Compartment(), persisted: session.draft.slice(), busy: false, listeners: /* @__PURE__ */ new Set(), refresh: /* @__PURE__ */ new Set(), views: /* @__PURE__ */ new Set() };
+    this.drafts.set(key(session.note, session.raw), d);
+    return d;
+  }
+  texts(d) {
+    return d.state ? draftTexts(d.state) : d.session.draft.slice();
+  }
+  dirty(d) {
+    return this.texts(d).some((s, i) => s !== d.session.fragments[i].text);
+  }
+  find(note, raw) {
+    const id2 = raw.match(/^!\{\{sandbox:([a-f0-9]{32})[|}]/)?.[1];
+    return id2 ? [...this.drafts.values()].find((d) => d.session.id === id2) : this.drafts.get(key(note, raw));
+  }
+  has(note, raw) {
+    return !!this.find(note, raw);
+  }
+  async attachSandbox(note, raw) {
+    if (this.find(note, raw)) return { state: "editing" };
+    const id2 = raw.match(/^!\{\{sandbox:([a-f0-9]{32})[|}]/)?.[1];
+    if (!id2) throw Error("Invalid sandbox link");
+    const session = await this.plugin.call("experiment-inspect", { id: id2 });
+    if (session.state === "editing") this.remember(session);
+    return session;
+  }
+  focusNext(note, raw) {
+    this.focusRequest = { note, raw, until: Date.now() + 3e3 };
+    const view = [...this.find(note, raw)?.views || []].find((v) => v.dom.isConnected);
+    if (view) {
+      this.focusRequest = void 0;
+      requestAnimationFrame(() => {
+        if (view.dom.isConnected) {
+          view.dom.scrollIntoView({ block: "nearest" });
+          view.dispatch({ selection: { anchor: view.state.doc.length } });
+          view.focus();
+        }
+      });
+    }
+  }
+  async begin(note, raw, experiment = false) {
+    if (!this.plugin.settings.inlineEditing) throw Error("Inline editing is not enabled in this vault");
+    const existing = this.drafts.get(key(note, raw));
+    if (existing) return;
+    if (raw.startsWith("!{{sandbox:")) {
+      await this.attachSandbox(note, raw);
+      return;
+    }
+    this.remember(await this.plugin.call(experiment ? "experiment-start" : "edit-start", { raw, note }));
+  }
+  schedule(d) {
+    clearTimeout(d.timer);
+    d.timer = setTimeout(() => {
+      d.timer = void 0;
+      void this.flush(d).catch((e) => new import_obsidian6.Notice("Draft not saved: " + String(e)));
+    }, 650);
+  }
+  async flush(d) {
+    clearTimeout(d.timer);
+    d.timer = void 0;
+    if (d.writing) {
+      await d.writing;
+      return this.flush(d);
+    }
+    const texts = this.texts(d);
+    if (JSON.stringify(texts) === JSON.stringify(d.persisted)) return;
+    d.writing = this.plugin.call("edit-draft", { id: d.session.id, revision: d.session.revision, fragments: texts }).then((s) => {
+      d.session = s;
+      d.persisted = texts;
+    }).finally(() => {
+      d.writing = void 0;
+    });
+    await d.writing;
+    if (JSON.stringify(this.texts(d)) !== JSON.stringify(d.persisted)) return this.flush(d);
+  }
+  async flushAll() {
+    for (const d of this.drafts.values()) await this.flush(d);
+  }
+  repaint(note) {
+    for (const d of this.drafts.values()) if (d.session.note === note || d.session.new_script) for (const f of d.listeners) f();
+  }
+  dispose() {
+    for (const d of this.drafts.values()) clearTimeout(d.poll);
+  }
+  async pollExperiment(d) {
+    clearTimeout(d.poll);
+    d.poll = void 0;
+    if (d.polling) return d.polling;
+    d.polling = this.plugin.call("experiment-output", { id: d.session.id }).then((result) => {
+      d.experiment = result;
+      for (const f of d.listeners) f();
+    }).catch((error) => {
+      d.experiment = { state: "unavailable", revision: -1, valid: false, error: String(error) };
+      for (const f of d.listeners) f();
+    }).finally(() => {
+      d.polling = void 0;
+      if (d.listeners.size && running(d.experiment)) d.poll = setTimeout(() => void this.pollExperiment(d), 750);
+    });
+    await d.polling;
+  }
+  async runExperiment(d, note = d.session.note, raw = d.session.raw) {
+    if (d.busy) return;
+    d.busy = true;
+    for (const f of d.listeners) f();
+    try {
+      if (running(d.experiment)) await this.plugin.call("experiment-stop", { id: d.session.id });
+      else {
+        await this.flush(d);
+        await this.plugin.call("experiment-run", { id: d.session.id, revision: d.session.revision });
+        this.plugin.outputs.setPreference(note, raw, { open: true });
+      }
+      await this.pollExperiment(d);
+    } catch (error) {
+      new import_obsidian6.Notice(String(error));
+    } finally {
+      d.busy = false;
+      for (const f of d.listeners) f();
+    }
+  }
+  async save(d, run) {
+    if (d.session.kind === "experiment") {
+      try {
+        if (run) await this.runExperiment(d);
+        else await this.flush(d);
+      } catch (error) {
+        new import_obsidian6.Notice(String(error));
+      }
+      return;
+    }
+    if (d.busy) return;
+    d.busy = true;
+    for (const f of d.listeners) f();
+    try {
+      await this.flush(d);
+      await this.plugin.ensureSavedNotes();
+      const preview = await this.plugin.call("edit-preview", { id: d.session.id });
+      const study = this.plugin.app.plugins.plugins["study-studio"];
+      const api = study?.codeAnnotationApi;
+      const report = api?.sourceImpact ? await api.sourceImpact(d.session.path) : void 0;
+      if (study && !report) throw Error("Update Study Studio before saving annotated source");
+      const acknowledge = [];
+      if (report?.records.length) {
+        const allowed = await new Promise((resolve) => {
+          const menu = new import_obsidian6.Menu();
+          menu.addItem((i) => i.setTitle(`Save; preserve ${report.records.length} annotation(s), which may need review`).setIcon("check").onClick(() => resolve(true)));
+          menu.addItem((i) => i.setTitle("Keep editing").onClick(() => resolve(false)));
+          menu.onHide(() => resolve(false));
+          const host = this.plugin.app.workspace.containerEl.getBoundingClientRect();
+          menu.showAtPosition({ x: host.x + host.width / 2, y: host.y + 120 });
+        });
+        if (!allowed) return;
+        acknowledge.push(...report.records.map((r) => r.id));
+      }
+      await this.plugin.ensureSavedNotes();
+      const saved = await this.plugin.call("edit-save", { id: d.session.id, revision: preview.revision, annotation_report: report, acknowledge, config_dir: this.plugin.app.vault.configDir, study_enabled: !!study });
+      const pref = this.plugin.outputs.preference(saved.note, saved.raw);
+      this.plugin.outputs.setPreference(saved.note, saved.new_raw || saved.raw, { ...pref, open: run || pref.open });
+      this.drafts.delete(key(d.session.note, d.session.raw));
+      d.session = saved;
+      this.plugin.outputs.sourceChanged(saved.path);
+      for (const refresh of [...d.refresh]) refresh(saved.new_raw);
+      if (run) await this.plugin.call("run-start", { raws: [saved.new_raw || saved.raw], expected_sha256: saved.submitted_sha256, force: true });
+      new import_obsidian6.Notice(run ? "Saved and queued" : "Source saved");
+    } catch (error) {
+      new import_obsidian6.Notice(String(error));
+    } finally {
+      d.busy = false;
+      for (const f of d.listeners) f();
+    }
+  }
+  async discard(d) {
+    if (d.busy) return;
+    d.busy = true;
+    for (const f of d.listeners) f();
+    try {
+      await this.flush(d);
+      if (d.session.kind === "experiment") {
+        await this.plugin.call("experiment-stop", { id: d.session.id });
+        for (let tries = 0; tries < 20; tries++) {
+          const result = await this.plugin.call("experiment-status", { id: d.session.id });
+          if (!running(result)) break;
+          await new Promise((r) => setTimeout(r, 250));
+        }
+      }
+      await this.plugin.call(d.session.kind === "experiment" ? "experiment-discard" : "edit-discard", { id: d.session.id, revision: d.session.revision });
+      clearTimeout(d.poll);
+      this.drafts.delete(key(d.session.note, d.session.raw));
+      for (const refresh of [...d.refresh]) refresh();
+    } catch (error) {
+      new import_obsidian6.Notice(String(error));
+    } finally {
+      d.busy = false;
+      for (const f of d.listeners) f();
+    }
+  }
+  mount(host, note, raw, extensions, refresh, replaceLink) {
+    const d = this.find(note, raw);
+    if (!d) return;
+    const experiment = d.session.kind === "experiment";
+    host.empty();
+    host.addClass("code-links-editing");
+    host.toggleClass("code-links-experiment", experiment);
+    const header = host.createDiv("code-links-header");
+    header.createSpan({ text: raw.split("|")[1]?.replace(/}}.*$/, "") || d.session.path.split("/").pop(), cls: "code-links-target" });
+    const state = header.createSpan({ cls: "code-links-edit-state" });
+    state.title = experiment ? d.session.new_script ? "Local sandbox on this Mac \xB7 saves as " + d.session.path : "Disposable working copy of " + d.session.path + ". The original source is never changed." : "Saved output is hidden while editing. Source changes only when you save.";
+    if (d.session.scope_warning) {
+      state.title += " \xB7 " + d.session.scope_warning;
+      host.createDiv({ text: d.session.scope_warning, cls: "code-links-scope-warning" });
+    }
+    if (d.session.state === "saving") {
+      state.setText("Save interrupted");
+      host.createDiv({ cls: "code-links-edit-message", text: "Recovery is required before further edits. Transaction " + d.session.transaction });
+      return () => host.removeClass("code-links-editing");
+    }
+    const buttons = [];
+    const button = (icon, title, action) => {
+      const b = header.createEl("button", { cls: "clickable-icon", attr: { type: "button", title, "aria-label": title } });
+      (0, import_obsidian6.setIcon)(b, icon);
+      b.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        action(e);
+      };
+      buttons.push(b);
+      return b;
+    };
+    let experimentRun;
+    const copyCode = () => host.ownerDocument.defaultView.navigator.clipboard.writeText(this.texts(d).join("\n\u22EF omitted lines \u22EF\n"));
+    const copyOutput = async () => {
+      try {
+        await this.flush(d);
+        const result = await this.plugin.call("experiment-output", { id: d.session.id, full: true });
+        if (!result.valid) throw Error("The draft changed; run it again before copying output");
+        await host.ownerDocument.defaultView.navigator.clipboard.writeText(result.text);
+      } catch (error) {
+        new import_obsidian6.Notice(String(error));
+      }
+    };
+    const saveAs = () => new SaveSandboxModal(this.plugin, d.session.new_script, async (destination) => {
+      if (d.busy) throw Error("Wait for the current action to finish");
+      d.busy = true;
+      for (const f of d.listeners) f();
+      try {
+        await this.flush(d);
+        const saved = await this.plugin.call("experiment-save-as", { id: d.session.id, revision: d.session.revision, destination });
+        await (replaceLink ? replaceLink(raw, saved.raw) : this.plugin.replace(note, raw, saved.raw));
+        await this.plugin.call("new-complete", { id: saved.id });
+        await this.plugin.call("experiment-discard", { id: d.session.id, revision: d.session.revision });
+        clearTimeout(d.poll);
+        this.drafts.delete(key(d.session.note, d.session.raw));
+        for (const f of [...d.refresh]) f();
+      } finally {
+        d.busy = false;
+        for (const f of d.listeners) f();
+      }
+    }).open();
+    if (experiment) {
+      experimentRun = button("play", "Run experiment", () => void this.runExperiment(d, note, raw));
+      button("copy", "Copy edited excerpt", () => void copyCode());
+      if (d.session.new_script) button("file-plus", "Save as script", () => void saveAs());
+    } else {
+      button("check", "Save source", () => void this.save(d, false));
+      const saveRun = button("check", "Save and run whole file", () => void this.save(d, true));
+      const badge = saveRun.createSpan({ cls: "code-links-save-run-badge" });
+      (0, import_obsidian6.setIcon)(badge, "play");
+      saveRun.addClass("code-links-save-run");
+    }
+    const confirmDiscard = (_event) => {
+      if (!this.dirty(d)) {
+        void this.discard(d);
+        return;
+      }
+      const menu = new import_obsidian6.Menu();
+      menu.addItem((i) => i.setTitle("Discard these edits").setIcon("trash-2").onClick(() => void this.discard(d)));
+      menu.addItem((i) => i.setTitle("Keep editing"));
+      const anchor = header.getBoundingClientRect();
+      menu.showAtPosition({ x: Math.max(anchor.left, anchor.right - 24), y: anchor.bottom });
+    };
+    button("x", experiment ? "Discard experiment" : "Discard draft", confirmDiscard);
+    const body = host.createDiv("code-links-code code-links-edit-code");
+    const maxLines = Number(raw.match(/\{height=(\d+)\}$/)?.[1] || 10);
+    body.style.maxHeight = `calc(${maxLines} * var(--code-links-line-height,19.5px))`;
+    if (!d.state) {
+      const content = assembled(d.session.draft, d.session.fragments.map((f) => f.start));
+      d.state = import_state6.EditorState.create({ doc: content.doc, extensions: [...extensions(d.session.path), history(), segments, protectGaps, gapStyle, d.editable.of([]), import_view6.keymap.of([{ key: "Mod-s", run: () => {
+        void this.save(d, false);
+        return true;
+      } }, { key: "Mod-Enter", run: () => {
+        void this.save(d, true);
+        return true;
+      } }, ...historyKeymap, ...defaultKeymap, indentWithTab]), (0, import_view6.lineNumbers)({ formatNumber: sourceLine })] }).update({ effects: setSegments.of(content.parts) }).state;
+    }
+    body.style.height = `calc(${Math.min(maxLines, Math.max(1, d.state.doc.lines))} * var(--code-links-line-height,19.5px))`;
+    const view = new import_view6.EditorView({ parent: body, root: host.ownerDocument, state: d.state, dispatchTransactions: (transactions) => {
+      view.update(transactions);
+      d.state = view.state;
+      if (transactions.some((t) => t.docChanged)) {
+        this.schedule(d);
+        for (const listener of d.listeners) listener();
+      }
+    } });
+    const drawer = experiment ? host.createEl("details", { cls: "code-links-output" }) : void 0;
+    let outputStatus, outputText;
+    if (drawer) {
+      const summary = drawer.createEl("summary", { cls: "code-links-output-summary" });
+      summary.createSpan({ text: "Experiment output", cls: "code-links-output-label" });
+      outputStatus = summary.createSpan({ cls: "code-links-output-status" });
+      const copy = summary.createEl("button", { cls: "clickable-icon code-links-output-copy", attr: { title: "Copy experiment output", "aria-label": "Copy experiment output" } });
+      (0, import_obsidian6.setIcon)(copy, "copy");
+      copy.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        void copyOutput();
+      };
+      outputText = drawer.createDiv("code-links-output-body").createEl("pre", { cls: "code-links-output-text" });
+      drawer.open = !!this.plugin.outputs.preference(note, raw).open;
+      summary.onclick = (e) => {
+        if (e.target.closest("button")) return;
+        e.preventDefault();
+        drawer.open = !drawer.open;
+        this.plugin.outputs.setPreference(note, raw, { open: drawer.open });
+        paint();
+      };
+    }
+    let busy = false, rows = -1;
+    const paint = () => {
+      if (d.state && view.state !== d.state) view.setState(d.state);
+      const nextRows = Math.min(maxLines, Math.max(1, view.state.doc.lines));
+      if (nextRows !== rows) {
+        rows = nextRows;
+        body.style.height = `calc(${rows} * var(--code-links-line-height,19.5px))`;
+      }
+      state.setText(experiment ? d.session.new_script ? "Sandbox draft" : "Experiment" : d.busy ? "Saving\u2026" : this.dirty(d) ? "Unsaved edits" : "Editing");
+      for (const b of buttons) b.disabled = d.busy;
+      if (experimentRun) {
+        const active2 = running(d.experiment);
+        (0, import_obsidian6.setIcon)(experimentRun, active2 ? "square" : "play");
+        experimentRun.title = active2 ? "Stop experiment" : "Run experiment";
+        experimentRun.setAttribute("aria-label", experimentRun.title);
+      }
+      if (drawer && outputStatus && outputText) {
+        const result = d.experiment;
+        drawer.hidden = !result || result.state === "none";
+        host.toggleClass("has-output", !drawer.hidden);
+        const valid = result?.valid && result.revision === d.session.revision && JSON.stringify(this.texts(d)) === JSON.stringify(d.persisted);
+        const labels = { ok: "Finished", failed: "Failed", queued: "Queued", starting: "Starting\u2026", running: "Running", stopped: "Stopped", timeout: "Timed out", interrupted: "Interrupted", unavailable: "Unavailable" };
+        outputStatus.setText(result?.cleanup_pending ? "Cleanup pending" : !valid && !running(result) ? "Edited \u2014 run again" : (labels[result?.state || ""] || "") + (result?.duration_s != null ? " \xB7 " + (result.duration_s < 0.1 ? "<0.1" : result.duration_s.toFixed(1)) + " s" : ""));
+        outputStatus.title = [result?.error, result?.launcher, ...Object.entries(result?.environment_overrides || {}).map(([name, value]) => `${name}=${value}`)].filter(Boolean).join("\n");
+        drawer.style.setProperty("--code-links-output-lines", String(this.plugin.outputs.preference(note, raw).lines || 12));
+        drawer.open = !!this.plugin.outputs.preference(note, raw).open;
+        const text = drawer.open && valid ? (result?.text || "").replace(/\n$/, "") : "";
+        if (outputText.textContent !== text) outputText.textContent = text;
+      }
+      if (busy !== d.busy) {
+        busy = d.busy;
+        view.dispatch({ effects: d.editable.reconfigure([import_state6.EditorState.readOnly.of(busy), import_view6.EditorView.editable.of(!busy)]) });
+      }
+    };
+    d.listeners.add(paint);
+    d.refresh.add(refresh);
+    d.views.add(view);
+    paint();
+    if (this.focusRequest?.note === note && this.focusRequest.raw === raw) {
+      const focus = this.focusRequest;
+      this.focusRequest = void 0;
+      requestAnimationFrame(() => {
+        if (Date.now() < focus.until && host.isConnected) {
+          host.scrollIntoView({ block: "nearest" });
+          view.dispatch({ selection: { anchor: view.state.doc.length } });
+          view.focus();
+        }
+      });
+    }
+    host.oncontextmenu = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const menu = new import_obsidian6.Menu();
+      menu.addItem((i) => i.setTitle("Copy edited excerpt").setIcon("copy").onClick(copyCode));
+      if (!experiment) menu.addItem((i) => i.setTitle("Save source").setIcon("check").onClick(() => void this.save(d, false)));
+      menu.addItem((i) => i.setTitle(experiment ? "Run experiment" : "Save and run whole file").setIcon("play").onClick(() => void this.save(d, true)));
+      menu.addItem((i) => i.setTitle(experiment ? "Discard experiment" : "Discard draft").setIcon("x").onClick(() => confirmDiscard(e)));
+      if (experiment) {
+        if (d.session.new_script) menu.addItem((i) => i.setTitle("Save as script").setIcon("file-plus").onClick(saveAs));
+        menu.addSeparator();
+        menu.addItem((i) => i.setTitle("Copy experiment output").setIcon("copy").onClick(copyOutput));
+        menu.addItem((i) => i.setTitle("Maximum visible output lines\u2026").setIcon("rows-3").onClick(() => this.plugin.outputHeight(this.plugin.outputs.preference(note, raw).lines || 12, (n) => this.plugin.outputs.setPreference(note, raw, { lines: n }))));
+        this.plugin.outputs.noteMenu(menu, note);
+      }
+      menu.showAtMouseEvent(e);
+    };
+    if (experiment) void this.pollExperiment(d);
+    return () => {
+      d.listeners.delete(paint);
+      d.refresh.delete(refresh);
+      d.views.delete(view);
+      if (!d.listeners.size) clearTimeout(d.poll);
+      view.destroy();
+      host.removeClass("code-links-editing", "code-links-experiment", "has-output");
+    };
+  }
+};
+
+// quit-flush.ts
+async function boundedDraftFlush(flush, limitMs = 3e3) {
+  let timer;
+  try {
+    return await Promise.race([
+      Promise.resolve().then(flush).then(() => "saved", () => "failed"),
+      new Promise((resolve) => {
+        timer = setTimeout(() => resolve("timeout"), limitMs);
+      })
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+// node_modules/@codemirror/legacy-modes/mode/shell.js
+var words = {};
+function define(style, dict) {
+  for (var i = 0; i < dict.length; i++) {
+    words[dict[i]] = style;
+  }
+}
+var commonAtoms = ["true", "false"];
+var commonKeywords = [
+  "if",
+  "then",
+  "do",
+  "else",
+  "elif",
+  "while",
+  "until",
+  "for",
+  "in",
+  "esac",
+  "fi",
+  "fin",
+  "fil",
+  "done",
+  "exit",
+  "set",
+  "unset",
+  "export",
+  "function"
+];
+var commonCommands = [
+  "ab",
+  "awk",
+  "bash",
+  "beep",
+  "cat",
+  "cc",
+  "cd",
+  "chown",
+  "chmod",
+  "chroot",
+  "clear",
+  "cp",
+  "curl",
+  "cut",
+  "diff",
+  "echo",
+  "find",
+  "gawk",
+  "gcc",
+  "get",
+  "git",
+  "grep",
+  "hg",
+  "kill",
+  "killall",
+  "ln",
+  "ls",
+  "make",
+  "mkdir",
+  "openssl",
+  "mv",
+  "nc",
+  "nl",
+  "node",
+  "npm",
+  "ping",
+  "ps",
+  "restart",
+  "rm",
+  "rmdir",
+  "sed",
+  "service",
+  "sh",
+  "shopt",
+  "shred",
+  "source",
+  "sort",
+  "sleep",
+  "ssh",
+  "start",
+  "stop",
+  "su",
+  "sudo",
+  "svn",
+  "tee",
+  "telnet",
+  "top",
+  "touch",
+  "vi",
+  "vim",
+  "wall",
+  "wc",
+  "wget",
+  "who",
+  "write",
+  "yes",
+  "zsh"
+];
+define("atom", commonAtoms);
+define("keyword", commonKeywords);
+define("builtin", commonCommands);
+function tokenBase2(stream, state) {
+  if (stream.eatSpace()) return null;
+  var sol = stream.sol();
+  var ch = stream.next();
+  if (ch === "\\") {
+    stream.next();
+    return null;
+  }
+  if (ch === "'" || ch === '"' || ch === "`") {
+    state.tokens.unshift(tokenString2(ch, ch === "`" ? "quote" : "string"));
+    return tokenize(stream, state);
+  }
+  if (ch === "#") {
+    if (sol && stream.eat("!")) {
+      stream.skipToEnd();
+      return "meta";
+    }
+    stream.skipToEnd();
+    return "comment";
+  }
+  if (ch === "$") {
+    state.tokens.unshift(tokenDollar);
+    return tokenize(stream, state);
+  }
+  if (ch === "+" || ch === "=") {
+    return "operator";
+  }
+  if (ch === "-") {
+    stream.eat("-");
+    stream.eatWhile(/\w/);
+    return "attribute";
+  }
+  if (ch == "<") {
+    if (stream.match("<<")) return "operator";
+    var heredoc = stream.match(/^<-?\s*(?:['"]([^'"]*)['"]|([^'"\s]*))/);
+    if (heredoc) {
+      state.tokens.unshift(tokenHeredoc(heredoc[1] || heredoc[2]));
+      return "string.special";
+    }
+  }
+  if (/\d/.test(ch)) {
+    stream.eatWhile(/\d/);
+    if (stream.eol() || !/\w/.test(stream.peek())) {
+      return "number";
+    }
+  }
+  stream.eatWhile(/[\w-]/);
+  var cur = stream.current();
+  if (stream.peek() === "=" && /\w+/.test(cur)) return "def";
+  return words.hasOwnProperty(cur) ? words[cur] : null;
+}
+function tokenString2(quote, style) {
+  var close = quote == "(" ? ")" : quote == "{" ? "}" : quote;
+  return function(stream, state) {
+    var next, escaped = false;
+    while ((next = stream.next()) != null) {
+      if (next === close && !escaped) {
+        state.tokens.shift();
+        break;
+      } else if (next === "$" && !escaped && quote !== "'" && stream.peek() != close) {
+        escaped = true;
+        stream.backUp(1);
+        state.tokens.unshift(tokenDollar);
+        break;
+      } else if (!escaped && quote !== close && next === quote) {
+        state.tokens.unshift(tokenString2(quote, style));
+        return tokenize(stream, state);
+      } else if (!escaped && /['"]/.test(next) && !/['"]/.test(quote)) {
+        state.tokens.unshift(tokenStringStart(next, "string"));
+        stream.backUp(1);
+        break;
+      }
+      escaped = !escaped && next === "\\";
+    }
+    return style;
+  };
+}
+function tokenStringStart(quote, style) {
+  return function(stream, state) {
+    state.tokens[0] = tokenString2(quote, style);
+    stream.next();
+    return tokenize(stream, state);
+  };
+}
+var tokenDollar = function(stream, state) {
+  if (state.tokens.length > 1) stream.eat("$");
+  var ch = stream.next();
+  if (/['"({]/.test(ch)) {
+    state.tokens[0] = tokenString2(ch, ch == "(" ? "quote" : ch == "{" ? "def" : "string");
+    return tokenize(stream, state);
+  }
+  if (!/\d/.test(ch)) stream.eatWhile(/\w/);
+  state.tokens.shift();
+  return "def";
+};
+function tokenHeredoc(delim) {
+  return function(stream, state) {
+    if (stream.sol() && stream.string == delim) state.tokens.shift();
+    stream.skipToEnd();
+    return "string.special";
+  };
+}
+function tokenize(stream, state) {
+  return (state.tokens[0] || tokenBase2)(stream, state);
+}
+var shell = {
+  name: "shell",
+  startState: function() {
+    return { tokens: [] };
+  },
+  token: function(stream, state) {
+    return tokenize(stream, state);
+  },
+  languageData: {
+    autocomplete: commonAtoms.concat(commonKeywords, commonCommands),
+    closeBrackets: { brackets: ["(", "[", "{", "'", '"', "`"] },
+    commentTokens: { line: "#" }
+  }
+};
+
+// main.ts
+var wolframLanguage = import_language6.StreamLanguage.define(mathematica);
+var wolframClasses = { keyword: "keyword", string: "string", number: "number", comment: "comment", operator: "operator", atom: "special", meta: "special", character: "string", "string.special": "string", "variableName.special": "special", "variableName.constant": "special" };
+var wolframMarks = Object.fromEntries([...new Set(Object.values(wolframClasses))].map((cls) => [cls, import_view7.Decoration.mark({ class: "code-links-wl-" + cls })]));
+var wolframColors = import_view7.ViewPlugin.fromClass(class {
+  constructor(view) {
+    this.tree = (0, import_language6.syntaxTree)(view.state);
     this.decorations = this.build(view);
   }
   update(u2) {
-    const tree = (0, import_language5.syntaxTree)(u2.state);
+    const tree = (0, import_language6.syntaxTree)(u2.state);
     if (u2.docChanged || u2.viewportChanged || tree !== this.tree) {
       this.tree = tree;
       this.decorations = this.build(u2.view);
@@ -5279,14 +7393,14 @@ var wolframColors = import_view4.ViewPlugin.fromClass(class {
       const from = Math.max(node.from, r.from), to = Math.min(node.to, r.to);
       if (cls && to > from) ranges.push(wolframMarks[cls].range(from, to));
     } });
-    return import_view4.Decoration.set(ranges, true);
+    return import_view7.Decoration.set(ranges, true);
   }
 }, { decorations: (v) => v.decorations });
 var label = linkLabel;
 function withHeight(raw, n) {
   return raw.replace(/\{height=\d+\}$/, "") + `{height=${n}}`;
 }
-var excerptHighlight = import_language5.HighlightStyle.define([
+var excerptHighlight = import_language6.HighlightStyle.define([
   { tag: import_highlight4.tags.keyword, color: "var(--code-keyword, #c792ea)" },
   { tag: import_highlight4.tags.string, color: "var(--code-string, #a3be8c)" },
   { tag: import_highlight4.tags.number, color: "var(--code-value, #d19a66)" },
@@ -5300,10 +7414,11 @@ var excerptHighlight = import_language5.HighlightStyle.define([
 function language(path) {
   if (/\.(wl|wls)$/i.test(path)) return [wolframLanguage, wolframColors];
   if (/\.py$/.test(path)) return python();
+  if (/\.(sh|bash|zsh)$/i.test(path)) return [import_language6.StreamLanguage.define(shell), wolframColors];
   if (/\.(c|cpp|cc|h|hpp)$/.test(path)) return cpp();
   if (/\.[jt]sx?$/.test(path)) return javascript({ typescript: /\.tsx?$/.test(path), jsx: /x$/.test(path) });
-  const matcher = new import_view4.MatchDecorator({ regexp: /\b(?:TOTAL|energy|delta|E-fermi|POSITION|FORCE|Iteration)\b|[+-]?\b\d+(?:\.\d*)?(?:[Ee][+-]?\d+)?/g, decoration: (m) => import_view4.Decoration.mark({ class: /^[A-Za-z]/.test(m[0]) ? "code-links-keyword" : "code-links-number" }) });
-  return import_view4.ViewPlugin.fromClass(class {
+  const matcher = new import_view7.MatchDecorator({ regexp: /\b(?:TOTAL|energy|delta|E-fermi|POSITION|FORCE|Iteration)\b|[+-]?\b\d+(?:\.\d*)?(?:[Ee][+-]?\d+)?/g, decoration: (m) => import_view7.Decoration.mark({ class: /^[A-Za-z]/.test(m[0]) ? "code-links-keyword" : "code-links-number" }) });
+  return import_view7.ViewPlugin.fromClass(class {
     constructor(view) {
       this.decorations = matcher.createDeco(view);
     }
@@ -5312,13 +7427,14 @@ function language(path) {
     }
   }, { decorations: (v) => v.decorations });
 }
-var Reader = class extends import_obsidian5.MarkdownRenderChild {
-  constructor(el, plugin, raw, source, replaceLink = (old, value) => plugin.replace(source, old, value)) {
+var Reader = class extends import_obsidian7.MarkdownRenderChild {
+  constructor(el, plugin, raw, source, replaceLink = (old, value) => plugin.replace(source, old, value), createBelow) {
     super(el);
     this.plugin = plugin;
     this.raw = raw;
     this.source = source;
     this.replaceLink = replaceLink;
+    this.createBelow = createBelow;
     this.refreshGeneration = 0;
     this.active = true;
   }
@@ -5335,6 +7451,55 @@ var Reader = class extends import_obsidian5.MarkdownRenderChild {
   }
   async refreshExcerpt() {
     const generation = ++this.refreshGeneration;
+    if (this.raw.startsWith("!{{sandbox:")) {
+      try {
+        const session = await this.plugin.edits.attachSandbox(this.source, this.raw);
+        if (!this.active || generation !== this.refreshGeneration) return;
+        if (session.state !== "editing") {
+          this.editCleanup?.();
+          this.editCleanup = void 0;
+          this.containerEl.empty();
+          this.containerEl.addClass("code-links-experiment");
+          const header = this.containerEl.createDiv("code-links-header");
+          header.createSpan({ text: label(this.raw), cls: "code-links-target" });
+          this.containerEl.createDiv({ cls: "code-links-edit-message", text: session.state === "discarded" ? "Discarded sandbox" : session.state === "saved" ? "Saved as " + session.path : session.message || "Local sandbox is unavailable on this Mac." });
+          if (this.replaceLink) {
+            const button = header.createEl("button", { cls: "clickable-icon", attr: { title: session.state === "saved" ? "Use saved script link" : "Remove sandbox block" } });
+            (0, import_obsidian7.setIcon)(button, session.state === "saved" ? "file-code" : "x");
+            button.onclick = () => {
+              const menu = new import_obsidian7.Menu();
+              menu.addItem((i) => i.setTitle(session.state === "saved" ? "Use saved script link" : "Remove this block from the note").onClick(() => void this.replaceLink(this.raw, session.raw || "")));
+              menu.showAtPosition({ x: button.getBoundingClientRect().left, y: button.getBoundingClientRect().bottom });
+            };
+          }
+          return;
+        }
+      } catch (error) {
+        this.containerEl.setText(String(error));
+        return;
+      }
+    }
+    if (this.plugin.edits?.has(this.source, this.raw)) {
+      if (this.watched && this.watcher) (0, import_fs2.unwatchFile)(this.watched, this.watcher);
+      this.watched = void 0;
+      this.watcher = void 0;
+      this.output?.destroy();
+      this.output = void 0;
+      this.annotations?.destroy();
+      this.annotations = void 0;
+      this.view?.destroy();
+      this.view = void 0;
+      this.editCleanup?.();
+      this.editCleanup = this.plugin.edits.mount(this.containerEl, this.source, this.raw, (path) => [(0, import_language6.syntaxHighlighting)(excerptHighlight), language(path), import_view7.EditorView.theme({ "&": { height: "100%", fontSize: "var(--code-links-font-size,13px)" }, ".cm-scroller": { overflow: "auto", fontFamily: "var(--font-monospace)" }, ".cm-line": { lineHeight: "1.5em" }, ".cm-gutters": { backgroundColor: "var(--background-secondary)", color: "var(--text-muted)" } })], (raw) => {
+        if (raw) this.raw = raw;
+        this.editCleanup?.();
+        this.editCleanup = void 0;
+        if (this.active) void this.refreshExcerpt();
+      }, this.replaceLink || void 0);
+      return;
+    }
+    this.editCleanup?.();
+    this.editCleanup = void 0;
     try {
       const r = await this.plugin.call("read", { raw: this.raw, run_status: !!this.replaceLink, annotation_context: !!this.plugin.app.plugins.plugins["study-studio"]?.codeAnnotationApi });
       if (!this.active || generation !== this.refreshGeneration) return;
@@ -5368,15 +7533,33 @@ var Reader = class extends import_obsidian5.MarkdownRenderChild {
       const visibleLines = Math.min(r.link.height, Math.max(1, r.lines.length));
       body.style.height = `calc(${visibleLines} * var(--code-links-line-height, 19.5px))`;
       body.style.maxHeight = `calc(${r.link.height} * var(--code-links-line-height, 19.5px))`;
-      this.view = new import_view4.EditorView({ parent: body, root: body.ownerDocument, state: import_state4.EditorState.create({ doc: r.lines.join("\n"), extensions: [codeMarks, import_state4.EditorState.readOnly.of(true), import_view4.EditorView.editable.of(false), import_view4.EditorView.contentAttributes.of({ tabindex: "0" }), (0, import_view4.lineNumbers)({ formatNumber: (n) => r.line_numbers[n - 1] == null ? "\xB7" : String(r.line_numbers[n - 1]) }), (0, import_language5.syntaxHighlighting)(excerptHighlight), language(r.path), import_view4.EditorView.theme({ "&": { height: "100%", fontSize: "var(--code-links-font-size, 13px)" }, ".cm-scroller": { overflow: "auto", fontFamily: "var(--font-monospace)" }, ".cm-line": { lineHeight: "1.5em" }, ".cm-gutters": { backgroundColor: "var(--background-secondary)", color: "var(--text-muted)" } })] }) });
+      this.view = new import_view7.EditorView({ parent: body, root: body.ownerDocument, state: import_state7.EditorState.create({ doc: r.lines.join("\n"), extensions: [codeMarks, import_state7.EditorState.readOnly.of(true), import_view7.EditorView.editable.of(false), import_view7.EditorView.contentAttributes.of({ tabindex: "0" }), (0, import_view7.lineNumbers)({ formatNumber: (n) => r.line_numbers[n - 1] == null ? "\xB7" : String(r.line_numbers[n - 1]) }), (0, import_language6.syntaxHighlighting)(excerptHighlight), language(r.path), import_view7.EditorView.theme({ "&": { height: "100%", fontSize: "var(--code-links-font-size, 13px)" }, ".cm-scroller": { overflow: "auto", fontFamily: "var(--font-monospace)" }, ".cm-line": { lineHeight: "1.5em" }, ".cm-gutters": { backgroundColor: "var(--background-secondary)", color: "var(--text-muted)" } })] }) });
       this.annotations = new CodeAnnotations(this.plugin, this.source, this.raw, r, this.view, this.containerEl, header);
+      if (this.replaceLink && this.plugin.settings.inlineEditing) {
+        const edit = header.createEl("button", { cls: "clickable-icon code-links-edit", attr: { type: "button", title: "Edit code", "aria-label": "Edit code" } });
+        (0, import_obsidian7.setIcon)(edit, "pencil");
+        edit.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          void this.plugin.edits.begin(this.source, this.raw).then(() => this.refreshExcerpt()).catch((error) => new import_obsidian7.Notice(String(error)));
+        };
+        if (r.run) {
+          const experiment = header.createEl("button", { cls: "clickable-icon code-links-edit", attr: { type: "button", title: "Experiment in a disposable copy", "aria-label": "Experiment in a disposable copy" } });
+          (0, import_obsidian7.setIcon)(experiment, "flask-conical");
+          experiment.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            void this.plugin.edits.begin(this.source, this.raw, true).then(() => this.refreshExcerpt()).catch((error) => new import_obsidian7.Notice(String(error)));
+          };
+        }
+      }
       if (r.run && this.replaceLink) {
         const run = header.createEl("button", { cls: "code-links-run clickable-icon", attr: { type: "button", title: "Run whole file", "aria-label": "Run whole file" } });
-        (0, import_obsidian5.setIcon)(run, "play");
+        (0, import_obsidian7.setIcon)(run, "play");
         this.output = new OutputPanel(this.plugin.outputs, this.raw, this.source, r.run, this.containerEl, run, r.signature, () => this.refreshExcerpt());
       }
       const copy = header.createEl("button", { cls: "code-links-copy clickable-icon", attr: { type: "button", title: "Copy code", "aria-label": "Copy code" } });
-      (0, import_obsidian5.setIcon)(copy, "copy");
+      (0, import_obsidian7.setIcon)(copy, "copy");
       copy.onclick = async (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -5384,9 +7567,9 @@ var Reader = class extends import_obsidian5.MarkdownRenderChild {
         copy.disabled = true;
         try {
           await copy.ownerDocument.defaultView.navigator.clipboard.writeText(this.view.state.doc.toString());
-          if (this.active && copy.isConnected) new import_obsidian5.Notice("Code copied");
+          if (this.active && copy.isConnected) new import_obsidian7.Notice("Code copied");
         } catch (error) {
-          if (this.active && copy.isConnected) new import_obsidian5.Notice("Could not copy code: " + String(error));
+          if (this.active && copy.isConnected) new import_obsidian7.Notice("Could not copy code: " + String(error));
         } finally {
           copy.disabled = false;
         }
@@ -5396,12 +7579,17 @@ var Reader = class extends import_obsidian5.MarkdownRenderChild {
         e.stopPropagation();
         const pos = this.view?.posAtCoords({ x: e.clientX, y: e.clientY });
         const line = pos == null ? r.start : r.line_numbers[this.view.state.doc.lineAt(pos).number - 1];
-        const menu = new import_obsidian5.Menu();
+        const menu = new import_obsidian7.Menu();
         this.annotations?.menu(menu, e, header.hasClass("code-links-stale"));
         if (this.output) {
           menu.addSeparator();
           this.output.menu(menu);
+          menu.addItem((i) => i.setTitle("Script run settings\u2026").setIcon("settings-2").onClick(() => new RunSettingsModal(this.plugin, r.link.target, () => {
+            this.plugin.outputs.sourceChanged(r.path);
+            void this.refreshExcerpt();
+          }).open()));
         }
+        if (this.plugin.settings.inlineEditing) menu.addItem((i) => i.setTitle("New code block below\u2026").setIcon("square-plus").onClick(() => this.createBelow ? this.createBelow() : this.plugin.newScript(this.source, void 0, this.raw)));
         menu.addItem((i) => i.setTitle("Open excerpt in Neovim").onClick(() => void this.plugin.launch(this.raw, void 0, "current", "source")));
         menu.addItem((i) => i.setTitle("Open empty scratchpad").setIcon("square-pen").onClick(() => void this.plugin.scratch(this.raw)));
         if (line != null) this.plugin.sourceMenu(menu, this.raw, line, r.signature);
@@ -5438,6 +7626,7 @@ var Reader = class extends import_obsidian5.MarkdownRenderChild {
     }
   }
   onunload() {
+    this.editCleanup?.();
     this.output?.destroy();
     this.annotations?.destroy();
     this.active = false;
@@ -5446,7 +7635,7 @@ var Reader = class extends import_obsidian5.MarkdownRenderChild {
     if (this.watched && this.watcher) (0, import_fs2.unwatchFile)(this.watched, this.watcher);
   }
 };
-var InputModal = class extends import_obsidian5.Modal {
+var InputModal = class extends import_obsidian7.Modal {
   constructor(plugin, titleText, value, done) {
     super(plugin.app);
     this.plugin = plugin;
@@ -5487,7 +7676,7 @@ var InputModal = class extends import_obsidian5.Modal {
     this.contentEl.empty();
   }
 };
-var FilterModal = class extends import_obsidian5.Modal {
+var FilterModal = class extends import_obsidian7.Modal {
   constructor(plugin, raw, source, replaceLink = (old, value) => plugin.replace(source, old, value)) {
     super(plugin.app);
     this.plugin = plugin;
@@ -5501,20 +7690,20 @@ var FilterModal = class extends import_obsidian5.Modal {
     try {
       this.spec = (await this.plugin.call("selection", { raw: this.raw })).spec;
     } catch (e) {
-      new import_obsidian5.Notice(String(e));
+      new import_obsidian7.Notice(String(e));
     }
     this.contentEl.createEl("p", { text: "Python regular expression, matched against individual lines. Context includes neighboring lines; the source file is never changed." });
-    new import_obsidian5.Setting(this.contentEl).setName("Pattern").addTextArea((t) => {
+    new import_obsidian7.Setting(this.contentEl).setName("Pattern").addTextArea((t) => {
       t.setValue(this.spec.pattern).onChange((v) => this.spec.pattern = v);
       t.inputEl.rows = 3;
       t.inputEl.style.width = "100%";
     });
-    new import_obsidian5.Setting(this.contentEl).setName("Matches").addDropdown((d) => d.addOptions({ all: "All matches", first: "First match", last: "Last match" }).setValue(this.spec.occurrence).onChange((v) => this.spec.occurrence = v));
-    for (const key of ["before", "after"]) new import_obsidian5.Setting(this.contentEl).setName("Context lines " + key).addText((t) => t.setValue(String(this.spec[key])).onChange((v) => this.spec[key] = Number(v)));
+    new import_obsidian7.Setting(this.contentEl).setName("Matches").addDropdown((d) => d.addOptions({ all: "All matches", first: "First match", last: "Last match" }).setValue(this.spec.occurrence).onChange((v) => this.spec.occurrence = v));
+    for (const key2 of ["before", "after"]) new import_obsidian7.Setting(this.contentEl).setName("Context lines " + key2).addText((t) => t.setValue(String(this.spec[key2])).onChange((v) => this.spec[key2] = Number(v)));
     const preview = this.contentEl.createEl("pre");
     preview.style.maxHeight = "350px";
     preview.style.overflow = "auto";
-    new import_obsidian5.Setting(this.contentEl).addButton((b) => b.setButtonText("Preview").onClick(async () => {
+    new import_obsidian7.Setting(this.contentEl).addButton((b) => b.setButtonText("Preview").onClick(async () => {
       b.setDisabled(true);
       try {
         const r = await this.plugin.call("selection", { raw: this.raw, spec: this.spec });
@@ -5531,7 +7720,7 @@ var FilterModal = class extends import_obsidian5.Modal {
         await this.replaceLink(this.raw, r.new_link);
         this.close();
       } catch (e) {
-        new import_obsidian5.Notice(String(e));
+        new import_obsidian7.Notice(String(e));
         b.setDisabled(false);
       }
     }));
@@ -5540,7 +7729,7 @@ var FilterModal = class extends import_obsidian5.Modal {
     this.contentEl.empty();
   }
 };
-var Suggest = class extends import_obsidian5.EditorSuggest {
+var Suggest = class extends import_obsidian7.EditorSuggest {
   constructor(plugin) {
     super(plugin.app);
     this.plugin = plugin;
@@ -5578,7 +7767,7 @@ var Suggest = class extends import_obsidian5.EditorSuggest {
     editor.replaceRange("{{" + item.target + "}}", start, { line: end.line, ch: end.ch + (suffix === "}}" ? 2 : 0) });
   }
 };
-var LinkWidget = class extends import_view4.WidgetType {
+var LinkWidget = class extends import_view7.WidgetType {
   constructor(plugin, raw, source) {
     super();
     this.plugin = plugin;
@@ -5588,12 +7777,22 @@ var LinkWidget = class extends import_view4.WidgetType {
   eq(other) {
     return this.raw === other.raw && this.source === other.source;
   }
-  toDOM() {
+  toDOM(outer) {
     if (this.raw.startsWith("!")) {
       const el = document.createElement("span");
       const inner = document.createElement("span");
       el.append(inner);
-      this.child = new Reader(inner, this.plugin, this.raw, this.source);
+      this.child = new Reader(inner, this.plugin, this.raw, this.source, async (old, value) => {
+        const at = outer.posAtDOM(el);
+        if (outer.state.doc.sliceString(at, at + old.length) !== old) throw Error("This block moved; reopen it before replacing");
+        outer.dispatch({ changes: { from: at, to: at + old.length, insert: value } });
+      }, () => {
+        const info = outer.state.field(import_obsidian7.editorInfoField, false);
+        if (info?.editor) {
+          const line = outer.state.doc.lineAt(outer.posAtDOM(el)).number - 1;
+          this.plugin.newScript(this.source, info.editor, void 0, line);
+        }
+      });
       this.plugin.addChild(this.child);
       return el;
     }
@@ -5610,23 +7809,23 @@ var LinkWidget = class extends import_view4.WidgetType {
   }
 };
 function live(plugin) {
-  return import_view4.ViewPlugin.fromClass(class {
+  return import_view7.ViewPlugin.fromClass(class {
     constructor(view) {
       this.decorations = this.build(view);
     }
     update(u2) {
-      if (u2.docChanged || u2.viewportChanged || u2.selectionSet || u2.startState.field(import_obsidian5.editorLivePreviewField, false) !== u2.state.field(import_obsidian5.editorLivePreviewField, false)) this.decorations = this.build(u2.view);
+      if (u2.docChanged || u2.viewportChanged || u2.selectionSet || u2.startState.field(import_obsidian7.editorLivePreviewField, false) !== u2.state.field(import_obsidian7.editorLivePreviewField, false)) this.decorations = this.build(u2.view);
     }
     build(view) {
-      if (view.state.field(import_obsidian5.editorLivePreviewField, false) === false) return import_view4.Decoration.none;
-      const builder = new import_state4.RangeSetBuilder();
-      const source = view.state.field(import_obsidian5.editorInfoField, false)?.file?.path || "";
+      if (view.state.field(import_obsidian7.editorLivePreviewField, false) === false) return import_view7.Decoration.none;
+      const builder = new import_state7.RangeSetBuilder();
+      const source = view.state.field(import_obsidian7.editorInfoField, false)?.file?.path || "";
       for (const range of view.visibleRanges) {
         const text = view.state.doc.sliceString(range.from, range.to);
         for (const m of linkTokens(text)) {
           const from = range.from + m.index, to = from + m.raw.length;
           if (view.state.selection.ranges.some((s) => s.from <= to && s.to >= from)) continue;
-          const node = (0, import_language5.syntaxTree)(view.state).resolveInner(from, 1);
+          const node = (0, import_language6.syntaxTree)(view.state).resolveInner(from, 1);
           let blocked = false;
           for (let n = node; n; n = n.parent) {
             if (/codeblock|fenced|math/i.test(n.name) || /inline-code/i.test(n.name) && !m.raw.startsWith("``dir:")) {
@@ -5634,14 +7833,14 @@ function live(plugin) {
               break;
             }
           }
-          if (!blocked) builder.add(from, to, import_view4.Decoration.replace({ widget: new LinkWidget(plugin, m.raw, source) }));
+          if (!blocked) builder.add(from, to, import_view7.Decoration.replace({ widget: new LinkWidget(plugin, m.raw, source) }));
         }
       }
       return builder.finish();
     }
   }, { decorations: (v) => v.decorations });
 }
-var CodeLinks = class extends import_obsidian5.Plugin {
+var CodeLinks = class extends import_obsidian7.Plugin {
   constructor() {
     super(...arguments);
     this.ready = false;
@@ -5649,7 +7848,7 @@ var CodeLinks = class extends import_obsidian5.Plugin {
     this.codeAnnotationsVersion = 1;
     this.codeReaders = /* @__PURE__ */ new Set();
     this.links = new LinkSupport(this);
-    this.settings = { python: "/opt/homebrew/bin/python3", core: (0, import_path2.join)((0, import_os2.homedir)(), "Projects/code-links/core/code_links.py"), ...terminalColors };
+    this.settings = { python: "/opt/homebrew/bin/python3", core: (0, import_path2.join)((0, import_os2.homedir)(), "Projects/code-links/core/code_links.py"), inlineEditing: true, newLanguage: "python", newFolderRule: "note", ...terminalColors };
     this.settingsWrites = Promise.resolve();
     this.renameQueue = Promise.resolve();
     this.files = [];
@@ -5672,15 +7871,18 @@ var CodeLinks = class extends import_obsidian5.Plugin {
   revealCode(path, id2, raw) {
     return revealCode(this, path, id2, raw);
   }
+  newScript(note, editor, after, line) {
+    new NewScriptModal(this, note, editor, after, line).open();
+  }
   saveSettings() {
     const data = { ...this.settings };
     this.settingsWrites = this.settingsWrites.then(() => this.saveData(data)).catch((e) => {
-      new import_obsidian5.Notice("Could not save Code Links settings: " + String(e));
+      new import_obsidian7.Notice("Could not save Code Links settings: " + String(e));
     });
     return this.settingsWrites;
   }
   setOutputColors(colors) {
-    for (const key of ["outputForeground", "outputBackground"]) if (key in colors) this.settings[key] = outputColor(colors[key], terminalColors[key]);
+    for (const key2 of ["outputForeground", "outputBackground"]) if (key2 in colors) this.settings[key2] = outputColor(colors[key2], terminalColors[key2]);
     this.appearance.refresh();
     clearTimeout(this.appearanceTimer);
     this.appearanceTimer = setTimeout(() => {
@@ -5698,10 +7900,10 @@ var CodeLinks = class extends import_obsidian5.Plugin {
   }
   root() {
     const a2 = this.app.vault.adapter;
-    if (!(a2 instanceof import_obsidian5.FileSystemAdapter)) throw Error("Desktop filesystem vault required");
+    if (!(a2 instanceof import_obsidian7.FileSystemAdapter)) throw Error("Desktop filesystem vault required");
     return a2.getBasePath();
   }
-  async call(cmd, args = {}) {
+  async call(cmd2, args = {}) {
     return new Promise((resolve, reject) => {
       const child = (0, import_child_process.spawn)(this.settings.python, [this.settings.core], { stdio: "pipe" });
       this.jobs.add(child);
@@ -5738,7 +7940,7 @@ var CodeLinks = class extends import_obsidian5.Plugin {
       });
       child.stdin.on("error", () => {
       });
-      child.stdin.end(JSON.stringify({ cmd, root: this.root(), ...args }));
+      child.stdin.end(JSON.stringify({ cmd: cmd2, root: this.root(), ...args }));
     });
   }
   async refresh(force = false) {
@@ -5747,7 +7949,7 @@ var CodeLinks = class extends import_obsidian5.Plugin {
     this.indexing = this.call("index").then((r) => {
       this.files = r.items;
       this.lastIndex = Date.now();
-      if (r.truncated) new import_obsidian5.Notice("Code Links index capped at 50,000 files; narrow configured roots");
+      if (r.truncated) new import_obsidian7.Notice("Code Links index capped at 50,000 files; narrow configured roots");
     }).finally(() => this.indexing = void 0);
     return this.indexing;
   }
@@ -5755,12 +7957,12 @@ var CodeLinks = class extends import_obsidian5.Plugin {
     try {
       await this.call("launch", { raw: canonical(raw), source_line, destination, action, expected_signature });
     } catch (e) {
-      new import_obsidian5.Notice(String(e));
+      new import_obsidian7.Notice(String(e));
     }
   }
   async replace(source, old, value) {
     const file = this.app.vault.getAbstractFileByPath(source);
-    if (!(file instanceof import_obsidian5.TFile)) throw Error("Source note unavailable");
+    if (!(file instanceof import_obsidian7.TFile)) throw Error("Source note unavailable");
     await this.app.vault.process(file, (text) => {
       if (text.split(old).length !== 2) throw Error("Several identical links exist; edit this link in source mode");
       return text.replace(old, value);
@@ -5770,7 +7972,7 @@ var CodeLinks = class extends import_obsidian5.Plugin {
     try {
       await this.call("scratch", { raw: canonical(raw) });
     } catch (e) {
-      new import_obsidian5.Notice(String(e));
+      new import_obsidian7.Notice(String(e));
     }
   }
   sourceMenu(menu, raw, line, signature) {
@@ -5781,7 +7983,7 @@ var CodeLinks = class extends import_obsidian5.Plugin {
   linkMenu(e, raw, source, replaceLink = (old, value) => this.replace(source, old, value)) {
     e.preventDefault();
     e.stopPropagation();
-    const menu = new import_obsidian5.Menu();
+    const menu = new import_obsidian7.Menu();
     const target = raw.replace(/^!?\{\{/, "").split(/[|#}]/)[0];
     const scene = /\.(vesta|blend|nb|wl|wls)$/i.test(target);
     const wolfram = /\.(nb|wl|wls|m)$/i.test(target);
@@ -5802,7 +8004,7 @@ var CodeLinks = class extends import_obsidian5.Plugin {
         const r = await this.call("anchor", { raw });
         await replaceLink(raw, r.link);
       } catch (e2) {
-        new import_obsidian5.Notice(String(e2));
+        new import_obsidian7.Notice(String(e2));
       }
     }));
     menu.showAtMouseEvent(e);
@@ -5825,12 +8027,12 @@ var CodeLinks = class extends import_obsidian5.Plugin {
   async ensureSavedNotes() {
     for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
       const view = leaf.view;
-      if (view instanceof import_obsidian5.MarkdownView && view.file && view.editor.getValue() !== await this.app.vault.read(view.file)) throw Error("Save note edits before changing linked folders");
+      if (view instanceof import_obsidian7.MarkdownView && view.file && view.editor.getValue() !== await this.app.vault.read(view.file)) throw Error("Save note edits before changing linked folders");
     }
   }
   async onload() {
     this.settings = { ...this.settings, ...await this.loadData() };
-    for (const key of ["outputForeground", "outputBackground"]) this.settings[key] = outputColor(this.settings[key], terminalColors[key]);
+    for (const key2 of ["outputForeground", "outputBackground"]) this.settings[key2] = outputColor(this.settings[key2], terminalColors[key2]);
     this.appearance = new OutputAppearance(this.app.workspace, () => this.settings);
     this.appearance.refresh();
     this.registerEvent(this.app.workspace.on("window-open", (_workspace, win) => this.appearance.apply(win.document)));
@@ -5839,35 +8041,45 @@ var CodeLinks = class extends import_obsidian5.Plugin {
     this.addSettingTab(new Settings(this));
     this.outputs = new RunOutputs(this);
     await this.outputs.initialize();
+    this.edits = new InlineEdits(this);
+    await this.edits.initialize();
+    this.registerEvent(this.app.workspace.on("quit", (tasks) => tasks.add(() => boundedDraftFlush(() => this.edits.flushAll()).then((result) => {
+      if (result !== "saved") console.warn("Code Links quit draft flush:", result);
+    }))));
     this.registerEvent(this.app.vault.on("modify", (file) => this.outputs.sourceChanged((0, import_path2.join)(this.root(), file.path))));
     this.registerEvent(this.app.vault.on("delete", (file) => this.outputs.sourceChanged((0, import_path2.join)(this.root(), file.path))));
-    const command = (id2, name, action) => this.addCommand({ id: id2, name, callback: () => {
-      Promise.resolve(action()).catch((e) => new import_obsidian5.Notice(String(e)));
+    const command2 = (id2, name, action) => this.addCommand({ id: id2, name, callback: () => {
+      Promise.resolve(action()).catch((e) => new import_obsidian7.Notice(String(e)));
     } });
-    command("run-note", "Run missing or changed programs in this note", () => this.outputs.runNote());
-    command("rerun-note", "Rerun all programs in this note", () => this.outputs.runNote(true));
-    command("stop-note", "Stop programs from this note", () => this.outputs.stopNote());
-    command("expand-outputs", "Expand all outputs in this note", () => {
+    command2("run-note", "Run missing or changed programs in this note", () => this.outputs.runNote());
+    command2("rerun-note", "Rerun all programs in this note", () => this.outputs.runNote(true));
+    command2("stop-note", "Stop programs from this note", () => this.outputs.stopNote());
+    command2("expand-outputs", "Expand all outputs in this note", () => {
       const f = this.app.workspace.getActiveFile();
       if (f) this.outputs.foldAll(f.path, true);
     });
-    command("collapse-outputs", "Collapse all outputs in this note", () => {
+    command2("collapse-outputs", "Collapse all outputs in this note", () => {
       const f = this.app.workspace.getActiveFile();
       if (f) this.outputs.foldAll(f.path, false);
     });
     this.addCommand({ id: "link-guide", name: "Syntax and actions", callback: () => new GuideModal(this).open() });
     this.addCommand({ id: "manage-folders", name: "Manage linked folders", callback: () => new FolderManager(this).open() });
     this.addCommand({ id: "combine-links", name: "Combine selected links\u2026", editorCallback: (ed) => this.combineLinks(ed) });
-    this.registerEvent(this.app.workspace.on("editor-menu", (menu, ed) => {
+    command2("sandbox-drafts", "Sandbox drafts and unfinished creations\u2026", () => new DraftLibraryModal(this).open());
+    this.addCommand({ id: "new-code-block", name: "New code block\u2026", editorCallback: (ed, view) => {
+      if (view.file && this.settings.inlineEditing) this.newScript(view.file.path, ed);
+    } });
+    this.registerEvent(this.app.workspace.on("editor-menu", (menu, ed, view) => {
+      if (this.settings.inlineEditing && view.file) menu.addItem((i) => i.setTitle("New code block\u2026").setIcon("square-plus").onClick(() => this.newScript(view.file.path, ed)));
       if (ed.getSelection().trim()) menu.addItem((i) => i.setTitle("Combine selected links\u2026").onClick(() => this.combineLinks(ed)));
     }));
     this.registerEditorSuggest(new Suggest(this));
     this.registerEditorExtension(live(this));
-    this.registerEditorExtension(import_view4.EditorView.domEventHandlers({ contextmenu: (e, view) => {
+    this.registerEditorExtension(import_view7.EditorView.domEventHandlers({ contextmenu: (e, view) => {
       if (!e.target.closest(".cm-inline-code")) return false;
       const pos = view.posAtCoords({ x: e.clientX, y: e.clientY });
       if (pos == null) return false;
-      let node = (0, import_language5.syntaxTree)(view.state).resolveInner(pos, 1);
+      let node = (0, import_language6.syntaxTree)(view.state).resolveInner(pos, 1);
       while (node.parent && !/inline.?code/i.test(node.name)) node = node.parent;
       if (!/inline.?code/i.test(node.name)) return false;
       const value = view.state.doc.sliceString(node.from, node.to).replace(/^`+|`+$/g, "");
@@ -5886,16 +8098,19 @@ var CodeLinks = class extends import_obsidian5.Plugin {
       if (protectedText !== text) {
         el.empty();
         const host = el.createDiv({ attr: { "data-code-links-host": "protected" } });
-        const owner = new import_obsidian5.MarkdownRenderChild(host);
+        const owner = new import_obsidian7.MarkdownRenderChild(host);
         ctx.addChild(owner);
-        await import_obsidian5.MarkdownRenderer.render(this.app, protectedText, host, ctx.sourcePath, owner);
+        await import_obsidian7.MarkdownRenderer.render(this.app, protectedText, host, ctx.sourcePath, owner);
         this.renderInHost(host, text, ctx.sourcePath, owner, (old, value) => this.replace(ctx.sourcePath, old, value));
         return;
       }
       this.renderInHost(el, text, ctx.sourcePath, ctx, (old, value) => this.replace(ctx.sourcePath, old, value));
     });
     this.registerEvent(this.app.workspace.on("file-menu", (menu, file) => {
-      if (file instanceof import_obsidian5.TFile && !["md", "markdown"].includes(file.extension.toLowerCase())) {
+      if (!(file instanceof import_obsidian7.TFile)) return;
+      if (["md", "markdown"].includes(file.extension.toLowerCase())) {
+        if (this.settings.inlineEditing) menu.addItem((i) => i.setTitle("New code block at end\u2026").setIcon("square-plus").onClick(() => this.newScript(file.path)));
+      } else {
         const app = file.extension.toLowerCase() === "blend" ? "Blender" : file.extension.toLowerCase() === "vesta" ? "VESTA" : "Neovim";
         menu.addItem((i) => i.setTitle("Open in " + app).setIcon("code").onClick(() => void this.launch("{{" + file.path + "}}", void 0, "current", /\.(csv|tsv)$/i.test(file.path) ? "source" : "auto")));
       }
@@ -5905,19 +8120,19 @@ var CodeLinks = class extends import_obsidian5.Plugin {
     }));
     this.registerEvent(this.app.vault.on("rename", (file, old) => {
       this.lastIndex = 0;
-      if (!(file instanceof import_obsidian5.TFile) || ["md", "markdown"].includes(file.extension)) return;
+      if (file instanceof import_obsidian7.TFile && ["md", "markdown"].includes(file.extension)) return;
       this.renameQueue = this.renameQueue.then(async () => {
         for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
           const view = leaf.view;
-          if (view instanceof import_obsidian5.MarkdownView && view.file && view.editor.getValue() !== await this.app.vault.read(view.file)) throw Error("A note has unsaved edits; code-link rename repair deferred");
+          if (view instanceof import_obsidian7.MarkdownView && view.file && view.editor.getValue() !== await this.app.vault.read(view.file)) throw Error("A note has unsaved edits; code-link rename repair deferred");
         }
         const result = await this.call("rename", { old, new: file.path, apply: true, moved: true });
-        if (result.references.length || result.anchors) new import_obsidian5.Notice("Code Links updated references after rename");
+        if (result.references.length || result.anchors) new import_obsidian7.Notice("Code Links updated references after rename");
       }).catch((e) => {
-        new import_obsidian5.Notice(String(e));
+        new import_obsidian7.Notice(String(e));
       });
     }));
-    this.addCommand({ id: "refresh-index", name: "Refresh file index", callback: () => void this.refresh(true).then(() => new import_obsidian5.Notice("Code Links index refreshed")).catch((e) => new import_obsidian5.Notice(String(e))) });
+    this.addCommand({ id: "refresh-index", name: "Refresh file index", callback: () => void this.refresh(true).then(() => new import_obsidian7.Notice("Code Links index refreshed")).catch((e) => new import_obsidian7.Notice(String(e))) });
     this.addCommand({ id: "open-link", name: "Open code link under cursor", editorCallback: (ed) => {
       const p = ed.getCursor();
       for (const m of linkTokens(ed.getLine(p.line))) if (p.ch >= m.index && p.ch <= m.index + m.raw.length) void this.links.activate(m.raw);
@@ -5928,17 +8143,17 @@ var CodeLinks = class extends import_obsidian5.Plugin {
         const r = await this.call("anchor", { raw });
         ed.replaceSelection(r.link);
       } catch (e) {
-        new import_obsidian5.Notice(String(e));
+        new import_obsidian7.Notice(String(e));
       }
     } });
-    this.app.workspace.onLayoutReady(() => void this.refresh().catch((e) => new import_obsidian5.Notice(String(e))));
+    this.app.workspace.onLayoutReady(() => void this.refresh().catch((e) => new import_obsidian7.Notice(String(e))));
     this.ready = true;
     this.app.workspace.trigger("code-links-ready");
   }
   combineLinks(ed) {
     const text = ed.getSelection();
     if (!text.trim()) {
-      new import_obsidian5.Notice("Select the links to combine first");
+      new import_obsidian7.Notice("Select the links to combine first");
       return;
     }
     const from = ed.getCursor("from"), to = ed.getCursor("to");
@@ -5950,22 +8165,25 @@ var CodeLinks = class extends import_obsidian5.Plugin {
   copyMenu(e, value) {
     e.preventDefault();
     e.stopPropagation();
-    const menu = new import_obsidian5.Menu();
+    const menu = new import_obsidian7.Menu();
     menu.addItem((i) => i.setTitle("Copy code").onClick(() => navigator.clipboard.writeText(value)));
     menu.showAtMouseEvent(e);
   }
   onunload() {
+    this.edits?.dispose();
     void this.flushAppearance();
     this.appearance?.dispose();
     void this.outputs?.dispose();
     this.ready = false;
     this.app.workspace.trigger("code-links-ready");
     this.links.dispose();
-    for (const child of this.jobs) child.kill();
-    this.jobs.clear();
+    void (this.edits?.flushAll() ?? Promise.resolve()).catch((e) => new import_obsidian7.Notice("Draft flush failed: " + String(e))).finally(() => {
+      for (const child of this.jobs) child.kill();
+      this.jobs.clear();
+    });
   }
 };
-var FolderManager = class extends import_obsidian5.Modal {
+var FolderManager = class extends import_obsidian7.Modal {
   constructor(plugin) {
     super(plugin.app);
     this.plugin = plugin;
@@ -5975,11 +8193,11 @@ var FolderManager = class extends import_obsidian5.Modal {
   async onOpen() {
     this.titleEl.setText("Manage linked folders");
     this.contentEl.createEl("p", { text: "Aliases are shared with nav, Neovim and every vault on this Mac. A link such as {{bdm:run/OUTCAR|Results}} uses the same directory everywhere. Changes here update ~/utils/.nav/aliases.psv." });
-    new import_obsidian5.Setting(this.contentEl).setName("Find shortcut").addSearch((s) => s.setPlaceholder("Name or folder").onChange((q) => {
+    new import_obsidian7.Setting(this.contentEl).setName("Find shortcut").addSearch((s) => s.setPlaceholder("Name or folder").onChange((q) => {
       this.query = q;
       this.draw();
     }));
-    new import_obsidian5.Setting(this.contentEl).addButton((b) => b.setButtonText("Add linked folder").setCta().onClick(() => this.edit()));
+    new import_obsidian7.Setting(this.contentEl).addButton((b) => b.setButtonText("Add linked folder").setCta().onClick(() => this.edit()));
     this.list = this.contentEl.createDiv();
     await this.refresh();
   }
@@ -5988,36 +8206,36 @@ var FolderManager = class extends import_obsidian5.Modal {
       const result = await this.plugin.call("roots");
       this.items = result.items;
       this.draw();
-      if (Object.keys(result.legacy || {}).length) new import_obsidian5.Setting(this.list).setName("Legacy aliases in this vault").setDesc("Import into nav. Conflicting names stop the import without changing either registry.").addButton((b) => b.setButtonText("Preview migration").onClick(async () => {
+      if (Object.keys(result.legacy || {}).length) new import_obsidian7.Setting(this.list).setName("Legacy aliases in this vault").setDesc("Import into nav. Conflicting names stop the import without changing either registry.").addButton((b) => b.setButtonText("Preview migration").onClick(async () => {
         try {
           const plan = await this.plugin.call("roots", { action: "migrate" });
-          const modal = new import_obsidian5.Modal(this.app);
+          const modal = new import_obsidian7.Modal(this.app);
           modal.titleEl.setText("Migrate aliases to nav");
           for (const message of plan.messages) modal.contentEl.createEl("p", { text: message });
-          new import_obsidian5.Setting(modal.contentEl).addButton((button) => button.setButtonText("Apply migration").onClick(async () => {
+          new import_obsidian7.Setting(modal.contentEl).addButton((button) => button.setButtonText("Apply migration").onClick(async () => {
             try {
               await this.plugin.call("roots", { action: "migrate", apply: true, token: plan.token });
               modal.close();
               this.plugin.lastIndex = 0;
               await this.refresh();
             } catch (e) {
-              new import_obsidian5.Notice(String(e));
+              new import_obsidian7.Notice(String(e));
             }
           }));
           modal.open();
         } catch (e) {
-          new import_obsidian5.Notice(String(e));
+          new import_obsidian7.Notice(String(e));
         }
       }));
     } catch (e) {
-      new import_obsidian5.Notice(String(e));
+      new import_obsidian7.Notice(String(e));
     }
   }
   draw() {
     if (!this.list) return;
     this.list.empty();
     for (const item of this.items.filter((x) => (x.name + " " + x.path).toLowerCase().includes(this.query.toLowerCase()))) {
-      const row = new import_obsidian5.Setting(this.list).setName(item.name + ":").setDesc(item.path + (item.exists ? "" : " \xB7 Folder unavailable") + (item.redirect ? " \xB7 Compatibility name \u2192 " + item.redirect : item.retired ? " \xB7 Retired (existing links still work)" : " \xB7 Shared through nav"));
+      const row = new import_obsidian7.Setting(this.list).setName(item.name + ":").setDesc(item.path + (item.exists ? "" : " \xB7 Folder unavailable") + (item.redirect ? " \xB7 Compatibility name \u2192 " + item.redirect : item.retired ? " \xB7 Retired (existing links still work)" : " \xB7 Shared through nav"));
       row.addButton((b) => b.setButtonText("Copy prefix").onClick(() => navigator.clipboard.writeText(item.name + ":")));
       if (!item.redirect) row.addButton((b) => b.setButtonText("Manage").onClick(() => this.edit(item)));
     }
@@ -6030,7 +8248,7 @@ var FolderManager = class extends import_obsidian5.Modal {
     this.contentEl.empty();
   }
 };
-var FolderEdit = class extends import_obsidian5.Modal {
+var FolderEdit = class extends import_obsidian7.Modal {
   constructor(plugin, item, done) {
     super(plugin.app);
     this.plugin = plugin;
@@ -6046,11 +8264,11 @@ var FolderEdit = class extends import_obsidian5.Modal {
       plan = null;
       preview.empty();
     };
-    new import_obsidian5.Setting(this.contentEl).setName("Shortcut").setDesc("For example: bdm or research. No colon needed.").addText((t) => t.setValue(name).onChange((v) => {
+    new import_obsidian7.Setting(this.contentEl).setName("Shortcut").setDesc("For example: bdm or research. No colon needed.").addText((t) => t.setValue(name).onChange((v) => {
       name = v.trim();
       clear();
     }));
-    const pathRow = new import_obsidian5.Setting(this.contentEl).setName("Folder").setDesc("Absolute path on this Mac.");
+    const pathRow = new import_obsidian7.Setting(this.contentEl).setName("Folder").setDesc("Absolute path on this Mac.");
     pathRow.addText((t) => {
       t.setValue(path).onChange((v) => {
         path = v;
@@ -6068,7 +8286,7 @@ var FolderEdit = class extends import_obsidian5.Modal {
             clear();
           }
         } catch (e) {
-          new import_obsidian5.Notice(String(e));
+          new import_obsidian7.Notice(String(e));
         }
       }));
     });
@@ -6081,36 +8299,36 @@ var FolderEdit = class extends import_obsidian5.Modal {
         preview.empty();
         for (const message of plan.messages || []) preview.createEl("p", { text: message });
         for (const file of plan.references) preview.createEl("div", { text: file });
-        new import_obsidian5.Setting(preview).addButton((b) => b.setButtonText("Apply " + action).setCta().onClick(async () => {
+        new import_obsidian7.Setting(preview).addButton((b) => b.setButtonText("Apply " + action).setCta().onClick(async () => {
           try {
             b.setDisabled(true);
             await this.plugin.ensureSavedNotes();
             await this.plugin.call("roots", { ...args, apply: true, token: plan.token });
             this.plugin.lastIndex = 0;
-            void this.plugin.refresh(true).catch((e) => new import_obsidian5.Notice(String(e)));
+            void this.plugin.refresh(true).catch((e) => new import_obsidian7.Notice(String(e)));
             await this.done();
-            new import_obsidian5.Notice("Shared nav aliases updated for every vault. Reopen galleries to refresh; Neovim: :CodeLinksRefresh.");
+            new import_obsidian7.Notice("Shared nav aliases updated for every vault. Reopen galleries to refresh; Neovim: :CodeLinksRefresh.");
             this.close();
           } catch (e) {
             b.setDisabled(false);
             clear();
-            new import_obsidian5.Notice(String(e));
+            new import_obsidian7.Notice(String(e));
           }
         }));
       } catch (e) {
         clear();
-        new import_obsidian5.Notice(String(e));
+        new import_obsidian7.Notice(String(e));
       }
     };
-    new import_obsidian5.Setting(this.contentEl).addButton((b) => b.setButtonText("Preview changes").onClick(() => void inspect(!this.item ? "add" : name !== this.item.name ? "rename" : "move")));
-    if (this.item) new import_obsidian5.Setting(this.contentEl).setDesc("Retirement hides this name from suggestions but preserves existing links in every vault.").addButton((b) => b.setButtonText(this.item.retired ? "Preview restore" : "Preview retirement").onClick(() => void inspect(this.item.retired ? "restore" : "retire")));
+    new import_obsidian7.Setting(this.contentEl).addButton((b) => b.setButtonText("Preview changes").onClick(() => void inspect(!this.item ? "add" : name !== this.item.name ? "rename" : "move")));
+    if (this.item) new import_obsidian7.Setting(this.contentEl).setDesc("Retirement hides this name from suggestions but preserves existing links in every vault.").addButton((b) => b.setButtonText(this.item.retired ? "Preview restore" : "Preview retirement").onClick(() => void inspect(this.item.retired ? "restore" : "retire")));
     this.contentEl.append(preview);
   }
   onClose() {
     this.contentEl.empty();
   }
 };
-var Settings = class extends import_obsidian5.PluginSettingTab {
+var Settings = class extends import_obsidian7.PluginSettingTab {
   constructor(plugin) {
     super(plugin.app, plugin);
     this.plugin = plugin;
@@ -6122,7 +8340,7 @@ var Settings = class extends import_obsidian5.PluginSettingTab {
   display() {
     this.containerEl.empty();
     this.containerEl.createEl("h2", { text: "Code Links" });
-    new import_obsidian5.Setting(this.containerEl).setName("Output appearance").setHeading();
+    new import_obsidian7.Setting(this.containerEl).setName("Output appearance").setHeading();
     this.containerEl.createEl("p", { cls: "setting-item-description", text: "Colors for program output in this vault. Changes appear immediately in every open note." });
     const preview = this.containerEl.createEl("pre", { cls: "code-links-output-appearance-preview", text: "Energy (J)    Speed (m/s)\n     1.250       1.58114\n     2.500       2.23607" });
     const paint = () => {
@@ -6131,50 +8349,50 @@ var Settings = class extends import_obsidian5.PluginSettingTab {
     };
     paint();
     let foreground, background;
-    new import_obsidian5.Setting(this.containerEl).setName("Text color").addColorPicker((p) => {
+    new import_obsidian7.Setting(this.containerEl).setName("Text color").addColorPicker((p) => {
       foreground = p;
       p.setValue(this.plugin.settings.outputForeground).onChange((v) => {
         this.plugin.setOutputColors({ outputForeground: v });
         paint();
       });
     });
-    new import_obsidian5.Setting(this.containerEl).setName("Background color").addColorPicker((p) => {
+    new import_obsidian7.Setting(this.containerEl).setName("Background color").addColorPicker((p) => {
       background = p;
       p.setValue(this.plugin.settings.outputBackground).onChange((v) => {
         this.plugin.setOutputColors({ outputBackground: v });
         paint();
       });
     });
-    new import_obsidian5.Setting(this.containerEl).setName("Terminal defaults").setDesc("Soft green text on a near-black background.").addButton((b) => b.setButtonText("Restore terminal colors").onClick(() => {
+    new import_obsidian7.Setting(this.containerEl).setName("Terminal defaults").setDesc("Soft green text on a near-black background.").addButton((b) => b.setButtonText("Restore terminal colors").onClick(() => {
       this.plugin.setOutputColors(terminalColors);
       foreground.setValue(this.plugin.settings.outputForeground);
       background.setValue(this.plugin.settings.outputBackground);
       paint();
     }));
-    new import_obsidian5.Setting(this.containerEl).setName("Source tools").setHeading();
-    new import_obsidian5.Setting(this.containerEl).setName("Linked folders").setDesc("Manage shared nav aliases for every vault and terminal client.").addButton((b) => b.setButtonText("Manage linked folders").onClick(() => new FolderManager(this.plugin).open()));
-    new import_obsidian5.Setting(this.containerEl).setName("Python executable").setDesc("Host-local path; no shell commands.").addText((t) => t.setValue(this.plugin.settings.python).onChange(async (v) => {
+    new import_obsidian7.Setting(this.containerEl).setName("Source tools").setHeading();
+    new import_obsidian7.Setting(this.containerEl).setName("Linked folders").setDesc("Manage shared nav aliases for every vault and terminal client.").addButton((b) => b.setButtonText("Manage linked folders").onClick(() => new FolderManager(this.plugin).open()));
+    new import_obsidian7.Setting(this.containerEl).setName("Python executable").setDesc("Host-local path; no shell commands.").addText((t) => t.setValue(this.plugin.settings.python).onChange(async (v) => {
       this.plugin.settings.python = v;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian5.Setting(this.containerEl).setName("Shared core script").addText((t) => t.setValue(this.plugin.settings.core).onChange(async (v) => {
+    new import_obsidian7.Setting(this.containerEl).setName("Shared core script").addText((t) => t.setValue(this.plugin.settings.core).onChange(async (v) => {
       this.plugin.settings.core = v;
       await this.plugin.saveSettings();
     }));
   }
 };
-var GuideModal = class extends import_obsidian5.Modal {
+var GuideModal = class extends import_obsidian7.Modal {
   constructor(plugin) {
     super(plugin.app);
     this.plugin = plugin;
-    this.owner = new import_obsidian5.Component();
+    this.owner = new import_obsidian7.Component();
   }
   async onOpen() {
     this.titleEl.setText("Code Links \u2014 syntax and actions");
     this.owner.load();
     try {
       const text = await (0, import_promises2.readFile)((0, import_path2.join)((0, import_path2.dirname)(this.plugin.settings.core), "../docs/Using Code Links.md"), "utf8");
-      await import_obsidian5.MarkdownRenderer.render(this.app, text, this.contentEl, "", this.owner);
+      await import_obsidian7.MarkdownRenderer.render(this.app, text, this.contentEl, "", this.owner);
     } catch (e) {
       this.contentEl.setText(String(e));
     }

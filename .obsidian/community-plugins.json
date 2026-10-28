@@ -1,7 +1,6 @@
 [
   "case-sensitive-find",
   "callout-tools",
-  "callout-manager",
   "colorful-note-borders",
   "obsidian-file-color",
   "obsidian-footnotes",
@@ -43,5 +42,6 @@
   "research-outline",
   "knowledge-library",
   "vault-manager-status",
+  "callout-manager-managed",
   "gc-explorer-indicators"
 ]
