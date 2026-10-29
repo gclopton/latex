@@ -142,7 +142,7 @@ def copy_body(live,identity,revision,materialize_assets=True):
     from image_assets import materialize,snapshot
     # Assets are durable before any caller can insert the returned Markdown.
     if materialize_assets and portable_entry['assets']:
-        materialize(live,entry.get('images') or snapshot(live,entry).get('images',[]))
+        materialize(live,entry.get('images') or snapshot(live,entry).get('images',[]),track=False) # inserted by the editor; its own observation records the copy
     body=portable_entry['body'];rows=components(body)
     if not rows or rows[0]['from']!=0:raise ValueError('The index entry must contain a callout')
     root=rows[0];edits=[]

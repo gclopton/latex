@@ -1,12 +1,17 @@
-"""Portable TEST library journal. SQLite is a disposable search projection.
+"""Portable library: the entries journal plus a disposable SQLite search projection.
 
-This module never writes source notes. The live Obsidian adapter owns text edits.
-Every mutation is profile/epoch guarded, revision checked and journaled.
+B4 format: every Mac appends immutable events to its own chain under
+journals/entries/ (see journal.py). Entries and occurrence ownership claims are
+objects with explicit parent revisions; concurrent changes leave competing
+heads that are flagged, never silently resolved. This module never writes
+source notes. The live Obsidian adapter owns text edits. Every mutation is
+profile/epoch/format guarded, revision checked and journaled.
 """
 import fcntl
 import hashlib
 import json
 import os
+import shutil
 import sqlite3
 import uuid
 from contextlib import contextmanager
@@ -40,29 +45,121 @@ def atomic_json(path, value):
 class Conflict(ValueError):pass
 
 PROJECTION_FILENAME=f'search-v5-p{search_projection.SCHEMA}.sqlite'
+# The on-disk mode is a discriminator: the retired single-writer constructor
+# accepts only 'TEST' or 'PRODUCTION' and therefore refuses these stores.
+FORMAT='kl-b4/1'
+STORE_MODES={'TEST':'B4-TEST','PRODUCTION':'B4-PRODUCTION'}
+RETIRED_MODE='RETIRED-SINGLE-WRITER'
+ENTRY='entry:'
+CLAIM='claim:'
+CHECKPOINT_INTERVAL=128
 
 
 def projection_busy(error):
     return isinstance(error,sqlite3.OperationalError) and any(word in str(error).lower() for word in ('locked','busy'))
 
 
+def retire_root(root,successor=None):
+    """Fence a retired single-writer root: both the old and the new constructor refuse it."""
+    root=Path(root)
+    current=json.loads((root/'library.json').read_text())
+    atomic_json(root/'library.json',{'mode':RETIRED_MODE,'retired':current,'successor':str(successor) if successor else None,
+                                     'at':datetime.now(timezone.utc).isoformat()})
+
+
 class PortableLibrary:
-    def __init__(self, root, allow_readonly=False, mode='TEST'):
-        self.root=Path(root).resolve();self.root.mkdir(parents=True,exist_ok=True)
-        self.transactions=self.root/'transactions';self.transactions.mkdir(exist_ok=True)
+    def __init__(self, root, allow_readonly=False, mode='TEST', reader=False, writer=None, create=True):
+        # A reader host only reads a store published by the writers. It never
+        # creates, repairs, backs up or appends to the shared journals; the
+        # SQLite projection, writer.lock and local/ are host-local files.
+        if mode not in STORE_MODES:raise ValueError('Library mode does not match the requested collection.')
+        self.reader=bool(reader);self.collection=mode;self.writer_override=writer
+        self.root=Path(root).resolve()
         self.config_path=self.root/'library.json'
+        if self.reader:
+            if not self.config_path.is_file():
+                raise Conflict('Reader host: the library store from the writer Mac is not available yet.')
+        elif not create and not self.config_path.is_file():
+            # A production writer never mints a new library at a missing or
+            # mistyped root: a new id would end up in synced vault markers.
+            raise Conflict('No library store at '+str(self.root)+'; create it with migrate_b4.py or an explicit initialisation.')
+        else:
+            self.root.mkdir(parents=True,exist_ok=True)
         with self.lock():
             if not self.config_path.exists():
-                atomic_json(self.config_path,{'mode':mode,'id':str(uuid.uuid4()),'epoch':str(uuid.uuid4()),'version':1})
-            self.config=json.loads(self.config_path.read_text())
-            if self.config.get('mode')!=mode or mode not in ('TEST','PRODUCTION'):raise ValueError('Library mode does not match the requested collection.')
+                atomic_json(self.config_path,{'mode':STORE_MODES[mode],'format':FORMAT,'id':str(uuid.uuid4()),'epoch':str(uuid.uuid4()),'version':2})
+            self.config=self.read_config()
+            self.local_config=self.read_local_config()
             self.fault=None
+            self._reset_state()
             try:self.load()
-            except (Conflict,json.JSONDecodeError) as exc:
+            except Conflict as exc:
                 if not allow_readonly:raise
                 self.fault=str(exc)
             self.project_or_defer()
-            if not self.fault:self.try_backup()
+            if not self.fault and not self.reader:self.try_backup()
+
+    def read_config(self):
+        config=json.loads(self.config_path.read_text())
+        if config.get('mode')==RETIRED_MODE:raise Conflict('This library root is retired. Use its successor store.')
+        if config.get('mode') in STORE_MODES and config.get('format') is None:
+            raise Conflict('This library uses the retired single-writer format; import it with migrate_b4.py first.')
+        if config.get('mode')!=STORE_MODES[self.collection] or config.get('format')!=FORMAT:
+            raise ValueError('Library mode does not match the requested collection.')
+        return config
+
+    def revalidate(self):
+        """Every mutation re-reads the shared config: a changed id, epoch or format stops it."""
+        current=self.read_config()
+        if any(current.get(k)!=self.config.get(k) for k in ('id','epoch','mode','format')):
+            raise Conflict('Library profile, epoch or format changed. Refresh before writing.')
+
+    def read_local_config(self):
+        """Host-local overrides (for example backupRoot); never shared between Macs."""
+        path=self.root/'library.local.json'
+        try:value=json.loads(path.read_text())
+        except FileNotFoundError:return {}
+        if not isinstance(value,dict):raise ValueError('library.local.json must contain an object.')
+        return value
+
+    def require_writer(self,action):
+        if self.reader:
+            from host_role import ReaderHost
+            raise ReaderHost(action)
+
+    @property
+    def transactions(self):return self.root/'journals'/'entries'
+
+    def _reset_state(self,use_checkpoint=True):
+        from journal import JournalSet
+        self.entries={};self.receipts={};self.sequence=0;self.head=None;self.history={};self.clocks={};self.owners={}
+        self.records={};self.receipt_records={};self.paths_by_vault={};self.documents_by_path={};self.incomplete=None
+        self.journals=JournalSet(self.root,self.config['id'],self.config['epoch'],writer=self.writer_override,reader=self.reader,local=self.root/'local')
+        self.journal=self.journals.journals['entries'];self.component_journal=self.journals.journals['components']
+        self.journals.ready=self.assets_ready;self._verified_assets=set()
+        self.journal.listeners.append(self._on_event)
+        if not use_checkpoint:return
+        restored=self.journals.restore_checkpoint()
+        if restored:self.checkpoint_sequence=len(self.journals.order)
+        elif restored is None:self._reset_state(False) # a damaged cache never leaves half-built state
+
+    def assets_ready(self,event):
+        """Content-addressed image assets travel separately; an event waits until they arrive intact."""
+        for spec in event['objects'].values():
+            value=spec.get('value')
+            for image in (value.get('images') or []) if isinstance(value,dict) else []:
+                sha=image.get('sha256') if isinstance(image,dict) else None;ext=image.get('extension','') if isinstance(image,dict) else ''
+                if not isinstance(sha,str) or len(sha)!=64:continue
+                name=sha+ext
+                if name in self._verified_assets:continue
+                try:data=(self.root/'assets'/name).read_bytes()
+                except OSError:return False
+                if hashlib.sha256(data).hexdigest()!=sha:return False # still arriving (or damaged)
+                self._verified_assets.add(name)
+        return True
+
+    @property
+    def writer(self):return self.journals.writer
 
     @contextmanager
     def lock(self):
@@ -83,42 +180,75 @@ class PortableLibrary:
             raise Conflict('Library profile or epoch changed. Refresh before writing.')
 
     def load(self):
+        """Fold newly arrived events of both journals (they may depend on each other)."""
         if getattr(self,'fault',None):return
-        if not hasattr(self,'entries'):
-            self.entries={};self.receipts={};self.sequence=0;self.head=None;self.history={};self.clocks={};self.owners={}
-            self.restore_checkpoint()
-        if not hasattr(self,'records'):
-            self.records={r['sequence']:r for r in self.receipts.values()}
-            self.paths_by_vault={};self.documents_by_path={}
-            for entry in self.entries.values():self._count_home(entry,1)
-        stat=self.transactions.stat();stamp=(stat.st_dev,stat.st_ino,stat.st_mtime_ns,stat.st_ctime_ns)
-        if stamp==getattr(self,'_journal_stamp',None):return
-        paths=sorted(self.transactions.glob('*.json'))
-        if len(paths)<self.sequence:raise Conflict('Portable journal was truncated.')
-        for path in paths:
-            if int(path.stem)<=self.sequence:continue
-            record=json.loads(path.read_text());signature=record.pop('checksum',None)
-            if signature!=digest(record) or record['previous']!=self.head or record['sequence']!=self.sequence+1:
-                raise Conflict('Portable journal integrity failed at '+path.name+'. No further writes are allowed.')
-            record_ids=set()
-            for change in record['changes']:
-                before=change['before'];after=change['after'];entry_id=(after or before)['id']
-                if entry_id in record_ids or self.entries.get(entry_id)!=before:raise Conflict('Journal revision chain is inconsistent.')
-                record_ids.add(entry_id)
-            self.validate_ownership(record['changes'])
-            for change in record['changes']:
-                if change['before']:self.owners.pop(change['before']['home']['occurrenceId'],None)
-            for change in record['changes']:
-                before=change['before'];after=change['after'];entry_id=(after or before)['id']
-                if before:self._count_home(before,-1)
-                if after:self._count_home(after,1)
-                if after is None:self.entries.pop(entry_id,None)
-                else:
-                    self.entries[entry_id]=after;self.owners[after['home']['occurrenceId']]=entry_id
-                self.clocks[entry_id]=(after['revision'] if after else self.clocks.get(entry_id,0)+1)
-                self.history.setdefault(entry_id,[]).append({'sequence':record['sequence'],'revision':after,'actor':record['actor'],'at':record['at']})
-            self.sequence=record['sequence'];self.head=signature;self.receipts[record['key']]=record;self.records[self.sequence]=record
-        self._journal_stamp=stamp
+        from journal import JournalFault
+        try:self.journals.refresh()
+        except JournalFault as error:
+            raise Conflict('Index journal integrity failed: '+str(error)+' No further writes are allowed.') from error
+        pending=len(self.journals.pending)
+        self.incomplete=('Waiting for '+str(pending)+' index journal events still arriving or missing a dependency') if pending else None
+
+    # ----- folding events into the legacy-compatible view ------------------
+    def display(self,entry_id):
+        """Current entry, flagged when versions or ownership claims compete."""
+        value,heads=self.journal.state(ENTRY+entry_id)
+        if not heads:return None
+        if len(heads)==1:
+            return None if value.get('deleted') else value
+        versions=[self.journal.revisions[h]['value'] for h in heads]
+        live=[v for v in versions if not v.get('deleted')]
+        if not live:return None
+        primary=json.loads(json.dumps(live[-1]))
+        primary['competing']=[{'revisionId':h,'writer':self.journal.revisions[h]['writer'],'deleted':bool(v.get('deleted')),'revision':v.get('revision'),'title':v.get('title')} for h,v in zip(heads,versions)]
+        return primary
+
+    def claim(self,occurrence):
+        value,heads=self.journal.state(CLAIM+occurrence)
+        return value,heads
+
+    def _with_claim_flag(self,entry):
+        if entry is None:return None
+        value,heads=self.claim(entry['home']['occurrenceId'])
+        if len(heads)>1:
+            entry=json.loads(json.dumps(entry))
+            entry['ownershipConflict']=sorted({self.journal.revisions[h]['value'] for h in heads if self.journal.revisions[h]['value']})
+        return entry
+
+    def _on_event(self,event,changed):
+        touched=set()
+        for obj in changed:
+            if obj.startswith(ENTRY):touched.add(obj[len(ENTRY):])
+            elif obj.startswith(CLAIM):
+                value,heads=self.claim(obj[len(CLAIM):])
+                touched.update(self.journal.revisions[h]['value'] for h in heads if self.journal.revisions[h]['value'])
+                for revision in event['objects'][obj]['parents']:
+                    if self.journal.revisions[revision]['value']:touched.add(self.journal.revisions[revision]['value'])
+        changes=[]
+        for entry_id in sorted(touched):
+            before=self.entries.get(entry_id);after=self._with_claim_flag(self.display(entry_id))
+            if before==after:continue
+            if before:
+                self._count_home(before,-1)
+                if self.owners.get(before['home']['occurrenceId'])==entry_id:self.owners.pop(before['home']['occurrenceId'],None)
+            if after is None:self.entries.pop(entry_id,None)
+            else:
+                self._count_home(after,1);self.entries[entry_id]=after
+                owner,heads=self.claim(after['home']['occurrenceId'])
+                self.owners[after['home']['occurrenceId']]=owner if owner else entry_id
+            value,heads=self.journal.state(ENTRY+entry_id)
+            self.clocks[entry_id]=max(self.journal.revisions[h]['value'].get('revision',0) for h in heads) if heads else 0
+            changes.append({'before':before,'after':after})
+        payload=event.get('payload') or {}
+        record={'sequence':self.sequence+1,'previous':self.head,'key':event['key'],'intent':event['intent'],'actor':payload.get('actor'),
+                'operation':payload.get('operation','update'),'undoTarget':payload.get('undoTarget'),'at':event['at'],'changes':changes,
+                'event':event['hash'],'writer':event['writer']}
+        for change in changes:
+            entry_id=(change['after'] or change['before'])['id']
+            self.history.setdefault(entry_id,[]).append({'sequence':record['sequence'],'revision':change['after'],'actor':record['actor'],'at':record['at'],'writer':event['writer']})
+        self.sequence=record['sequence'];self.head=digest(record);self.records[self.sequence]=record
+        if event['hash'] not in self.journal.voided:
+            self.receipts.setdefault(event['key'],record);self.receipt_records[event['hash']]=record
 
     def _count_home(self,entry,delta):
         home=entry['home'];vault=home.get('vaultId',home['vault']);path=home['path']
@@ -131,6 +261,12 @@ class PortableLibrary:
         if total:documents[document]=total
         else:documents.pop(document,None)
         if not documents:self.documents_by_path.pop(key,None)
+
+    def conflicts(self):
+        """Objects with competing heads, and idempotency keys reused for different intents."""
+        objects=sorted(obj for obj,heads in self.journal.heads.items() if len(heads)>1)
+        return {'objects':objects,'keys':sorted(self.journal.key_conflicts|self.component_journal.key_conflicts),
+                'components':sorted(obj for obj,heads in self.component_journal.heads.items() if len(heads)>1)}
 
     def changes_since(self,sequence,limit=2000):
         if not isinstance(sequence,int) or isinstance(sequence,bool) or sequence<0 or sequence>self.sequence or self.sequence-sequence>limit:
@@ -148,47 +284,20 @@ class PortableLibrary:
                 if len(changed)>limit:return {'reset':True,'catalogChanged':True,'changedIds':[]}
         return {'reset':False,'catalogChanged':catalog_changed,'changedIds':sorted(changed)}
 
-    def restore_checkpoint(self):
-        """A disposable replay cache. Any changed journal file forces full replay."""
-        try:
-            checkpoint=json.loads((self.root/'checkpoint.json').read_text())
-            checksum=checkpoint.pop('checksum')
-            if digest(checkpoint)!=checksum or checkpoint['profile']!=self.config['id'] or checkpoint['epoch']!=self.config['epoch']:return
-            state=checkpoint['state'];sequence=state['sequence']
-            if sequence!=len(checkpoint['files']):return
-            for name,expected in checkpoint['files'].items():
-                info=(self.transactions/name).stat()
-                if [info.st_size,info.st_mtime_ns,info.st_ctime_ns]!=expected:return
-            anchor=json.loads((self.transactions/f'{sequence:010d}.json').read_text())
-            signature=anchor.pop('checksum')
-            if digest(anchor)!=signature or signature!=state['head']:return
-            keys=('entries','receipts','sequence','head','history','clocks','owners')
-            values={key:state[key] for key in keys}
-            for key,value in values.items():setattr(self,key,value)
-            self.checkpoint_sequence=sequence
-        except (OSError,ValueError,KeyError,TypeError):return
-
     def checkpoint(self):
-        """Retain every journal record; accelerate startup with a verified state cache."""
-        if self.fault or self.sequence-getattr(self,'checkpoint_sequence',0)<200:return
-        files={}
-        for path in sorted(self.transactions.glob('*.json')):
-            if int(path.stem)>self.sequence:continue
-            info=path.stat();files[path.name]=[info.st_size,info.st_mtime_ns,info.st_ctime_ns]
-        record={'profile':self.config['id'],'epoch':self.config['epoch'],'files':files,
-                'state':{key:getattr(self,key) for key in ('entries','receipts','sequence','head','history','clocks','owners')}}
-        atomic_json(self.root/'checkpoint.json',{**record,'checksum':digest(record)})
-        self.checkpoint_sequence=self.sequence
+        """Host-local, validated replay cache; any change of the event inventory invalidates it."""
+        total=len(self.journals.order)
+        if self.reader or self.fault or total-getattr(self,'checkpoint_sequence',0)<CHECKPOINT_INTERVAL:return
+        if self.journals.save_checkpoint():self.checkpoint_sequence=total
 
-    def validate_ownership(self, changes):
-        touched={(c['after'] or c['before'])['id'] for c in changes};pending={}
-        for change in changes:
-            entry=change['after']
-            if entry is None:continue
-            occurrence=entry['home']['occurrenceId'];owner=self.owners.get(occurrence)
-            if (owner is not None and owner!=entry['id'] and owner not in touched) or (occurrence in pending and pending[occurrence]!=entry['id']):
-                raise Conflict('Duplicate owning occurrence; restore a verified journal backup if this occurs during replay: '+occurrence)
-            pending[occurrence]=entry['id']
+    def validate_ownership(self, objects, touched):
+        """A batch may not claim an occurrence owned by another, untouched entry."""
+        for obj,spec in objects.items():
+            if not obj.startswith(CLAIM) or spec['value'] is None:continue
+            value,heads=self.claim(obj[len(CLAIM):])
+            if len(heads)>1:raise Conflict('Competing ownership claims for this occurrence; resolve them first: '+obj[len(CLAIM):])
+            if value and value!=spec['value'] and value not in touched:
+                raise Conflict('Duplicate owning occurrence; restore a verified journal backup if this occurs during replay: '+obj[len(CLAIM):])
 
     def project(self, rebuild=False):
         with self.lock():
@@ -251,7 +360,7 @@ class PortableLibrary:
                 CREATE TABLE cleanup(entry_id TEXT PRIMARY KEY,disposition TEXT,reasons TEXT);
                 CREATE VIRTUAL TABLE search USING fts5(entry_id UNINDEXED,title,body,context,math);
             ''')
-            db.executemany('INSERT INTO meta VALUES(?,?)',[('sequence',str(self.sequence)),('head',self.head or ''),('schema','5'),('search_projection',str(search_projection.SCHEMA)),('mode','TEST_REVIEWED' if self.config['mode']=='TEST' else 'REVIEWED'),('production_approvals','0'),('profile',self.config['id']),('epoch',self.config['epoch'])])
+            db.executemany('INSERT INTO meta VALUES(?,?)',[('sequence',str(self.sequence)),('head',self.head or ''),('schema','5'),('search_projection',str(search_projection.SCHEMA)),('mode','TEST_REVIEWED' if self.collection=='TEST' else 'REVIEWED'),('production_approvals','0'),('profile',self.config['id']),('epoch',self.config['epoch'])])
             for e in self.entries.values():self.index_entry(db,e)
             self.projection_work=search_projection.rebuild(db)
             db.commit()
@@ -261,79 +370,120 @@ class PortableLibrary:
 
     def index_entry(self, db, e):
         home=e['home'];context=e.get('context',{})
-        vault=home.get('vaultId',home['vault']) if self.config['mode']=='PRODUCTION' else home['vault']
+        vault=home.get('vaultId',home['vault']) if self.collection=='PRODUCTION' else home['vault']
         db.execute('INSERT OR REPLACE INTO documents VALUES(?,?,?,?)',(home['documentId'],vault,home['path'],'working'))
         db.execute('INSERT INTO entries VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',(e['id'],home['documentId'],e['revision'],e['kind'],e['title'],e['body'],e.get('status','current'),e.get('parent'),home.get('line',1),hashlib.sha256(e['body'].encode()).hexdigest(),context.get('before',''),context.get('after',''),e.get('copyBodyHash'),e.get('parentBodyHash')))
         db.execute('INSERT INTO cleanup VALUES(?,?,?)',(e['id'],'deleted' if e.get('status')=='deleted' else 'unadmitted' if e.get('admission')=='pending-variant' else 'candidate','[]'))
         rowid=db.execute('SELECT rowid FROM entries WHERE id=?',(e['id'],)).fetchone()[0]
         db.execute('INSERT INTO search(rowid,entry_id,title,body,context,math) VALUES(?,?,?,?,?,?)',(rowid,e['id'],e['title'],e['body'],context.get('before','')+context.get('after',''),math_search(e['body'])))
 
-    def commit(self, *, profile, epoch, key, actor, changes, operation='update', undo_target=None):
+    def commit(self, *, profile, epoch, key, actor, changes, operation='update', undo_target=None, provenance=None, group=None, dependencies=()):
+        self.require_writer('Saving an index change')
         self.guard(profile,epoch)
         if not isinstance(key,str) or not key or len(key)>200:raise ValueError('An idempotency key is required.')
         if not actor or not changes:raise ValueError('Actor and at least one change are required.')
         intent=digest({'actor':actor,'changes':changes,'operation':operation,'undoTarget':undo_target})
         with self.lock():
-            self.load()
-            if key in self.receipts:
-                receipt=self.receipts[key]
-                if receipt['intent']!=intent:raise Conflict('Idempotency key was already used for different changes.')
-                self.project_or_defer();return self.receipt(receipt)
-            seen=set();applied=[]
+            self.revalidate();self.load()
+            if self.fault:raise Conflict('Library is read-only: '+self.fault)
+            # Replay: an applied event (any writer), or a parked part of this same
+            # group instance. A parked part of another Mac's instance is not ours.
+            known=self.journal.keys.get(key);parked=[e for e in self.journals.parked_events(key=key,instance=(group or {}).get('instance','')) if e['kind']=='entries']
+            if known or parked:
+                same=self.journal.event_for_key(key,intent)
+                if same is None and not any(e['intent']==intent for e in parked):raise Conflict('Idempotency key was already used for different changes.')
+                if same is None:return {'key':key,'sequence':self.sequence,'operation':operation,'entries':[],'pending':True,'event':next(e['hash'] for e in parked if e['intent']==intent)}
+                self.project_or_defer();return self.receipt(self.receipt_records.get(same) or self.receipts[key])
+            seen=set();objects={};claimed={}
             for change in changes:
                 entry_id=change['id']
                 if entry_id in seen:raise Conflict('An entry occurs twice in this batch.')
-                seen.add(entry_id);before=self.entries.get(entry_id)
+                seen.add(entry_id)
+            for change in changes:
+                entry_id=change['id'];before=self.entries.get(entry_id)
+                value,heads=self.journal.state(ENTRY+entry_id)
+                # A merge an observation makes from integrated text names exactly the heads it saw.
+                if len(heads)>1 and operation!='resolve' and sorted(change.get('mergeHeads') or [])!=sorted(heads):raise Conflict('This entry has competing versions from both Macs; resolve them first: '+entry_id)
                 expected=change['expectedRevision']
                 if self.clocks.get(entry_id,0)!=expected:raise Conflict('Entry revision changed: '+entry_id)
                 after=change.get('entry')
                 if after is not None:
                     after=json.loads(json.dumps(after));after['id']=entry_id;after['revision']=expected+1
+                    for transient in ('competing','ownershipConflict'):after.pop(transient,None)
                     if not after.get('body') or not after.get('kind') or not after.get('title'):raise ValueError('Entry text, kind and title are required.')
                     home=after.get('home',{})
                     if not all(home.get(k) for k in ('vault','path','documentId','occurrenceId')):raise ValueError('An entry requires a complete owning occurrence.')
-                    if before and before['home']['occurrenceId']!=home['occurrenceId'] and operation not in ('replace-source','undo'):
+                    if before and before['home']['occurrenceId']!=home['occurrenceId'] and operation not in ('replace-source','undo','resolve'):
                         raise Conflict('Moving an owning occurrence requires replace-source.')
                     if after.get('parent')==entry_id:raise Conflict('An entry cannot be its own parent.')
                     if after.get('parent') and after['parent'] not in self.entries:raise Conflict('Parent entry is unavailable.')
-                applied.append({'before':before,'after':after})
-            self.validate_ownership(applied)
-            # Commit unit is the portable library transaction. This never claims source-file atomicity.
-            record={'sequence':self.sequence+1,'previous':self.head,'key':key,'intent':intent,'actor':actor,'operation':operation,'undoTarget':undo_target,
-                    'at':datetime.now(timezone.utc).isoformat(),'changes':applied}
-            signature=digest(record)
-            atomic_json(self.transactions/f'{record["sequence"]:010d}.json',{**record,'checksum':signature})
-            self.load()
+                objects[ENTRY+entry_id]={'parents':list(heads),'value':after if after is not None else {'id':entry_id,'deleted':True,'revision':expected+1}}
+                old=before['home']['occurrenceId'] if before else None;new=after['home']['occurrenceId'] if after else None
+                if old and old!=new:claimed.setdefault(old,None)
+                if new:claimed[new]=entry_id
+            for occurrence,owner in claimed.items():
+                value,heads=self.claim(occurrence)
+                if value==owner and len(heads)<=1:continue
+                if owner is None and value not in seen:continue # never release another entry's claim
+                objects[CLAIM+occurrence]={'parents':list(heads),'value':owner}
+            self.validate_ownership(objects,seen)
+            from journal import JournalFault
+            try:
+                written,_=self.journals.append('entries',operation=(group or {}).get('operation') or digest({'key':key,'intent':intent}),key=key,intent=intent,objects=objects,
+                                    provenance=provenance,payload={'actor':actor,'operation':operation,'undoTarget':undo_target},group=group,dependencies=dependencies)
+                self.load()
+            except JournalFault as error:
+                self.fault=str(error);raise Conflict('Index journal integrity failed: '+str(error)) from error
             self.try_backup()
-            # A projection failure leaves a durable receipt and is recovered on restart/retry.
+            if key not in self.receipts:
+                # A part of an operation group: durable, applied when every part is present.
+                return {'key':key,'sequence':self.sequence,'operation':operation,'entries':[],'pending':True,'event':written['hash']}
+            # A projection failure leaves a durable event and is recovered on restart/retry.
             self.project_or_defer()
             try:self.checkpoint()
             except OSError:pass  # Disposable acceleration must not fail a durable commit.
-            return self.receipt(record)
+            return self.receipt(self.receipts[key])
+
+    def resolve(self, *, profile, epoch, key, actor, entry_id, entry, expected_heads):
+        """Replace exactly the competing heads the person saw with a chosen version (None deletes).
+
+        If any other version arrived after that choice, nothing is written: a
+        later unseen branch is never superseded silently.
+        """
+        with self.lock():
+            self.load()
+            value,heads=self.journal.state(ENTRY+entry_id)
+            if len(heads)<2:raise Conflict('This entry has no competing versions.')
+            if sorted(heads)!=sorted(expected_heads or []):raise Conflict('Another version arrived after this choice; review the current versions again.')
+            revision=max(self.journal.revisions[h]['value'].get('revision',0) for h in heads)
+            return self.commit(profile=profile,epoch=epoch,key=key,actor=actor,operation='resolve',
+                               changes=[{'id':entry_id,'expectedRevision':revision,'entry':entry}])
 
     def backup(self):
-        """Verified separate file copies; an optional backupRoot may be outside the library."""
+        """Verified copies of the immutable journal events; backupRoot is host-local config."""
+        if self.reader:return
         with self.lock():
             if self.fault:return
-            destination=Path(self.config.get('backupRoot',self.root/'backups'/'verified'));(destination/'transactions').mkdir(parents=True,exist_ok=True)
+            local=getattr(self,'local_config',{})
+            destination=Path(local.get('backupRoot') or self.config.get('backupRoot') or self.root/'backups'/'verified')
+            destination.mkdir(parents=True,exist_ok=True)
             if not (destination/'library.json').exists():atomic_json(destination/'library.json',self.config)
-            if not hasattr(self,'backed_up_sequence'):
-                receipt=json.loads((destination/'receipt.json').read_text()) if (destination/'receipt.json').exists() else {}
-                self.backed_up_sequence=receipt.get('sequence',0) if receipt.get('profile')==self.config['id'] else 0
-            for n in range(self.backed_up_sequence+1,self.sequence+1):
-                record=self.records[n]
-                target=destination/'transactions'/f'{record["sequence"]:010d}.json'
-                signature=digest(record)
-                if not target.exists():atomic_json(target,{**record,'checksum':signature})
-                copied=json.loads(target.read_text());actual=copied.pop('checksum')
-                if actual!=digest(copied) or actual!=signature:raise Conflict('Backup verification failed.')
+            copied={}
+            for journal in self.journals.journals.values():
+                for relative in sorted(journal.inventory):
+                    if journal.inventory[relative] not in journal.events:continue
+                    source=self.root/relative;target=destination/relative
+                    if not target.exists():
+                        target.parent.mkdir(parents=True,exist_ok=True)
+                        temporary=target.with_name('.tmp-'+target.name);shutil.copyfile(source,temporary);os.replace(temporary,target)
+                    if target.read_bytes()!=source.read_bytes():raise Conflict('Backup verification failed.')
+                    copied[relative]=hashlib.sha256(target.read_bytes()).hexdigest()
             registry=self.root/'vaults.json'
             metadata={'vaults':json.loads(registry.read_text()) if registry.exists() else {},
                       'plans':{str(p.relative_to(self.root)):json.loads(p.read_text()) for p in (self.root/'plans').rglob('*.json') if 'archive' not in p.parts}}
             stamp=digest(metadata);folder=destination/'metadata';folder.mkdir(exist_ok=True)
             if not (folder/(stamp+'.json')).exists():atomic_json(folder/(stamp+'.json'),metadata)
-            atomic_json(destination/'receipt.json',{'sequence':self.sequence,'head':self.head,'profile':self.config['id'],'metadata':stamp})
-            self.backed_up_sequence=self.sequence
+            atomic_json(destination/'receipt.json',{'sequence':self.sequence,'head':self.head,'profile':self.config['id'],'metadata':stamp,'events':copied})
 
     def try_backup(self):
         try:self.backup();self.backup_warning=None
@@ -347,6 +497,7 @@ class PortableLibrary:
         return result
 
     def undo(self, *, profile, epoch, key, target, actor):
+        self.require_writer('Undoing an index change')
         # Read the latest durable state; commit performs another guarded revision check.
         with self.lock():self.load()
         self.guard(profile,epoch)

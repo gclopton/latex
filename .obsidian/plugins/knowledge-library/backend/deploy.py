@@ -8,7 +8,8 @@ from library_store import PortableLibrary,atomic_json
 from vault_registry import enroll
 
 PROJECT=Path(__file__).resolve().parent
-DEFAULT_LIBRARY=Path.home()/'Library/Application Support/Knowledge Library/library'
+# B4 store root; the retired single-writer root (.../library) is fenced by retire_root().
+DEFAULT_LIBRARY=Path.home()/'Library/Application Support/Knowledge Library/library-b4'
 
 def install(vault,root,backup,template=False):
     vault=Path(vault);config=vault if template else vault/'.obsidian'

@@ -101,7 +101,8 @@ def prepare(live,key,text):
     live.store.load();entry=live.store.entries.get(job['id'])
     if not entry:raise Conflict('This entry was removed before its edit could be applied.')
     if text==job['before'] and entry['revision']!=job['revision']:raise Conflict('The index changed before this edit was applied.')
-    plan=live.component_plan(job['path'],job['after'],'edit')
+    # Durable intent (kind entry-edit) before the home note is written.
+    plan=live.component_plan(job['path'],job['after'],'edit',intent_kind='entry-edit',intent_data={'job':key})
     if plan['text']!=job['after']:
         job['after']=plan['text'];atomic_json(job_path(live,key),job)
     return {**plan,'path':job['path'],'before':text}
@@ -113,7 +114,15 @@ def finish(live,key,token,text):
     if job['state']=='complete':return status(live,key)
     if text!=job['after']:raise Conflict('The index edit differs from its guarded plan.')
     if live.read(job['path'])!=text:raise Conflict('Waiting for the home editor to finish saving this index edit.')
-    live.component_finish(token,text);live.sync(job['path'])
+    # One event group: component ownership, then the entry (home and its new
+    # body/title/kind together). A capture between them publishes nothing.
+    live.component_finish(token,text,kind='entry-edit',data={'job':key})
+    return complete(live,key,text)
+
+
+def complete(live,key,text):
+    job=read_job(live,key)
+    if job['state']=='complete':return status(live,key)
     live.store.load();job.update(state='complete',resultRevision=live.store.entries[job['id']]['revision'],resultHash=digest(text))
     receipts=directory(live)/'receipts';receipts.mkdir(exist_ok=True)
     atomic_json(receipts/(key+'.json'),job);job_path(live,key).unlink(missing_ok=True)
@@ -143,12 +152,14 @@ def fail(live,key,message):
 
 
 def apply_closed(live,key):
+    from host_role import require_writer
+    require_writer(live,'Writing a closed home note')
     job=read_job(live,key)
     if online(live,job['vault']):return {'state':'pending','key':key}
     from live_library import LiveLibrary
     from closed_vault_updates import allowed
     if not allowed(live,job['vault'],job['root']):return {'state':'pending','key':key,'reason':'Closed writes are not enabled for this vault.'}
-    owner=LiveLibrary(live.store.root,job['root'],production=live.production)
+    owner=LiveLibrary(live.store.root,job['root'],production=live.production,role=live.role)
     file=owner.path(job['path'])
     # A job-local lock prevents competing retries. The plan and before/after
     # are durable before a write; replay recognizes a write before finish.
@@ -159,7 +170,7 @@ def apply_closed(live,key):
         text=file.read_bytes().decode('utf-8');plan=prepare(owner,key,text)
         if file.read_bytes().decode('utf-8')!=text:raise Conflict('The closed home note changed during its edit.')
         if plan['text']!=text:
-            temporary=file.with_name(file.name+'.kl-'+key+'.tmp')
+            temporary=file.with_name('.kl-tmp-'+file.name+'-'+key)
             try:
                 with temporary.open('x',encoding='utf-8',newline='') as out:
                     out.write(plan['text']);out.flush();os.fsync(out.fileno())

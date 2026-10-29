@@ -172,13 +172,13 @@ class AgentAPI:
         if job['operation']=='insert-copy':
             from image_assets import materialize
             materialize(self.live,self.live.reference_entry(job['target']).get('images',[]))
-        plan=self.live.component_plan(job['note'],job['after'],'paste' if job['operation']=='insert-copy' else 'edit')
+        plan=self.live.component_plan(job['note'],job['after'],'paste' if job['operation']=='insert-copy' else 'edit',intent_kind='agent',intent_data={'agent':token})
         job.update(state='writing',after=plan['text'],componentToken=plan['token']);atomic_json(path,job)
         return {**plan,'path':job['note']}
     def finish_online(self,token,text):
         uuid.UUID(token);folder=self.live.store.root/'agent-writes';path=folder/(token+'.json');job=read_job(path)
         if job.get('vaultId')!=self.live.vault_id or job['state']!='writing' or text!=job['after'] or self.live.read(job['note'])!=text:raise Conflict('Agent write has not reached disk unchanged')
-        self.live.component_finish(job['componentToken'],text);self.live.refresh_reference_note(job['note']);job['state']='complete';publish_terminal(path,job);atomic_json(path,job);(folder/'pending'/path.name).unlink(missing_ok=True)
+        self.live.component_finish(job['componentToken'],text,kind='agent',data={'agent':token});self.live.refresh_reference_note(job['note']);job['state']='complete';publish_terminal(path,job);atomic_json(path,job);(folder/'pending'/path.name).unlink(missing_ok=True)
         return {'token':token,'state':'complete','note':job['note']}
     def fail_online(self,token,error):
         uuid.UUID(token);folder=self.live.store.root/'agent-writes';path=folder/(token+'.json');job=read_job(path)
@@ -214,6 +214,8 @@ class AgentAPI:
             atomic_json(reverse_path,{**job,'token':reverse,'state':'planned','before':text,'after':job['before'],'operation':'undo','sourceHash':H(text),'targetDisplay':target,'targetHash':entry_hash(self.live.reference_entry(job['target']))})
         result=self.apply(reverse);job['undoToken']=reverse;atomic_json(path,job);return result
     def apply(self,token):
+        from host_role import require_writer
+        require_writer(self.live,'Applying an agent edit')
         self.live.store.load()
         import os,fcntl
         from component_entry_edit import online
@@ -231,23 +233,24 @@ class AgentAPI:
                 return {'token':token,'state':'pending','note':job['note']}
             file=self.live.path(job['note']);text=file.read_bytes().decode()
             if job['state']=='writing' and text==job['after']:
-                result=self.live.component_finish(job['componentToken'],text)
+                result=self.live.component_finish(job['componentToken'],text,kind='agent',data={'agent':token})
             else:
                 if text!=job['before']:raise Conflict('Note changed since dry-run; prepare a new plan')
                 if resolve(self.live,job['note'],job['target'],text)!=job['targetDisplay'] or entry_hash(self.live.reference_entry(job['target']))!=job['targetHash']:raise Conflict('Target changed since dry-run')
                 if job['operation']=='insert-copy':
                     from image_assets import materialize
                     materialize(self.live,self.live.reference_entry(job['target']).get('images',[]))
-                p=self.live.component_plan(job['note'],job['after'],'paste' if job['operation']=='insert-copy' else 'edit')
+                # Durable intent (kind agent) before the note write.
+                p=self.live.component_plan(job['note'],job['after'],'paste' if job['operation']=='insert-copy' else 'edit',intent_kind='agent',intent_data={'agent':token})
                 job.update(state='writing',after=p['text'],componentToken=p['token']);atomic_json(path,job)
-                temporary=file.with_name(file.name+'.'+token+'.tmp')
+                temporary=file.with_name('.kl-tmp-'+file.name+'-'+token)
                 try:
                     with temporary.open('x',encoding='utf-8',newline='') as out:out.write(job['after']);out.flush();os.fsync(out.fileno())
                     os.chmod(temporary,file.stat().st_mode)
                     if file.read_bytes().decode()!=text:raise Conflict('Note changed before write')
                     os.replace(temporary,file)
                 finally:temporary.unlink(missing_ok=True)
-                result=self.live.component_finish(p['token'],job['after'])
+                result=self.live.component_finish(p['token'],job['after'],kind='agent',data={'agent':token})
             self.live.refresh_reference_note(job['note']);job['state']='complete';publish_terminal(path,job);atomic_json(path,job)
             return {'token':token,'state':'complete','note':job['note'],'sourceHash':H(job['after'])}
 

@@ -48,8 +48,8 @@ def put(path,data):
     path.parent.mkdir(parents=True,exist_ok=True)
     if path.exists():
         if path.read_bytes()!=data:raise Conflict('Image snapshot hash collision or damaged asset: '+str(path))
-        return
-    temp=path.with_name(path.name+'.tmp-'+str(uuid.uuid4()))
+        return False
+    temp=path.with_name('.kl-tmp-'+path.name+'-'+str(uuid.uuid4()))
     try:
         with temp.open('xb') as out:out.write(data);out.flush();os.fsync(out.fileno())
         try:os.link(temp,path)
@@ -60,7 +60,7 @@ def put(path,data):
             if error.errno not in (errno.EPERM,errno.EOPNOTSUPP,errno.ENOSYS,errno.EXDEV):raise
             # Serialize the fallback publisher, then atomically rename the fully
             # fsynced blob. A competing publisher must agree byte-for-byte.
-            with (path.parent/'.asset-publish.lock').open('a') as lock:
+            with (path.parent/'.kl-tmp-asset-publish.lock').open('a') as lock:
                 fcntl.flock(lock,fcntl.LOCK_EX)
                 if path.exists():
                     if path.read_bytes()!=data:raise Conflict('Image asset changed during materialization')
@@ -69,6 +69,7 @@ def put(path,data):
         try:os.fsync(descriptor)
         finally:os.close(descriptor)
     finally:temp.unlink(missing_ok=True)
+    return True
 
 
 def verified(live,image):
@@ -81,6 +82,8 @@ def verified(live,image):
 
 def snapshot(live,entry,previous=None,retain_missing=False):
     """Snapshot local embeds before admission/revision; never mutate note text."""
+    from host_role import require_writer
+    require_writer(live,'Saving an image snapshot')
     root=live.source_root(entry,verify=False);images=[]
     old={(a['target'],a['wiki']):a for a in (previous or {}).get('images',[])}
     def visit(match):
@@ -102,13 +105,19 @@ def snapshot(live,entry,previous=None,retain_missing=False):
     return {**entry,'images':images,'imagesHash':digest([(i['sha256'],i['extension']) for i in images])}
 
 
-def materialize(live,images):
+def materialize(live,images,track=True):
+    from host_role import require_writer
+    require_writer(live,'Copying images into a note folder')
     assets=[]
     for image in images:
         source,data=verified(live,image);relative='_Knowledge Library assets/'+source.name
         destination=(live.vault/relative).resolve()
         if not destination.is_relative_to(live.vault):raise Conflict('Image destination escapes its vault')
-        put(destination,data);assets.append({'source':str(source),'path':relative,'sha256':image['sha256']})
+        created=put(destination,data);assets.append({'source':str(source),'path':relative,'sha256':image['sha256']})
+        # Copies this operation created: its intent records them, and recovery
+        # removes them again if the operation is cancelled before its note
+        # write (they would otherwise be orphans that vault-sync captures).
+        if created and track:live.__dict__.setdefault('_materialized',[]).append({'path':relative,'sha256':image['sha256']})
     return assets
 
 

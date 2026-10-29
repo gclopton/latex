@@ -63,6 +63,8 @@ def mode(root):
 
 
 def guarded_write(owner,path,before,after):
+    from host_role import require_writer
+    require_writer(owner,'Writing a closed note')
     from component_scope import guard
     guard(owner.vault,path)
     if not allowed(owner,owner.vault_id,owner.vault):raise Conflict('Closed writes are not enabled for this vault.')
@@ -70,7 +72,7 @@ def guarded_write(owner,path,before,after):
     file=owner.path(path)
     if file.read_bytes().decode()!=before:raise Conflict('The closed note changed before its update.')
     if before==after:return
-    temporary=file.with_name(file.name+'.kl-'+str(uuid.uuid4())+'.tmp')
+    temporary=file.with_name('.kl-tmp-'+file.name+'-'+str(uuid.uuid4()))
     try:
         with temporary.open('x',encoding='utf-8',newline='') as out:
             out.write(after);out.flush();os.fsync(out.fileno())
@@ -143,7 +145,7 @@ def drain(live,budget=20):
         try:
             if not allowed(live,identity,root):raise Conflict('Closed vault is not authorized at this root.')
             if mode(root)!='automatic':continue
-            owner=LiveLibrary(live.store.root,root,production=live.production)
+            owner=LiveLibrary(live.store.root,root,production=live.production,role=live.role)
             if owner.vault_id!=identity:raise Conflict('Closed vault identity no longer matches its registered root.')
             results.append({'vaultId':identity,**drain_owner(owner,budget)})
         except (OSError,ValueError) as error:
@@ -172,9 +174,9 @@ def deferred(live,resolved=None):
 
 class Worker:
     """Event-driven closed-vault drain, isolated from the editor request thread."""
-    def __init__(self,root,vault,production=False):
+    def __init__(self,root,vault,production=False,role=None):
         import threading
-        self.root=root;self.vault=vault;self.production=production;self.wake=threading.Event();self.stop=threading.Event()
+        self.root=root;self.vault=vault;self.production=production;self.role=role;self.wake=threading.Event();self.stop=threading.Event()
         self.thread=threading.Thread(target=self.run,name='closed-vault-updates',daemon=True)
         self.thread.start()
     def notify(self):self.wake.set()
@@ -186,7 +188,7 @@ class Worker:
             self.wake.wait();self.wake.clear()
             if self.stop.is_set():return
             try:
-                live=LiveLibrary(self.root,self.vault,production=getattr(self,'production',False))
+                live=LiveLibrary(self.root,self.vault,production=getattr(self,'production',False),role=getattr(self,'role',None))
                 while not self.stop.is_set():
                     results=drain(live)
                     atomic_json(directory(live)/'worker-status.json',{'results':results})

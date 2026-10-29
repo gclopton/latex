@@ -13,18 +13,40 @@ import portability
 import component_membership
 import component_entry_edit
 
+# Operations a reader host may run. They read the store, the registry or a
+# saved note and never write the shared store, identities, markers or notes.
+READER_OPS=frozenset(('live-status','live-preview','live-index-conflicts','live-locate','live-history','live-component-detail',
+    'live-component-state','live-component-tags','live-component-ancestor-changes','live-component-remove-preview'))
+
 class ReviewedService:
-    def __init__(self, root, vault, capability, production=False,enrollment=False):
+    def __init__(self, root, vault, capability, production=False,enrollment=False,role=None):
         if not capability:raise ValueError('An editor review capability is required.')
-        self.live=LiveLibrary(root,vault,allow_readonly=True,production=production,enrollment=enrollment);self.live.review_capability=capability
+        self.live=LiveLibrary(root,vault,allow_readonly=True,production=production,enrollment=enrollment and role!='reader',role=role);self.live.review_capability=capability
         self.query=None;self.sequence=-1;self.closed_worker=None;self.closed_stamp=None
 
     def handle(self, request):
         op=request.get('op','search');live=self.live;store=live.store
         if op.startswith('live-'):
+            if live.reader and op not in READER_OPS:
+                from host_role import ReaderHost
+                raise ReaderHost('"'+op+'"')
             if op!='live-status':store.guard(request.get('profile'),request.get('epoch'))
             if op=='live-status':
-                store.load();data={'sequence':store.sequence,'count':len(store.entries),'paths':sorted(store.paths_by_vault.get(live.vault_id,{})),**store.changes_since(request.get('since'))}
+                store.load()
+                review=store.root/'local'/'intents'/'review'
+                data={'role':live.role,'index':{'conflicts':store.conflicts(),'incomplete':store.incomplete,'fault':store.fault,
+                                                'needsReview':len(list(review.glob('*.json'))) if review.is_dir() else 0},'sequence':store.sequence,'count':len(store.entries),'paths':sorted(store.paths_by_vault.get(live.vault_id,{})),**store.changes_since(request.get('since'))}
+            elif op=='live-index-conflicts':
+                store.load();registry=live.component_registry();registry.load();conflicts=store.conflicts()
+                data={**conflicts,'entries':{obj[6:]:[{'revisionId':h,**{k:store.journal.revisions[h]['value'].get(k) for k in ('title','body','revision','deleted')},'writer':store.journal.revisions[h]['writer']}
+                                                    for h in store.journal.heads[obj]] for obj in conflicts['objects'] if obj.startswith('entry:')},
+                      'incomplete':store.incomplete}
+            elif op=='live-resolve-entry':
+                heads=store.journal.heads.get('entry:'+request['id'],[])
+                if request['revisionId'] not in heads:raise Conflict('Choose one of the current competing versions.')
+                chosen=store.journal.revisions[request['revisionId']]['value']
+                data=store.resolve(**live.metadata(),key=request['key'],actor='human-resolution',entry_id=request['id'],entry=None if chosen.get('deleted') else chosen,expected_heads=request['expectedHeads'])
+            elif op=='live-resolve-component':data=live.component_registry().resolve(request['object'],request['revisionId'],request['key'],request['expectedHeads'])
             elif op=='live-image-change':
                 from image_assets import changed
                 data=changed(live,request.get('path'))
@@ -217,7 +239,8 @@ class ReviewedService:
                     row['sourcePath']=row['path']
                     # Pending projection responses must not mix new homes with old rows.
                     home={'vault':row['vault'],'vaultId':row['vault'],'path':row['path']}
-                    row['vaultRoot']=str(live.source_root({'home':home},verify=False));row['vault']=Path(row['vaultRoot']).name
+                    try:row['vaultRoot']=str(live.source_root({'home':home},verify=False));row['vault']=Path(row['vaultRoot']).name
+                    except (Conflict,OSError,ValueError,KeyError):row['vaultRoot']=None # not on this Mac (or a reader without a registry)
             pending=store.sequence if self.sequence!=store.sequence else None
             warning=('Read-only: '+store.fault) if store.fault else ('Saved changes are being indexed; showing the previous saved version.' if pending is not None else getattr(store,'backup_warning',None))
             return {**result,**live.metadata(),'sequence':self.sequence,'pendingSequence':pending,'warning':warning}
@@ -225,11 +248,16 @@ class ReviewedService:
             self.query.db.rollback()
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('--root',required=True);ap.add_argument('--vault',required=True);ap.add_argument('--production',action='store_true');ap.add_argument('--enroll',action='store_true');args=ap.parse_args()
-    service=ReviewedService(args.root,args.vault,os.environ.pop('KL_REVIEW_CAPABILITY',''),production=args.production,enrollment=args.enroll)
-    component_entry_edit.session(service.live)
-    from closed_vault_updates import Worker
-    service.closed_worker=Worker(args.root,args.vault,production=args.production);service.closed_worker.notify()
+    ap=argparse.ArgumentParser();ap.add_argument('--root',required=True);ap.add_argument('--vault',required=True);ap.add_argument('--production',action='store_true');ap.add_argument('--enroll',action='store_true')
+    ap.add_argument('--role',choices=('writer','reader'),default=None);args=ap.parse_args()
+    service=ReviewedService(args.root,args.vault,os.environ.pop('KL_REVIEW_CAPABILITY',''),production=args.production,enrollment=args.enroll,role=args.role)
+    reader=service.live.reader
+    if not reader:
+        component_entry_edit.session(service.live)
+        from closed_vault_updates import Worker
+        service.closed_worker=Worker(args.root,args.vault,production=args.production,role=service.live.role);service.closed_worker.notify()
+        import operations # unresolved intents are resolved while running, not only at start
+        service.recovery_worker=operations.RecoveryWorker(args.root,args.vault,production=args.production,role=service.live.role)
     try:
         for line in sys.stdin:
             request={}
@@ -238,7 +266,8 @@ def main():
             except Exception as exc:response={'requestId':request.get('requestId'),'error':str(exc),'code':getattr(exc,'code',None),'retryable':not isinstance(exc,(ValueError,Conflict))}
             print(json.dumps(response,ensure_ascii=False),flush=True)
     finally:
-        service.closed_worker.close()
-        component_entry_edit.session(service.live,False)
+        if not reader:
+            service.closed_worker.close();service.recovery_worker.close()
+            component_entry_edit.session(service.live,False)
 
 if __name__=='__main__':main()

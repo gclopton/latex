@@ -2378,6 +2378,69 @@ var require_entry_palette = __commonJS({
   }
 });
 
+// plugin/host-role.js
+var require_host_role = __commonJS({
+  "plugin/host-role.js"(exports2, module2) {
+    var WRITER = "writer";
+    var READER = "reader";
+    function normalizeRole(value) {
+      return value === WRITER ? WRITER : READER;
+    }
+    function hostRoleFile(os = require("os"), path2 = require("path")) {
+      return path2.join(os.homedir(), "Library", "Application Support", "Knowledge Library", "host-role.json");
+    }
+    function readHostRole(fs2 = require("fs"), file = hostRoleFile()) {
+      try {
+        const value = JSON.parse(fs2.readFileSync(file, "utf8"));
+        return normalizeRole(value && typeof value === "object" ? value.role : null);
+      } catch {
+        return READER;
+      }
+    }
+    function serviceArgs(role) {
+      return normalizeRole(role) === WRITER ? ["--production", "--enroll", "--role", WRITER] : ["--production", "--role", READER];
+    }
+    var ReaderAdapter = class {
+      constructor(plugin, client) {
+        this.plugin = plugin;
+        this.client = client;
+        this.paths = /* @__PURE__ */ new Set();
+        this.pathsVersion = 0;
+        this.paused = /* @__PURE__ */ new Set();
+        this.closed = false;
+        this.reader = true;
+      }
+      acceptStatus(status, version = this.pathsVersion) {
+        if (version !== this.pathsVersion) return false;
+        this.paths = new Set(status.paths);
+        return true;
+      }
+      async start() {
+        const status = await this.client.request({ op: "live-status" });
+        if (status.data.role !== READER) throw new Error("The index service did not start in reader mode.");
+        this.meta = { profile: status.profile, epoch: status.epoch };
+        this.acceptStatus(status.data);
+        this.plugin.lastSequence = status.data.sequence;
+      }
+      async request(op, args = {}) {
+        return (await this.client.request({ op, ...this.meta, ...args })).data;
+      }
+      schedule() {
+      }
+      rename() {
+      }
+      review() {
+        new this.plugin.Notice("This Mac reads the index. Add or change index entries on the writer Mac.");
+      }
+      close() {
+        this.closed = true;
+        this.client.close();
+      }
+    };
+    module2.exports = { WRITER, READER, normalizeRole, serviceArgs, ReaderAdapter, readHostRole, hostRoleFile };
+  }
+});
+
 // plugin/reference-focus.js
 var require_reference_focus = __commonJS({
   "plugin/reference-focus.js"(exports2, module2) {
@@ -2647,9 +2710,9 @@ var require_callout_presentation = __commonJS({
   }
 });
 
-// ../../../Users/gradyclopton/Projects/cross-vault-library-lab/.worktrees/linked-references/node_modules/@lezer/common/dist/index.cjs
+// node_modules/@lezer/common/dist/index.cjs
 var require_dist = __commonJS({
-  "../../../Users/gradyclopton/Projects/cross-vault-library-lab/.worktrees/linked-references/node_modules/@lezer/common/dist/index.cjs"(exports2) {
+  "node_modules/@lezer/common/dist/index.cjs"(exports2) {
     "use strict";
     var DefaultBufferLength = 1024;
     var nextPropID = 0;
@@ -4716,9 +4779,9 @@ var require_dist = __commonJS({
   }
 });
 
-// ../../../Users/gradyclopton/Projects/cross-vault-library-lab/.worktrees/linked-references/node_modules/@lezer/highlight/dist/index.cjs
+// node_modules/@lezer/highlight/dist/index.cjs
 var require_dist2 = __commonJS({
-  "../../../Users/gradyclopton/Projects/cross-vault-library-lab/.worktrees/linked-references/node_modules/@lezer/highlight/dist/index.cjs"(exports2) {
+  "node_modules/@lezer/highlight/dist/index.cjs"(exports2) {
     "use strict";
     var common = require_dist();
     var nextTagID = 0;
@@ -5477,9 +5540,9 @@ var require_dist2 = __commonJS({
   }
 });
 
-// ../../../Users/gradyclopton/Projects/cross-vault-library-lab/.worktrees/linked-references/node_modules/@lezer/markdown/dist/index.cjs
+// node_modules/@lezer/markdown/dist/index.cjs
 var require_dist3 = __commonJS({
-  "../../../Users/gradyclopton/Projects/cross-vault-library-lab/.worktrees/linked-references/node_modules/@lezer/markdown/dist/index.cjs"(exports2) {
+  "node_modules/@lezer/markdown/dist/index.cjs"(exports2) {
     "use strict";
     var common = require_dist();
     var highlight = require_dist2();
@@ -7920,7 +7983,7 @@ var require_component_reference_drafts = __commonJS({
 // plugin/component-file-ready.js
 var require_component_file_ready = __commonJS({
   "plugin/component-file-ready.js"(exports2, module2) {
-    async function componentFile(vault, path2, { attempts = 80, wait = () => new Promise((resolve) => setTimeout(resolve, 25)) } = {}) {
+    async function componentFile(vault, path2, { attempts = 100, wait = () => new Promise((resolve) => setTimeout(resolve, 100)) } = {}) {
       for (let attempt = 0; attempt < attempts; attempt++) {
         const file = vault.getAbstractFileByPath(path2);
         if (file) return file;
@@ -7976,7 +8039,18 @@ var require_component_file_ready = __commonJS({
         void check();
       });
     }
-    module2.exports = { componentFile, componentSaved };
+    async function finishWhenSaved(vault, path2, text, finish, { save = null, attempts = 3, timeoutMs = 2e3 } = {}) {
+      for (let attempt = 1; ; attempt++) {
+        try {
+          if (save) await save();
+          await componentSaved(vault, path2, text, { timeoutMs });
+          return await finish();
+        } catch (error) {
+          if (attempt >= attempts || !/finish(ed)? saving/i.test(error.message || "")) throw error;
+        }
+      }
+    }
+    module2.exports = { componentFile, componentSaved, finishWhenSaved };
   }
 });
 
@@ -8035,6 +8109,49 @@ var require_component_write_scope = __commonJS({
   }
 });
 
+// plugin/component-membership-startup.js
+var require_component_membership_startup = __commonJS({
+  "plugin/component-membership-startup.js"(exports2, module2) {
+    function membershipStartup(plugin, replay, { onError = () => {
+    } } = {}) {
+      let closed = false, loaded = false, auditPending = true, resolveLayout;
+      const layout = new Promise((resolve) => {
+        resolveLayout = resolve;
+      });
+      plugin.register(() => {
+        closed = true;
+        resolveLayout();
+      });
+      plugin.app.workspace.onLayoutReady(() => {
+        loaded = true;
+        resolveLayout();
+      });
+      const run = async () => {
+        await layout;
+        if (closed) return;
+        await replay(auditPending);
+        if (!closed) {
+          auditPending = false;
+          plugin.componentMembershipError = null;
+        }
+      };
+      const report = (error) => {
+        if (!closed) {
+          plugin.componentMembershipError = error.message;
+          onError(error);
+        }
+      };
+      const ready = run();
+      ready.catch(report);
+      plugin.registerInterval(setInterval(() => {
+        if (loaded && !closed) void run().catch(report);
+      }, 3e3));
+      return { layout, ready, isClosed: () => closed };
+    }
+    module2.exports = { membershipStartup };
+  }
+});
+
 // plugin/component-external-observer.js
 var require_component_external_observer = __commonJS({
   "plugin/component-external-observer.js"(exports2, module2) {
@@ -8090,7 +8207,7 @@ var require_component_identities = __commonJS({
     var { isolateHistory } = require("@codemirror/commands");
     var { componentHeaders } = require_component_model();
     var identityModel = require_component_identity_model();
-    var { componentFile, componentSaved } = require_component_file_ready();
+    var { componentFile, componentSaved, finishWhenSaved } = require_component_file_ready();
     function difference(before, after) {
       let from = 0, toA = before.length, toB = after.length;
       while (from < toA && from < toB && before[from] === after[from]) from++;
@@ -8117,11 +8234,15 @@ var require_component_identities = __commonJS({
     }
     function registerComponentIdentities(plugin) {
       const canWrite = require_component_write_scope().scope(plugin);
-      let queue = Promise.resolve(), closed = false;
+      let queue = Promise.resolve(), closed = false, startup;
       const states = /* @__PURE__ */ new Map(), accepted = /* @__PURE__ */ new Map(), timers = /* @__PURE__ */ new Map(), stateRequests = /* @__PURE__ */ new Map();
       const serialize = (fn) => {
         const result = queue.catch(() => {
-        }).then(fn);
+        }).then(async () => {
+          await startup.layout;
+          if (closed || startup.isClosed()) return;
+          return fn();
+        });
         queue = result.catch(() => {
         });
         return result;
@@ -8187,7 +8308,19 @@ var require_component_identities = __commonJS({
         const plan = await request("live-component-plan", { path: path2, text, operation, ...syncAt ? { syncAt } : {}, ...ancestor ? { ancestor } : {} });
         if (view.state.doc.toString() !== original) throw Error("The note changed while its callout identity was being checked. Try the edit again.");
         if (plan.text !== original) view.dispatch({ changes: difference(original, plan.text), annotations: [history ? isolateHistory.of("full") : Transaction.addToHistory.of(false)], userEvent: "input.callout-identity", effects });
-        await finish(path2, plan, plan.text);
+        const save = async () => {
+          for (const leaf of plugin.app.workspace.getLeavesOfType("markdown")) if (leaf.view?.file?.path === path2 && leaf.view.save) await leaf.view.save();
+        };
+        await finishWhenSaved(plugin.app.vault, path2, plan.text, () => finish(path2, plan, plan.text), { save });
+        if (plan.issues?.some((i) => i.kind === "enrollment-waiting" || i.kind === "awaiting-source")) retryLater(view, path2);
+      };
+      const retryLater = (view, path2) => {
+        clearTimeout(timers.get(view));
+        timers.set(view, setTimeout(() => {
+          timers.delete(view);
+          accepted.delete(path2);
+          observe(view).catch((error) => new Notice2(error.message));
+        }, 25e3));
       };
       const observe = (view, operation = "observe") => serialize(async () => {
         const path2 = pathOf(view), text = view.state.doc.toString();
@@ -8462,17 +8595,13 @@ var require_component_identities = __commonJS({
         }),
         flush: () => queue
       };
-      plugin.componentMembershipReady = replayMembership(true);
-      plugin.componentMembershipReady.catch((error) => new Notice2(error.message));
+      startup = require_component_membership_startup().membershipStartup(plugin, replayMembership, { onError: (error) => new Notice2(error.message) });
+      plugin.componentMembershipStartup = startup;
+      plugin.componentMembershipReady = startup.ready;
       plugin.registerInterval(setInterval(() => {
         void request("live-component-session", {}).catch(() => {
         });
       }, 3e4));
-      plugin.registerInterval(setInterval(() => {
-        void replayMembership().catch((error) => {
-          plugin.componentMembershipError = error.message;
-        });
-      }, 3e3));
       const hidden = StateField.define({
         create: (s) => s.field(editorLivePreviewField, false) ? [] : hiddenRanges(s.doc.toString()),
         update: (old, tr) => tr.state.field(editorLivePreviewField, false) ? [] : tr.docChanged || tr.reconfigured || tr.startState.field(editorLivePreviewField, false) !== tr.state.field(editorLivePreviewField, false) ? hiddenRanges(tr.newDoc.toString()) : old,
@@ -9571,7 +9700,11 @@ var require_typing_latency = __commonJS({
     }
     function isLabVault(root) {
       if (typeof root !== "string") return false;
-      const home = require("os").homedir(), allowed = [path2.join(home, "ObsidianVaults", "knowledge_library_lab"), path2.join(home, "Projects", "cross-vault-library-lab", "identity-replica", "knowledge_library_lab")];
+      const home = require("os").homedir(), allowed = [
+        path2.join(home, "ObsidianVaults", "knowledge_library_lab"),
+        path2.join(home, "Projects", "cross-vault-library-lab", "identity-replica", "knowledge_library_lab"),
+        path2.join(home, "Projects", "cross-vault-library-lab", "sync-design-20261028", "b4-native-fixtures", "run-20261029", "knowledge_library_lab")
+      ];
       try {
         return allowed.includes(fs2.realpathSync(root));
       } catch {
@@ -13974,13 +14107,13 @@ function revealSource(editor, line, endLine) {
   editor.focus();
 }
 var Client = class {
-  constructor(vaultRoot = null, production = false, libraryRoot = null, runtimeRoot = null) {
+  constructor(vaultRoot = null, production = false, libraryRoot = null, runtimeRoot = null, role = null) {
     if (!runtimeRoot) throw new Error("Index backend location is unavailable.");
     this.serial = 0;
     this.pending = /* @__PURE__ */ new Map();
     this.buffer = "";
     this.capability = require("crypto").randomBytes(32).toString("hex");
-    const args = vaultRoot ? ["-u", path.join(runtimeRoot, "reviewed_service.py"), "--root", libraryRoot || path.join(TEST_DATA_ROOT, "reviewed-library-test"), "--vault", vaultRoot, ...production ? ["--production", "--enroll"] : []] : ["-u", path.join(runtimeRoot, "query_service.py"), "--corpus", CORPUS];
+    const args = vaultRoot ? ["-u", path.join(runtimeRoot, "reviewed_service.py"), "--root", libraryRoot || path.join(TEST_DATA_ROOT, "reviewed-library-test"), "--vault", vaultRoot, ...production ? require_host_role().serviceArgs(role) : []] : ["-u", path.join(runtimeRoot, "query_service.py"), "--corpus", CORPUS];
     this.process = spawn("/usr/bin/python3", args, { stdio: ["pipe", "pipe", "pipe"], env: { ...require("process").env, KL_REVIEW_CAPABILITY: this.capability } });
     this.process.stdout.setEncoding("utf8");
     this.process.stdout.on("data", (chunk) => {
@@ -14869,6 +15002,10 @@ var LibraryBrowser = class extends Modal {
   }
   async reuseSelected(admitCopy = true) {
     if (this.reference?.chooseOnly || this.pendingSearch || !this.reviewed || this.reusing) return;
+    if (this.plugin.reader) {
+      new Notice("This Mac reads the index. Copy the entry as Markdown, or insert it on the writer Mac.");
+      return;
+    }
     const row = this.rows[this.selected];
     if (!row) return;
     this.reusing = true;
@@ -14983,7 +15120,7 @@ var LibraryBrowser = class extends Modal {
     menu.addItem((i) => i.setTitle("Clear all filters").onClick(() => this.filterBar.clear()));
     menu.addItem((i) => i.setTitle("Open source at this entry").onClick(() => this.openSource()));
     menu.addItem((i) => i.setTitle("Copy entry as Markdown").onClick(() => this.copyMarkdown()));
-    if (this.reviewed && !this.reference?.chooseOnly && !this.rows[this.selected]?.local) {
+    if (this.reviewed && !this.plugin.reader && !this.reference?.chooseOnly && !this.rows[this.selected]?.local) {
       menu.addItem((i) => i.setTitle("Edit index entry\u2026").setIcon("pencil").onClick(() => new (require_component_entry_editor()).EntryEditor(this.plugin, this.rows[this.selected].id).open()));
       menu.addItem((i) => i.setTitle("Reuse editable copy here").onClick(() => this.reuseSelected()));
       menu.addItem((i) => i.setTitle("History and related versions").onClick(() => this.showHistory()));
@@ -15177,9 +15314,15 @@ module.exports = class KnowledgeLibraryPlugin extends Plugin {
     if (!Array.isArray(this.settings.groups)) this.settings.groups = [];
     this.production = this.app.vault.getName() !== "knowledge_library_lab";
     require_typing_latency().register(this, Notice, MarkdownView, path.join(TEST_DATA_ROOT, ".worktrees", "linked-references", "verification", "callout-components"));
-    this.libraryRoot = this.settings.libraryRoot || path.join(require("os").homedir(), "Library", "Application Support", "Knowledge Library", "library");
+    this.libraryRoot = this.settings.libraryRoot || path.join(require("os").homedir(), "Library", "Application Support", "Knowledge Library", "library-b4");
     if (this.production && !this.settings.enrolled) {
       new Notice("Index is not enrolled for this vault.");
+      return;
+    }
+    this.role = require_host_role().readHostRole();
+    this.reader = this.production && this.role !== "writer";
+    if (this.reader) {
+      this.loadReader();
       return;
     }
     require_editor_claims().registerEditorClaims(this);
@@ -15210,11 +15353,13 @@ module.exports = class KnowledgeLibraryPlugin extends Plugin {
     require_component_identities().registerComponentIdentities(this);
     require_component_update_settings().registerComponentUpdateSettings(this);
     require_component_reference_writes().registerComponentReferenceWrites(this);
-    await this.componentMembershipReady.catch(() => {
+    void this.componentMembershipReady.catch(() => {
+    }).then(() => {
+      if (this.componentMembershipStartup.isClosed()) return;
+      require_callout_component().registerCalloutComponent(this);
+      require_component_actions().registerComponentActions(this);
+      require_reference_label_writer().registerLabelWriter(this);
     });
-    require_callout_component().registerCalloutComponent(this);
-    require_component_actions().registerComponentActions(this);
-    require_reference_label_writer().registerLabelWriter(this);
     this.registerEvent(this.app.metadataCache.on("changed", (file) => {
       this.documentFeed?.changed(file);
       this.referenceResolver?.poke();
@@ -15277,6 +15422,39 @@ module.exports = class KnowledgeLibraryPlugin extends Plugin {
       }
     });
   }
+  loadReader() {
+    this.Notice = Notice;
+    this.startService();
+    this.registerView("knowledge-library", (leaf) => new LibraryView(leaf, this));
+    this.registerEvent(this.app.workspace.on("active-leaf-change", (leaf) => {
+      if (leaf?.view instanceof MarkdownView) this.lastEditor = leaf.view;
+    }));
+    this.registerInterval(setInterval(() => {
+      if (this.browsers.size) this.refreshBrowsers();
+    }, 3e3));
+    this.addCommand({ id: "browse-tab", name: "Open index in new tab", callback: () => this.openPane(false) });
+    this.addCommand({ id: "browse-window", name: "Search index", hotkeys: [{ modifiers: ["Mod"], key: "k" }], callback: () => this.openPane(true) });
+    this.addCommand({ id: "review-note", name: "Review current note for index", callback: () => this.admission.review() });
+    this.addCommand({ id: "browse", name: "Browse index", hotkeys: [{ modifiers: ["Mod", "Shift"], key: "l" }], callback: () => this.open() });
+    this.addCommand({ id: "actions", name: "Index actions", callback: () => {
+      if (this.active) this.active.actions();
+      else this.open();
+    } });
+    this.registerObsidianProtocolHandler("knowledge-library", (params) => params.entry ? this.openLibraryEntry(params.entry) : this.openPane(params.window === "true", params.query || ""));
+    this.registerObsidianProtocolHandler("knowledge-library-source", async (params) => {
+      try {
+        await this.admission.ready;
+        const located = await this.admission.request("live-locate", { id: params.entry });
+        if (located.vaultRoot !== this.app.vault.adapter.getBasePath()) return;
+        const file = this.app.vault.getAbstractFileByPath(located.path);
+        if (!file) throw new Error("Source note unavailable.");
+        const leaf = this.app.workspace.getLeaf("tab");
+        await leaf.openFile(file, { state: { mode: "preview" }, eState: { line: located.line - 1 } });
+      } catch (e) {
+        new Notice(e.message);
+      }
+    });
+  }
   async persist() {
     const snapshot = JSON.parse(JSON.stringify(this.settings));
     this.saveQueue = (this.saveQueue || Promise.resolve()).catch(() => {
@@ -15302,7 +15480,21 @@ module.exports = class KnowledgeLibraryPlugin extends Plugin {
     this.admission?.close();
     this.referenceResolver?.resetEditors();
     this.referenceResolver?.invalidate();
-    this.admission = new AdmissionAdapter(this, new Client(this.app.vault.adapter.getBasePath(), this.production, this.production ? this.libraryRoot : null, this.runtimeRoot));
+    const libraryRoot = this.production ? this.libraryRoot : this.settings.labLibraryRoot || null;
+    const client = new Client(this.app.vault.adapter.getBasePath(), this.production, libraryRoot, this.runtimeRoot, this.role);
+    if (this.reader) {
+      const { ReaderAdapter } = require_host_role();
+      this.admission = new ReaderAdapter(this, client);
+      this.admission.ready = this.admission.start();
+      this.admission.ready.catch((e) => new Notice("Index service: " + e.message));
+      for (const browser of this.browsers) if (browser.reviewed) {
+        browser.client = this.admission.client;
+        this.admission.ready.then(() => browser.refreshReviewed()).catch(() => {
+        });
+      }
+      return;
+    }
+    this.admission = new AdmissionAdapter(this, client);
     this.admission.ready = this.admission.start();
     this.admission.ready.catch((e) => new Notice("Index service: " + e.message));
     this.calloutAPI?.serviceChanged();
