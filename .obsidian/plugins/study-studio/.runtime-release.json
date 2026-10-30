@@ -1,14 +1,19 @@
 {
   "schema": 1,
   "pluginId": "study-studio",
-  "sourceCommit": "42b29c3de6341a9202a94d8434d223720412a019",
-  "release": "9bd8754fffd20f43d399173179901cc7292215476760b827b69586d37df6deb7",
-  "candidate": false,
+  "sourceCommit": "f9a44b26c0967db8653e57520d4a06d164302531",
+  "release": "notation-20261030-r2",
   "files": {
-    "main.js": "63b7c3562b9c9c5d75ca91e632aa09051ac3ef63b75fbdc47ae8ed0c5559ecc3",
+    "main.js": "320e2202baad7ae9a35de0ca859cbdf24b8ac1b9610de7370b8f29fa6ebccea2",
+    "styles.css": "e9076ef1c1470eab5915c939ae8808be757a4423ca8db4e3c2efa85b2b4b8a7c",
     "manifest.json": "e827d117574f453216d4f26a333a6be8b79004a73b85896d1d28a45d4627006e",
-    "styles.css": "3033938a55ccf0f91d7235a07efc1dfea6923bb9a4b9cde3714072dd2b2dc338",
     "evidence-export.lua": "01502ed558507f36104721a3d89d81b0af5d758f228aa089c33c1615aa6a7667"
   },
-  "acceptance": "G1/B2 combined artifact; exact installed payloads retained"
+  "sourceState": "committed and pushed; rebuild exactly matches accepted candidate-11 runtime",
+  "provenance": {
+    "acceptedCandidate": "candidate-11",
+    "candidateManifestSha256": "45964468882045bfa601f82fc7b3aa60fe89ac77c1df4eb5c7ce4d0ea9b10832",
+    "sourceBranch": "refs/heads/codex/b2-sync",
+    "sourceBundleSha256": "fe7aa9df3182697466ed9e7f2e4b1122bfeed4c53a70915c36156ab832fc9c3f"
+  }
 }

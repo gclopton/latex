@@ -1,14 +1,13 @@
 {
   "schema": 1,
   "pluginId": "math-studio",
-  "sourceCommit": "106a16fa4ab63084bb79b1bebb82ac7613bb29cf",
-  "release": "7f0fe936610a243e342211d3eb8397a18a54eaeae7d3a066192d36deee746057",
-  "candidate": true,
+  "sourceCommit": "b0e0494932049f96a2791cf4a8dd86bcd0948158",
+  "release": "notation-20261030-r2",
   "files": {
-    "frame.js": "0a49f6318120368bde9d5e17b4eb8f22209ec3f42ccbebbdb8972f66c95cb8a1",
-    "main.js": "995d30f5f014d7b6932b50b2eb512ebb3a03b07632fd259483805b3e193abc0d",
-    "manifest.json": "ac3bdc375056f135524fd9fec32ce0ae82b5e5d980eb4e86f15ab0a2fa01cb39",
+    "main.js": "3e28ec5a490bf7522ad7ea33950fff2f0bab884ea465e6d4f162828f400a8bd4",
+    "frame.js": "1787df10ac1059c8c7b1399ea6b9a71dc8569575f2ece03c566e675ffba98e5a",
     "styles.css": "4cefc8df17405fe15079d4def0713197c842b011823ee4bb6b19cc767ec2df62",
+    "manifest.json": "ac3bdc375056f135524fd9fec32ce0ae82b5e5d980eb4e86f15ab0a2fa01cb39",
     "vendor/MATHLIVE-LICENSE.txt": "3caebd18611959ca725ab976a004d408017eb1d7093d6c9b9b09c5a4790eaff8",
     "vendor/fonts/KaTeX_AMS-Regular.woff2": "0cdd387c9590a1a9f9794560022dbb59654a7d86f187aa0c81495ad42d3a7308",
     "vendor/fonts/KaTeX_Caligraphic-Bold.woff2": "de7701e42cf1f4cf0b766c03fb27977207eee2f4fd5d76fa82188406da43ea4c",
@@ -32,5 +31,12 @@
     "vendor/fonts/KaTeX_Typewriter-Regular.woff2": "71d517d67827787cfabdf186914cc3358eda539e37931941f2b2fd4a21f68c0b",
     "vendor/mathlive-fonts.css": "49260be0ad90d23219d7b20790c5fd5f363cd5b1dba0a4ab8f158bccf5fa2996",
     "vendor/mathlive-static.css": "d3f000d0b520bcdcbd3944b5e5e0b323ce7231676be9ac8f0450f0aec672db6c"
+  },
+  "sourceState": "committed and pushed; rebuild exactly matches accepted candidate-11 runtime",
+  "provenance": {
+    "acceptedCandidate": "candidate-11",
+    "candidateManifestSha256": "45964468882045bfa601f82fc7b3aa60fe89ac77c1df4eb5c7ce4d0ea9b10832",
+    "sourceBranch": "refs/heads/codex/math-studio",
+    "sourceBundleSha256": "58929add96996cddf4039919a88d9cd111c4edf3dbc0488e274e06f766c92558"
   }
 }

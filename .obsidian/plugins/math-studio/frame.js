@@ -8805,18 +8805,18 @@ M500 241 v40 H399408 v-40z M500 435 v40 H400000 v-40z`
     if (SVG_BODY[svgBodyName]) return SVG_BODY[svgBodyName][2] / 1e3;
     return SVG_ACCENTS[svgBodyName][2];
   }
-  function stringToCodepoints(string) {
+  function stringToCodepoints(string2) {
     const result = [];
-    for (let i = 0; i < string.length; i++) {
-      let code = string.charCodeAt(i);
-      if (code === 13 && string.charCodeAt(i + 1) === 10) {
+    for (let i = 0; i < string2.length; i++) {
+      let code = string2.charCodeAt(i);
+      if (code === 13 && string2.charCodeAt(i + 1) === 10) {
         code = 10;
         i++;
       }
       if (code === 13 || code === 12) code = 10;
       if (code === 0) code = 65533;
       if (code >= 55296 && code <= 56319) {
-        const nextCode = string.charCodeAt(i + 1);
+        const nextCode = string2.charCodeAt(i + 1);
         if (nextCode >= 56320 && nextCode <= 57343) {
           const lead = code - 55296;
           const trail = nextCode - 56320;
@@ -8854,10 +8854,10 @@ M500 241 v40 H399408 v-40z M500 435 v40 H400000 v-40z`
   function isRegionalIndicator(code) {
     return code >= REGIONAL_INDICATOR[0] && code <= REGIONAL_INDICATOR[1];
   }
-  function splitGraphemes(string) {
-    if (/^[\u0020-\u00FF]*$/.test(string)) return string;
+  function splitGraphemes(string2) {
+    if (/^[\u0020-\u00FF]*$/.test(string2)) return string2;
     const result = [];
-    const codePoints = stringToCodepoints(string);
+    const codePoints = stringToCodepoints(string2);
     let index = 0;
     while (index < codePoints.length) {
       const code = codePoints[index++];
@@ -34762,8 +34762,8 @@ data-command='["setEnvironment","pmatrix"]'>
   }
   var APPLY_FUNCTION = "<mo>&#x2061;</mo>";
   var INVISIBLE_TIMES = "<mo>&#8290;</mo>";
-  function xmlEscape(string) {
-    return string.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  function xmlEscape(string2) {
+    return string2.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
   function makeID(id, options) {
     if (!id || !options.generateID) return "";
@@ -42739,7 +42739,78 @@ If you are using Vue, this may be because you are using the runtime-only build o
 
   // src/symbol-model.ts
   var ID = /^[0-9a-z]{10}$/;
+  var DEF_ID = /^d-[0-9a-z]{10}$/;
+  var ROW_ID = /^[A-Za-z0-9_-]{1,80}$/;
   var clone = (value) => JSON.parse(JSON.stringify(value));
+  function object(v) {
+    return !!v && typeof v === "object" && !Array.isArray(v);
+  }
+  function string(v, max, name) {
+    if (typeof v !== "string" || v.length > max) throw Error(`Invalid notation ${name}.`);
+  }
+  function validateDefinition(value) {
+    if (!object(value)) throw Error("Invalid legacy symbol definition.");
+    string(value.tex, 16e3, "TeX");
+    string(value.meaning, 4e3, "meaning");
+    string(value.units, 1e3, "units");
+    if (!value.meaning.trim()) throw Error("Legacy symbol meaning is empty.");
+    if (value.concept !== void 0) string(value.concept, 200, "concept key");
+    if (!Array.isArray(value.code) || value.code.length > 100) throw Error("Invalid legacy code names.");
+    for (const c of value.code) {
+      if (!object(c)) throw Error("Invalid legacy code representation.");
+      string(c.lang, 60, "language");
+      string(c.name, 200, "code name");
+      if (!c.lang.trim() || !c.name.trim()) throw Error("Legacy language and code name are required.");
+      if (c.scope !== void 0) string(c.scope, 1e3, "scope");
+    }
+  }
+  function validateLanguages(value) {
+    if (!Array.isArray(value) || value.length > 100) throw Error("Use at most 100 notation languages.");
+    const seen = /* @__PURE__ */ new Set();
+    for (const language of value) {
+      string(language, 100, "language");
+      if (!language.trim() || seen.has(language)) throw Error("Notation languages must be nonempty and unique.");
+      seen.add(language);
+    }
+  }
+  function validateEntry(value) {
+    if (!object(value)) throw Error("Invalid notation entry.");
+    string(value.symbol, 16e3, "symbol");
+    string(value.definitionMarkdown, 64e3, "definition");
+    string(value.notesMarkdown, 128e3, "notes");
+    if (value.equation !== void 0) string(value.equation, 16e3, "equation reference");
+    if (value.languageOverride !== void 0) validateLanguages(value.languageOverride);
+    const rows2 = (items, label2, fields) => {
+      if (!Array.isArray(items) || items.length > 100) throw Error(`Invalid notation ${label2} rows.`);
+      const ids = /* @__PURE__ */ new Set();
+      for (const r of items) {
+        if (!object(r) || typeof r.id !== "string" || !ROW_ID.test(r.id) || ids.has(r.id)) throw Error(`Invalid or duplicate notation ${label2} row ID.`);
+        ids.add(r.id);
+        for (const field of fields) string(r[field], field === "language" ? 100 : field === "code" ? 4e3 : 16e3, field);
+      }
+    };
+    rows2(value.units, "value/unit", ["value", "units"]);
+    rows2(value.code, "language/code", ["language", "code"]);
+    if (value.legacy !== void 0) {
+      const old = value.legacy;
+      if (!object(old) || typeof old.definitionId !== "string" || !DEF_ID.test(old.definitionId)) throw Error("Invalid legacy notation metadata.");
+      if (old.concept !== void 0) string(old.concept, 200, "legacy concept");
+      if (old.definition !== void 0) validateDefinition(old.definition);
+      if (old.occurrence !== void 0) {
+        if (!object(old.occurrence) || old.occurrence.def !== old.definitionId) throw Error("Invalid legacy occurrence.");
+        string(old.occurrence.glyph, 16e3, "legacy glyph");
+        string(old.occurrence.equation, 16e3, "legacy equation");
+      }
+      if (old.codeScopes !== void 0) {
+        if (!Array.isArray(old.codeScopes) || old.codeScopes.length > 100) throw Error("Invalid legacy code scopes.");
+        for (const c of old.codeScopes) {
+          if (!object(c)) throw Error("Invalid legacy code scope.");
+          string(c.rowId, 80, "legacy row ID");
+          string(c.scope, 1e3, "legacy scope");
+        }
+      }
+    }
+  }
   function escaped(s, i) {
     let n = 0;
     while (i > 0 && s[--i] === "\\") n++;
@@ -42778,7 +42849,10 @@ If you are using Vue, this may be because you are using the runtime-only build o
       let at = command.lastIndex;
       while (/\s/.test(tex[at] ?? "") && at < tex.length) at++;
       const cls = group(tex, at);
-      if (!cls) continue;
+      if (!cls) {
+        if (/^\{[^}]*\bmjx-ss(?:\s|$)/.test(tex.slice(at))) throw Error("Unclosed symbol marker class.");
+        continue;
+      }
       const tokens = cls.body.trim().split(/\s+/);
       if (!tokens.some((t) => t === "mjx-ss" || t.startsWith("mjx-ss-o-"))) continue;
       const id = /^mjx-ss mjx-ss-o-([0-9a-z]{10})$/.exec(cls.body)?.[1];
@@ -43525,13 +43599,45 @@ If you are using Vue, this may be because you are using the runtime-only build o
     return null;
   }
 
+  // src/symbol-session.ts
+  function blankNotation(symbol, languages) {
+    validateLanguages(languages);
+    return { symbol, definitionMarkdown: "", units: [], code: [], notesMarkdown: "" };
+  }
+  function independentNotation(entry, symbol) {
+    validateEntry(entry);
+    const copied = clone(entry), used = new Set([...entry.units, ...entry.code].map((row) => row.id));
+    const id = () => {
+      const next = freshId(used);
+      used.add(next);
+      return next;
+    };
+    delete copied.legacy;
+    const code = copied.code.filter((row) => row.code.trim()).map((row) => ({ ...row, id: id() }));
+    return { ...copied, symbol, units: copied.units.map((row) => ({ ...row, id: id() })), code };
+  }
+  function equationSymbols(context, tex, pending, decisions) {
+    if (context.version !== 2 || context.readOnly) throw Error("Enable the matching Study Studio notation tools.");
+    const hits = markers(tex), ids = /* @__PURE__ */ new Set();
+    for (const hit of hits) {
+      if (ids.has(hit.id)) throw Error("A pasted notation tag shares another tag\u2019s ID. Separate the copy before saving.");
+      ids.add(hit.id);
+      if (!Object.hasOwn(context.entries, hit.id) && !pending.has(hit.id)) throw Error("This notation tag has no record in this note. Remove its tag or define it before saving.");
+      if (decisions.get(hit.id) === "delete") throw Error("Remove the notation tag before deleting its record.");
+    }
+    const drafts = Array.from(pending.values()).filter((p) => ids.has(p.id) || decisions.get(p.id) === "keep").map((p) => clone(p));
+    return { version: 2, pending: drafts, decisions: Object.fromEntries(decisions) };
+  }
+  function preservesSymbolTags(initial2, next) {
+    const before = markers(initial2), after = markers(next);
+    return before.length === after.length && before.every((m, i) => m.id === after[i].id && semanticGlyph(m.body) === semanticGlyph(after[i].body));
+  }
+
   // src/symbol-editor.ts
   function symbolEditor(o) {
-    const { mf: mf2, ui } = o, doc = mf2.ownerDocument, context = o.context;
-    const originalDefinitions = new Set(Object.keys(context?.defs ?? {}));
-    const pending = /* @__PURE__ */ new Map(), accepted = /* @__PURE__ */ new Map();
-    const originals = markers(o.initial), known = new Map(originals.map((m) => [m.id, m.body]));
-    const used = /* @__PURE__ */ new Set([...context?.usedIds ?? [], ...Object.keys(context?.occ ?? {})]);
+    const { mf: mf2, ui } = o, doc = mf2.ownerDocument, context = o.context?.readOnly ? void 0 : o.context;
+    const pending = /* @__PURE__ */ new Map(), decisions = /* @__PURE__ */ new Map();
+    const used = /* @__PURE__ */ new Set([...context?.usedIds ?? [], ...Object.keys(context?.entries ?? {})]);
     let selection2 = null, selectedTex = "", editingId, busy = false, problem = "";
     const drawer = doc.createElement("div");
     drawer.className = "symbol-drawer";
@@ -43545,8 +43651,7 @@ If you are using Vue, this may be because you are using the runtime-only build o
     warning.hidden = true;
     status2.after(warning);
     const style2 = doc.createElement("style");
-    style2.textContent = `.symbol-context:empty{display:none}.symbol-context{font-size:11px;color:var(--text-muted);margin:3px 2px;display:flex;gap:6px;align-items:center}.symbol-context button{border:0;background:transparent;padding:0 4px;min-height:18px;font-size:11px;color:var(--text-muted)}.symbol-warning{font-size:12px;padding:6px 8px;border-left:2px solid var(--text-warning,#d7ac60);margin-top:5px}.symbol-warning[hidden]{display:none}.symbol-warning button{font-size:11px;margin:4px 4px 0 0;padding:2px 7px}.symbol-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;font-weight:600}.symbol-preview{font-size:19px;margin-right:4px}.symbol-head button{margin-left:auto;border:0;background:none}.symbol-tabs{display:flex;gap:4px;margin-bottom:8px}.symbol-tabs button{flex:1;border:0;background:transparent;border-radius:3px}.symbol-tabs .active{box-shadow:inset 0 -2px var(--interactive-accent);color:var(--text-normal)}.symbol-drawer input{width:100%;min-width:0;height:28px;padding:4px 7px}.symbol-fields{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}.symbol-fields label,.symbol-meaning{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--text-muted)}.symbol-actions{display:flex;justify-content:flex-end;margin-top:8px}.symbol-error{font-size:12px;color:var(--text-error);margin-top:6px}.symbol-results{max-height:150px;overflow:auto;margin-top:6px}.symbol-results button{display:flex;width:100%;gap:7px;align-items:center;text-align:left;border:0;background:transparent;font-size:12px;min-height:30px;height:auto;padding:4px 6px}.symbol-results button:hover{background:var(--background-modifier-hover)}.symbol-results small{color:var(--text-muted);margin-left:auto;max-width:40%;overflow:hidden;text-overflow:ellipsis}.symbol-summary{font-size:13px;line-height:1.5}@media(min-width:560px){.symbol-fields{grid-template-columns:1fr 1fr 1fr}}`;
-    style2.textContent += `.symbol-head{margin-bottom:6px}.symbol-head>button{margin-left:auto}.symbol-tabs{margin:0 0 0 auto;display:inline-flex;background:var(--background-primary);border:1px solid var(--background-modifier-border);border-radius:5px;padding:2px;gap:0}.symbol-tabs button{min-height:22px;height:22px;padding:1px 10px;font-size:11px;box-shadow:none}.symbol-tabs button.active{background:var(--background-modifier-hover);box-shadow:none}.symbol-head .symbol-tabs+button{margin-left:0}.symbol-meaning{display:flex;flex-direction:row;align-items:flex-end;gap:6px}.symbol-meaning>label{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}.symbol-actions{margin:0}.symbol-fields{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.symbol-drawer input{height:26px}.symbol-fields label{font-size:10px}.symbol-warning .symbol-preview{font-size:14px;margin:0}.symbol-warning-actions{display:inline-flex;gap:3px;flex-wrap:nowrap}.symbol-warning button{background:transparent;border:0;padding:0 3px;min-height:20px;margin:0;color:var(--text-muted);text-decoration:underline}.symbol-warning{line-height:1.6}.symbol-context .symbol-preview{font-size:14px}@media(max-width:380px){.symbol-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}`;
+    style2.textContent = `.symbol-context:empty{display:none}.symbol-context{font-size:11px;color:var(--text-muted);margin:3px 2px;display:flex;gap:6px;align-items:center}.symbol-context button{border:0;background:transparent;padding:0 4px;min-height:18px;font-size:11px;color:var(--text-muted)}.symbol-warning{font-size:12px;padding:6px 8px;border-left:2px solid var(--text-warning,#d7ac60);margin-top:5px;line-height:1.6}.symbol-warning[hidden]{display:none}.symbol-warning button{font-size:11px;margin:4px 4px 0 0;padding:2px 7px}.symbol-head{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px;font-weight:600}.symbol-preview{font-size:19px;margin-right:4px}.symbol-head button{margin-left:auto;border:0;background:none}.symbol-error{font-size:12px;color:var(--text-error);margin-top:6px}.symbol-summary{font-size:13px;line-height:1.5;white-space:pre-wrap}.symbol-context .symbol-preview{font-size:14px}`;
     doc.head.append(style2);
     const tint = doc.createElement("style");
     tint.textContent = ".mjx-ss{box-shadow:inset 0 0 0 100vmax var(--study-symbol-fill,rgba(151,104,215,.28));border-radius:2px}";
@@ -43566,14 +43671,10 @@ If you are using Vue, this may be because you are using the runtime-only build o
       host.append(span);
     };
     const current = () => markers(mf2.getValue());
-    const definition = (id) => {
-      const p = pending.get(id);
-      return p?.definition ?? context?.defs[p?.def ?? context?.occ[id]?.def];
-    };
+    const entry = (id) => pending.get(id)?.entry ?? context?.entries[id];
     function tagRange() {
       const start = Math.min(...mf2.selection.ranges.flat()), end = Math.max(...mf2.selection.ranges.flat());
-      const info = Array.from({ length: mf2.lastOffset + 1 }, (_, i) => mf2.getElementInfo(i));
-      return findTaggedRange(info, start, end);
+      return findTaggedRange(Array.from({ length: mf2.lastOffset + 1 }, (_, i) => mf2.getElementInfo(i)), start, end);
     }
     function replaceMarker(hit, insert2) {
       const position = mf2.position;
@@ -43581,15 +43682,12 @@ If you are using Vue, this may be because you are using the runtime-only build o
       mf2.position = Math.min(position, mf2.lastOffset);
       analyse();
     }
-    function unlink(id) {
+    function removeTag(id) {
+      decisions.set(id, "keep");
       for (const hit of current().filter((m) => m.id === id).reverse()) replaceMarker(hit, hit.body);
-      if (originals.some((m) => m.id === id)) accepted.set(id, { choice: "unlink", body: null });
-      else {
-        accepted.delete(id);
-        known.delete(id);
-      }
-      pending.delete(id);
       ui.close();
+      status2.replaceChildren();
+      ui.setSymbolContext(false);
       analyse();
     }
     function analyse() {
@@ -43597,66 +43695,41 @@ If you are using Vue, this may be because you are using the runtime-only build o
       warning.replaceChildren();
       warning.hidden = true;
       problem = "";
-      let hits;
+      let hits = [];
       try {
         hits = current();
       } catch (e) {
         problem = e.message;
-        hits = [];
       }
-      const count = /* @__PURE__ */ new Map();
+      const counts = /* @__PURE__ */ new Map();
       for (const m of hits) {
-        const list = count.get(m.id) ?? [];
+        const list = counts.get(m.id) ?? [];
         list.push(m);
-        count.set(m.id, list);
+        counts.set(m.id, list);
       }
-      const duplicate = Array.from(count.values()).find((list) => list.length > 1);
-      if (duplicate) {
-        const hit = duplicate[duplicate.length - 1], d = definition(hit.id);
-        problem = "A pasted symbol shares another tag\u2019s ID.";
+      const duplicate = Array.from(counts.values()).find((list) => list.length > 1);
+      if (!problem && context && duplicate) {
+        const hit = duplicate[duplicate.length - 1], record = entry(hit.id);
+        problem = "A pasted notation tag shares another tag\u2019s ID.";
         warning.append(problem);
-        button2(warning, "Separate copy", () => {
-          if (!d) {
-            open(hit.id);
-            return;
-          }
+        const separate = button2(warning, "Separate copy", () => {
+          if (!record) return;
           const id = freshId(used);
           used.add(id);
-          const def = pending.get(hit.id)?.def ?? context.occ[hit.id].def;
-          pending.set(id, { id, def, glyph: hit.body });
-          known.set(id, hit.body);
+          pending.set(id, { id, entry: independentNotation(record, hit.body) });
           replaceMarker(hit, wrapSymbol(id, hit.body));
         });
+        separate.disabled = !record;
         button2(warning, "Remove copy tag", () => replaceMarker(hit, hit.body));
       }
-      if (!problem) for (const [id, body] of known) {
-        const hit = count.get(id)?.[0], semantic = hit ? semanticGlyph(hit.body) : null, decision = accepted.get(id);
-        if (semantic !== null && semantic === semanticGlyph(body)) continue;
-        if (decision && decision.body === semantic) continue;
-        problem = hit ? "A tagged symbol was changed." : "A tagged symbol was deleted.";
-        glyph(warning, definition(id)?.tex ?? body);
-        warning.append(" (" + (definition(id)?.meaning ?? "Symbol") + ") " + (hit ? "changed" : "deleted") + " \xB7 ");
-        const actions = doc.createElement("span");
-        actions.className = "symbol-warning-actions";
-        warning.append(actions);
-        button2(actions, "Undo", () => {
-          mf2.executeCommand("undo");
-          analyse();
-        });
-        button2(actions, hit ? "Keep definition" : "Keep as orphan", () => {
-          accepted.set(id, { choice: "keep", body: semantic });
-          analyse();
-        });
-        button2(actions, hit ? "Remove tag" : "Delete record", () => unlink(id));
-        break;
-      }
+      if (!problem && !context && !preservesSymbolTags(o.initial, mf2.getValue())) problem = "The existing notation tags must stay unchanged. Reopen the equation to restore them.";
       if (!problem && context) {
-        const unregistered = hits.find((m) => !context.occ[m.id] && !pending.has(m.id));
-        if (unregistered) {
-          problem = "This symbol tag has no definition in this note.";
+        const missing = hits.find((m) => !Object.hasOwn(context.entries, m.id) && !pending.has(m.id));
+        if (missing) {
+          problem = "This notation tag has no record in this note.";
           warning.append(problem);
-          button2(warning, "Link definition", () => open(unregistered.id));
-          button2(warning, "Remove tag", () => unlink(unregistered.id));
+          button2(warning, "Define this tag", () => open(missing.id));
+          button2(warning, "Remove tag", () => removeTag(missing.id));
         }
       }
       if (problem && !warning.childNodes.length) warning.textContent = problem;
@@ -43665,15 +43738,15 @@ If you are using Vue, this may be because you are using the runtime-only build o
       o.resize();
     }
     function rowPreview(id) {
-      const d = definition(id);
+      const record = entry(id);
       status2.replaceChildren();
-      ui.setSymbolContext(!!d);
-      if (!d) return;
-      glyph(status2, d.tex);
+      ui.setSymbolContext(!!record);
+      if (!record) return;
+      glyph(status2, record.symbol);
       const text = doc.createElement("span");
-      text.textContent = d.meaning;
+      text.textContent = record.definitionMarkdown || "Notation";
       status2.append(text, " \xB7 ");
-      button2(status2, "Edit tag", () => open(id));
+      button2(status2, "Notation", () => open(id));
     }
     function open(id) {
       if (busy) return;
@@ -43686,27 +43759,27 @@ If you are using Vue, this may be because you are using the runtime-only build o
       const head = doc.createElement("div");
       head.className = "symbol-head";
       if (selectedTex) glyph(head, selectedTex);
-      head.append("Tag symbol");
-      button2(head, "\xD7", () => ui.close(true)).setAttribute("aria-label", "Close symbol panel");
+      head.append("Notation");
+      button2(head, "\xD7", () => ui.close(true)).setAttribute("aria-label", "Close notation controls");
       drawer.append(head);
       const error2 = doc.createElement("div");
       error2.className = "symbol-error";
-      if (!context || context.version !== 1) {
-        error2.textContent = "Enable the matching Study Studio symbol system to define symbols.";
+      if (!context || context.version !== 2) {
+        error2.textContent = "Enable the matching Study Studio notation tools.";
         drawer.append(error2);
         o.resize();
         return;
       }
-      if (editingId && definition(editingId)) {
+      if (editingId && entry(editingId)) {
         const summary = doc.createElement("div");
         summary.className = "symbol-summary";
-        summary.textContent = definition(editingId).meaning;
+        summary.textContent = entry(editingId).definitionMarkdown || "Edit the definition, units and code names in the Notes margin.";
         drawer.append(summary);
-        button2(drawer, "Change definition", () => choices());
-        button2(drawer, "Remove tag", () => unlink(editingId));
-        const margin = button2(drawer, "Open in Symbols", o.openMargin);
-        margin.disabled = pending.has(editingId);
-        margin.title = margin.disabled ? "Save this equation first." : "Open the definition in the margin";
+        const id2 = editingId;
+        const margin = button2(drawer, "Open in margin", () => o.openMargin(id2));
+        margin.disabled = pending.has(id2);
+        margin.title = margin.disabled ? "Save this equation first." : "Open this notation in the Notes margin";
+        button2(drawer, "Remove tag", () => removeTag(id2));
         drawer.append(error2);
         o.resize();
         return;
@@ -43718,107 +43791,21 @@ If you are using Vue, this may be because you are using the runtime-only build o
         return;
       }
       if (!editingId && markers(selectedTex).length) {
-        error2.textContent = "This selection already contains a tag. Select one tagged symbol to edit it.";
+        error2.textContent = "This selection already contains a tag. Select one tagged symbol to open its notation.";
         drawer.append(error2);
         o.resize();
         return;
       }
-      choices();
-      function choices() {
-        while (drawer.children.length > 1) drawer.lastElementChild.remove();
-        const tabs = doc.createElement("div");
-        tabs.className = "symbol-tabs";
-        head.querySelector(".symbol-tabs")?.remove();
-        head.insertBefore(tabs, head.lastElementChild);
-        const body = doc.createElement("div");
-        drawer.append(body);
-        drawer.append(error2);
-        const link = button2(tabs, "Link", () => render2("link")), create = button2(tabs, "New", () => render2("new"));
-        function render2(mode) {
-          body.replaceChildren();
-          error2.textContent = "";
-          link.classList.toggle("active", mode === "link");
-          create.classList.toggle("active", mode === "new");
-          if (mode === "link") {
-            const search2 = doc.createElement("input");
-            search2.type = "search";
-            search2.placeholder = "Find a meaning or code name\u2026";
-            search2.setAttribute("aria-label", "Find existing symbol");
-            body.append(search2);
-            const list = doc.createElement("div");
-            list.className = "symbol-results";
-            body.append(list);
-            const renderList = () => {
-              list.replaceChildren();
-              const query = search2.value.toLocaleLowerCase();
-              const defs = Object.entries(context.defs).filter(([, d]) => [d.tex, d.meaning, ...d.code.map((c) => c.name)].join(" ").toLocaleLowerCase().includes(query)).sort(([, a], [, b]) => Number(semanticGlyph(b.tex) === semanticGlyph(selectedTex)) - Number(semanticGlyph(a.tex) === semanticGlyph(selectedTex)));
-              for (const [id2, d] of defs) {
-                const b = button2(list, "", () => void commitTag(id2, void 0, error2));
-                glyph(b, d.tex);
-                b.append(d.meaning);
-                if (d.code[0]) {
-                  const small = doc.createElement("small");
-                  small.textContent = d.code[0].name;
-                  b.append(small);
-                }
-              }
-              if (!defs.length) list.textContent = "No matching definitions. Choose New to define this symbol.";
-            };
-            search2.oninput = renderList;
-            search2.onkeydown = (e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                list.querySelector("button")?.click();
-              }
-            };
-            renderList();
-            search2.focus();
-          } else {
-            const field = (host, label2) => {
-              const l = doc.createElement("label");
-              l.textContent = label2;
-              const input = doc.createElement("input");
-              l.append(input);
-              host.append(l);
-              return input;
-            };
-            const meaningWrap = doc.createElement("div");
-            meaningWrap.className = "symbol-meaning";
-            body.append(meaningWrap);
-            const meaning = field(meaningWrap, "Meaning");
-            const fields = doc.createElement("div");
-            fields.className = "symbol-fields";
-            body.append(fields);
-            const units = field(fields, "Units"), python = field(fields, "Python"), wolfram = field(fields, "Wolfram");
-            const actions = doc.createElement("div");
-            actions.className = "symbol-actions";
-            meaningWrap.append(actions);
-            const submit = () => {
-              if (!meaning.value.trim()) {
-                error2.textContent = "Give this symbol a meaning.";
-                meaning.focus();
-                return;
-              }
-              const id2 = "d-" + freshId(Object.keys(context.defs).map((k) => k.slice(2)));
-              void commitTag(id2, { tex: selectedTex, meaning: meaning.value.trim(), units: units.value.trim(), code: [{ lang: "python", name: python.value.trim() }, { lang: "wolfram", name: wolfram.value.trim() }].filter((c) => c.name) }, error2);
-            };
-            button2(actions, "Tag", submit);
-            for (const input of [meaning, units, python, wolfram]) input.onkeydown = (e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                e.stopPropagation();
-                submit();
-              }
-            };
-            meaning.focus();
-          }
-          o.resize();
-        }
-        render2(Object.keys(context.defs).length ? "link" : "new");
-      }
+      const note = doc.createElement("div");
+      note.className = "symbol-summary";
+      note.textContent = "Create an independent notation for this selection. Fill in its definition in the Notes margin after saving.";
+      drawer.append(note);
+      button2(drawer, "Tag", () => void commitTag(error2));
+      drawer.append(error2);
+      o.resize();
     }
-    async function commitTag(def, definition2, error2) {
-      if (busy || !selection2) return;
+    async function commitTag(error2) {
+      if (busy || !selection2 || !context) return;
       busy = true;
       mf2.readOnly = true;
       o.save.disabled = true;
@@ -43831,13 +43818,11 @@ If you are using Vue, this may be because you are using the runtime-only build o
           inserted = true;
           await o.check(mf2.getValue(), id);
         }
-        definition2 = definition2 ?? (!originalDefinitions.has(def) ? context?.defs[def] : void 0);
-        const glyph2 = current().find((m) => m.id === id).body;
-        pending.set(id, { id, def, glyph: glyph2, ...definition2 ? { definition: clone(definition2) } : {} });
-        if (definition2 && context) context.defs[def] = clone(definition2);
+        const hit = current().find((m) => m.id === id);
+        if (!hit) throw Error("The selected notation tag changed. Select it again.");
+        pending.set(id, { id, entry: blankNotation(hit.body, context.defaultLanguages) });
         used.add(id);
-        known.set(id, glyph2);
-        accepted.delete(id);
+        decisions.delete(id);
         ui.close();
         rowPreview(id);
         mf2.focus();
@@ -43854,7 +43839,7 @@ If you are using Vue, this may be because you are using the runtime-only build o
       }
     }
     const control = ui.addSymbolControl(() => open());
-    control.disabled = o.blocked;
+    control.disabled = o.blocked || !context;
     mf2.addEventListener("input", analyse);
     mf2.addEventListener("selection-change", () => {
       const caret = mf2.shadowRoot?.querySelector(".ML__caret")?.closest(".mjx-ss"), id = Array.from(caret?.classList ?? []).find((c) => /^mjx-ss-o-[0-9a-z]{10}$/.test(c))?.slice(9);
@@ -43875,13 +43860,13 @@ If you are using Vue, this may be because you are using the runtime-only build o
     analyse();
     return { proposal() {
       analyse();
-      if (problem || busy) throw Error(problem || "Wait for the symbol check to finish.");
-      return { pending: Array.from(pending.values()), decisions: Object.fromEntries(Array.from(accepted, ([id, a]) => [id, a.choice])) };
+      if (problem || busy) throw Error(problem || "Wait for the notation check to finish.");
+      return context ? equationSymbols(context, mf2.getValue(), pending, decisions) : void 0;
     }, open };
   }
 
   // src/build-id.ts
-  var BUILD_ID = "6bc9f34df38e536d";
+  var BUILD_ID = "0c58b3961bc2d660";
 
   // src/frame.ts
   var config = window.mathStudioConfig;
@@ -44446,7 +44431,7 @@ If you are using Vue, this may be because you are using the runtime-only build o
     if (event.data.error) pending.reject(Error(event.data.error));
     else pending.resolve();
   });
-  symbolControls = initialProblem ? void 0 : symbolEditor({ mf, ui: compact, context: config.symbols, initial: config.latex, save, blocked: false, resize, openMargin: () => send("open-symbols"), check: (latex, id) => new Promise((resolve, reject) => {
+  symbolControls = initialProblem ? void 0 : symbolEditor({ mf, ui: compact, context: config.symbols, initial: config.latex, save, blocked: false, resize, openMargin: (id) => send("open-symbols", { id }), check: (latex, id) => new Promise((resolve, reject) => {
     const request = crypto.randomUUID();
     const timer = setTimeout(() => {
       checks.delete(request);
