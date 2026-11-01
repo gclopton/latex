@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "pluginId": "math-studio",
-  "sourceCommit": "e666773b7a87b7b8ab42e9bfce59c731c0bccdad",
-  "release": "notation-compact-20261031-r3",
+  "sourceCommit": "f969fcaab4cc5a2830933d66d6d3aee0150835c9",
+  "release": "math-picker-rows-20261101-r1",
   "files": {
-    "main.js": "5cc98abc1cfd277edb568ffd50866b062560e2a6b0f57286740cc44e31d9dc3f",
-    "frame.js": "e2c3ef289947b0f849441803a214015d57bdf44395b709c577a46cbc27f3cb73",
+    "main.js": "52bfe2a6c6642cae8c2addb8d8bf08ba1a09b9ada020c69346e41c321f0245f9",
+    "frame.js": "6a9c88a8fe8cd8d22920c29b1264be2fb8cf5d06f4ddb9bb5e05fd71adafdffe",
     "styles.css": "4cefc8df17405fe15079d4def0713197c842b011823ee4bb6b19cc767ec2df62",
     "manifest.json": "ac3bdc375056f135524fd9fec32ce0ae82b5e5d980eb4e86f15ab0a2fa01cb39",
     "vendor/MATHLIVE-LICENSE.txt": "3caebd18611959ca725ab976a004d408017eb1d7093d6c9b9b09c5a4790eaff8",

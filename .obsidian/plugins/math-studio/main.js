@@ -11498,7 +11498,7 @@ function sectionLines(source, first, last) {
 }
 
 // src/build-id.ts
-var BUILD_ID = "cc044b9d41f6fc75";
+var BUILD_ID = "07488bbd69ed06db";
 
 // src/symbol-session.ts
 function compatibleSymbolApi(value) {
