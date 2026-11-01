@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "pluginId": "knowledge-library",
-  "sourceCommit": "7c411dd1e9291369069f01ea8267cb68eba3c676",
-  "release": "5d2898613f534c68cdc115100b1c357aac3831470c80cf0822dcb1c9c77fa946",
+  "sourceCommit": "4ea401268a7e9e5a13f02f4f21b59a358b257a8f",
+  "release": "7852b7166c88f0f5eef33a4fe8791cfa5087eed68d937854dbc5024a560bc718",
   "candidate": false,
   "uncommittedSource": false,
   "files": {
@@ -58,7 +58,7 @@
     "backend/source_catalog.py": "d64089d2cd6929fe7f2a3a6af45fa012e12f32a36a5ddada53de3ddbc8368ab9",
     "backend/tag_search.py": "f8f02470659595184c71a468af36d5017b63d825f412754790c7c893c8b39e43",
     "backend/vault_registry.py": "651d3ce2863c44689b63af9831642e6c07771288b4e19f845f34033faf9103aa",
-    "main.js": "920a3a98e1fa31c6ca0d41cd924be8a1639291b3a9580c5566bf4ee948693530",
+    "main.js": "8b98ffb1d692ac9e49f879b8ee63d219d3f2cab26e407ab7c60cdb951d435873",
     "manifest.json": "a8feebda0a75f4ba779ca84e741708ccfa9d1bf2fbb3845ed5d0c99aac9551e7",
     "styles.css": "c473ba6d75a14864fbf34b83b8167254838103ed9d09994de55dbd1fa97c2854"
   }

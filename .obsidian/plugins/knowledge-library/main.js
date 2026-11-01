@@ -9070,7 +9070,6 @@ var require_callout_component = __commonJS({
               lists: true,
               toolbar: true,
               rich: true,
-              keepMathRendered: true,
               compactBlocks: true,
               componentRanges: (source) => model.parseComponents(source).items,
               mathReferences: (input, q) => require_component_math_references().componentMathReferences(plugin, this.path, (value2) => project({ toString: () => value2 }).doc.toString(), input, q, (draft) => referenceDrafts.push(draft)),
