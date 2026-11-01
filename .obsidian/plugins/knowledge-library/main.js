@@ -2710,9 +2710,9 @@ var require_callout_presentation = __commonJS({
   }
 });
 
-// node_modules/@lezer/common/dist/index.cjs
+// ../../../../../Projects/kl-b4/node_modules/@lezer/common/dist/index.cjs
 var require_dist = __commonJS({
-  "node_modules/@lezer/common/dist/index.cjs"(exports2) {
+  "../../../../../Projects/kl-b4/node_modules/@lezer/common/dist/index.cjs"(exports2) {
     "use strict";
     var DefaultBufferLength = 1024;
     var nextPropID = 0;
@@ -4779,9 +4779,9 @@ var require_dist = __commonJS({
   }
 });
 
-// node_modules/@lezer/highlight/dist/index.cjs
+// ../../../../../Projects/kl-b4/node_modules/@lezer/highlight/dist/index.cjs
 var require_dist2 = __commonJS({
-  "node_modules/@lezer/highlight/dist/index.cjs"(exports2) {
+  "../../../../../Projects/kl-b4/node_modules/@lezer/highlight/dist/index.cjs"(exports2) {
     "use strict";
     var common = require_dist();
     var nextTagID = 0;
@@ -5540,9 +5540,9 @@ var require_dist2 = __commonJS({
   }
 });
 
-// node_modules/@lezer/markdown/dist/index.cjs
+// ../../../../../Projects/kl-b4/node_modules/@lezer/markdown/dist/index.cjs
 var require_dist3 = __commonJS({
-  "node_modules/@lezer/markdown/dist/index.cjs"(exports2) {
+  "../../../../../Projects/kl-b4/node_modules/@lezer/markdown/dist/index.cjs"(exports2) {
     "use strict";
     var common = require_dist();
     var highlight = require_dist2();
@@ -8889,12 +8889,15 @@ var require_callout_component = __commonJS({
             state.item = next;
             return true;
           };
+          let bodyGeneration = 0;
           const render = async (text, target) => {
-            const stage = doc.createElement("div");
+            const generation = target === body ? ++bodyGeneration : 0, stage = doc.createElement("div");
             await MarkdownRenderer2.render(plugin.app, text, stage, this.path, owner);
             if (alive) {
+              if (target === body && (generation !== bodyGeneration || editing && editingPart === "body")) return;
               target.replaceChildren(...stage.childNodes);
               if (target === body) {
+                body.classList.toggle("kl-component-empty-body", !text.trim());
                 const nested = model.componentHeaders(text), elements = [...body.querySelectorAll(".callout")];
                 const source = context.project?.(view.state.doc) || context.labelSource || { path: this.path, doc: view.state.doc, baseLine: 0 };
                 const base = source.baseLine + view.state.doc.lineAt(state.item.from).number;
@@ -9031,6 +9034,7 @@ var require_callout_component = __commonJS({
             state.folded = false;
             fold();
             node.classList.add("kl-component-editing");
+            if (part === "body") bodyGeneration++;
             const target = part === "title" ? heading : body;
             target.empty();
             control = owner.addChild(new Component2());
@@ -9129,14 +9133,23 @@ var require_callout_component = __commonJS({
             else editor.focus();
             measure();
           };
-          heading.onclick = (e) => {
-            if (!editing) {
-              e.stopPropagation();
-              edit("title");
+          const switchEditor = async (part, point = null) => {
+            if (busy || finishing || editing && editingPart === part) return;
+            try {
+              if (editing) await state.finishDraft();
+              if (alive && !editing && !conflict) edit(part, point);
+            } catch (error) {
+              if (!editing) new Notice2(error.message);
             }
           };
+          heading.ondblclick = (e) => {
+            if (editingPart === "title" || e.target.closest("a,button,input")) return;
+            e.preventDefault();
+            e.stopPropagation();
+            void switchEditor("title");
+          };
           node.addEventListener("mousedown", (e) => {
-            if (editing || e.button !== 0 || e.target.closest("a,button,input,.callout-title-inner")) return;
+            if (editing || e.button !== 0 || e.target.closest("a,button,input")) return;
             const c = current();
             e.preventDefault();
             view.dispatch({ selection: { anchor: c.from, head: c.to } });
@@ -9144,7 +9157,7 @@ var require_callout_component = __commonJS({
             view.focus();
           });
           body.ondblclick = (e) => {
-            if (!editing && !e.target.closest("a,button,input")) {
+            if (editingPart !== "body" && !e.target.closest("a,button,input")) {
               const point = { x: e.clientX, y: e.clientY }, walker = doc.createTreeWalker(e.target, 4), range = doc.createRange();
               let hit = null, best = Infinity;
               for (let t = walker.nextNode(); t; t = walker.nextNode()) {
@@ -9178,7 +9191,7 @@ var require_callout_component = __commonJS({
               }
               e.preventDefault();
               e.stopPropagation();
-              edit("body", point);
+              void switchEditor("body", point);
             }
           };
           arrow.onclick = async (e) => {

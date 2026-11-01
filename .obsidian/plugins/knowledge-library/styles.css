@@ -292,6 +292,8 @@ a.kl-dynamic-reference:hover mjx-container{border-bottom-style:solid}
 /* Match native callout rhythm inside the editor, where host live-preview math
    rules otherwise add an extra display margin around rendered math. */
 .kl-component>.callout-title>.callout-title-inner {flex:0 1 auto;}
+.kl-component>.callout-title>.callout-title-inner:has(>.kl-component-editor) {flex:1 1 auto;}
+.kl-component>.callout-content.kl-component-empty-body {min-height:1lh;}
 .kl-component>.callout-title>.kl-component-fold {margin-left:auto;}
 .kl-component .callout-content p {margin-block:1em;}
 .kl-component .callout-content .math-block {margin-block:1em;min-height:0;}

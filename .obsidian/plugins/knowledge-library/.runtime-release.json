@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "pluginId": "knowledge-library",
-  "sourceCommit": "fb344875d1820b7390efa09464d2837c15ee78ad",
-  "release": "4f541f4275d78fc88e5b02f5b35e04f8894532c5127535e0a35ffe35320da552",
+  "sourceCommit": "7c411dd1e9291369069f01ea8267cb68eba3c676",
+  "release": "5d2898613f534c68cdc115100b1c357aac3831470c80cf0822dcb1c9c77fa946",
   "candidate": false,
   "uncommittedSource": false,
   "files": {
@@ -52,14 +52,14 @@
     "backend/reference_labels.py": "63000cee29c9c11e6cd72c572fd423f21f28424e7c8295e03685584b15b04aed",
     "backend/reuse.py": "de8362de8fdb8f7893de0411994b45dc7ae93f2b265e2f0483ad4fac77856d94",
     "backend/reviewed_service.py": "7142a363fd4d89dbdd46840ac8da922ae4565b467d6ba7d91c240ba1e6a74440",
-    "backend/scan_markdown.cjs": "e67a9d2da956eb8152f5631a052c3616623eb0280a069a57035c516ae4cc6fef",
+    "backend/scan_markdown.cjs": "ca2584ded7f836a8ba0af6ece3c816ae007d5f23f149254846402eed8237fc09",
     "backend/search_filters.py": "dc12fd323aaf218c073c9da9c420e854c21acce26f961e9bc9f27780fedb62f1",
     "backend/search_projection.py": "b8551c68b2214a1f2d1d7f634805ccce225b89d0d9a139a6573997ea5191b4f1",
     "backend/source_catalog.py": "d64089d2cd6929fe7f2a3a6af45fa012e12f32a36a5ddada53de3ddbc8368ab9",
     "backend/tag_search.py": "f8f02470659595184c71a468af36d5017b63d825f412754790c7c893c8b39e43",
     "backend/vault_registry.py": "651d3ce2863c44689b63af9831642e6c07771288b4e19f845f34033faf9103aa",
-    "main.js": "13e6adefffc2e4bd946467bfa4b892ddb38cac5a0c1ec5cbecb8f7015bf48243",
+    "main.js": "920a3a98e1fa31c6ca0d41cd924be8a1639291b3a9580c5566bf4ee948693530",
     "manifest.json": "a8feebda0a75f4ba779ca84e741708ccfa9d1bf2fbb3845ed5d0c99aac9551e7",
-    "styles.css": "cb8a6e128163decad95a8942575b32293e2f2f9c36b4e0e754a0bd129c67cce2"
+    "styles.css": "c473ba6d75a14864fbf34b83b8167254838103ed9d09994de55dbd1fa97c2854"
   }
 }
