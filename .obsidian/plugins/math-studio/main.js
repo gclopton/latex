@@ -87,6 +87,7 @@ function validateEntry(value) {
   string(value.notesMarkdown, 128e3, "notes");
   if (value.equation !== void 0) string(value.equation, 16e3, "equation reference");
   if (value.languageOverride !== void 0) validateLanguages(value.languageOverride);
+  if (value.notesHidden !== void 0 && typeof value.notesHidden !== "boolean") throw Error("Invalid notation notes visibility.");
   const rows = (items, label, fields) => {
     if (!Array.isArray(items) || items.length > 100) throw Error(`Invalid notation ${label} rows.`);
     const ids = /* @__PURE__ */ new Set();
@@ -11497,7 +11498,7 @@ function sectionLines(source, first, last) {
 }
 
 // src/build-id.ts
-var BUILD_ID = "0c58b3961bc2d660";
+var BUILD_ID = "cc044b9d41f6fc75";
 
 // src/symbol-session.ts
 function compatibleSymbolApi(value) {

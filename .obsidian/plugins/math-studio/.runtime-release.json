@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "pluginId": "math-studio",
-  "sourceCommit": "b0e0494932049f96a2791cf4a8dd86bcd0948158",
-  "release": "notation-20261030-r2",
+  "sourceCommit": "e666773b7a87b7b8ab42e9bfce59c731c0bccdad",
+  "release": "notation-compact-20261031-r3",
   "files": {
-    "main.js": "3e28ec5a490bf7522ad7ea33950fff2f0bab884ea465e6d4f162828f400a8bd4",
-    "frame.js": "1787df10ac1059c8c7b1399ea6b9a71dc8569575f2ece03c566e675ffba98e5a",
+    "main.js": "5cc98abc1cfd277edb568ffd50866b062560e2a6b0f57286740cc44e31d9dc3f",
+    "frame.js": "e2c3ef289947b0f849441803a214015d57bdf44395b709c577a46cbc27f3cb73",
     "styles.css": "4cefc8df17405fe15079d4def0713197c842b011823ee4bb6b19cc767ec2df62",
     "manifest.json": "ac3bdc375056f135524fd9fec32ce0ae82b5e5d980eb4e86f15ab0a2fa01cb39",
     "vendor/MATHLIVE-LICENSE.txt": "3caebd18611959ca725ab976a004d408017eb1d7093d6c9b9b09c5a4790eaff8",
@@ -31,12 +31,5 @@
     "vendor/fonts/KaTeX_Typewriter-Regular.woff2": "71d517d67827787cfabdf186914cc3358eda539e37931941f2b2fd4a21f68c0b",
     "vendor/mathlive-fonts.css": "49260be0ad90d23219d7b20790c5fd5f363cd5b1dba0a4ab8f158bccf5fa2996",
     "vendor/mathlive-static.css": "d3f000d0b520bcdcbd3944b5e5e0b323ce7231676be9ac8f0450f0aec672db6c"
-  },
-  "sourceState": "committed and pushed; rebuild exactly matches accepted candidate-11 runtime",
-  "provenance": {
-    "acceptedCandidate": "candidate-11",
-    "candidateManifestSha256": "45964468882045bfa601f82fc7b3aa60fe89ac77c1df4eb5c7ce4d0ea9b10832",
-    "sourceBranch": "refs/heads/codex/math-studio",
-    "sourceBundleSha256": "58929add96996cddf4039919a88d9cd111c4edf3dbc0488e274e06f766c92558"
   }
 }

@@ -1,19 +1,12 @@
 {
   "schema": 1,
   "pluginId": "study-studio",
-  "sourceCommit": "f9a44b26c0967db8653e57520d4a06d164302531",
-  "release": "notation-20261030-r2",
+  "sourceCommit": "029d2aaaa06a6e815fe1790e1995d81d12272a5c",
+  "release": "notation-compact-20261031-r3",
   "files": {
-    "main.js": "320e2202baad7ae9a35de0ca859cbdf24b8ac1b9610de7370b8f29fa6ebccea2",
-    "styles.css": "e9076ef1c1470eab5915c939ae8808be757a4423ca8db4e3c2efa85b2b4b8a7c",
+    "main.js": "3b2f62af42d4973a889ba9181693dc0fc1bd9c7a4b712037ab1e7228ea0f35c9",
+    "styles.css": "7a31585a805c4371bbcfe4a4ec66cff8f16927772bc2ac09cdef2594258a6fbd",
     "manifest.json": "e827d117574f453216d4f26a333a6be8b79004a73b85896d1d28a45d4627006e",
     "evidence-export.lua": "01502ed558507f36104721a3d89d81b0af5d758f228aa089c33c1615aa6a7667"
-  },
-  "sourceState": "committed and pushed; rebuild exactly matches accepted candidate-11 runtime",
-  "provenance": {
-    "acceptedCandidate": "candidate-11",
-    "candidateManifestSha256": "45964468882045bfa601f82fc7b3aa60fe89ac77c1df4eb5c7ce4d0ea9b10832",
-    "sourceBranch": "refs/heads/codex/b2-sync",
-    "sourceBundleSha256": "fe7aa9df3182697466ed9e7f2e4b1122bfeed4c53a70915c36156ab832fc9c3f"
   }
 }

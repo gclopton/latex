@@ -111,6 +111,7 @@ var ROW_ID = /^[A-Za-z0-9_-]{1,80}$/;
 var REGISTRY_LIMIT = 2e6;
 var emptyRegistry = () => ({ entries: {} });
 var emptyEntry = (symbol = "") => ({ symbol, definitionMarkdown: "", units: [], code: [], notesMarkdown: "" });
+var newNotationEntry = (symbol = "") => ({ ...emptyEntry(symbol), units: [{ id: "units0", value: "", units: "" }] });
 var clone = (value) => JSON.parse(JSON.stringify(value));
 function object(v) {
   return !!v && typeof v === "object" && !Array.isArray(v);
@@ -163,6 +164,7 @@ function validateEntry(value) {
   string(value.notesMarkdown, 128e3, "notes");
   if (value.equation !== void 0) string(value.equation, 16e3, "equation reference");
   if (value.languageOverride !== void 0) validateLanguages(value.languageOverride);
+  if (value.notesHidden !== void 0 && typeof value.notesHidden !== "boolean") throw Error("Invalid notation notes visibility.");
   const rows = (items, label, fields) => {
     if (!Array.isArray(items) || items.length > 100) throw Error(`Invalid notation ${label} rows.`);
     const ids = /* @__PURE__ */ new Set();
@@ -13688,30 +13690,16 @@ async function resolveNotationDefaults(notePath, read) {
 }
 function persistedNotation(entry) {
   validateEntry(entry);
-  const result = clone(entry);
-  result.code = result.code.filter((row) => row.code.trim() !== "");
-  validateEntry(result);
-  return result;
+  return clone(entry);
 }
-function defaultRowId(language2, used) {
-  let a2 = 2166136261, b = 5381;
-  for (const char of language2) {
-    const c = char.codePointAt(0);
-    a2 = Math.imul(a2 ^ c, 16777619);
-    b = Math.imul(b, 33) ^ c;
-  }
-  const base2 = "default_" + (a2 >>> 0).toString(36) + "_" + (b >>> 0).toString(36), seen = new Set(used);
-  let id3 = base2, n = 2;
-  while (seen.has(id3)) id3 = base2 + "_" + n++;
-  return id3;
-}
-function withLanguageDefaults(entry, defaults2, allocate) {
-  validateEntry(entry);
-  validateLanguages([...defaults2]);
-  const result = clone(entry), languages2 = result.languageOverride ?? defaults2;
-  for (const language2 of languages2) if (!result.code.some((row) => row.language === language2)) result.code.push({ id: allocate ? allocate(result.code.map((row) => row.id)) : defaultRowId(language2, result.code.map((row) => row.id)), language: language2, code: "" });
-  validateEntry(result);
-  return result;
+var isDefaultUnits = (value) => !value.trim() || value.trim().toLowerCase() === "dimensionless";
+var emptyUnitRow = (row) => !row.value.trim() && isDefaultUnits(row.units);
+function clearEmptySections(entry) {
+  const next = persistedNotation(entry);
+  next.units = next.units.filter((row) => !emptyUnitRow(row));
+  next.code = next.code.filter((row) => row.code.trim());
+  if (!next.notesMarkdown.trim()) next.notesHidden = true;
+  return next;
 }
 
 // src/symbols/document.ts
@@ -14076,7 +14064,20 @@ function bindNotation(plugin2, store, notes, system) {
     if (info?.registryOnly) registryChanges.add(path);
     else registryChanges.delete(path);
   }));
+  const cleanup = async (path) => {
+    await api.prepare(path);
+    const skipped = await notes.prepareNotationCleanup(path), plan2 = await api.preview(path, [{ type: "clearEmptySections", skipIds: skipped }]);
+    if (plan2.edits.length) await api.apply(plan2.token, { requireIdle: true });
+    new import_obsidian5.Notice((plan2.ids.length ? `Cleared empty sections in ${plan2.ids.length} notation entries.` : "No empty notation sections to clear.") + (plan2.skippedIds.length ? ` Kept ${plan2.skippedIds.length} entries with active or unsaved edits.` : ""));
+  };
+  plugin2.addCommand({ id: "notation-clear-empty-sections", name: "Notation: Clear empty sections in this note", checkCallback: (checking) => {
+    const path = plugin2.app.workspace.getActiveViewOfType(import_obsidian5.MarkdownView)?.file?.path ?? notes.file;
+    if (!path) return false;
+    if (!checking) void cleanup(path).catch((e) => new import_obsidian5.Notice(String(e)));
+    return true;
+  } });
   notes.notation = {
+    clearEmptySections: cleanup,
     snapshot: async (path) => {
       await api.prepare(path);
       const doc2 = await system.snapshot(path), projection = symbolProjection(doc2), registryOnly = registryChanges.delete(path);
@@ -31578,10 +31579,43 @@ function boundedWrittenHistory(snapshot2, maxEvents = 200, maxBytes = 262144) {
   return { ...snapshot2, history: next };
 }
 
+// src/math-markdown.ts
+function maskMathMarkdown(source, covered) {
+  let result = source;
+  for (const r of [...covered].sort((a2, b) => b.from - a2.from)) {
+    if (source[r.from] !== "$" || source[r.to - 1] !== "$") continue;
+    const size = source.startsWith("$$", r.from) ? 2 : 1, from = r.from + size, to = r.to - size;
+    result = result.slice(0, from) + source.slice(from, to).replace(/[^\r\n]/g, "x") + result.slice(to);
+  }
+  return result;
+}
+function inlineMathSlots(source) {
+  const blocked = [];
+  markdownContext(source).tree.iterate({ enter: (n) => {
+    if (["URL", "Image", "Autolink", "HTMLTag", "HTMLBlock", "CommentBlock"].includes(n.name)) {
+      blocked.push({ from: n.from, to: n.to });
+      return false;
+    }
+  } });
+  for (const m of source.matchAll(/!?\[\[[^\]\n]*\]\]/g)) blocked.push({ from: m.index, to: m.index + m[0].length });
+  const math2 = equations(source).filter((q) => !q.display && !blocked.some((r) => q.from < r.to && q.to > r.from));
+  let prefix = "study-math-slot-";
+  while (source.includes(prefix)) prefix += "x";
+  const slots = /* @__PURE__ */ new Map();
+  let rendered = "", from = 0;
+  for (const q of math2) {
+    const token = prefix + slots.size;
+    slots.set(token, q);
+    rendered += source.slice(from, q.from) + '<span data-study-math-slot="' + token + '"></span>';
+    from = q.to;
+  }
+  return { source: rendered + source.slice(from), slots };
+}
+
 // src/margin-format.ts
 function marginFormatting(state, covered) {
   const ranges = [], source = state.doc.toString();
-  const { tree: tree2 } = markdownContext(source);
+  const { tree: tree2 } = markdownContext(maskMathMarkdown(source, covered));
   tree2.iterate({ enter: (n) => {
     const intersects = covered.filter((r) => n.from < r.to && n.to > r.from);
     let unsafe = intersects.some((r) => r.from <= n.from || r.to >= n.to);
@@ -31791,7 +31825,19 @@ ${image}
 
 // src/rich-markdown.ts
 var RichMarkdown = { async render(app, source, host, path, owner, options = {}) {
-  await import_obsidian7.MarkdownRenderer.render(app, source, host, path, owner);
+  const prepared = inlineMathSlots(source);
+  await import_obsidian7.MarkdownRenderer.render(app, prepared.source, host, path, owner);
+  let renderedMath = false;
+  for (const slot of Array.from(host.querySelectorAll("[data-study-math-slot]"))) {
+    const math2 = prepared.slots.get(slot.getAttribute("data-study-math-slot") ?? "");
+    if (!math2) continue;
+    const rendered = slot.ownerDocument.createElement("span");
+    rendered.className = "math math-inline is-loaded";
+    rendered.appendChild((0, import_obsidian7.renderMath)(math2.body, false));
+    slot.replaceWith(rendered);
+    renderedMath = true;
+  }
+  if (renderedMath) (0, import_obsidian7.finishRenderMath)();
   for (const link of Array.from(host.querySelectorAll("a.internal-link"))) {
     owner.registerDomEvent(link, "click", (event) => {
       if (event.button !== 0) return;
@@ -38788,7 +38834,7 @@ function tableInsertion(source, at, rows, columns) {
 // src/written-editor.ts
 function writtenEditor(app, host, path, value, owner, change, busy, label = "Your response", options = {}) {
   const wrap = host.createDiv("study-written-input"), labelEl = wrap.createEl("label", { text: label });
-  const marginLabel = label === "Margin note";
+  const marginLabel = label === "Margin note" || label.startsWith("Notation ");
   if (marginLabel) labelEl.id = "study-margin-label-" + crypto.randomUUID();
   const editorLabel = marginLabel ? { "aria-labelledby": labelEl.id } : { "aria-label": label === "Your response" ? "Your written response" : label };
   const source = wrap.createEl("textarea");
@@ -38828,7 +38874,9 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
     const ticket = generation, focusAtRequest = view.hasFocus, renderer = owner.addChild(new import_obsidian10.Component());
     previewOwner = renderer;
     const stage = wrap.ownerDocument.createElement("div"), text4 = view.state.doc.toString();
-    const render = options.literal ? (stage.textContent = text4 || " ", Promise.resolve()) : RichMarkdown.render(app, text4 || options.placeholder || "*Write in the margin\u2026*", stage, path, renderer, { reuseLeaf: true });
+    const empty = options.emptyPreview, isEmpty2 = empty && (empty.isEmpty?.(text4) ?? !text4.trim());
+    if (isEmpty2) stage.createSpan({ text: empty.text, cls: empty.cls });
+    const render = isEmpty2 ? Promise.resolve() : options.literal ? (stage.textContent = text4 || " ", Promise.resolve()) : RichMarkdown.render(app, text4 || options.placeholder || "*Write in the margin\u2026*", stage, path, renderer, { reuseLeaf: true });
     void render.then(() => {
       if (disposed || ticket !== generation || !previewMode) return;
       if (mathOpen || importing || composing || view.composing || !focusAtRequest && view.hasFocus) {
@@ -46869,7 +46917,7 @@ var SymbolApi = class {
     if (!Array.isArray(operations) || !operations.length || operations.length > 200) throw Error("Use batches of 1 to 200 notation edits.");
     const source = await this.source(path);
     let next = source, onlyRegistry = true;
-    const ids = [], deleteIds = [];
+    const ids = [], deleteIds = [], skippedIds = [];
     let singleEdits = [];
     let composed = import_state18.ChangeSet.empty(source.length);
     for (const op of operations) {
@@ -46881,6 +46929,18 @@ var SymbolApi = class {
         validateEntry(op.entry);
         data2.entries[op.id] = persistedNotation(op.entry);
         ids.push(op.id);
+      } else if (op.type === "clearEmptySections") {
+        for (const [id3, entry] of Object.entries(data2.entries)) {
+          if (op.skipIds?.includes(id3) || this.isBusy(path, id3)) {
+            skippedIds.push(id3);
+            continue;
+          }
+          const cleaned = clearEmptySections(entry);
+          if (!same2(entry, cleaned)) {
+            data2.entries[id3] = cleaned;
+            ids.push(id3);
+          }
+        }
       } else if (op.type === "delete" || op.type === "clearEmpty") {
         const targets = op.type === "delete" ? [op.id] : Object.entries(data2.entries).filter(([id3, e]) => e.definitionMarkdown.trim() === "" && !op.skipIds?.includes(id3) && !this.isBusy(path, id3)).map(([id3]) => id3);
         for (const id3 of targets) {
@@ -46901,7 +46961,7 @@ var SymbolApi = class {
         if (doc3.marks.some((m) => op.from < m.to && op.to > m.from)) throw Error("This selection overlaps an existing notation tag.");
         const id3 = op.type === "reconnect" ? op.id : freshId([...Object.keys(data2.entries), ...doc3.marks.map((m) => m.id)]);
         if (op.type === "reconnect" && (!data2.entries[id3] || !same2(data2.entries[id3], op.base) || doc3.marks.some((m) => m.id === id3))) throw Error("Reconnect requires the unchanged missing-source record.");
-        let entry = op.type === "reconnect" ? clone(data2.entries[id3]) : clone(op.entry ?? withLanguageDefaults(emptyEntry(op.expected), this.defaults.get(path) ?? []));
+        let entry = op.type === "reconnect" ? clone(data2.entries[id3]) : clone(op.entry ?? newNotationEntry(op.expected));
         validateEntry(entry);
         entry.symbol = op.expected;
         const tagged = wrapSymbol(id3, op.expected), body = q.body.slice(0, op.from - q.bodyFrom) + tagged + q.body.slice(op.to - q.bodyFrom);
@@ -46913,8 +46973,10 @@ var SymbolApi = class {
         onlyRegistry = false;
       } else throw Error("Unknown notation operation.");
       if (!same2(data2, doc3.block?.data ?? emptyRegistry())) edits2.push(registryEdit(next, doc3.block, data2));
-      const ref = notationReferenceEdit(next, data2, path);
-      if (ref) edits2.push(ref);
+      if (op.type !== "clearEmptySections") {
+        const ref = notationReferenceEdit(next, data2, path);
+        if (ref) edits2.push(ref);
+      }
       singleEdits = edits2;
       composed = composed.compose(import_state18.ChangeSet.of(edits2, next.length));
       next = applyEdits(next, edits2);
@@ -46926,7 +46988,7 @@ var SymbolApi = class {
     }
     const doc2 = scanSymbols(next), plan2 = { path, source, after: next, edits, expires: Date.now() + 6e5, doc: doc2, registryOnly: onlyRegistry, ids, deleteIds };
     const token = this.remember(plan2);
-    return { token, edits, ids, sourceBefore: source, table: symbolProjection(doc2).entries, diagnostics: this.report(path, doc2, next) };
+    return { token, edits, ids, skippedIds, sourceBefore: source, table: symbolProjection(doc2).entries, diagnostics: this.report(path, doc2, next) };
   }
   /** Called synchronously inside Math Studio / Knowledge Library's existing commit callback. */
   applyNativeEquationPlan(input) {
@@ -47399,7 +47461,7 @@ var SymbolSystem = class {
               }
               const units = stage.createEl("td");
               for (const unit2 of entry.units) {
-                if (!unit2.value.trim() && !unit2.units.trim()) continue;
+                if (emptyUnitRow(unit2)) continue;
                 const line = units.createDiv({ cls: "study-notation-table-pair" }), valueCell = line.createDiv(), unitCell = line.createDiv();
                 await import_obsidian35.MarkdownRenderer.render(plugin2.app, unit2.value, valueCell, path, owner);
                 await import_obsidian35.MarkdownRenderer.render(plugin2.app, unit2.units, unitCell, path, owner);
@@ -47813,7 +47875,7 @@ function setNotationField(entry, key3, value) {
   }
   return next;
 }
-function notationRow(entry, kind, action, id3) {
+function notationRow(entry, kind, action, id3, defaults2 = []) {
   const next = copyNotation(entry), rows = next[kind];
   if (action === "remove") {
     const index2 = rows.findIndex((r) => r.id === id3);
@@ -47823,19 +47885,19 @@ function notationRow(entry, kind, action, id3) {
     if (rows.length >= 100) throw Error("Use at most 100 rows per grid.");
     const fresh = crypto.randomUUID();
     if (kind === "units") next.units.push({ id: fresh, value: "", units: "" });
-    else next.code.push({ id: fresh, language: "", code: "" });
+    else next.code.push({ id: fresh, language: (next.languageOverride ?? defaults2).find((language2) => !next.code.some((row) => row.language === language2)) ?? "", code: "" });
   }
-  if (kind === "code") next.languageOverride = [...new Set(next.code.map((r) => r.language).filter((language2) => language2.trim()))];
   return next;
 }
 function notationSearch(entry, query) {
   return [entry.symbol, entry.definitionMarkdown, entry.notesMarkdown, ...entry.units.flatMap((r) => [r.value, r.units]), ...entry.code.flatMap((r) => [r.language, r.code])].join("\n").toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
 }
-function reconcileNotationSave(saved, editor) {
-  const result = copyNotation(saved), kept = new Map(result.code.map((row) => [row.id, row]));
-  result.code = editor.code.flatMap((row) => !row.code.trim() ? [copyNotation(row)] : kept.has(row.id) ? [kept.get(row.id)] : []);
-  for (const row of saved.code) if (!result.code.some((r) => r.id === row.id)) result.code.push(copyNotation(row));
-  return result;
+function reconcileNotationSave(saved, _editor) {
+  return copyNotation(saved);
+}
+var notationEditorText = (key3, raw) => key3.startsWith("units:") && key3.endsWith(":units") && isDefaultUnits(raw) ? "" : raw;
+function notationPlaceholder(key3) {
+  return key3 === "definitionMarkdown" ? "Definition: Click to edit\u2026" : key3 === "notesMarkdown" ? "Notes: Click to edit\u2026" : key3.startsWith("units:") && key3.endsWith(":units") ? "dimensionless" : "Click to edit\u2026";
 }
 
 // src/notation-margin-store.ts
@@ -47913,7 +47975,7 @@ var NotationMarginStore = class {
     let d = this.drafts.get(k);
     if (!d) {
       if (this.drafts.size >= 512) throw Error("Finish existing notation drafts before creating more.");
-      d = { path, id: entry.id, base: notationRecord(entry), entry: withLanguageDefaults(notationRecord(entry), this.defaultLanguages.get(path) ?? []) };
+      d = { path, id: entry.id, base: notationRecord(entry), entry: notationRecord(entry) };
       this.drafts.set(k, d);
     }
     d.sessionId ??= this.bridge.beginSession(path, entry.id);
@@ -48088,7 +48150,8 @@ var NotationMarginCard = class extends import_obsidian37.Component {
     this.el.dataset.markStyle = "highlight";
     this.el.style.setProperty("--margin-color", "#5146a3");
     this.el.style.setProperty("--margin-dark", "#b9a2f2");
-    this.badge = this.el.createSpan({ cls: "study-margin-number", attr: { "data-n": "\u2013", role: "button", tabindex: "0", "aria-label": "Notation source" } });
+    this.badge = this.el.createSpan({ cls: "study-margin-number", attr: { "data-n": "\u2013", role: "button", tabindex: "0", "aria-description": "Go to notation source" } });
+    this.label(this.badge, "Notation source");
     const jump = () => void host.store.bridge?.jump(host.path, projection.id).catch((e) => this.error(e));
     this.badge.onclick = (e) => {
       e.stopPropagation();
@@ -48101,7 +48164,8 @@ var NotationMarginCard = class extends import_obsidian37.Component {
       }
     };
     const top2 = this.el.createDiv("study-margin-note-source");
-    this.header = top2.createSpan({ cls: "study-margin-source study-notation-symbol", text: notationDisplaySymbol(projection), attr: { role: "button", tabindex: "0", "aria-label": "Go to notation source" } });
+    this.header = top2.createSpan({ cls: "study-margin-source study-notation-symbol", text: notationDisplaySymbol(projection), attr: { role: "button", tabindex: "0", "aria-description": "Go to notation source" } });
+    this.label(this.header, "Go to notation source");
     this.header.onclick = jump;
     this.header.onkeydown = (e) => {
       if (e.key === "Enter") {
@@ -48190,7 +48254,18 @@ var NotationMarginCard = class extends import_obsidian37.Component {
   cachedRecord;
   lastError = "";
   fieldHistory = /* @__PURE__ */ new Map();
-  visibleEmptyRows = /* @__PURE__ */ new Set();
+  label(target, text4) {
+    let label = target.dataset.notationLabel ? target.parentElement.querySelector("#" + target.dataset.notationLabel) : null;
+    if (!label) {
+      label = target.parentElement.createSpan();
+      label.id = "study-notation-label-" + crypto.randomUUID();
+      label.hidden = true;
+      target.dataset.notationLabel = label.id;
+    }
+    label.textContent = text4;
+    target.removeAttribute("aria-label");
+    target.setAttribute("aria-labelledby", label.id);
+  }
   get id() {
     return this.projection.id;
   }
@@ -48228,9 +48303,7 @@ var NotationMarginCard = class extends import_obsidian37.Component {
     }
     this.sourceStatus.setText(this.host.readOnly() ? "Legacy notation \xB7 read-only" : projection.sourceStatus === "missing" ? "Source missing \xB7 entry retained" : projection.sourceStatus === "duplicate" ? "Repeated source ID \xB7 repair required" : projection.sourceStatus === "unknown" ? "Source not checked" : "");
     if (!this.host.store.get(this.host.path, this.id) && JSON.stringify(notationRecord(old)) !== JSON.stringify(notationRecord(projection))) {
-      this.steps = [];
-      this.stepAt = 0;
-      this.render();
+      this.accepted(notationRecord(projection));
     }
   }
   begin() {
@@ -48239,12 +48312,13 @@ var NotationMarginCard = class extends import_obsidian37.Component {
   }
   change(key3, value) {
     try {
+      const rawBefore = notationField(this.entry, key3);
       this.begin();
-      this.host.store.set(this.host.path, this.id, setNotationField(this.entry, key3, value));
       if (!this.replaying) {
         this.steps.splice(this.stepAt);
-        if (!this.active) this.active = { key: key3, before: this.fields.get(key3)?.snapshot?.doc ?? notationField(this.projection, key3) };
+        if (!this.active) this.active = { key: key3, before: this.fields.get(key3)?.snapshot?.doc ?? notationEditorText(key3, rawBefore), rawBefore };
       }
+      this.host.store.set(this.host.path, this.id, setNotationField(this.entry, key3, value));
       this.schedule();
     } catch (e) {
       this.error(e);
@@ -48281,19 +48355,20 @@ var NotationMarginCard = class extends import_obsidian37.Component {
   }
   seal() {
     if (!this.active) return;
-    const { key: key3, before } = this.active, after = notationField(this.entry, key3);
-    this.fields.get(key3)?.editor?.isolateHistory();
-    if (before !== after) {
+    const { key: key3, before, rawBefore } = this.active, field = this.fields.get(key3);
+    if (field?.editor?.value.trim() && notationEditorText(key3, field.editor.value) === "") field.editor.setValue("");
+    const rawAfter = notationField(this.entry, key3), after = field?.editor?.value ?? field?.snapshot?.doc ?? notationEditorText(key3, rawAfter);
+    field?.editor?.isolateHistory();
+    if (before !== after || rawBefore !== rawAfter) {
       this.steps.splice(this.stepAt);
-      this.steps.push({ kind: "field", key: key3, before, after });
+      this.steps.push({ kind: "field", key: key3, before, after, ...key3.startsWith("units:") && key3.endsWith(":units") ? { rawBefore, rawAfter } : {} });
       if (this.steps.length > 100) this.steps.shift();
       this.stepAt = this.steps.length;
     }
     this.active = void 0;
   }
   accepted(committed, keepEditor = false) {
-    if (!keepEditor) this.visibleEmptyRows.clear();
-    this.projection = { ...this.projection, ...committed };
+    this.projection = { ...committed, id: this.projection.id, locations: this.projection.locations, sourceStatus: this.projection.sourceStatus };
     this.steps = [];
     this.stepAt = 0;
     this.fieldHistory.clear();
@@ -48343,7 +48418,8 @@ var NotationMarginCard = class extends import_obsidian37.Component {
     await this.finish();
   }
   field(key3, label, parent2, literal2 = false, mathOnly = false) {
-    const cell = parent2.createDiv({ cls: "study-notation-field markdown-rendered", attr: { tabindex: "0", role: "group", "aria-label": label } });
+    const cell = parent2.createDiv({ cls: "study-notation-field markdown-rendered", attr: { tabindex: "0", role: "group" } });
+    this.label(cell, label);
     cell.dataset.notationField = key3;
     const field = { host: cell, generation: 0, near: false, literal: literal2, mathOnly, label };
     this.fields.set(key3, field);
@@ -48361,7 +48437,7 @@ var NotationMarginCard = class extends import_obsidian37.Component {
         try {
           this.begin();
           field.editor.isolateHistory();
-          this.active = { key: key3, before: notationField(this.entry, key3) };
+          this.active = { key: key3, before: field.editor.value, rawBefore: notationField(this.entry, key3) };
         } catch (e) {
           this.error(e);
         }
@@ -48383,9 +48459,8 @@ var NotationMarginCard = class extends import_obsidian37.Component {
     this.fields.clear();
     this.body.empty();
     const record = this.entry;
-    this.body.createDiv({ cls: "study-notation-label", text: "Definition" });
     this.field("definitionMarkdown", "Notation definition", this.body);
-    const unitRows = record.units.filter((row) => row.value.trim() || row.units.trim() || this.visibleEmptyRows.has("units:" + row.id));
+    const unitRows = record.units;
     if (unitRows.length) {
       const units = this.body.createEl("table", { cls: "study-notation-grid" }), uh = units.createEl("thead").createEl("tr");
       uh.createEl("th", { text: "Value" });
@@ -48399,7 +48474,7 @@ var NotationMarginCard = class extends import_obsidian37.Component {
         this.field(`units:${row.id}:units`, "Notation units", tr.createEl("td"), false, true);
       }
     }
-    const codeRows = record.code.filter((row) => row.code.trim() || this.visibleEmptyRows.has("code:" + row.id));
+    const codeRows = record.code;
     if (codeRows.length) {
       const code = this.body.createEl("table", { cls: "study-notation-grid" }), ch = code.createEl("thead").createEl("tr");
       ch.createEl("th", { text: "Language" });
@@ -48413,10 +48488,10 @@ var NotationMarginCard = class extends import_obsidian37.Component {
         this.field(`code:${row.id}:code`, "Notation code symbol", tr.createEl("td"), true);
       }
     }
-    const notes = this.body.createDiv("study-notation-notes");
-    notes.createDiv({ cls: "study-notation-label", text: "Notes" });
-    notes.createDiv({ cls: "study-notation-help", text: "Not included in the notation table" });
-    this.field("notesMarkdown", "Notation notes", notes);
+    if (!record.notesHidden || record.notesMarkdown.trim()) {
+      const notes = this.body.createDiv("study-notation-notes");
+      this.field("notesMarkdown", "Notation notes", notes);
+    }
     this.el.classList.toggle("is-readonly", this.host.readOnly());
     this.sourceStatus.setText(this.host.readOnly() ? "Legacy notation \xB7 read-only" : this.projection.sourceStatus === "present" ? "" : this.projection.sourceStatus === "missing" ? "Source missing \xB7 entry retained" : "Source needs checking");
     if (this.near) this.renderRich();
@@ -48431,16 +48506,24 @@ var NotationMarginCard = class extends import_obsidian37.Component {
       this.header.textContent = notationDisplaySymbol(this.projection);
     }
   }
+  emptyPreview(key3) {
+    return { text: notationPlaceholder(key3), cls: "study-notation-placeholder", isEmpty: (text4) => !notationEditorText(key3, text4).trim() };
+  }
   previewField(key3, field) {
     const text4 = notationField(this.entry, key3);
+    if (field.renderOwner) this.removeChild(field.renderOwner);
+    field.renderOwner = void 0;
+    const ticket = ++field.generation;
+    if (!this.host.readOnly() && this.emptyPreview(key3).isEmpty(text4)) {
+      field.host.empty();
+      field.host.createSpan({ cls: "study-notation-placeholder", text: notationPlaceholder(key3) });
+      return;
+    }
     if (!field.near) {
       field.host.textContent = text4 || " ";
       this.fieldObserver.observe(field.host);
       return;
     }
-    if (field.renderOwner) this.removeChild(field.renderOwner);
-    field.renderOwner = void 0;
-    const ticket = ++field.generation;
     if (field.literal) {
       field.host.textContent = text4 || " ";
       return;
@@ -48448,7 +48531,7 @@ var NotationMarginCard = class extends import_obsidian37.Component {
     const owner = this.addChild(new import_obsidian37.Component());
     field.renderOwner = owner;
     const stage = field.host.ownerDocument.createElement("div");
-    void RichMarkdown.render(this.host.app, text4 || (this.host.readOnly() ? " " : "*Click to edit\u2026*"), stage, this.host.path, owner, { reuseLeaf: true }).then(() => {
+    void RichMarkdown.render(this.host.app, text4 || " ", stage, this.host.path, owner, { reuseLeaf: true }).then(() => {
       if (this.alive && ticket === field.generation && !field.editor) field.host.replaceChildren(...Array.from(stage.childNodes));
     }).catch(() => {
       if (this.alive && ticket === field.generation && !field.editor) field.host.textContent = text4;
@@ -48462,16 +48545,9 @@ var NotationMarginCard = class extends import_obsidian37.Component {
     }
     let field = this.fields.get(key3);
     if (!field) return;
-    if (key3.includes(":")) this.visibleEmptyRows.add(key3.split(":").slice(0, 2).join(":"));
     if (this.active?.key !== key3) this.seal();
     try {
-      const before = this.entry;
       this.begin();
-      if (before.code.map((r) => r.id).join(",") !== this.entry.code.map((r) => r.id).join(",")) {
-        this.renderPreservingHistory();
-        field = this.fields.get(key3);
-        if (!field) return;
-      }
     } catch (e) {
       this.error(e);
       return;
@@ -48489,7 +48565,8 @@ var NotationMarginCard = class extends import_obsidian37.Component {
       field.host.empty();
       const owner = this.addChild(new import_obsidian37.Component());
       field.owner = owner;
-      field.editor = writtenEditor(this.host.app, field.host, this.host.path, notationField(this.entry, key3), owner, (value) => this.change(key3, value), (busy) => {
+      const raw = notationField(this.entry, key3), mapped = notationEditorText(key3, raw), snapshot2 = field.snapshot && notationEditorText(key3, field.snapshot.doc) === mapped ? field.snapshot : void 0;
+      field.editor = writtenEditor(this.host.app, field.host, this.host.path, snapshot2?.doc ?? mapped, owner, (value) => this.change(key3, value), (busy) => {
         this.activeMath = busy;
         if (!busy && this.timer === void 0) void this.save().catch((e) => this.error(e));
       }, field.label, { acceptChange: (value) => {
@@ -48501,12 +48578,12 @@ var NotationMarginCard = class extends import_obsidian37.Component {
           new import_obsidian37.Notice(String(e));
           return false;
         }
-      }, tableCellEditors: false, toolbar: false, rich: !field.literal && !field.mathOnly, lists: !field.literal && !field.mathOnly, literal: field.literal, formatting: !field.mathOnly, previewOnBlur: true, placeholder: field.literal ? "" : field.mathOnly ? "Enter a value or units\u2026" : "Write here\u2026", historySnapshot: field.snapshot, undo: () => this.undo(), redo: () => this.redo() });
+      }, tableCellEditors: false, toolbar: false, rich: !field.literal && !field.mathOnly, lists: !field.literal && !field.mathOnly, literal: field.literal, formatting: !field.mathOnly, previewOnBlur: true, placeholder: field.mathOnly ? "" : notationPlaceholder(key3), emptyPreview: this.emptyPreview(key3), historySnapshot: snapshot2, undo: () => this.undo(), redo: () => this.redo() });
     }
     for (const [other, f] of this.fields) if (other !== key3) f.editor?.showPreview();
     if (!this.active) {
       field.editor.isolateHistory();
-      this.active = { key: key3, before: notationField(this.entry, key3) };
+      this.active = { key: key3, before: field.editor.value, rawBefore: notationField(this.entry, key3) };
     }
     if (focus) field.editor.focus();
   }
@@ -48545,6 +48622,8 @@ var NotationMarginCard = class extends import_obsidian37.Component {
       new import_obsidian37.Notice("This field history is no longer available. The current draft was kept.");
       return false;
     }
+    const raw = direction === "undo" ? step.rawBefore : step.rawAfter;
+    if (raw !== void 0) this.host.store.set(this.host.path, this.id, setNotationField(this.entry, step.key, raw));
     return true;
   }
   undo() {
@@ -48556,7 +48635,7 @@ var NotationMarginCard = class extends import_obsidian37.Component {
     try {
       if (step.kind === "field") {
         if (!this.historyField(step, "undo")) return;
-      } else if (step.kind === "reveal") this.applyReveal(step, "undo");
+      } else if (step.kind === "notes") this.applyNotes(step, "undo");
       else this.applyRows(step, "undo");
       this.stepAt--;
       this.active = void 0;
@@ -48574,7 +48653,7 @@ var NotationMarginCard = class extends import_obsidian37.Component {
     try {
       if (step.kind === "field") {
         if (!this.historyField(step, "redo")) return;
-      } else if (step.kind === "reveal") this.applyReveal(step, "redo");
+      } else if (step.kind === "notes") this.applyNotes(step, "redo");
       else this.applyRows(step, "redo");
       this.stepAt++;
       this.active = void 0;
@@ -48583,11 +48662,29 @@ var NotationMarginCard = class extends import_obsidian37.Component {
     }
     this.schedule();
   }
-  applyReveal(step, direction) {
-    if (direction === "redo") this.visibleEmptyRows.add("code:" + step.id);
-    else this.visibleEmptyRows.delete("code:" + step.id);
+  applyNotes(step, direction) {
+    const next = copyNotation(this.entry), hidden = direction === "undo" ? step.before : step.after;
+    if (hidden === void 0) delete next.notesHidden;
+    else next.notesHidden = hidden;
+    this.begin();
+    this.host.store.set(this.host.path, this.id, next);
     this.renderPreservingHistory();
-    if (direction === "redo") this.edit(`code:${step.id}:code`);
+  }
+  addNotes() {
+    try {
+      this.seal();
+      this.begin();
+      const step = { kind: "notes", before: this.entry.notesHidden };
+      this.steps.splice(this.stepAt);
+      this.steps.push(step);
+      if (this.steps.length > 100) this.steps.shift();
+      this.stepAt = this.steps.length;
+      this.applyNotes(step, "redo");
+      this.schedule();
+      this.edit("notesMarkdown");
+    } catch (e) {
+      this.error(e);
+    }
   }
   applyRows(step, direction) {
     const next = copyNotation(this.entry), rows = copyNotation(direction === "undo" ? step.before : step.after);
@@ -48619,22 +48716,9 @@ var NotationMarginCard = class extends import_obsidian37.Component {
     try {
       this.seal();
       this.begin();
-      if (grid === "code" && action === "add") {
-        const languages2 = this.entry.languageOverride ?? this.host.store.defaultLanguages.get(this.host.path) ?? [], placeholder2 = this.entry.code.find((row) => !row.code.trim() && languages2.includes(row.language) && !this.visibleEmptyRows.has("code:" + row.id));
-        if (placeholder2) {
-          const step2 = { kind: "reveal", id: placeholder2.id };
-          this.steps.splice(this.stepAt);
-          this.steps.push(step2);
-          if (this.steps.length > 100) this.steps.shift();
-          this.stepAt = this.steps.length;
-          this.applyReveal(step2, "redo");
-          return;
-        }
-      }
-      const before = copyNotation(this.entry), next = notationRow(before, grid, action, id3), step = { kind: "rows", grid, before: copyNotation(before[grid]), after: copyNotation(next[grid]), beforeOverride: before.languageOverride, afterOverride: next.languageOverride, focus: id3 ? `${grid}:${id3}:${grid === "units" ? "value" : "language"}` : void 0 };
+      const before = copyNotation(this.entry), next = notationRow(before, grid, action, id3, this.host.store.defaultLanguages.get(this.host.path) ?? []), step = { kind: "rows", grid, before: copyNotation(before[grid]), after: copyNotation(next[grid]), beforeOverride: before.languageOverride, afterOverride: next.languageOverride, focus: id3 ? `${grid}:${id3}:${grid === "units" ? "value" : "language"}` : void 0 };
       if (action === "add") {
         const added = next[grid].at(-1);
-        this.visibleEmptyRows.add(grid + ":" + added.id);
         step.focus = `${grid}:${added.id}:${grid === "units" ? "value" : "language"}`;
       }
       this.host.store.set(this.host.path, this.id, next);
@@ -48644,10 +48728,7 @@ var NotationMarginCard = class extends import_obsidian37.Component {
       this.stepAt = this.steps.length;
       this.renderPreservingHistory();
       this.schedule();
-      if (action === "add") {
-        const row = next[grid].at(-1);
-        this.edit(`${grid}:${row.id}:${grid === "units" ? "value" : "language"}`);
-      }
+      if (action === "add" && step.focus) this.edit(step.focus);
     } catch (e) {
       this.error(e);
     }
@@ -48659,6 +48740,8 @@ var NotationMarginCard = class extends import_obsidian37.Component {
     const menu = import_obsidian37.Menu.forEvent(event), target = event.target?.closest("[data-notation-row]"), grid = target?.dataset.notationGrid, rowId = target?.dataset.notationRow;
     menu.addItem((i) => i.setTitle("Go to notation source").onClick(() => void this.host.store.bridge?.jump(this.host.path, this.id).catch((e) => this.error(e))));
     menu.addItem((i) => i.setTitle("Go to notation table").onClick(() => void this.host.store.bridge?.table(this.host.path, this.id).catch((e) => this.error(e))));
+    if (this.entry.notesHidden && !this.entry.notesMarkdown.trim()) menu.addItem((i) => i.setTitle("Add notes").setDisabled(this.activeMath || this.host.readOnly()).onClick(() => this.addNotes()));
+    if (this.host.store.bridge?.clearEmptySections) menu.addItem((i) => i.setTitle("Clear empty notation sections in this note").setDisabled(this.activeMath || this.host.readOnly()).onClick(() => void this.host.store.bridge.clearEmptySections(this.host.path).catch((e) => this.error(e))));
     menu.addItem((i) => i.setTitle("Add value and units row").setDisabled(this.activeMath || this.host.readOnly()).onClick(() => this.row("units", "add")));
     menu.addItem((i) => i.setTitle("Add language and code row").setDisabled(this.activeMath || this.host.readOnly()).onClick(() => this.row("code", "add")));
     if (grid && rowId) menu.addItem((i) => i.setTitle(grid === "units" ? "Remove value and units row" : "Remove language and code row").setDisabled(this.activeMath || this.host.readOnly()).onClick(() => this.row(grid, "remove", rowId)));
@@ -48676,7 +48759,6 @@ var NotationMarginCard = class extends import_obsidian37.Component {
     if (this.lastError) menu.addItem((i) => i.setTitle("Discard unsaved notation changes").setDisabled(this.activeMath || this.host.readOnly()).onClick(() => void this.host.store.discard(this.host.path, this.id).then(() => {
       this.steps = [];
       this.stepAt = 0;
-      this.visibleEmptyRows.clear();
       this.lastError = "";
       this.render();
       this.status.setText("");
@@ -48998,6 +49080,12 @@ var MarginNotes = class {
   async flushNotationSessions() {
     for (const l of this.plugin.app.workspace.getLeavesOfType(VIEW3)) if (l.view instanceof MarginView) await l.view.flushNotationSessions();
     await this.notationDrafts.endAll();
+  }
+  async prepareNotationCleanup(path) {
+    const skipped = /* @__PURE__ */ new Set();
+    for (const l of this.plugin.app.workspace.getLeavesOfType(VIEW3)) if (l.view instanceof MarginView) for (const id3 of await l.view.finishNotationForCleanup(path)) skipped.add(id3);
+    for (const d of this.notationDrafts.drafts.values()) if (d.path === path) skipped.add(d.id);
+    return [...skipped];
   }
   async openNotation(path, id3, editing = false) {
     this.file = path;
@@ -49366,6 +49454,19 @@ var MarginView = class extends import_obsidian38.ItemView {
   }
   async flushNotationSessions() {
     for (const c of this.notationCards.values()) await c.flush();
+  }
+  async finishNotationForCleanup(path) {
+    const skipped = [];
+    if (this.notationPath !== path) return skipped;
+    for (const c of this.notationCards.values()) {
+      try {
+        await c.flush();
+        if (c.busy) skipped.push(c.id);
+      } catch {
+        skipped.push(c.id);
+      }
+    }
+    return skipped;
   }
   editNotation(id3) {
     this.notationCards.get("notation:" + id3)?.edit();
@@ -49769,6 +49870,8 @@ var MarginView = class extends import_obsidian38.ItemView {
     const menu = new import_obsidian38.Menu();
     this.notes.store.addVisibilityMenu(menu, { x: e.clientX, y: e.clientY });
     if (this.notes.file) this.notes.store.addClearEmptyMenu(menu, this.notes.file);
+    const path = this.notes.file;
+    if (path && this.notes.notation?.clearEmptySections) menu.addItem((i) => i.setTitle("Clear empty notation sections in this note").onClick(() => void this.notes.notation.clearEmptySections(path).catch((e2) => new import_obsidian38.Notice(String(e2)))));
     menu.addItem((i) => i.setTitle("New margin note").setIcon("plus").onClick(() => {
       if (this.notes.file) void this.notes.open({ path: this.notes.file, quote: "", before: "", after: "" });
     })).addItem((i) => i.setTitle(this.showResolved ? "Hide resolved notes" : "Show resolved notes").onClick(() => {
@@ -50092,7 +50195,7 @@ var MarginView = class extends import_obsidian38.ItemView {
       card.el.dataset.studyNumber = n === void 0 ? "\u2013" : String(n);
       card.badge.dataset.n = card.el.dataset.studyNumber;
       card.badge.hidden = this.notes.store.visibility.annotationNumbers === false;
-      card.badge.setAttribute("aria-label", n === void 0 ? "Notation without a current source number" : `Annotation ${n} \xB7 go to notation source`);
+      card.label(card.badge, n === void 0 ? "Notation without a current source number" : `Annotation ${n} \xB7 go to notation source`);
       card.el.hidden = this.tab !== "notes" || (numberQuery !== void 0 ? n !== numberQuery : !!this.filter.value && this.filter.value !== typeKey("highlight", "Notation") || !notationSearch(card.entry, rawQuery));
       layout.push(card.el);
     }

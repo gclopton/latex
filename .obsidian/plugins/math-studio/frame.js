@@ -42741,6 +42741,8 @@ If you are using Vue, this may be because you are using the runtime-only build o
   var ID = /^[0-9a-z]{10}$/;
   var DEF_ID = /^d-[0-9a-z]{10}$/;
   var ROW_ID = /^[A-Za-z0-9_-]{1,80}$/;
+  var emptyEntry = (symbol = "") => ({ symbol, definitionMarkdown: "", units: [], code: [], notesMarkdown: "" });
+  var newNotationEntry = (symbol = "") => ({ ...emptyEntry(symbol), units: [{ id: "units0", value: "", units: "" }] });
   var clone = (value) => JSON.parse(JSON.stringify(value));
   function object(v) {
     return !!v && typeof v === "object" && !Array.isArray(v);
@@ -42780,6 +42782,7 @@ If you are using Vue, this may be because you are using the runtime-only build o
     string(value.notesMarkdown, 128e3, "notes");
     if (value.equation !== void 0) string(value.equation, 16e3, "equation reference");
     if (value.languageOverride !== void 0) validateLanguages(value.languageOverride);
+    if (value.notesHidden !== void 0 && typeof value.notesHidden !== "boolean") throw Error("Invalid notation notes visibility.");
     const rows2 = (items, label2, fields) => {
       if (!Array.isArray(items) || items.length > 100) throw Error(`Invalid notation ${label2} rows.`);
       const ids = /* @__PURE__ */ new Set();
@@ -43602,7 +43605,7 @@ If you are using Vue, this may be because you are using the runtime-only build o
   // src/symbol-session.ts
   function blankNotation(symbol, languages) {
     validateLanguages(languages);
-    return { symbol, definitionMarkdown: "", units: [], code: [], notesMarkdown: "" };
+    return newNotationEntry(symbol);
   }
   function independentNotation(entry, symbol) {
     validateEntry(entry);
@@ -43613,7 +43616,7 @@ If you are using Vue, this may be because you are using the runtime-only build o
       return next;
     };
     delete copied.legacy;
-    const code = copied.code.filter((row) => row.code.trim()).map((row) => ({ ...row, id: id() }));
+    const code = copied.code.map((row) => ({ ...row, id: id() }));
     return { ...copied, symbol, units: copied.units.map((row) => ({ ...row, id: id() })), code };
   }
   function equationSymbols(context, tex, pending, decisions) {
@@ -43866,7 +43869,7 @@ If you are using Vue, this may be because you are using the runtime-only build o
   }
 
   // src/build-id.ts
-  var BUILD_ID = "0c58b3961bc2d660";
+  var BUILD_ID = "cc044b9d41f6fc75";
 
   // src/frame.ts
   var config = window.mathStudioConfig;

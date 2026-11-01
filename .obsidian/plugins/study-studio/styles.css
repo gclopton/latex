@@ -1040,10 +1040,13 @@ body.study-symbols-enabled .study-critique.study-has-highlight mjx-container .mj
 
 /* Notation is a typed card in the existing Notes margin. */
 .study-notation-note .study-notation-symbol{background:color-mix(in srgb,var(--margin-color) 36%,transparent);padding:0 3px;cursor:pointer}
-.study-notation-body{display:flex;flex-direction:column;gap:10px}
+.study-notation-body{display:flex;flex-direction:column;gap:8px}
+.study-notation-placeholder{color:#00ddf5;font-style:italic}
+.theme-light .study-notation-placeholder{color:#007c91}
+.study-notation-field .study-written-preview{min-height:1.5em}
 .study-notation-label{font-size:var(--font-ui-small);color:var(--text-muted);margin-top:4px}
 .study-notation-help{font-size:var(--font-ui-smaller);color:var(--text-muted);margin:2px 0 10px}
-.study-notation-grid{width:100%;border-collapse:collapse;table-layout:fixed;margin:8px 0!important;background:transparent!important}
+.study-notation-grid{width:100%;border-collapse:collapse;table-layout:fixed;margin:0!important;background:transparent!important}
 .study-notation-grid th,.study-notation-grid td{border:0!important;border-bottom:1px solid var(--background-modifier-border)!important;background:transparent!important;text-align:left;padding:7px 3px!important;vertical-align:top;overflow-wrap:anywhere}
 .study-notation-grid th{font-size:var(--font-ui-small);font-weight:400;color:var(--text-muted)}
 .study-notation-grid th:first-child,.study-notation-grid td:first-child{width:44%}
@@ -1054,7 +1057,7 @@ body.study-symbols-enabled .study-critique.study-has-highlight mjx-container .mj
 .study-notation-field .study-written-input{margin:0}
 .study-notation-field[data-notation-field^="code:"]{white-space:pre-wrap}
 .study-notation-field[data-notation-field$=":code"]{font-family:var(--font-monospace);font-size:.9em}
-.study-notation-notes{border-top:1px solid var(--background-modifier-border);padding-top:10px;margin-top:4px}
+.study-notation-notes{margin:0;padding:0}
 .study-notation-notes>.study-notation-label{font-size:var(--font-text-size);color:var(--text-normal)}
 .study-notation-empty-grid{font-size:var(--font-ui-smaller);color:var(--text-muted)}
 .study-notation-error{font-size:var(--font-ui-small);color:var(--text-error)}
