@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "pluginId": "knowledge-library",
-  "sourceCommit": "4ea401268a7e9e5a13f02f4f21b59a358b257a8f",
-  "release": "7852b7166c88f0f5eef33a4fe8791cfa5087eed68d937854dbc5024a560bc718",
+  "sourceCommit": "772438407c4cd015dd8efa49e65f822cf08501d2",
+  "release": "0b532accc15d1414158b4907c25cc9cc5c884d51f3006e6d16d100a2e09b1004",
   "candidate": false,
   "uncommittedSource": false,
   "files": {
@@ -24,7 +24,7 @@
     "backend/document_numbers.py": "7d8eb8a3272f961b2c13266ad59cb8ed53f8c5b07ae747d18fb8f8f455017adc",
     "backend/document_registry.py": "fad250bcd9e5813db98fa39a345a1e24e42dc1ecc9c6276ef3a53d54ce00b633",
     "backend/editor_catalog_cache.py": "4b5d494f8e81557e4a8c617852581541ea862a76714ffaab645da47b37259b57",
-    "backend/enrollment.py": "dd7be9cc7cc7f2b6860a5a68594429aeff3f8652c749d35bb1d3e0f32f49230a",
+    "backend/enrollment.py": "ccfc1d28ee4681bebdf844c13222d27078b96ee7624c3380c54123240e8d1f26",
     "backend/figure_panels.py": "7ee908b6ee5aff8f36ff538dbd32b03338c964657e5fc74b47d4286ee7a9961d",
     "backend/formula_search.py": "5fa1b94936fcfc7af56c471a134dc3cba1828f27b3d7ad3a090dff33b9fc1e4f",
     "backend/host_role.py": "7b6881de3c9ee897f7ceadb82599ef4eb8a35dc1827e770485c00977ab92232f",
