@@ -8065,6 +8065,68 @@ var require_component_file_ready = __commonJS({
   }
 });
 
+// plugin/component-note-target.js
+var require_component_note_target = __commonJS({
+  "plugin/component-note-target.js"(exports2, module2) {
+    var { componentFile, componentSaved } = require_component_file_ready();
+    var NoteTargetChanged = class extends Error {
+      constructor(message = "The note view changed. Try the action again.") {
+        super(message);
+        this.name = "NoteTargetChanged";
+        this.retryable = true;
+      }
+    };
+    function noteTargets(plugin) {
+      let closed = false;
+      plugin.register(() => {
+        closed = true;
+      });
+      const views = (path2) => plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view).filter((v) => v.file?.path === path2);
+      const sources = (rows) => rows.filter((v) => v.getMode() === "source" && v.editor?.cm);
+      const check = (target, expected = target.text) => {
+        if (closed) throw new NoteTargetChanged("The plugin closed; this note update was not completed.");
+        const rows = views(target.path), open = sources(rows);
+        if (plugin.admission.paused.has(target.path)) throw new NoteTargetChanged("An admission is finishing. Try the action again when it completes.");
+        const drafts = rows.flatMap((v) => v.containerEl?.querySelectorAll ? [...v.containerEl.querySelectorAll(".kl-component-editing,.math-studio-host")] : [v.containerEl?.querySelector(".kl-component-editing,.math-studio-host")].filter(Boolean));
+        if (drafts.length) throw new NoteTargetChanged("Finish the open source draft before updating this note.");
+        if (plugin.app.vault.getAbstractFileByPath(target.path) !== target.file || target.file.path !== target.path) throw new NoteTargetChanged();
+        if (target.view) {
+          if (!open.includes(target.view) || target.view.editor.cm !== target.cm || target.view.editor.getValue() !== expected) throw new NoteTargetChanged();
+          if (open.some((v) => v !== target.view && ![target.text, expected].includes(v.editor.getValue()))) throw new NoteTargetChanged();
+        } else if (open.length) throw new NoteTargetChanged();
+      };
+      const capture = async (path2, { cm = null } = {}) => {
+        const file = await componentFile(plugin.app.vault, path2);
+        if (!file) return null;
+        const open = sources(views(path2));
+        const view = (cm ? open.find((v) => v.editor.cm === cm) : open[0]) || null;
+        if (cm && view?.editor.cm !== cm) throw new NoteTargetChanged("This editor is not an open source pane for the note. Open the note in an editing pane and try again.");
+        const target = { path: path2, file, view, cm: view?.editor.cm, text: view ? view.editor.getValue() : await plugin.app.vault.read(file) };
+        check(target);
+        return target;
+      };
+      const apply = async (target, text, dispatch) => {
+        check(target);
+        if (target.view) {
+          if (text !== target.text) dispatch(target.view);
+          check(target, text);
+          await target.view.save();
+        } else if (text !== target.text) {
+          await plugin.app.vault.process(target.file, (current) => {
+            check(target);
+            if (current !== target.text) throw new NoteTargetChanged("The saved note changed. Try the action again.");
+            return text;
+          });
+        }
+        await componentSaved(plugin.app.vault, target.path, text);
+        if (closed || plugin.app.vault.getAbstractFileByPath(target.path) !== target.file || target.file.path !== target.path) throw new NoteTargetChanged();
+      };
+      return { capture, check, apply };
+    }
+    module2.exports = { noteTargets, NoteTargetChanged };
+  }
+});
+
 // plugin/component-write-scope.js
 var require_component_write_scope = __commonJS({
   "plugin/component-write-scope.js"(exports2, module2) {
@@ -8219,6 +8281,7 @@ var require_component_identities = __commonJS({
     var { componentHeaders } = require_component_model();
     var identityModel = require_component_identity_model();
     var { componentFile, componentSaved, finishWhenSaved } = require_component_file_ready();
+    var { noteTargets, NoteTargetChanged } = require_component_note_target();
     function difference(before, after) {
       let from = 0, toA = before.length, toB = after.length;
       while (from < toA && from < toB && before[from] === after[from]) from++;
@@ -8245,6 +8308,7 @@ var require_component_identities = __commonJS({
     }
     function registerComponentIdentities(plugin) {
       const canWrite = require_component_write_scope().scope(plugin);
+      const targets = noteTargets(plugin);
       let queue = Promise.resolve(), closed = false, startup;
       const states = /* @__PURE__ */ new Map(), accepted = /* @__PURE__ */ new Map(), timers = /* @__PURE__ */ new Map(), stateRequests = /* @__PURE__ */ new Map();
       const serialize = (fn) => {
@@ -8325,18 +8389,32 @@ var require_component_identities = __commonJS({
         await finishWhenSaved(plugin.app.vault, path2, plan.text, () => finish(path2, plan, plan.text), { save });
         if (plan.issues?.some((i) => i.kind === "enrollment-waiting" || i.kind === "awaiting-source")) retryLater(view, path2);
       };
-      const retryLater = (view, path2) => {
+      const retryLater = (view, path2, delay = 25e3) => {
         clearTimeout(timers.get(view));
         timers.set(view, setTimeout(() => {
           timers.delete(view);
+          if (pathOf(view) !== path2) return;
           accepted.delete(path2);
           observe(view).catch((error) => new Notice2(error.message));
-        }, 25e3));
+        }, delay));
       };
       const observe = (view, operation = "observe") => serialize(async () => {
-        const path2 = pathOf(view), text = view.state.doc.toString();
-        if (!path2 || accepted.get(path2) === text || closed || plugin.admission.paused.has(path2) || !await canWrite(path2)) return;
-        await transact(view, text, operation, false);
+        const path2 = pathOf(view);
+        if (!path2 || closed || plugin.admission.paused.has(path2) || !await canWrite(path2)) return;
+        try {
+          const target = await targets.capture(path2);
+          if (!target || accepted.get(path2) === target.text) return;
+          const plan = await request("live-component-plan", { path: path2, text: target.text, operation });
+          await targets.apply(target, plan.text, (owner) => owner.editor.cm.dispatch({ changes: difference(target.text, plan.text), annotations: Transaction.addToHistory.of(false), userEvent: "input.callout-identity" }));
+          await finishWhenSaved(plugin.app.vault, path2, plan.text, () => finish(path2, plan, plan.text));
+          if (plan.issues?.some((i) => i.kind === "enrollment-waiting" || i.kind === "awaiting-source")) retryLater(view, path2);
+        } catch (error) {
+          if (error instanceof NoteTargetChanged) {
+            if (!closed) retryLater(view, path2, 750);
+            return;
+          }
+          throw error;
+        }
       });
       const schedule = (view, operation = "observe") => {
         clearTimeout(timers.get(view));
