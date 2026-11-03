@@ -177,9 +177,12 @@ class AgentAPI:
         return {**plan,'path':job['note']}
     def finish_online(self,token,text):
         uuid.UUID(token);folder=self.live.store.root/'agent-writes';path=folder/(token+'.json');job=read_job(path)
-        if job.get('vaultId')!=self.live.vault_id or job['state']!='writing' or text!=job['after'] or self.live.read(job['note'])!=text:raise Conflict('Agent write has not reached disk unchanged')
-        self.live.component_finish(job['componentToken'],text,kind='agent',data={'agent':token});self.live.refresh_reference_note(job['note']);job['state']='complete';publish_terminal(path,job);atomic_json(path,job);(folder/'pending'/path.name).unlink(missing_ok=True)
-        return {'token':token,'state':'complete','note':job['note']}
+        if job.get('vaultId')!=self.live.vault_id or job['state'] not in ('writing','complete') or text!=job['after'] or self.live.read(job['note'])!=text:raise Conflict('Agent write has not reached disk unchanged')
+        if job['state']=='complete':return {'token':token,'state':'complete','note':job['note'],'replayed':True,**{k:job[k] for k in ('homeChanged','homePaths') if k in job}}
+        result=self.live.component_finish(job['componentToken'],text,kind='agent',data={'agent':token})
+        job.update({k:result[k] for k in ('homeChanged','homePaths') if k in result})
+        self.live.refresh_reference_note(job['note']);job['state']='complete';publish_terminal(path,job);atomic_json(path,job);(folder/'pending'/path.name).unlink(missing_ok=True)
+        return {'token':token,'state':'complete','note':job['note'],**{k:job[k] for k in ('homeChanged','homePaths') if k in job}}
     def fail_online(self,token,error):
         uuid.UUID(token);folder=self.live.store.root/'agent-writes';path=folder/(token+'.json');job=read_job(path)
         if job.get('vaultId')!=self.live.vault_id:raise Conflict('Agent plan belongs to another vault')
@@ -192,12 +195,12 @@ class AgentAPI:
         while time.monotonic()<deadline:
             job=read_job(path)
             if job.get('vaultId')!=self.live.vault_id:raise Conflict('Agent plan belongs to another vault')
-            if job['state']=='complete':return {**result,'state':'complete'}
+            if job['state']=='complete':return {**result,'state':'complete',**{k:job[k] for k in ('homeChanged','homePaths') if k in job}}
             if job['state'] in ('conflict','cancelled'):raise Conflict(job.get('error','Plan cancelled'))
             time.sleep(.15)
         job=read_job(path)
         if job.get('vaultId')!=self.live.vault_id:raise Conflict('Agent plan belongs to another vault')
-        if job['state']=='complete':return {**result,'state':'complete'}
+        if job['state']=='complete':return {**result,'state':'complete',**{k:job[k] for k in ('homeChanged','homePaths') if k in job}}
         if job['state'] in ('conflict','cancelled'):raise Conflict(job.get('error','Plan cancelled'))
         reason='The editor has not picked up this plan yet' if job['state']=='pending' else 'The editor picked up the plan but has not acknowledged the saved file yet'
         return {**result,'reason':reason,'retry':'Retry apply with the same token; do not prepare a duplicate operation','vaultId':job.get('vaultId')}
@@ -224,7 +227,7 @@ class AgentAPI:
         with (folder/(token+'.lock')).open('a') as lock:
             fcntl.flock(lock,fcntl.LOCK_EX);job=read_job(path)
             if job.get('vaultId')!=self.live.vault_id:raise Conflict('Plan belongs to another vault')
-            if job['state']=='complete':return {'token':token,'state':'complete','replayed':True}
+            if job['state']=='complete':return {'token':token,'state':'complete','replayed':True,**{k:job[k] for k in ('homeChanged','homePaths') if k in job}}
             if job['state'] not in ('planned','pending','writing'):raise Conflict(job.get('error','This plan cannot be applied'))
             if online(self.live,self.live.vault_id):
                 if job['state'] not in ('planned','pending','writing'):raise Conflict(job.get('error','This plan cannot be applied'))
@@ -251,8 +254,9 @@ class AgentAPI:
                     os.replace(temporary,file)
                 finally:temporary.unlink(missing_ok=True)
                 result=self.live.component_finish(p['token'],job['after'],kind='agent',data={'agent':token})
+            job.update({k:result[k] for k in ('homeChanged','homePaths') if k in result})
             self.live.refresh_reference_note(job['note']);job['state']='complete';publish_terminal(path,job);atomic_json(path,job)
-            return {'token':token,'state':'complete','note':job['note'],'sourceHash':H(job['after'])}
+            return {'token':token,'state':'complete','note':job['note'],'sourceHash':H(job['after']),**{k:job[k] for k in ('homeChanged','homePaths') if k in job}}
 
 def pending(live):
     folder=live.store.root/'agent-writes';rows=[]

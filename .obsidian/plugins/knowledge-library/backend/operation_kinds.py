@@ -25,7 +25,7 @@ def active(live,token):
 class Component(Handler):
     """Editor observation plans and other component plans (paste, sync, undo)."""
     def finish(self,live,token,intent,text):
-        live.finish_component_intent(token,active(live,token),text)
+        return live.finish_component_intent(token,active(live,token),text)
 
 
 class Propagation(Handler):
@@ -55,7 +55,7 @@ class EntryEdit(Handler):
         import component_entry_edit
         try:job=component_entry_edit.read_job(live,self.job(intent))
         except (OSError,ValueError,TypeError,AttributeError):return
-        if job.get('state')=='pending':component_entry_edit.complete(live,self.job(intent),intent.get('after'))
+        if job.get('state')=='pending':component_entry_edit.complete(live,self.job(intent),intent.get('after'),intent.get('homeSignal'))
     def retry(self,live,token,intent):return 'the edit job stays queued and is applied again'
     def review(self,live,token,intent,text):
         import component_entry_edit
@@ -66,16 +66,18 @@ class EntryEdit(Handler):
 class Agent(Handler):
     """Agent apply and agent Undo (a reverse plan of the same kind)."""
     def path(self,live,intent):return live.store.root/'agent-writes'/(str((intent.get('data') or {}).get('agent') or 'missing')+'.json')
-    def complete(self,live,intent):
+    def complete(self,live,intent,result=None):
         from agent_api import read_job,publish_terminal
         path=self.path(live,intent)
         if not path.exists():return
         job=read_job(path)
         if job.get('state')=='complete':return
+        result=result or intent.get('homeSignal') or {}
+        job.update({k:result[k] for k in ('homeChanged','homePaths') if k in result})
         job['state']='complete';publish_terminal(path,job);atomic_json(path,job)
         (path.parent/'pending'/path.name).unlink(missing_ok=True)
     def finish(self,live,token,intent,text):
-        live.finish_component_intent(token,active(live,token),text);self.complete(live,intent)
+        result=live.finish_component_intent(token,active(live,token),text);self.complete(live,intent,result)
     def completed(self,live,token,intent):self.complete(live,intent)
     def retry(self,live,token,intent):return 'the agent plan stays applicable with the same token'
     def review(self,live,token,intent,text):

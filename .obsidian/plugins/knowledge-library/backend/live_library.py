@@ -302,12 +302,18 @@ class LiveLibrary:
             operations.close_group(self.store,intent)
             operations.end(self.store,token,'needs-review',str(error))
             raise
+        home_signal=saved.get('homeSignal') or self.component_home_signal(homes)
+        if home_signal['homeChanged'] and 'homeSignal' not in saved:
+            # Retain the result across a crash after the events but before the
+            # caller's receipt: recomputing against committed homes is a no-op.
+            saved={**saved,'homeSignal':home_signal}
+            atomic_json(self.plans/'components'/(token+'.json'),saved)
         grouped=bool(any(plan['changes'].values()) and homes);instance=intent.get('instance')
         group1={'operation':plan['key'],'parts':2,'part':1,'instance':instance} if grouped else None
         intended=([{'journal':'components','key':plan['key'],**({'part':1} if grouped else {})}] if any(plan['changes'].values()) else [])+\
                  ([{'journal':'entries','key':'component-home-'+plan['key'],**({'part':2} if grouped else {})}] if homes else [])
-        if (operations.folder(self.store)/(token+'.json')).exists():operations.update(self.store,token,intended=intended)
-        intent={**intent,'intended':intended}
+        if (operations.folder(self.store)/(token+'.json')).exists():operations.update(self.store,token,intended=intended,homeSignal=home_signal)
+        intent={**intent,'intended':intended,'homeSignal':home_signal}
         try:
             result=registry.finish(plan,text,provenance=provenance,group=group1)
             if grouped and (result.get('event') or {}).get('replayed') and not (result.get('event') or {}).get('pending'):
@@ -331,7 +337,7 @@ class LiveLibrary:
             import integrations # the integrated rows this observation recorded are settled
             integrations.retire(self.store.root,self.vault,intent['path'],set(plan['integrated']))
         operations.end(self.store,token,'completed')
-        return {'sequence':registry.sequence,'issues':result['issues']}
+        return {'sequence':registry.sequence,'issues':result['issues'],**home_signal}
 
     def entry_changes(self,plan,intent,text):
         """The entries part of a component operation, computed before anything is written.
@@ -370,12 +376,31 @@ class LiveLibrary:
                 merged[change['id']]=change
         return list(merged.values())
 
-    def planned_home_changes(self,plan):
-        """Entry home moves implied by a component plan, computed before it is written."""
-        from collections import ChainMap
-        registry=self.component_registry();registry.load();self.store.load();changes=[]
-        entities=ChainMap(plan['changes']['entities'],registry.entities);occurrences=ChainMap(plan['changes']['occurrences'],registry.occurrences)
-        for identity in plan['changes']['entities']:
+    @staticmethod
+    def affected_component_entities(plan,registry):
+        """An occurrence can move while its entity record stays byte-for-byte equal."""
+        identities=set(plan['changes']['entities'])
+        for at,occurrence in plan['changes']['occurrences'].items():
+            for value in (occurrence,registry.occurrences.get(at)):
+                if value and value.get('id'):identities.add(value['id'])
+        return identities
+
+    def component_home_signal(self,changes):
+        """Only location changes invalidate the admission adapter's source path set."""
+        moved=[]
+        for change in changes:
+            before=self.store.entries.get(change['id']);after=change.get('entry')
+            if not before or not after:continue
+            old,new=before['home'],after['home']
+            if (old.get('vaultId',old.get('vault')),old.get('path'),old.get('occurrenceId'))!=\
+               (new.get('vaultId',new.get('vault')),new.get('path'),new.get('occurrenceId')):
+                moved.append(new)
+        return {'homeChanged':bool(moved),'homePaths':sorted({h['path'] for h in moved if h.get('vaultId',h.get('vault'))==self.vault_id})}
+
+    def component_home_changes(self,identities,entities,occurrences):
+        """One home comparison shared by planning, replay and guarded stale repair."""
+        changes=[]
+        for identity in sorted(identities):
             entry=self.store.entries.get(identity);entity=entities.get(identity)
             if not entry or not entity or entry['home'].get('markerFormat')!='component-v1':continue
             occurrence=occurrences.get(entity['home'])
@@ -390,6 +415,13 @@ class LiveLibrary:
             changes.append({'id':identity,'expectedRevision':entry['revision'],'entry':{**clean,'home':home,'status':'current',**({'kind':entity['type'],**library_component(entity['raw'])} if type_changed else {})}})
         return changes
 
+    def planned_home_changes(self,plan):
+        """Entry home moves implied by a component plan, computed before it is written."""
+        from collections import ChainMap
+        registry=self.component_registry();registry.load();self.store.load()
+        entities=ChainMap(plan['changes']['entities'],registry.entities);occurrences=ChainMap(plan['changes']['occurrences'],registry.occurrences)
+        return self.component_home_changes(self.affected_component_entities(plan,registry),entities,occurrences)
+
     def reconcile_component_homes(self,plan):
         """The durable occurrence journal also owns admitted source locations.
 
@@ -397,20 +429,70 @@ class LiveLibrary:
         journals. Promotion changes location, never replaces canonical content
         with a potentially stale copy.
         """
-        registry=self.component_registry();registry.load();self.store.load();changes=[]
-        for identity in plan['changes']['entities']:
-            entry=self.store.entries.get(identity);entity=registry.entities.get(identity)
-            if not entry or not entity or entry['home'].get('markerFormat')!='component-v1':continue
-            occurrence=registry.occurrences.get(entity['home'])
-            if not occurrence or not occurrence.get('alive'):continue
-            old=entry['home']
-            same_home=(old.get('vaultId',old['vault']),old['path'],old['occurrenceId'])==(occurrence['vault'],occurrence['path'],occurrence['at'])
-            type_changed=entity.get('type',entry['kind'])!=entry['kind']
-            if same_home and not type_changed:continue
-            document=str(uuid.uuid5(uuid.NAMESPACE_URL,'knowledge-library:'+occurrence['vault']+'\n'+occurrence['path']))
-            home={**old,'vault':occurrence['vault'],'vaultId':occurrence['vault'],'path':occurrence['path'],'occurrenceId':occurrence['at'],'documentId':document,'line':1}
-            changes.append({'id':identity,'expectedRevision':entry['revision'],'entry':{**entry,'home':home,'status':'current',**({'kind':entity['type'],**library_component(entity['raw'])} if type_changed else {})}})
+        registry=self.component_registry();registry.load();self.store.load()
+        changes=self.component_home_changes(self.affected_component_entities(plan,registry),registry.entities,registry.occurrences)
         if changes:self.store.commit(**self.metadata(),key='component-home-'+plan['key'],actor='component-ownership',changes=changes,operation='replace-source')
+
+    def repair_component_homes(self,held_paths=()):
+        """Repair only stale entry locations backed by verified, unchanged local homes.
+
+        Startup calls this after its saved-file observations. It never edits a
+        note, guesses a destination or clears a missing entry whose home is dead.
+        The editor supplies paths held by draft/write-scope guards; disk bytes,
+        membership and journal heads are independently checked here.
+        """
+        from component_identities import ENTITY,OCCURRENCE,NOTE,note_key,base
+        from component_scope import guard
+        from library_store import digest
+        from markdown_scan import components
+        if not isinstance(held_paths,(list,tuple)) or any(not isinstance(p,str) for p in held_paths):raise ValueError('Held paths must be a list of note paths.')
+        held_paths=set(held_paths);held={};changed=[];snapshots={};expected={}
+        self.store.require_writer('Repairing component source locations')
+        with self.store.lock():
+            registry=self.component_registry();registry.load();self.store.load()
+            proposed=self.component_home_changes(self.store.entries,registry.entities,registry.occurrences)
+            for change in proposed:
+                if not self.component_home_signal([change])['homeChanged']:continue
+                identity=change['id'];entity=registry.entities[identity];home=registry.occurrences[entity['home']]
+                if home['vault']!=self.vault_id:continue
+                path=home['path'];key=note_key(self.vault_id,path)
+                objects=sorted(set(registry.note_object_heads(self.vault_id,path))|{ENTITY+identity,OCCURRENCE+home['at'],NOTE+key})
+                entry_object='entry:'+identity
+                if path in held_paths:held[path]='Source observation is held by the editor.';continue
+                if any(registry.journal.conflicted(obj) for obj in objects) or self.store.journal.conflicted(entry_object) or self.store.entries[identity].get('ownershipConflict'):
+                    held[path]='Source or entry has competing journal versions.';continue
+                try:
+                    guard(self.vault,path)
+                    if registry.owed(path):held[path]='Source is awaiting its causal journal operations.';continue
+                    if not self.exact_note_exists(path):continue
+                    text=self.read(path);rows=components(text)
+                except (OSError,UnicodeError,ValueError) as error:
+                    held[path]=str(error);continue
+                fields=('at','id','hash','type','title')
+                members=[{field:row.get(field) for field in fields} for row in rows]
+                recorded=[{field:row.get(field) for field in fields} for row in registry.notes.get(key,{}).get('rows',[])]
+                candidates=[row for row in rows if row.get('at')==home['at'] and row.get('id') and base(row['id'])==identity]
+                if recorded!=members or len(candidates)!=1 or candidates[0]['hash']!=home.get('hash'):
+                    held[path]='Saved source has not been observed unchanged.';continue
+                changed.append(change);snapshots[path]=text
+                expected[entry_object]=list(self.store.journal.heads.get(entry_object,[]))
+                for obj in objects:expected[obj]=list(registry.journal.heads.get(obj,[]))
+            # Recheck saved bytes immediately before the journal-only commit.
+            for path,text in list(snapshots.items()):
+                try:unchanged=self.exact_note_exists(path) and self.read(path)==text
+                except (OSError,UnicodeError,ValueError):unchanged=False
+                if not unchanged:
+                    held[path]='Saved source changed during location repair.'
+                    changed=[c for c in changed if c['entry']['home']['path']!=path]
+            registry.load();self.store.load()
+            for obj,heads in expected.items():
+                journal=self.store.journal if obj.startswith('entry:') else registry.journal
+                if sorted(journal.heads.get(obj,[]))!=sorted(heads):raise Conflict('Source or entry versions changed during location repair; retry.')
+            signal=self.component_home_signal(changed)
+            if changed:
+                key='component-home-repair-'+digest({'vault':self.vault_id,'heads':expected,'changes':changed})
+                self.store.commit(**self.metadata(),key=key,actor='component-location-repair',changes=changed,operation='replace-source')
+        return {'changed':len(changed),**signal,'heldPaths':[{'path':path,'reason':reason} for path,reason in sorted(held.items())]}
 
     def reference_index(self):
         if not hasattr(self,'_reference_index'):
@@ -597,7 +679,13 @@ class LiveLibrary:
 
     def exact_note_exists(self,relative,listings=None):
         """Preserve exact path spelling even on a case-insensitive Mac volume."""
-        self.path(relative);listings={} if listings is None else listings;parent=self.vault
+        return self.exact_path_exists(relative,listings=listings)
+
+    def exact_path_exists(self,relative,directory=False,listings=None):
+        target=(self.vault/relative).resolve()
+        if not target.is_relative_to(self.vault) or target==self.vault:raise ValueError('Source must be inside the enrolled vault.')
+        if not directory:self.path(relative)
+        listings={} if listings is None else listings;parent=self.vault
         for part in Path(relative).parts:
             key=str(parent)
             if key not in listings:
@@ -605,7 +693,7 @@ class LiveLibrary:
                 except FileNotFoundError:return False
             if part not in listings[key]:return False
             parent=parent/part
-        return parent.is_file()
+        return parent.is_dir() if directory else parent.is_file()
 
     def reference_context(self,path):
         self.store.load()
@@ -1157,7 +1245,8 @@ class LiveLibrary:
         return {'receipt':receipt}
 
     def rename(self, old_path, new_path):
-        if self.path(old_path).exists():raise Conflict('The previous home still exists; ownership cannot be inferred.')
+        if self.exact_note_exists(old_path):raise Conflict('The previous home still exists; ownership cannot be inferred.')
+        if not self.exact_note_exists(new_path):raise Conflict('The destination note is unavailable at its exact path.')
         result=self.record_moves({old_path:(new_path,self.read(new_path))})
         self.rehome_pending(old_path,new_path)
         return result
@@ -1199,7 +1288,7 @@ class LiveLibrary:
             at=row.get('at');occurrence=registry.occurrences.get(at) if at else None
             if not occurrence or not occurrence.get('alive') or occurrence.get('vault')!=self.vault_id or occurrence.get('path')==path:continue
             if arrived.get(at) is not None and owed:continue # the other Mac's rename events explain it
-            try:missing=not self.path(occurrence['path']).exists()
+            try:missing=not self.exact_note_exists(occurrence['path'])
             except ValueError:continue
             if missing:olds.add(occurrence['path'])
         for old in sorted(olds):
@@ -1283,7 +1372,8 @@ class LiveLibrary:
         from library_store import digest
         data=intent['data'];moves={}
         for old,(new,hashed) in data['moves'].items():
-            if self.path(old).exists():raise Conflict('The previous home exists again; the rename is no longer verified.')
+            if self.exact_note_exists(old):raise Conflict('The previous home exists again; the rename is no longer verified.')
+            if not self.exact_note_exists(new):raise Conflict('The moved note is unavailable at its exact path.')
             text=self.read(new)
             if digest(text)!=hashed:raise Conflict('A moved note changed after the rename; the rename is no longer verified.')
             moves[old]=(new,text)
@@ -1307,7 +1397,7 @@ class LiveLibrary:
     def move_tree(self, old_path, new_path):
         old=(self.vault/old_path).resolve();new=(self.vault/new_path).resolve()
         if not old.is_relative_to(self.vault) or not new.is_relative_to(self.vault) or old==self.vault or new==self.vault:raise ValueError('Invalid source folder move.')
-        if old.exists() or not new.is_dir():raise Conflict('Folder move is not complete.')
+        if self.exact_path_exists(old_path,directory=True) or not self.exact_path_exists(new_path,directory=True):raise Conflict('Folder move is not complete.')
         self.store.load();registry=self.component_registry();registry.load()
         paths={o['path'] for o in registry.occurrences.values() if o.get('alive') and o['vault']==self.vault_id and o['path'].startswith(old_path+'/')}
         paths|={e['home']['path'] for e in self.store.entries.values() if self.owns(e) and e['home']['path'].startswith(old_path+'/')}

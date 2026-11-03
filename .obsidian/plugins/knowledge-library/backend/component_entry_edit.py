@@ -116,14 +116,15 @@ def finish(live,key,token,text):
     if live.read(job['path'])!=text:raise Conflict('Waiting for the home editor to finish saving this index edit.')
     # One event group: component ownership, then the entry (home and its new
     # body/title/kind together). A capture between them publishes nothing.
-    live.component_finish(token,text,kind='entry-edit',data={'job':key})
-    return complete(live,key,text)
+    result=live.component_finish(token,text,kind='entry-edit',data={'job':key})
+    return complete(live,key,text,result)
 
 
-def complete(live,key,text):
+def complete(live,key,text,result=None):
     job=read_job(live,key)
     if job['state']=='complete':return status(live,key)
     live.store.load();job.update(state='complete',resultRevision=live.store.entries[job['id']]['revision'],resultHash=digest(text))
+    job.update({k:result[k] for k in ('homeChanged','homePaths') if result and k in result})
     receipts=directory(live)/'receipts';receipts.mkdir(exist_ok=True)
     atomic_json(receipts/(key+'.json'),job);job_path(live,key).unlink(missing_ok=True)
     return status(live,key)
@@ -133,7 +134,7 @@ def status(live,key):
     job=read_job(live,key)
     if job['state']=='pending' and not online(live,job['vault']):
         apply_closed(live,key);job=read_job(live,key)
-    result={k:job[k] for k in ('key','id','state','path','resultRevision','resultHash','error') if k in job}
+    result={k:job[k] for k in ('key','id','state','path','resultRevision','resultHash','error','homeChanged','homePaths') if k in job}
     if job['state']=='pending':
         path=directory(live)/('session-'+job['vault']+'.json')
         owner=json.loads(path.read_text()) if path.exists() else {}

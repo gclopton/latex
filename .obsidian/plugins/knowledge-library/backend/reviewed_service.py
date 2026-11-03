@@ -16,7 +16,8 @@ import component_entry_edit
 # Operations a reader host may run. They read the store, the registry or a
 # saved note and never write the shared store, identities, markers or notes.
 READER_OPS=frozenset(('live-status','live-preview','live-index-conflicts','live-locate','live-history','live-component-detail',
-    'live-component-state','live-component-tags','live-component-ancestor-changes','live-component-remove-preview'))
+    'live-component-state','live-component-tags','live-component-ancestor-changes','live-component-remove-preview',
+    'live-component-registered','live-component-location-audit'))
 
 class ReviewedService:
     def __init__(self, root, vault, capability, production=False,enrollment=False,role=None):
@@ -68,6 +69,14 @@ class ReviewedService:
             elif op=='live-component-plan':data=live.component_plan(request['path'],request['text'],request.get('operation','edit'),request.get('syncAt'),request.get('ancestor'))
             elif op=='live-component-finish':data=live.component_finish(request['token'],request['text'])
             elif op=='live-component-state':data=live.component_registry().state(live.vault_id,request['path'])
+            elif op=='live-component-registered':
+                from component_identities import note_key
+                live.path(request['path']);registry=live.component_registry();registry.load()
+                data={'registered':note_key(live.vault_id,request['path']) in registry.notes}
+            elif op=='live-component-location-audit':
+                from location_audit import audit
+                data=audit(live,cursor=request.get('cursor'),limit=request.get('limit',100))
+            elif op=='live-component-location-repair':data=live.repair_component_homes(request.get('heldPaths',[]))
             elif op=='live-component-tags':data=live.component_registry().tags(request.get('id'),request.get('query',''))
             elif op=='live-component-set-tags':data=live.component_registry().set_tags(request['id'],request['tags'],request['key'])
             elif op=='live-component-copy-body':
@@ -166,7 +175,7 @@ class ReviewedService:
             elif op=='live-portable':data=portability.portable(live,request['id'],preview=request.get('preview',False))
             elif op=='live-reuse':raise ValueError('Legacy reuse is disabled; use component copy insertion.')
             else:raise ValueError('Unknown live operation.')
-            if op in ('live-agent-finish','live-image-change','live-sync','live-finish','live-component-finish','live-component-remove','live-component-membership-undo','live-component-edit-finish','live-component-membership-replay'):
+            if op in ('live-agent-finish','live-image-change','live-sync','live-finish','live-component-finish','live-component-remove','live-component-membership-undo','live-component-edit-finish','live-component-membership-replay','live-component-location-repair'):
                 registry=live.component_registry()
                 stamp=(store.sequence,registry.sequence)
                 if self.closed_worker and stamp!=self.closed_stamp:
