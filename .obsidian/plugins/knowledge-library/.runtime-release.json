@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "pluginId": "knowledge-library",
-  "sourceCommit": "772438407c4cd015dd8efa49e65f822cf08501d2",
-  "release": "0b532accc15d1414158b4907c25cc9cc5c884d51f3006e6d16d100a2e09b1004",
+  "sourceCommit": "72452ad2965ee7f6802641353ce95a7efb62f204",
+  "release": "a76d17c400afdf2de3bed13066ce1451ed2037e47087e8d55de577a75273bcc2",
   "candidate": false,
   "uncommittedSource": false,
   "files": {
@@ -18,7 +18,7 @@
     "backend/component_reference_writes.py": "770d22eda0212f42ac5cdeecea5862772c38393ee3c76c57a7d3192fb885c4ed",
     "backend/component_references.py": "419754977a41eb589d659e6c40b763086a8329d462affc9f95076304a2a5a4c9",
     "backend/component_scope.py": "0a31a8c52d6906070a8b4fdca4c9b020c7077314129c199f1320416a75b2e1cb",
-    "backend/crawl.py": "4733b55e1aa0340c64f14d80966ae616c846967540fd84b117057d4e813a6741",
+    "backend/crawl.py": "77e07538f38333bb913449ab994d6a188a0e9f6f105d683d0a2127068ac7fa77",
     "backend/deploy.py": "66fe3289eb628ab285c089a6ef2072bab5d0f8fabef8ccfdd5215ac48fc09a9d",
     "backend/display_groups.py": "e3b102ddceac9edd9298ccfa52c965ac18aaf2527c3fe119bda38d58ccb152d4",
     "backend/document_numbers.py": "7d8eb8a3272f961b2c13266ad59cb8ed53f8c5b07ae747d18fb8f8f455017adc",
@@ -52,14 +52,14 @@
     "backend/reference_labels.py": "63000cee29c9c11e6cd72c572fd423f21f28424e7c8295e03685584b15b04aed",
     "backend/reuse.py": "de8362de8fdb8f7893de0411994b45dc7ae93f2b265e2f0483ad4fac77856d94",
     "backend/reviewed_service.py": "7142a363fd4d89dbdd46840ac8da922ae4565b467d6ba7d91c240ba1e6a74440",
-    "backend/scan_markdown.cjs": "ca2584ded7f836a8ba0af6ece3c816ae007d5f23f149254846402eed8237fc09",
+    "backend/scan_markdown.cjs": "ea75756fc6916f1d358b972bf6a58c4011b6fef157f7c3eac3ab4b32f8c36697",
     "backend/search_filters.py": "dc12fd323aaf218c073c9da9c420e854c21acce26f961e9bc9f27780fedb62f1",
     "backend/search_projection.py": "b8551c68b2214a1f2d1d7f634805ccce225b89d0d9a139a6573997ea5191b4f1",
     "backend/source_catalog.py": "d64089d2cd6929fe7f2a3a6af45fa012e12f32a36a5ddada53de3ddbc8368ab9",
     "backend/tag_search.py": "f8f02470659595184c71a468af36d5017b63d825f412754790c7c893c8b39e43",
     "backend/vault_registry.py": "651d3ce2863c44689b63af9831642e6c07771288b4e19f845f34033faf9103aa",
-    "main.js": "8b98ffb1d692ac9e49f879b8ee63d219d3f2cab26e407ab7c60cdb951d435873",
+    "main.js": "1aa8280eabe704b06f0de5ca351348ec4fc3a8ae59767a30989bbb950c085b0a",
     "manifest.json": "a8feebda0a75f4ba779ca84e741708ccfa9d1bf2fbb3845ed5d0c99aac9551e7",
-    "styles.css": "c473ba6d75a14864fbf34b83b8167254838103ed9d09994de55dbd1fa97c2854"
+    "styles.css": "5275a43f1178afe0801d3315b8e0d65bb83e42f613dc43fe4da06155f77ba309"
   }
 }

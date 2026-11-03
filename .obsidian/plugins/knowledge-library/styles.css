@@ -89,6 +89,7 @@
 /* The isolated lab keeps the user's category colors while writing, too. */
 .callout[data-callout="definition"] {--callout-color:rgb(238,255,0)}
 .callout[data-callout="notation"] {--callout-color:rgb(166,139,255)}
+.callout[data-callout="algorithm"] {--callout-color:rgb(190,160,230);--callout-icon:lucide-binary}
 
 .kl-filter-summary{font-size:12px;color:var(--text-muted);padding:12px 4px 0;overflow-wrap:anywhere;max-height:72px;overflow:auto}
 .kl-filter-section{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-faint);padding:18px 12px 6px}

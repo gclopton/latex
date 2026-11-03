@@ -111,21 +111,8 @@
       "algorithm": [
         {
           "changes": {
-            "icon": "lucide-binary"
-          }
-        },
-        {
-          "condition": {
-            "colorScheme": "light"
-          },
-          "changes": {}
-        },
-        {
-          "condition": {
-            "colorScheme": "dark"
-          },
-          "changes": {
-            "color": "91, 219, 251"
+            "icon": "lucide-binary",
+            "color": "190, 160, 230"
           }
         }
       ],

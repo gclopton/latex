@@ -392,6 +392,26 @@ var require_filter_model = __commonJS({
   }
 });
 
+// plugin/entry-palette.js
+var require_entry_palette = __commonJS({
+  "plugin/entry-palette.js"(exports2, module2) {
+    module2.exports = {
+      algorithm: "190,160,230",
+      definition: "238,255,0",
+      notation: "166,139,255",
+      theorem: "43,230,109",
+      result: "43,230,109",
+      lemma: "43,230,109",
+      corollary: "43,230,109",
+      proposition: "43,230,109",
+      equation: "96,183,255",
+      assumption: "255,183,94",
+      rule: "255,183,94",
+      convention: "255,183,94"
+    };
+  }
+});
+
 // plugin/filter-bar.js
 var require_filter_bar = __commonJS({
   "plugin/filter-bar.js"(exports2, module2) {
@@ -403,6 +423,7 @@ var require_filter_bar = __commonJS({
       vault: "98,211,185",
       group: "98,211,185",
       type: "193,180,217",
+      algorithm: require_entry_palette().algorithm,
       definition: "238,255,0",
       notation: "166,139,255",
       theorem: "43,230,109",
@@ -1284,7 +1305,7 @@ var require_admission = __commonJS({
         });
       }
       typeLabel(kind) {
-        return { definition: "Definitions", notation: "Notation", equation: "Equations", theorem: "Theorems", result: "Results", lemma: "Lemmas", corollary: "Corollaries", proposition: "Propositions", assumption: "Assumptions", rule: "Rules", convention: "Conventions", table: "Tables", figure: "Figures", law: "Laws", principle: "Principles", postulate: "Postulates" }[kind] || kind;
+        return { definition: "Definitions", notation: "Notation", algorithm: "Algorithms", equation: "Equations", theorem: "Theorems", result: "Results", lemma: "Lemmas", corollary: "Corollaries", proposition: "Propositions", assumption: "Assumptions", rule: "Rules", convention: "Conventions", table: "Tables", figure: "Figures", law: "Laws", principle: "Principles", postulate: "Postulates" }[kind] || kind;
       }
       eligible(e) {
         return e.complete && !e.admitted && !e.issue;
@@ -2359,25 +2380,6 @@ var require_document_feed = __commonJS({
   }
 });
 
-// plugin/entry-palette.js
-var require_entry_palette = __commonJS({
-  "plugin/entry-palette.js"(exports2, module2) {
-    module2.exports = {
-      definition: "238,255,0",
-      notation: "166,139,255",
-      theorem: "43,230,109",
-      result: "43,230,109",
-      lemma: "43,230,109",
-      corollary: "43,230,109",
-      proposition: "43,230,109",
-      equation: "96,183,255",
-      assumption: "255,183,94",
-      rule: "255,183,94",
-      convention: "255,183,94"
-    };
-  }
-});
-
 // plugin/host-role.js
 var require_host_role = __commonJS({
   "plugin/host-role.js"(exports2, module2) {
@@ -2545,7 +2547,7 @@ var require_reference_session = __commonJS({
     var hash = (text) => require("crypto").createHash("sha256").update(text).digest("hex");
     function defaultFilters(settings, catalog, context, purpose) {
       const previous = settings.filters?.state?.tokens || [];
-      const tokens = purpose === "justification" ? catalogRows(catalog).filter((t) => t.kind === "type" && ["result", "definition", "theorem", "lemma", "corollary", "proposition", "equation", "notation"].includes(t.id)) : previous.filter((t) => t.kind === "type").map((t) => ({ ...t }));
+      const tokens = purpose === "justification" ? catalogRows(catalog).filter((t) => t.kind === "type" && ["result", "definition", "theorem", "lemma", "corollary", "proposition", "algorithm", "equation", "notation"].includes(t.id)) : previous.filter((t) => t.kind === "type").map((t) => ({ ...t }));
       const source = catalogRows(catalog).find((r) => r.id === context?.defaultSource?.id);
       if (source) tokens.unshift(source);
       return { query: "", filters: { version: 2, state: { query: "", tokens, cursor: [0, 0], draft: null } } };
@@ -2710,9 +2712,9 @@ var require_callout_presentation = __commonJS({
   }
 });
 
-// ../../../../../Projects/kl-b4/node_modules/@lezer/common/dist/index.cjs
+// node_modules/@lezer/common/dist/index.cjs
 var require_dist = __commonJS({
-  "../../../../../Projects/kl-b4/node_modules/@lezer/common/dist/index.cjs"(exports2) {
+  "node_modules/@lezer/common/dist/index.cjs"(exports2) {
     "use strict";
     var DefaultBufferLength = 1024;
     var nextPropID = 0;
@@ -4008,6 +4010,13 @@ var require_dist = __commonJS({
             } else if (depth > 2500) {
               takeFlatNode(start, endPos, localChildren, localPositions);
             } else {
+              if (localInRepeat >= 0 && cursor.size == -1 && reused[cursor.id].type == nodeSet.types[localInRepeat]) {
+                if (lastGroup < localChildren.length)
+                  makeRepeatLeaf(localChildren, localPositions, start, lastGroup, cursor.end, lastEnd, localInRepeat, groupLookAhead, contextAtStart);
+                lastGroup = localChildren.length + 1;
+                lastEnd = cursor.start;
+                groupLookAhead = lookAhead;
+              }
               takeNode(start, endPos, localChildren, localPositions, localInRepeat, depth + 1);
             }
           }
@@ -4605,7 +4614,7 @@ var require_dist = __commonJS({
       moveTo(pos) {
         let { cursor } = this, p = pos - this.offset;
         while (!this.done && cursor.from < p) {
-          if (cursor.to >= p && cursor.enter(p, 1, exports2.IterMode.IncludeAnonymous | exports2.IterMode.IgnoreOverlays | exports2.IterMode.ExcludeBuffers)) ;
+          if (cursor.to >= p && cursor.enter(p, 1, exports2.IterMode.IncludeAnonymous | exports2.IterMode.IgnoreMounts | exports2.IterMode.IgnoreOverlays | exports2.IterMode.ExcludeBuffers)) ;
           else if (cursor.to <= p) {
             if (!cursor.next(false))
               this.done = true;
@@ -4629,15 +4638,18 @@ var require_dist = __commonJS({
         return false;
       }
     };
+    function fragEnd(frag) {
+      let stopped = frag.tree.prop(stoppedInner);
+      return stopped == null ? frag.to : Math.min(frag.to, stopped - frag.offset);
+    }
     var FragmentCursor = class {
       constructor(fragments) {
-        var _a;
         this.fragments = fragments;
         this.curTo = 0;
         this.fragI = 0;
         if (fragments.length) {
           let first = this.curFrag = fragments[0];
-          this.curTo = (_a = first.tree.prop(stoppedInner)) !== null && _a !== void 0 ? _a : first.to;
+          this.curTo = fragEnd(first);
           this.inner = new StructureCursor(first.tree, -first.offset);
         } else {
           this.curFrag = this.inner = null;
@@ -4649,13 +4661,12 @@ var require_dist = __commonJS({
         return this.curFrag && this.curFrag.from <= node.from && this.curTo >= node.to && this.inner.hasNode(node);
       }
       nextFrag() {
-        var _a;
         this.fragI++;
         if (this.fragI == this.fragments.length) {
           this.curFrag = this.inner = null;
         } else {
           let frag = this.curFrag = this.fragments[this.fragI];
-          this.curTo = (_a = frag.tree.prop(stoppedInner)) !== null && _a !== void 0 ? _a : frag.to;
+          this.curTo = fragEnd(frag);
           this.inner = new StructureCursor(frag.tree, -frag.offset);
         }
       }
@@ -4779,9 +4790,9 @@ var require_dist = __commonJS({
   }
 });
 
-// ../../../../../Projects/kl-b4/node_modules/@lezer/highlight/dist/index.cjs
+// node_modules/@lezer/highlight/dist/index.cjs
 var require_dist2 = __commonJS({
-  "../../../../../Projects/kl-b4/node_modules/@lezer/highlight/dist/index.cjs"(exports2) {
+  "node_modules/@lezer/highlight/dist/index.cjs"(exports2) {
     "use strict";
     var common = require_dist();
     var nextTagID = 0;
@@ -5540,9 +5551,9 @@ var require_dist2 = __commonJS({
   }
 });
 
-// ../../../../../Projects/kl-b4/node_modules/@lezer/markdown/dist/index.cjs
+// node_modules/@lezer/markdown/dist/index.cjs
 var require_dist3 = __commonJS({
-  "../../../../../Projects/kl-b4/node_modules/@lezer/markdown/dist/index.cjs"(exports2) {
+  "node_modules/@lezer/markdown/dist/index.cjs"(exports2) {
     "use strict";
     var common = require_dist();
     var highlight = require_dist2();
@@ -13583,7 +13594,7 @@ var require_component_actions = __commonJS({
     var { randomUUID } = require("node:crypto");
     var { insertion, expansionAt } = require_component_creation_model();
     var { NumberingControls } = require_callout_controls();
-    var TYPES = ["note", "definition", "notation", "theorem", "result", "lemma", "corollary", "proposition", "equation", "exercise", "example", "figure", "table", "proof", "warning", "tip"];
+    var TYPES = ["note", "definition", "notation", "theorem", "result", "lemma", "corollary", "proposition", "algorithm", "equation", "exercise", "example", "figure", "table", "proof", "warning", "tip"];
     var ChooseType = class extends FuzzySuggestModal {
       constructor(plugin, choose) {
         super(plugin.app);

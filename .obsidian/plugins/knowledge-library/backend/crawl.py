@@ -15,7 +15,7 @@ from pathlib import Path
 from callout_labels import parse_label, body_title, ALIASES
 
 KINDS = {
-    "definition", "theorem", "corollary", "lemma", "proposition", "equation",
+    "definition", "theorem", "corollary", "lemma", "proposition", "algorithm", "equation",
     "identity", "relation", "assumption", "rule", "convention", "axiom",
     "postulate", "result", "key-point", "notation", "table", "law", "principle",
     "property", "formula", "figure",
@@ -223,7 +223,7 @@ def main():
                     entries.append((e, doc))
                     recs.append(e)
                     body_groups[e["body_sha256"]].append(e["id"])
-                    title = re.sub(r"^(?:definition|theorem|result|corollary|lemma|proposition|equation)\s*[\d.]+[:.)\s-]*", "", e["title"], flags=re.I).strip().casefold()
+                    title = re.sub(r"^(?:definition|theorem|result|corollary|lemma|proposition|algorithm|equation)\s*[\d.]+[:.)\s-]*", "", e["title"], flags=re.I).strip().casefold()
                     if title and e["syntax"].startswith("callout"):
                         title_groups[(e["kind"], title)].append(e["id"])
                 # Block IDs are document-local and must be unique within that document.
