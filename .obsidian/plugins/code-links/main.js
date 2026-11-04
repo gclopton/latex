@@ -24,6 +24,41 @@ __export(main_exports, {
 });
 module.exports = __toCommonJS(main_exports);
 
+// languages.ts
+var capabilities = {
+  python: { label: "Python", extensions: [".py"], defaultExtension: ".py", runnable: true, creatable: true, embeddable: true },
+  wolfram: { label: "Wolfram", extensions: [".wls", ".wl"], defaultExtension: ".wls", runnable: true, creatable: true, embeddable: true },
+  shell: { label: "Bash", extensions: [".sh", ".bash", ".zsh"], defaultExtension: ".sh", runnable: true, creatable: true, embeddable: true },
+  c: { label: "C", extensions: [".c"], defaultExtension: ".c", runnable: true, creatable: true, embeddable: true },
+  cpp: { label: "C++", extensions: [".cpp", ".cc", ".cxx"], defaultExtension: ".cpp", runnable: true, creatable: true, embeddable: true },
+  javascript: { label: "JavaScript", extensions: [".js", ".mjs", ".cjs"], defaultExtension: ".js", runnable: true, creatable: true, embeddable: true },
+  pseudocode: { label: "Pseudocode", extensions: [".pseudo"], defaultExtension: ".pseudo", runnable: false, creatable: true, embeddable: true }
+};
+function languageForPath(path) {
+  const basename = path.split(/[\/\\]/).pop() || "";
+  const dot3 = basename.lastIndexOf(".");
+  const extension = dot3 > 0 ? basename.slice(dot3).toLowerCase() : "";
+  return Object.keys(capabilities).find((id2) => capabilities[id2].extensions.includes(extension || ""));
+}
+function runnable(path) {
+  const id2 = languageForPath(path);
+  return !!id2 && capabilities[id2].runnable;
+}
+function linkPath(raw) {
+  const match = raw.trim().match(/^!?(?:\{\{(.*?)\}\}|\[\[(.*?)\]\])(?:\{height=\d+\})?$/);
+  return (match?.[1] ?? match?.[2] ?? raw).split(/[|#]/)[0].trim();
+}
+function creationLanguage(value) {
+  return Object.prototype.hasOwnProperty.call(capabilities, value) ? value : "python";
+}
+function switchExtension(name, language2) {
+  const previous = languageForPath(name);
+  return previous ? name.slice(0, name.length - name.match(/\.[^./\\]+$/)[0].length) + capabilities[language2].defaultExtension : name;
+}
+function studyChoices(language2) {
+  return language2 === "python" ? ["behavior", "form", "question"] : ["exact", "question"];
+}
+
 // code-annotations.ts
 var import_obsidian = require("obsidian");
 var import_state = require("@codemirror/state");
@@ -124,7 +159,7 @@ var CodeAnnotations = class {
     this.attach();
     void plugin.app.vault.adapter.read(plugin.app.vault.configDir + "/study-code-selection-types.json").then((s) => {
       const value = JSON.parse(s)[path];
-      if (["form", "behavior", "question"].includes(value)) this.lastRule = value;
+      if (["form", "behavior", "question", "exact"].includes(value)) this.lastRule = value;
     }).catch(() => {
     });
   }
@@ -184,13 +219,18 @@ var CodeAnnotations = class {
       }
     }
   }
+  language() {
+    return this.snapshot.language ?? languageForPath(this.snapshot.link?.target ?? this.snapshot.path ?? "");
+  }
   picker() {
     if (!this.api) return;
     const ranges = this.pending.length ? this.pending : this.selection() ? [this.selection()] : [];
     if (!ranges.length) return;
+    const allowed = studyChoices(this.language());
+    const preferred = allowed.find((rule) => rule === this.lastRule) || allowed[0];
     const menu = new import_obsidian.Menu();
-    for (const rule of [this.lastRule, ...["behavior", "form", "question"].filter((r2) => r2 !== this.lastRule)]) menu.addItem((i) => i.setTitle(rule === "question" ? "General question \xB7 magenta pattern" : rule === "form" ? "Blank \xB7 required syntax" : "Blank \xB7 any working approach").onClick(() => this.run(async () => {
-      const c = await this.api.createMany({ path: this.path, raw: this.raw }, this.snapshot, ranges, rule === "question" ? "question" : "practice-blank", rule === "question" ? void 0 : { rule });
+    for (const rule of [preferred, ...allowed.filter((rule2) => rule2 !== preferred)]) menu.addItem((i) => i.setTitle(rule === "question" ? "General question \xB7 magenta pattern" : rule === "form" ? "Blank \xB7 required syntax" : rule === "exact" ? "Blank \xB7 exact answer" : "Blank \xB7 any working approach").onClick(() => this.run(async () => {
+      const c = await this.api.createMany({ path: this.path, raw: this.raw }, this.snapshot, ranges, rule === "question" ? "question" : "practice-blank", rule === "behavior" || rule === "form" ? { rule } : void 0);
       this.lastRule = rule;
       const adapter = this.plugin.app.vault.adapter, p = this.plugin.app.vault.configDir + "/study-code-selection-types.json";
       let preferences = {};
@@ -232,7 +272,7 @@ var CodeAnnotations = class {
     const selected = this.selection();
     if (selected && !this.pending.some((r) => r.from === selected.from && r.to === selected.to)) this.pending = [selected];
     const ranges = (this.pending.length ? this.pending : selected ? [selected] : []).map((r) => ({ ...r }));
-    const python2 = /\.py$/i.test(this.snapshot.link?.target ?? this.snapshot.path ?? "");
+    const python2 = this.language() === "python";
     const choices = [...python2 ? [{ type: "behavior", label: "Code \xB7 any working approach", color: "#e2b714", darkColor: "#ffe066" }, { type: "form", label: "Code \xB7 required syntax", color: "#d94444", darkColor: "#ff6868" }] : [{ type: "exact", label: "Code \xB7 exact answer", color: "#e2b714", darkColor: "#ffe066" }], { type: "question", label: "General question", color: "#aa358e", darkColor: "#ed8bd7" }];
     let applied = false;
     return { path: this.path, description: `New code study annotation \xB7 ${ranges.length} fragment${ranges.length === 1 ? "" : "s"}`, selected: choices.some((c) => c.type === this.lastRule) ? this.lastRule : choices[0].type, choices, apply: async (type) => {
@@ -240,7 +280,7 @@ var CodeAnnotations = class {
       if (!choices.some((c2) => c2.type === type)) throw Error("Invalid study type for this code.");
       const c = await this.api.createMany({ path: this.path, raw: this.raw }, this.snapshot, ranges, type === "question" ? "question" : "practice-blank", type === "behavior" || type === "form" ? { rule: type } : void 0);
       applied = true;
-      if (type !== "exact") this.lastRule = type;
+      this.lastRule = type;
       const adapter = this.plugin.app.vault.adapter, p = this.plugin.app.vault.configDir + "/study-code-selection-types.json";
       let preferences = {};
       try {
@@ -333,12 +373,3141 @@ var import_fs2 = require("fs");
 var import_path2 = require("path");
 var import_promises2 = require("fs/promises");
 var import_state7 = require("@codemirror/state");
-var import_view7 = require("@codemirror/view");
-var import_language6 = require("@codemirror/language");
+var import_view8 = require("@codemirror/view");
+var import_language7 = require("@codemirror/language");
 var import_highlight4 = require("@lezer/highlight");
 
-// node_modules/@lezer/lr/dist/index.js
+// link-syntax.ts
+var reservedTarget = (target) => /^\s*blank:/i.test(target);
+function linkTokens(text) {
+  const result = [];
+  const start = /!?\{\{|(?<!`)``dir:/g;
+  let m;
+  while (m = start.exec(text)) {
+    const at = m.index;
+    if (m[0].startsWith("``")) {
+      const end = text.indexOf("``", at + 2);
+      if (end < 0 || text.slice(at, end).includes("\n")) continue;
+      result.push({ raw: text.slice(at, end + 2), index: at });
+      start.lastIndex = end + 2;
+      continue;
+    }
+    let pos = at + (m[0][0] === "!" ? 3 : 2), depth = 1;
+    while (pos < text.length && text[pos] !== "\n" && depth) {
+      if (text.slice(pos, pos + 2) === "{{") {
+        depth++;
+        pos += 2;
+      } else if (text.slice(pos, pos + 2) === "}}") {
+        depth--;
+        pos += 2;
+      } else pos++;
+    }
+    if (depth) continue;
+    let raw = text.slice(at, pos);
+    if (/^!?\{\{\s*blank:/i.test(raw)) {
+      start.lastIndex = pos;
+      continue;
+    }
+    const height = text.slice(pos).match(/^\{height=\d+\}/);
+    if (height) {
+      raw += height[0];
+      pos += height[0].length;
+    }
+    if (!raw.startsWith("{{links:") && raw.slice(m[0].length, -2).includes("{{")) continue;
+    result.push({ raw, index: at });
+    start.lastIndex = pos;
+  }
+  return result;
+}
+function canonical(raw) {
+  return raw.startsWith("``dir:") ? "{{" + raw.slice(2, -2) + "}}" : raw;
+}
+function groupItems(raw) {
+  if (!raw.startsWith("{{links:")) return null;
+  const sep = raw.indexOf("|");
+  if (sep < 0) throw Error("Use {{links:Label|{{code.py}}; [[Note]]}}");
+  const label2 = raw.slice(8, sep).trim();
+  if (!label2) throw Error("Reference group needs a label");
+  const body = raw.slice(sep + 1, -2);
+  const items = [];
+  let at = 0;
+  const pattern = /\s*(?:;\s*)?(\{\{[^\n{}]+\}\}|\[\[[^\n]+?\]\]|\[[^\]\n]+\]\(https?:\/\/[^\s)]+\)|https?:\/\/[^\s;]+)\s*/y;
+  while (at < body.length) {
+    pattern.lastIndex = at;
+    const m = pattern.exec(body);
+    if (!m) throw Error("Separate code, note or web links with semicolons");
+    items.push(m[1]);
+    at = pattern.lastIndex;
+    if (items.length > 40) throw Error("Use at most 40 references per group");
+  }
+  if (!items.length) throw Error("Reference group is empty");
+  return { label: label2, items };
+}
+function linkLabel(raw) {
+  if (raw.startsWith("{{links:")) return raw.slice(8, raw.indexOf("|"));
+  raw = canonical(raw);
+  return raw.match(/\|([^}]*)\}\}/)?.[1] || raw.replace(/^!?\{\{|\}\}.*$/g, "").replace(/^dir:/, "");
+}
+
+// render-links.ts
+function protectLinkEmphasis(source) {
+  if (!source.includes("{{")) return source;
+  const literals = [];
+  const literal = /^ {0,3}(`{3,}|~{3,})[^\n]*\n[\s\S]*?^ {0,3}\1[^\n]*$|(`+)[^`]*?\2|\$\$[\s\S]*?\$\$|(?<![\\$])\$(?!\$)[^\n$]*?\$/gm;
+  for (const m of source.matchAll(literal)) literals.push([m.index, m.index + m[0].length]);
+  let result = source;
+  for (const token of linkTokens(source).reverse()) {
+    if (token.raw.startsWith("``") || token.raw.startsWith("{{links:") || literals.some(([a2, b]) => token.index >= a2 && token.index < b)) continue;
+    const safe = token.raw.replace(/(?<!\\)[_*]/g, "\\$&");
+    result = result.slice(0, token.index) + safe + result.slice(token.index + token.raw.length);
+  }
+  return result;
+}
+function renderSourceLinks(el, source, make) {
+  const doc = el.ownerDocument;
+  for (const match of linkTokens(source)) {
+    const raw = match.raw;
+    if (raw.startsWith("``dir:")) {
+      const value = raw.slice(2, -2);
+      const code = Array.from(el.querySelectorAll("code")).find((n) => !n.closest("pre") && n.textContent === value);
+      if (code) code.replaceWith(make(raw));
+      continue;
+    }
+    const group = raw.startsWith("{{links:");
+    const escaped = [...raw].map((c) => c === "_" || c === "*" ? "[\\" + c + "]?" : c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("");
+    const w = doc.createTreeWalker(el, 4);
+    const spans = [];
+    let text = "";
+    while (w.nextNode()) {
+      const n = w.currentNode;
+      if (n.parentElement?.closest(group ? "pre,code,.code-links-target,.code-links-panel,script,style" : "pre,code,a,.code-links-panel,script,style")) {
+        text += "\n";
+        continue;
+      }
+      const start = text.length;
+      text += n.textContent || "";
+      spans.push({ node: n, start, end: text.length });
+    }
+    let found = new RegExp(escaped).exec(text);
+    if (!found && group) {
+      const visible = raw.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, p, l) => l || p).replace(/\[([^\]]+)\]\(https?:[^)]+\)/g, "$1");
+      const at = text.indexOf(visible);
+      if (at >= 0) found = Object.assign([visible], { index: at });
+    }
+    if (!found) continue;
+    const first = spans.find((n) => n.start <= found.index && n.end > found.index);
+    const end = found.index + found[0].length;
+    const last = spans.find((n) => n.start < end && n.end >= end);
+    if (!first || !last) continue;
+    const range = doc.createRange();
+    range.setStart(first.node, found.index - first.start);
+    range.setEnd(last.node, end - last.start);
+    range.deleteContents();
+    range.insertNode(make(raw));
+  }
+  const walker = doc.createTreeWalker(el, 4);
+  const nodes = [];
+  while (walker.nextNode()) {
+    const n = walker.currentNode;
+    if (!n.parentElement?.closest("pre,code,a,.code-links-panel,script,style")) nodes.push(n);
+  }
+  for (const n of nodes) {
+    const text = n.textContent || "";
+    const matches = linkTokens(text);
+    if (!matches.length) continue;
+    const frag = doc.createDocumentFragment();
+    let prev = 0;
+    for (const m of matches) {
+      frag.append(text.slice(prev, m.index));
+      frag.append(make(m.raw));
+      prev = m.index + m.raw.length;
+    }
+    frag.append(text.slice(prev));
+    n.replaceWith(frag);
+  }
+}
+
+// extra-links.ts
+var import_obsidian2 = require("obsidian");
+function inPresentation(modal) {
+  const container = modal.modalEl.parentElement;
+  const full = modal.modalEl.ownerDocument.fullscreenElement;
+  if (full && container) {
+    full.append(container);
+    container.addEventListener("keydown", (e) => {
+      e.stopPropagation();
+      if (e.key === "Escape") {
+        e.preventDefault();
+        modal.close();
+      }
+    });
+  }
+}
+var LinkSupport = class {
+  constructor(plugin) {
+    this.plugin = plugin;
+    this.cache = /* @__PURE__ */ new Map();
+    this.pending = /* @__PURE__ */ new Map();
+  }
+  inspect(raw) {
+    raw = canonical(raw);
+    const old = this.cache.get(raw);
+    if (old && Date.now() - old.time < 1500) return Promise.resolve(old.value);
+    return new Promise((resolve) => {
+      const list = this.pending.get(raw) || [];
+      list.push(resolve);
+      this.pending.set(raw, list);
+      if (!this.timer) this.timer = setTimeout(() => void this.flush(), 30);
+    });
+  }
+  async flush() {
+    this.timer = void 0;
+    const batch = this.pending;
+    this.pending = /* @__PURE__ */ new Map();
+    try {
+      const result = await this.plugin.call("inspect-many", { raws: [...batch.keys()] });
+      for (const [raw, list] of batch) {
+        const value = result[raw] ?? { error: "Too many links; reopen this note" };
+        this.cache.set(raw, { time: Date.now(), value });
+        list.forEach((f) => f(value));
+      }
+    } catch (e) {
+      for (const list of batch.values()) list.forEach((f) => f({ error: String(e) }));
+    }
+  }
+  dispose() {
+    if (this.timer) clearTimeout(this.timer);
+    for (const list of this.pending.values()) list.forEach((f) => f({ error: "Plugin unloaded" }));
+    this.pending.clear();
+  }
+  async activate(raw) {
+    try {
+      if (raw.startsWith("{{links:")) {
+        new ReferenceModal(this.plugin, raw, "").open();
+        return;
+      }
+      const info = await this.plugin.call("inspect", { raw: canonical(raw) });
+      if (!info.exists) {
+        if (!info.creatable) throw Error("Target is unavailable; no file was created");
+        await this.plugin.call("create", { raw: canonical(raw) });
+        this.cache.clear();
+        this.plugin.lastIndex = 0;
+        this.refreshLinks();
+      }
+      await this.plugin.launch(canonical(raw));
+    } catch (e) {
+      new import_obsidian2.Notice(String(e));
+    }
+  }
+  refreshLinks() {
+    for (const el of Array.from(document.querySelectorAll(".code-links-target[data-raw]"))) void this.paint(el, el.dataset.raw);
+  }
+  async paint(el, raw) {
+    if (raw.startsWith("{{links:")) {
+      el.classList.add("code-links-group");
+      el.title = "Open references";
+      return;
+    }
+    const target = canonical(raw).replace(/^!?\{\{/, "").split(/[|#}]/)[0];
+    el.classList.add(target.startsWith("dir:") ? "code-links-directory" : /\.(tsv|csv)$/i.test(target) ? "code-links-data" : "code-links-code-link");
+    const info = await this.inspect(raw);
+    el.classList.toggle("code-links-missing", !info.exists && !info.error);
+    el.classList.toggle("code-links-invalid", !!info.error);
+    el.title = info.error || info.path + (info.exists ? "" : info.creatable ? " \xB7 Click to create; right-click to choose folder" : " \xB7 Unavailable");
+  }
+  element(raw, source, writer, doc = document) {
+    const a2 = doc.createElement("a");
+    a2.className = "code-links-target";
+    a2.textContent = linkLabel(raw);
+    a2.dataset.raw = raw;
+    a2.tabIndex = 0;
+    a2.setAttribute("role", "link");
+    a2.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (raw.startsWith("{{links:")) new ReferenceModal(this.plugin, raw, source).open();
+      else void this.activate(raw);
+    };
+    a2.onkeydown = (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (raw.startsWith("{{links:")) new ReferenceModal(this.plugin, raw, source).open();
+        else void this.activate(raw);
+      }
+    };
+    a2.oncontextmenu = (e) => void this.menu(e, raw, source, writer);
+    a2.onmouseenter = () => void this.paint(a2, raw);
+    void this.paint(a2, raw);
+    return a2;
+  }
+  async menu(e, raw, source, writer) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (raw.startsWith("{{links:")) {
+      const menu = new import_obsidian2.Menu();
+      menu.addItem((i) => i.setTitle("Open references").onClick(() => new ReferenceModal(this.plugin, raw, source).open()));
+      if (writer) {
+        menu.addItem((i) => i.setTitle("Edit reference group\u2026").onClick(() => new GroupEditor(this.plugin, raw, (v) => writer(raw, v), true).open()));
+        menu.addItem((i) => i.setTitle("Ungroup references").onClick(async () => {
+          try {
+            await writer(raw, groupItems(raw).items.join(" \xB7 "));
+          } catch (e2) {
+            new import_obsidian2.Notice(String(e2));
+          }
+        }));
+      }
+      menu.addItem((i) => i.setTitle("Copy link source").onClick(() => navigator.clipboard.writeText(raw)));
+      menu.showAtMouseEvent(e);
+      return;
+    }
+    try {
+      const info = await this.plugin.call("inspect", { raw: canonical(raw) });
+      if (info.directory) {
+        await this.plugin.launch(canonical(raw), void 0, "current", "finder");
+        return;
+      }
+      if (!info.exists && info.creatable) {
+        new CreateModal(this.plugin, raw, writer).open();
+        return;
+      }
+      this.plugin.linkMenu(e, canonical(raw), source, writer);
+    } catch (err) {
+      new import_obsidian2.Notice(String(err));
+    }
+  }
+};
+var ReferenceModal = class extends import_obsidian2.Modal {
+  constructor(plugin, raw, source) {
+    super(plugin.app);
+    this.plugin = plugin;
+    this.raw = raw;
+    this.source = source;
+  }
+  onOpen() {
+    inPresentation(this);
+    try {
+      const group = groupItems(this.raw);
+      this.titleEl.setText(group.label);
+      this.modalEl.classList.add("code-links-references");
+      this.contentEl.createEl("button", { text: "Close references" }).onclick = () => this.close();
+      for (const raw of group.items) {
+        const row = this.contentEl.createDiv("code-links-reference-row");
+        if (raw.startsWith("{{")) row.append(this.plugin.links.element(raw, this.source, null));
+        else if (raw.startsWith("[[")) {
+          const [target, label2] = raw.slice(2, -2).split("|");
+          const a2 = row.createEl("a", { text: label2 || target, cls: "internal-link" });
+          a2.title = target;
+          a2.onclick = () => void this.plugin.app.workspace.openLinkText(target, this.source, true);
+        } else {
+          const match = raw.match(/^\[([^\]]+)\]\((https?:\/\/[^)]+)\)$/);
+          const url = match ? match[2] : raw;
+          row.createEl("a", { text: match ? match[1] : url, href: url, attr: { target: "_blank", rel: "noopener" } });
+        }
+      }
+    } catch (e) {
+      this.contentEl.setText(String(e));
+    }
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
+var CreateModal = class extends import_obsidian2.Modal {
+  constructor(plugin, raw, writer) {
+    super(plugin.app);
+    this.plugin = plugin;
+    this.raw = raw;
+    this.writer = writer;
+  }
+  async onOpen() {
+    inPresentation(this);
+    this.titleEl.setText("Create linked file");
+    const info = await this.plugin.call("inspect", { raw: canonical(this.raw) });
+    if (!this.contentEl.isConnected) return;
+    const target = canonical(this.raw).slice(2, -2).split("|")[0];
+    const filename = target.split(/[/:]/).pop();
+    let alias = target.includes(":") ? target.split(":")[0] : "";
+    let folder = target.includes("/") ? target.slice(target.indexOf(":") + 1).split("/").slice(0, -1).join("/") : alias ? "" : "scripts";
+    const roots = await this.plugin.call("roots");
+    const entries = roots.items.filter((r) => !r.retired && !r.redirect);
+    const location = this.contentEl.createEl("p", { text: info.path });
+    new import_obsidian2.Setting(this.contentEl).setName("Location").addDropdown((d) => {
+      d.addOption("", "This vault");
+      for (const r of entries) d.addOption(r.name, r.name + ":");
+      d.setValue(alias).onChange((v) => {
+        alias = v;
+        folder = "";
+        location.setText((alias ? alias + ":" : "") + filename);
+      });
+    });
+    new import_obsidian2.Setting(this.contentEl).addButton((b) => b.setButtonText("Browse folders\u2026").onClick(async () => {
+      try {
+        const gallery = this.plugin.app.plugins.getPlugin("image-gallery")?.api;
+        if (!gallery?.pickFolder) throw Error("Enable the updated Image Gallery plugin to browse folders");
+        const base = entries.find((r) => r.name === alias)?.path;
+        const picked = await gallery.pickFolder({ label: alias ? alias + ":" : "This vault", start: folder, base });
+        if (picked !== null) {
+          folder = picked;
+          location.setText((alias ? alias + ":" : "") + (folder ? folder + "/" : "") + filename);
+        }
+      } catch (e) {
+        new import_obsidian2.Notice(String(e));
+      }
+    }));
+    new import_obsidian2.Setting(this.contentEl).addButton((b) => b.setButtonText("Create and open").setCta().onClick(async () => {
+      b.setDisabled(true);
+      try {
+        const newTarget = (alias ? alias + ":" : "") + (folder ? folder + "/" : "./") + filename;
+        const label2 = canonical(this.raw).match(/\|([^}]+)\}\}/)?.[1];
+        const next = "{{" + newTarget + (label2 ? "|" + label2 : "") + "}}";
+        if (!this.writer && next !== canonical(this.raw)) throw Error("Edit the note or slide to save a different link location");
+        if (this.writer && next !== this.raw) await this.writer(this.raw, next);
+        await this.plugin.call("create", { raw: next });
+        this.plugin.links.cache.clear();
+        this.plugin.lastIndex = 0;
+        await this.plugin.launch(next);
+        this.close();
+      } catch (e) {
+        new import_obsidian2.Notice(String(e));
+        b.setDisabled(false);
+      }
+    }));
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
+var GroupEditor = class extends import_obsidian2.Modal {
+  constructor(plugin, text, save, group = false) {
+    super(plugin.app);
+    this.plugin = plugin;
+    this.text = text;
+    this.save = save;
+    this.group = group;
+  }
+  onOpen() {
+    inPresentation(this);
+    this.titleEl.setText(this.group ? "Edit reference group" : "Combine selected links");
+    let label2 = "References", body = this.text;
+    if (this.group) {
+      const g = groupItems(this.text);
+      label2 = g.label;
+      body = g.items.join("; ");
+    }
+    new import_obsidian2.Setting(this.contentEl).setName("Display label").addText((t) => t.setValue(label2).onChange((v) => label2 = v));
+    let input;
+    new import_obsidian2.Setting(this.contentEl).setName("References").setDesc("Code links, [[notes or PDFs]], and web links. Separate them with semicolons.").addTextArea((t) => {
+      t.setValue(body).onChange((v) => body = v);
+      input = t.inputEl;
+      t.inputEl.rows = 8;
+      t.inputEl.style.width = "100%";
+    });
+    new import_obsidian2.Setting(this.contentEl).addButton((b) => b.setButtonText("Add from gallery\u2026").onClick(async () => {
+      try {
+        const gallery = this.plugin.app.plugins.getPlugin("image-gallery")?.api;
+        if (!gallery?.pickFile) throw Error("Enable Image Gallery first");
+        const file = await gallery.pickFile({ title: "Add a reference" });
+        if (file) {
+          body += (body.trim() ? "; " : "") + file.link;
+          input.value = body;
+        }
+      } catch (e) {
+        new import_obsidian2.Notice(String(e));
+      }
+    }));
+    const preview = this.contentEl.createDiv("code-links-group-preview");
+    new import_obsidian2.Setting(this.contentEl).addButton((b) => b.setButtonText("Preview references").onClick(() => {
+      preview.empty();
+      try {
+        const g = groupItems("{{links:" + label2 + "|" + body + "}}");
+        for (const raw of g.items) preview.createEl("p", { text: raw });
+      } catch (e) {
+        preview.setText(String(e));
+      }
+    })).addButton((b) => b.setButtonText("Save group").setCta().onClick(async () => {
+      try {
+        if (/[|{}\n]/.test(label2)) throw Error("Use a plain label without pipes or braces");
+        const value = "{{links:" + label2 + "|" + body.trim() + "}}";
+        groupItems(value);
+        await this.save(value);
+        this.close();
+      } catch (e) {
+        new import_obsidian2.Notice(String(e));
+      }
+    }));
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
+
+// run-output.ts
+var import_obsidian3 = require("obsidian");
+var import_fs = require("fs");
+var import_promises = require("fs/promises");
+var import_path = require("path");
+var import_os = require("os");
+var import_crypto = require("crypto");
+var unavailable = /* @__PURE__ */ new Set(["stale-source", "stale-config", "source-missing", "guardian-lost", "interrupted", "checking", "not-run-revision-changed"]);
+var active = /* @__PURE__ */ new Set(["queued", "running"]);
+var hash = (s) => (0, import_crypto.createHash)("sha256").update(s).digest("hex");
+var sourceOnly = (raw) => raw.replace(/^!/, "").replace(/#[^|}]+/, "").replace(/\{height=\d+\}$/, "");
+var RunOutputs = class {
+  constructor(plugin) {
+    this.plugin = plugin;
+    this.allPanels = /* @__PURE__ */ new Set();
+    this.panels = /* @__PURE__ */ new Set();
+    this.prefs = {};
+    this.noteDefaults = {};
+    this.pending = /* @__PURE__ */ new Set();
+    this.recordPending = /* @__PURE__ */ new Set();
+    this.validated = /* @__PURE__ */ new Map();
+    this.configWatch = /* @__PURE__ */ new Map();
+    this.settingsRevision = 0;
+    this.queuedChecks = /* @__PURE__ */ new Map();
+    this.disposed = false;
+    this.saveChain = Promise.resolve();
+    this.directory = (0, import_path.join)((0, import_os.homedir)(), "Library/Application Support/CodeLinks/runs/records");
+    this.perf = { statusBatches: 0, outputReads: 0, outputBytes: 0, activePanels: 0 };
+    this.prefPath = (0, import_path.join)(plugin.root(), plugin.app.vault.configDir, "plugins", plugin.manifest.id, "output-ui.json");
+  }
+  async initialize() {
+    try {
+      const p = JSON.parse(await (0, import_promises.readFile)(this.prefPath, "utf8"));
+      this.prefs = p.blocks || {};
+      this.noteDefaults = p.notes || {};
+    } catch {
+    }
+  }
+  ensureWatch() {
+    if (this.watcher || this.starting || this.disposed) return;
+    this.starting = (0, import_promises.mkdir)(this.directory, { recursive: true }).then(() => {
+      if (this.disposed || !this.panels.size) return;
+      this.watcher = (0, import_fs.watch)(this.directory, { persistent: false }, (_event, file) => {
+        const id2 = String(file || "").replace(/\.json$/, "");
+        if (!/^[a-f0-9]{64}$/.test(id2)) return;
+        for (const p of this.panels) if (p.run.id === id2) this.recordPending.add(id2);
+        this.scheduleRefresh();
+      });
+      this.watcher.on("error", () => {
+        this.watcher?.close();
+        this.watcher = void 0;
+      });
+    }).finally(() => this.starting = void 0);
+  }
+  track(panel) {
+    for (const ref of this.allPanels) if (!ref.deref()) this.allPanels.delete(ref);
+    this.allPanels.add(new WeakRef(panel));
+    this.watchSettings();
+  }
+  untrack(panel) {
+    for (const ref of this.allPanels) if (!ref.deref() || ref.deref() === panel) this.allPanels.delete(ref);
+    this.watchSettings();
+  }
+  get closed() {
+    return this.disposed;
+  }
+  attach(panel) {
+    if (this.disposed) return;
+    this.panels.add(panel);
+    if (panel.settingsDirty) {
+      this.pending.add(panel.raw);
+      this.scheduleRefresh();
+    }
+    this.perf.activePanels = this.panels.size;
+    this.ensureWatch();
+  }
+  detach(panel) {
+    this.panels.delete(panel);
+    this.perf.activePanels = this.panels.size;
+    if (!this.panels.size) {
+      this.watcher?.close();
+      this.watcher = void 0;
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = void 0;
+      this.pending.clear();
+      this.recordPending.clear();
+      this.validated.clear();
+      this.queuedChecks.clear();
+      clearTimeout(this.liveTimer);
+    }
+  }
+  watchSettings() {
+    const tracked = [...this.allPanels].map((ref) => ref.deref()).filter((p) => !!p);
+    const paths = new Set(this.disposed || !tracked.length ? [] : tracked.flatMap((p) => [(0, import_path.join)(p.run.spec.root, ".code-links.json"), (0, import_path.join)(p.run.spec.root, ".venv/bin/python"), p.run.spec.interpreter, p.run.spec.interpreter_realpath]));
+    for (const [path, fn] of this.configWatch) if (!paths.has(path)) {
+      (0, import_fs.unwatchFile)(path, fn);
+      this.configWatch.delete(path);
+    }
+    for (const path of paths) {
+      if (!path || this.configWatch.has(path)) continue;
+      const fn = (curr, prev) => {
+        if (["dev", "ino", "size", "mtimeMs", "ctimeMs"].every((k) => curr[k] === prev[k])) return;
+        this.settingsRevision++;
+        this.validated.clear();
+        for (const ref of this.allPanels) {
+          const p = ref.deref();
+          if (!p) continue;
+          p.settingsDirty = true;
+          p.update({ ...p.run, state: "checking", valid: false });
+          if (this.panels.has(p)) this.pending.add(p.raw);
+        }
+        this.scheduleRefresh();
+      };
+      this.configWatch.set(path, fn);
+      (0, import_fs.watchFile)(path, { interval: 2e3, persistent: false }, fn);
+    }
+  }
+  sourceChanged(path) {
+    for (const p of this.panels) if (p.run.spec.source === path) this.changed(p.raw);
+  }
+  key(note, raw) {
+    return hash(note + "\0" + raw);
+  }
+  preference(note, raw) {
+    return { open: this.noteDefaults[note] ?? false, lines: 12, ...this.prefs[this.key(note, raw)] };
+  }
+  setPreference(note, raw, change) {
+    const key2 = this.key(note, raw);
+    this.prefs[key2] = { ...this.prefs[key2], ...change, note };
+    this.save();
+    this.plugin.edits?.repaint(note);
+  }
+  save() {
+    clearTimeout(this.saveTimer);
+    this.saveTimer = setTimeout(() => {
+      void this.persist();
+    }, 250);
+  }
+  persist() {
+    const payload = JSON.stringify({ blocks: this.prefs, notes: this.noteDefaults });
+    this.saveChain = this.saveChain.then(async () => {
+      await (0, import_promises.writeFile)(this.prefPath + ".tmp", payload);
+      await (0, import_promises.rename)(this.prefPath + ".tmp", this.prefPath);
+    }).catch((e) => {
+      new import_obsidian3.Notice("Could not save output preferences: " + String(e));
+    });
+    return this.saveChain;
+  }
+  foldAll(note, expanded) {
+    this.noteDefaults[note] = expanded;
+    for (const [key2, pref] of Object.entries(this.prefs)) if (pref.note === note) delete this.prefs[key2].open;
+    for (const p of this.panels) if (p.note === note) {
+      delete this.prefs[p.key]?.open;
+      p.setExpanded(expanded, false);
+    }
+    this.save();
+    this.plugin.edits?.repaint(note);
+  }
+  changed(raw) {
+    if (![...this.panels].some((p) => p.raw === raw)) return;
+    for (const p of this.panels) if (p.raw === raw) p.update({ ...p.run, state: "checking", valid: false });
+    this.pending.add(raw);
+    this.scheduleRefresh();
+  }
+  refreshRecord(id2) {
+    this.recordPending.add(id2);
+    this.scheduleRefresh();
+  }
+  scheduleRefresh() {
+    if (this.refreshTimer || !this.pending.size && !this.recordPending.size || this.disposed) return;
+    this.refreshTimer = setTimeout(() => {
+      this.refreshTimer = void 0;
+      void this.refreshPending();
+    }, 250);
+  }
+  async refreshPending() {
+    const revision = this.settingsRevision, raws = [...this.pending], ids = [...this.recordPending];
+    this.pending.clear();
+    this.recordPending.clear();
+    if (this.disposed) return;
+    for (const id2 of ids) {
+      try {
+        const panel = [...this.panels].find((p) => p.run.id === id2);
+        if (!panel) continue;
+        if (panel.settingsDirty) {
+          raws.push(panel.raw);
+          continue;
+        }
+        const rec = JSON.parse(await (0, import_promises.readFile)((0, import_path.join)(this.directory, id2 + ".json"), "utf8"));
+        const st = await (0, import_promises.stat)(rec.spec.source, { bigint: true });
+        const signature = [st.dev, st.ino, st.size, st.mtimeNs, st.ctimeNs].map(Number);
+        const same = JSON.stringify(signature) === JSON.stringify(rec.source_signature);
+        const previous = this.validated.get(id2) || panel.run;
+        let value = { ...rec, current_signature: signature, active: active.has(rec.state), valid: same && !rec.changed_during_run };
+        if (rec.state === "not-run-revision-changed") value = { ...value, valid: false };
+        else if (rec.changed_during_run) value = { ...value, state: "stale-source", valid: false };
+        else if (!same) {
+          if (active.has(rec.state)) value = { ...value, state: "stale-source", valid: false };
+          else if (previous && previous.run_id === rec.run_id && JSON.stringify(signature) === JSON.stringify(previous.current_signature)) value = { ...previous, ...rec, current_signature: signature, valid: previous.valid, state: previous.state };
+          else {
+            raws.push(panel.raw);
+            continue;
+          }
+        }
+        const now = Date.now() / 1e3;
+        const checkQueued = rec.state === "queued" && now - (this.queuedChecks.get(id2) ?? rec.queued_at ?? now) > 15;
+        if (checkQueued || rec.state === "running" && now - (rec.started_at || now) - (rec.duration_s || 0) > 3) {
+          if (checkQueued) this.queuedChecks.set(id2, now);
+          raws.push(panel.raw);
+          continue;
+        }
+        if (!this.disposed && revision === this.settingsRevision) {
+          for (const p of this.panels) if (p.run.id === id2 && !p.settingsDirty) p.update(value);
+        }
+      } catch (e) {
+        for (const p of this.panels) if (p.run.id === id2) raws.push(p.raw);
+      }
+    }
+    const targets = [...new Set(raws)].map((raw) => [...this.panels].find((p) => p.raw === raw)).filter((p) => !!p);
+    if (targets.length && !this.disposed) {
+      try {
+        this.perf.statusBatches++;
+        const result = await this.plugin.call("run-status", { sources: targets.map((p) => p.run.spec.source) });
+        if (!this.disposed && revision === this.settingsRevision) {
+          targets.forEach((target, i) => {
+            let s = result.entries[i];
+            if (!s) return;
+            if (!s.spec) s = { ...target.run, state: "source-missing", valid: false, error: s.error };
+            if (s.state === "none" && s.id !== target.run.id) s = { ...s, state: "stale-config" };
+            if (s.current_signature) this.validated.set(s.id, s);
+            for (const p of this.panels) if (p.raw === target.raw) {
+              p.settingsDirty = false;
+              p.update(s);
+            }
+          });
+          this.watchSettings();
+        }
+      } catch (e) {
+        for (const target of targets) target.update({ ...target.run, state: "source-missing", valid: false, error: String(e) });
+      }
+    }
+    clearTimeout(this.liveTimer);
+    if (!this.disposed && [...this.panels].some((p) => active.has(p.run.state) || p.run.active)) this.liveTimer = setTimeout(() => {
+      for (const p of this.panels) if (active.has(p.run.state) || p.run.active) this.recordPending.add(p.run.id);
+      this.scheduleRefresh();
+    }, 1500);
+  }
+  async run(raw, force = false) {
+    if (!runnable(linkPath(raw))) throw Error("This language does not support execution");
+    const result = await this.plugin.call("run-start", { raws: [raw], force });
+    this.pending.add(raw);
+    this.scheduleRefresh();
+    return result;
+  }
+  async stop(id2) {
+    await this.plugin.call("run-cancel", { ids: [id2] });
+  }
+  async runNote(force = false) {
+    await this.plugin.edits?.flushAll();
+    const view = this.plugin.app.workspace.getActiveViewOfType(import_obsidian3.MarkdownView);
+    if (!view?.file) return;
+    const text = view.getMode() === "source" ? view.editor.getValue() : await this.plugin.app.vault.cachedRead(view.file);
+    const plan = await this.plugin.call("run-plan", { text });
+    const bad = plan.entries.filter((e) => e.error);
+    if (bad.length) throw Error(`${bad.length} linked source(s) unavailable; resolve these before Run All`);
+    const raws = plan.entries.filter((e) => !e.duplicate).map((e) => e.raw);
+    if (!raws.length) {
+      new import_obsidian3.Notice("No runnable code blocks in this note");
+      return;
+    }
+    const result = await this.plugin.call("run-start", { raws, force });
+    new import_obsidian3.Notice(`${result.queued.length} queued \xB7 ${result.reused.length} saved results reused${result.skipped?.length ? ` \xB7 ${result.skipped.length} unsaved drafts skipped` : ""}`);
+    for (const raw of raws) this.pending.add(raw);
+    this.scheduleRefresh();
+  }
+  async stopNote() {
+    const view = this.plugin.app.workspace.getActiveViewOfType(import_obsidian3.MarkdownView);
+    if (!view?.file) return;
+    const text = view.getMode() === "source" ? view.editor.getValue() : await this.plugin.app.vault.cachedRead(view.file);
+    const plan = await this.plugin.call("run-plan", { text });
+    await this.plugin.call("run-cancel", { ids: [...new Set(plan.entries.filter((e) => active.has(e.state) || e.active).map((e) => e.id))] });
+  }
+  noteMenu(menu, note) {
+    menu.addItem((i) => i.setTitle("Expand all outputs in note").setIcon("unfold-vertical").onClick(() => this.foldAll(note, true)));
+    menu.addItem((i) => i.setTitle("Collapse all outputs in note").setIcon("fold-vertical").onClick(() => this.foldAll(note, false)));
+  }
+  async dispose() {
+    this.disposed = true;
+    this.watcher?.close();
+    clearTimeout(this.refreshTimer);
+    clearTimeout(this.saveTimer);
+    clearTimeout(this.liveTimer);
+    for (const ref of [...this.allPanels]) ref.deref()?.destroy();
+    this.allPanels.clear();
+    this.watchSettings();
+    await this.persist();
+  }
+};
+var OutputPanel = class {
+  constructor(owner, raw, note, run, host, runButton, previewSignature, refreshPreview) {
+    this.owner = owner;
+    this.raw = raw;
+    this.note = note;
+    this.host = host;
+    this.runButton = runButton;
+    this.previewSignature = previewSignature;
+    this.refreshPreview = refreshPreview;
+    this.previewStale = false;
+    this.settingsDirty = false;
+    this.appeared = false;
+    this.visible = false;
+    this.disposed = false;
+    this.generation = 0;
+    this.loaded = "";
+    this.run = run;
+    this.key = owner.key(note, raw);
+    this.details = host.createEl("details", { cls: "code-links-output" });
+    this.summary = this.details.createEl("summary", { cls: "code-links-output-summary" });
+    this.summary.createSpan({ text: "Output", cls: "code-links-output-label" });
+    this.statusEl = this.summary.createSpan({ cls: "code-links-output-status" });
+    this.count = this.summary.createSpan({ cls: "code-links-output-count" });
+    this.count.hidden = true;
+    this.copy = this.summary.createEl("button", { cls: "clickable-icon code-links-output-copy", attr: { type: "button", "aria-label": "Copy output", title: "Copy output" } });
+    (0, import_obsidian3.setIcon)(this.copy, "copy");
+    this.copy.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      void this.copyOutput();
+    };
+    this.body = this.details.createDiv("code-links-output-body");
+    this.details.open = !!owner.preference(note, raw).open;
+    this.summary.onclick = (e) => {
+      if (e.target.closest("button")) return;
+      e.preventDefault();
+      this.setExpanded(!this.details.open);
+    };
+    this.details.ontoggle = () => {
+      if (this.disposed) return;
+      if (this.details.open) void this.show();
+      else {
+        this.generation++;
+        this.body.empty();
+        this.loaded = "";
+      }
+    };
+    this.observer = new IntersectionObserver((entries) => {
+      if (owner.closed) {
+        this.destroy();
+        return;
+      }
+      const wasVisible = this.visible;
+      this.visible = entries.some((e) => e.isIntersecting) && host.isConnected;
+      if (this.visible) {
+        owner.attach(this);
+        this.setExpanded(!!owner.preference(note, raw).open, false);
+        if (this.appeared && !wasVisible) owner.refreshRecord(this.run.id);
+        this.appeared = true;
+        void this.show();
+      } else {
+        owner.detach(this);
+        this.generation++;
+        if (this.body.isConnected && this.details.open) this.body.style.height = this.body.getBoundingClientRect().height + "px";
+        this.body.empty();
+        this.loaded = "";
+      }
+    }, { rootMargin: "100px" });
+    this.observer.observe(host);
+    this.body.oncontextmenu = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const menu = new import_obsidian3.Menu();
+      const selected = this.body.ownerDocument.getSelection()?.toString();
+      if (selected) menu.addItem((i) => i.setTitle("Copy selection").onClick(() => this.body.ownerDocument.defaultView.navigator.clipboard.writeText(selected)));
+      menu.addItem((i) => i.setTitle("Copy output").onClick(() => void this.copyOutput()));
+      this.heightMenu(menu);
+      owner.noteMenu(menu, note);
+      menu.showAtMouseEvent(e);
+    };
+    this.runButton.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      void this.action();
+    };
+    owner.track(this);
+    this.update(run);
+  }
+  setExpanded(value, persist = true) {
+    this.details.open = value;
+    if (persist) this.owner.setPreference(this.note, this.raw, { open: value, ...{ note: this.note } });
+    if (!value) {
+      this.generation++;
+      this.body.empty();
+      this.loaded = "";
+    } else void this.show();
+  }
+  previewChanged() {
+    this.previewStale = true;
+    this.generation++;
+    this.body.empty();
+    this.loaded = "";
+    this.statusEl.textContent = "Source changed \u2014 refresh preview";
+  }
+  async action(force = false) {
+    try {
+      if (active.has(this.run.state) || this.run.active) await this.owner.stop(this.run.id);
+      else {
+        this.setExpanded(true);
+        if (this.previewStale) await this.refreshPreview();
+        await this.owner.run(this.raw, force);
+      }
+    } catch (e) {
+      new import_obsidian3.Notice(String(e));
+    }
+  }
+  update(run) {
+    if (run.run_id !== this.run.run_id || unavailable.has(run.state)) this.count.hidden = true;
+    this.run = run;
+    if (run.current_signature && JSON.stringify(run.current_signature) !== JSON.stringify(this.previewSignature)) this.previewStale = true;
+    this.details.hidden = run.state === "none";
+    this.host.toggleClass("has-output", !this.details.hidden);
+    const busy = active.has(run.state) || run.active;
+    (0, import_obsidian3.setIcon)(this.runButton, busy ? "square" : "play");
+    this.runButton.setAttribute("aria-label", busy ? "Stop run" : "Run whole file");
+    this.runButton.title = busy ? "Stop run" : `Run whole file: ${run.spec.source.split("/").pop()}. The entire source runs, including lines outside this excerpt.`;
+    const duration = run.duration_s == null ? "" : run.duration_s < 0.1 ? "<0.1 s" : `${run.duration_s.toFixed(1)} s`;
+    const labels = { "not-run-revision-changed": "Not run \u2014 saved source changed", none: "Not run", queued: "Queued", running: "Running", ok: run.stderr ? "Finished \xB7 warnings" : "Finished", failed: "Failed", stopped: "Stopped", timeout: "Timed out", "worker-lost": "Interrupted", "guardian-lost": "Interrupted \xB7 possible surviving processes", "stale-source": "Source changed \u2014 run again", "stale-config": "Settings changed \u2014 run again", "source-missing": "Source not found", checking: "Checking source\u2026", interrupted: "Interrupted" };
+    this.statusEl.textContent = (labels[run.state] || run.state) + (duration && !unavailable.has(run.state) ? " \xB7 " + duration : "");
+    this.statusEl.title = run.finished_at ? new Date(run.finished_at * 1e3).toLocaleString() : "";
+    this.details.dataset.state = run.state;
+    if (run.last_attempt) this.statusEl.textContent += " \xB7 showing previous saved result";
+    if (run.truncated) this.statusEl.textContent += " \xB7 output capped at 1 MiB";
+    this.copy.disabled = unavailable.has(run.state) || run.changed_during_run === true || run.state === "queued";
+    if (unavailable.has(run.state) || run.changed_during_run) {
+      this.generation++;
+      this.body.empty();
+      this.loaded = "";
+      return;
+    }
+    if (this.previewStale) {
+      this.previewChanged();
+      return;
+    }
+    void this.show();
+  }
+  async show() {
+    if (this.disposed || this.previewStale || !this.visible || !this.details.open || this.details.hidden || unavailable.has(this.run.state) || this.run.changed_during_run) return;
+    const path = this.run.state === "running" ? this.run.preview_path : this.run.log_path;
+    if (!path) return;
+    const version = [this.run.run_id, this.run.state, this.run.bytes, this.end].join(":");
+    if (version === this.loaded) return;
+    this.loaded = version;
+    const generation = ++this.generation;
+    try {
+      const size = (await (0, import_promises.stat)(path)).size, end = Math.min(this.end ?? size, size), start = Math.max(0, end - 48 * 1024);
+      const file = await (0, import_promises.open)(path, "r");
+      let data;
+      try {
+        data = Buffer.alloc(end - start);
+        const r = await file.read(data, 0, data.length, start);
+        data = data.subarray(0, r.bytesRead);
+      } finally {
+        await file.close();
+      }
+      this.owner.perf.outputReads++;
+      this.owner.perf.outputBytes += data.length;
+      if (this.disposed || generation !== this.generation) return;
+      let text = data.toString("utf8");
+      let pageStart = start;
+      if (start && text.includes("\n")) {
+        const cut = text.indexOf("\n") + 1;
+        pageStart += Buffer.byteLength(text.slice(0, cut));
+        text = text.slice(cut);
+      }
+      const oldPre = this.body.querySelector("pre"), scrollTop = oldPre?.scrollTop || 0, scrollLeft = oldPre?.scrollLeft || 0;
+      const selection = this.body.ownerDocument.getSelection();
+      if (oldPre && selection && !selection.isCollapsed && selection.anchorNode && oldPre.contains(selection.anchorNode)) {
+        this.loaded = "";
+        return;
+      }
+      const follow = !!oldPre && scrollTop + oldPre.clientHeight >= oldPre.scrollHeight - 2;
+      this.body.style.height = "";
+      this.body.empty();
+      if (pageStart) {
+        const previous = this.body.createEl("button", { text: "Earlier output", cls: "code-links-output-page" });
+        previous.onclick = (e) => {
+          e.stopPropagation();
+          this.end = pageStart;
+          void this.show();
+        };
+      }
+      const pre = this.body.createEl("pre", { cls: "code-links-output-text" });
+      pre.textContent = text || "(Program finished without printed output.)";
+      pre.style.setProperty("--code-links-output-lines", String(this.owner.preference(this.note, this.raw).lines || 12));
+      const lines = text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
+      this.count.textContent = !pageStart && !this.run.truncated ? `${lines} lines` : "Paged output";
+      this.count.hidden = pre.scrollHeight <= pre.clientHeight;
+      pre.scrollTop = follow ? pre.scrollHeight : scrollTop;
+      pre.scrollLeft = scrollLeft;
+      if (this.end != null && end < size) {
+        const latest = this.body.createEl("button", { text: "Latest output", cls: "code-links-output-page" });
+        latest.onclick = (e) => {
+          e.stopPropagation();
+          this.end = void 0;
+          void this.show();
+        };
+      }
+    } catch (e) {
+      if (!this.disposed && generation === this.generation) {
+        this.loaded = "";
+        this.body.setText("Output is not available yet.");
+      }
+    }
+  }
+  async copyOutput() {
+    try {
+      if (this.previewStale) {
+        new import_obsidian3.Notice("Refresh the source preview before copying its output");
+        return;
+      }
+      const r = await this.owner.plugin.call("run-output", { id: this.run.id, full: true });
+      if (!r.text) {
+        new import_obsidian3.Notice(unavailable.has(r.state) ? "Source changed \u2014 run again" : "No printed output");
+        return;
+      }
+      await this.host.ownerDocument.defaultView.navigator.clipboard.writeText(r.text);
+      new import_obsidian3.Notice("Output copied");
+    } catch (e) {
+      new import_obsidian3.Notice(String(e));
+    }
+  }
+  heightMenu(menu) {
+    menu.addItem((i) => i.setTitle("Maximum visible output lines\u2026").setIcon("rows-3").onClick(() => this.owner.plugin.outputHeight(this.owner.preference(this.note, this.raw).lines || 12, (n) => {
+      this.owner.setPreference(this.note, this.raw, { lines: n, ...{ note: this.note } });
+      this.body.querySelector("pre")?.style.setProperty("--code-links-output-lines", String(n));
+    })));
+  }
+  menu(menu) {
+    const busy = active.has(this.run.state) || this.run.active;
+    menu.addItem((i) => i.setTitle(busy ? "Stop run" : "Run whole file").setIcon(busy ? "square" : "play").onClick(() => void this.action()));
+    if (!busy) menu.addItem((i) => i.setTitle("Rerun whole file").onClick(() => void this.action(true)));
+    menu.addItem((i) => i.setTitle(/\.(wl|wls)$/i.test(this.run.spec.source) ? "Open complete source in Wolfram" : "Open complete source in Neovim").setIcon("file-code").onClick(() => void this.owner.plugin.launch(sourceOnly(this.raw))));
+    menu.addSeparator();
+    menu.addItem((i) => i.setTitle(this.details.open ? "Collapse output" : "Expand output").onClick(() => this.setExpanded(!this.details.open)));
+    menu.addItem((i) => i.setTitle("Copy output").setDisabled(this.copy.disabled).onClick(() => void this.copyOutput()));
+    this.heightMenu(menu);
+    this.owner.noteMenu(menu, this.note);
+    menu.addSeparator();
+  }
+  destroy() {
+    this.disposed = true;
+    this.generation++;
+    this.observer.disconnect();
+    this.owner.detach(this);
+    this.owner.untrack(this);
+    this.details.remove();
+    this.host.removeClass("has-output");
+  }
+};
+
+// excerpt-dialog.ts
+var import_obsidian4 = require("obsidian");
+var ExcerptDialog = class extends import_obsidian4.Modal {
+  constructor(plugin, raw, note, replace) {
+    super(plugin.app);
+    this.plugin = plugin;
+    this.raw = raw;
+    this.note = note;
+    this.replace = replace;
+    this.alive = true;
+  }
+  onOpen() {
+    this.modalEl.addClass("code-links-dialog");
+    this.titleEl.setText("Code excerpt");
+    const simple = this.raw.match(/^!\{\{([^#|}]+)#L([1-9]\d*)(?:-L?([1-9]\d*))?(?:\|([^}]*))?\}\}(?:\{height=(\d+)\})?$/);
+    const intro = this.contentEl.createEl("p", { cls: "code-links-dialog-help", text: "Choose the source lines shown in this block. Run always executes the complete source file." });
+    const form = this.contentEl.createDiv("code-links-dialog-fields");
+    const field = (parent, label3, value, type = "text") => {
+      const wrap = parent.createEl("label", { cls: "code-links-dialog-field" });
+      wrap.createSpan({ text: label3 });
+      const input = wrap.createEl("input", { type, value });
+      input.disabled = !simple;
+      return input;
+    };
+    const source = field(form, "Source file", simple?.[1] || "");
+    source.placeholder = "scripts/calculation.py";
+    source.spellcheck = false;
+    source.setAttribute("autocorrect", "off");
+    source.setAttribute("autocapitalize", "off");
+    const suggestions = form.createEl("datalist");
+    suggestions.id = "code-links-targets-" + Math.random().toString(36).slice(2);
+    source.setAttribute("list", suggestions.id);
+    source.oninput = () => {
+      suggestions.empty();
+      const q = source.value.toLowerCase();
+      let n = 0;
+      for (const f of this.plugin.files) if (f.target.toLowerCase().includes(q)) {
+        suggestions.createEl("option", { value: f.target });
+        if (++n === 20) break;
+      }
+    };
+    const label2 = field(form, "Label (optional)", simple?.[4] || "");
+    label2.placeholder = "Energy calculation";
+    const row = form.createDiv("code-links-dialog-columns");
+    const start = field(row, "Start line", simple?.[2] || "", "number"), end = field(row, "End line", simple?.[3] || simple?.[2] || "", "number");
+    for (const input of [start, end]) {
+      input.min = "1";
+      input.step = "1";
+    }
+    const display = form.createDiv("code-links-dialog-columns");
+    const height = field(display, "Maximum visible code lines", simple?.[5] || this.raw.match(/\{height=(\d+)\}$/)?.[1] || "", "number");
+    height.disabled = false;
+    height.min = "3";
+    height.max = "40";
+    height.step = "1";
+    height.placeholder = "Auto \xB7 up to 10 lines";
+    const canRun = runnable(linkPath(this.raw));
+    const output = canRun ? field(display, "Maximum visible output lines", String(this.plugin.outputs.preference(this.note, this.raw).lines || 12), "number") : null;
+    if (output) {
+      output.disabled = false;
+      output.min = "3";
+      output.max = "80";
+      output.step = "1";
+    }
+    form.createEl("p", { cls: "code-links-dialog-help", text: "Leave code height empty for Auto: short code fits exactly; more than 10 lines scrolls. Output height is a separate display preference." });
+    const advanced = this.contentEl.createEl("details", { cls: "code-links-dialog-advanced" });
+    advanced.createEl("summary", { text: "Advanced link" });
+    const rawInput = advanced.createEl("textarea", { value: this.raw, attr: { rows: "3", "aria-label": "Complete excerpt link" } });
+    let advancedEdited = !simple;
+    rawInput.oninput = () => {
+      advancedEdited = true;
+      for (const input of [source, label2, start, end]) input.disabled = true;
+    };
+    if (!simple) {
+      advanced.open = true;
+      form.createEl("p", { cls: "code-links-dialog-help", text: "This block uses a tracked, filtered, or multi-range selection. Edit its complete link below to preserve that selection." });
+    }
+    const error = this.contentEl.createDiv("code-links-dialog-error");
+    error.setAttribute("role", "status");
+    const previewBox = this.contentEl.createDiv("code-links-dialog-preview");
+    previewBox.hidden = true;
+    const footer = this.contentEl.createDiv("code-links-dialog-footer");
+    const preview = footer.createEl("button", { text: "Preview lines" }), cancel = footer.createEl("button", { text: "Cancel" }), apply = footer.createEl("button", { text: "Apply changes", cls: "mod-cta" });
+    cancel.onclick = () => this.close();
+    const integer = (input, lo, hi, name) => {
+      const n = Number(input.value);
+      if (!Number.isInteger(n) || n < lo || n > hi) throw Error(`${name}: enter a whole number from ${lo} to ${hi}.`);
+      return n;
+    };
+    const link = () => {
+      const h = height.value.trim() ? integer(height, 3, 40, "Code lines") : null;
+      const suffix = h == null ? "" : `{height=${h}}`;
+      if (output) integer(output, 3, 80, "Output lines");
+      if (advancedEdited) return rawInput.value.replace(/\{height=\d+\}$/, "") + suffix;
+      const a2 = integer(start, 1, 1e9, "Start line"), b = integer(end, 1, 1e9, "End line");
+      if (b < a2) throw Error("End line must be at or after Start line.");
+      if (!source.value.trim()) throw Error("Choose a source file.");
+      if (/[|{}\r\n]/.test(label2.value)) throw Error("Label cannot contain |, braces, or line breaks.");
+      return `!{{${source.value.trim()}#L${a2}-L${b}${label2.value ? "|" + label2.value : ""}}}${suffix}`;
+    };
+    const validate = async (save) => {
+      apply.disabled = preview.disabled = true;
+      error.setText("");
+      try {
+        const value = link();
+        const info = await this.plugin.call("inspect", { raw: value });
+        if (!info.exists) throw Error("Source file was not found.");
+        const read = await this.plugin.call("read", { raw: value });
+        if (read.full) throw Error("Choose source lines for this excerpt.");
+        if (!this.alive) return;
+        if (save) {
+          await this.replace(this.raw, value);
+          if (output) this.plugin.outputs.setPreference(this.note, value, { ...this.plugin.outputs.preference(this.note, this.raw), note: this.note, lines: Number(output.value) });
+          this.close();
+        } else {
+          previewBox.empty();
+          previewBox.hidden = false;
+          previewBox.createDiv({ text: `${read.lines.length} selected lines \xB7 preview of first ${Math.min(12, read.lines.length)}`, cls: "code-links-dialog-help" });
+          previewBox.createEl("pre", { text: read.lines.slice(0, 12).map((s, i) => `${read.line_numbers[i] ?? "\u2026"}  ${s}`).join("\n").slice(0, 12e3) });
+        }
+      } catch (e) {
+        if (this.alive) error.setText(String(e).replace(/^Error: /, ""));
+      } finally {
+        apply.disabled = preview.disabled = false;
+      }
+    };
+    preview.onclick = () => void validate(false);
+    apply.onclick = () => void validate(true);
+    this.contentEl.onkeydown = (e) => {
+      if (e.key === "Enter" && e.target !== rawInput && e.target !== source && !apply.disabled) {
+        e.preventDefault();
+        void validate(true);
+      }
+    };
+    (simple ? source : rawInput).focus();
+  }
+  onClose() {
+    this.alive = false;
+    this.contentEl.empty();
+  }
+};
+
+// output-appearance.ts
+var terminalColors = { outputForeground: "#8fe388", outputBackground: "#08110b" };
+function outputColor(value, fallback2) {
+  return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : fallback2;
+}
+var OutputAppearance = class {
+  constructor(workspace, colors) {
+    this.workspace = workspace;
+    this.colors = colors;
+    this.disposed = false;
+    this.documents = /* @__PURE__ */ new Map();
+  }
+  apply(doc) {
+    if (this.disposed || !doc.body) return;
+    let entry = this.documents.get(doc);
+    if (!entry) {
+      const style = doc.body.style;
+      entry = { style, previous: ["--code-links-output-fg", "--code-links-output-bg"].map((name) => ({ name, value: style.getPropertyValue(name), priority: style.getPropertyPriority(name) })) };
+      this.documents.set(doc, entry);
+    }
+    const colors = this.colors();
+    entry.style.setProperty("--code-links-output-fg", colors.outputForeground);
+    entry.style.setProperty("--code-links-output-bg", colors.outputBackground);
+  }
+  refresh() {
+    this.apply(document);
+    this.workspace.iterateAllLeaves((leaf) => this.apply(leaf.view.containerEl.ownerDocument));
+  }
+  release(doc) {
+    const entry = this.documents.get(doc);
+    if (!entry) return;
+    for (const p of entry.previous) {
+      if (p.value) entry.style.setProperty(p.name, p.value, p.priority);
+      else entry.style.removeProperty(p.name);
+    }
+    this.documents.delete(doc);
+  }
+  dispose() {
+    this.disposed = true;
+    for (const doc of this.documents.keys()) this.release(doc);
+  }
+};
+
+// inline-edit.ts
+var import_obsidian6 = require("obsidian");
+var import_state4 = require("@codemirror/state");
+var import_view4 = require("@codemirror/view");
+
+// node_modules/@codemirror/commands/dist/index.js
+var import_state2 = require("@codemirror/state");
+var import_view2 = require("@codemirror/view");
+var import_language = require("@codemirror/language");
 var import_common = require("@lezer/common");
+var toggleComment = (target) => {
+  let { state } = target, line = state.doc.lineAt(state.selection.main.from), config = getConfig(target.state, line.from);
+  return config.line ? toggleLineComment(target) : config.block ? toggleBlockCommentByLine(target) : false;
+};
+function command(f, option) {
+  return ({ state, dispatch }) => {
+    if (state.readOnly)
+      return false;
+    let tr = f(option, state);
+    if (!tr)
+      return false;
+    dispatch(state.update(tr));
+    return true;
+  };
+}
+var toggleLineComment = /* @__PURE__ */ command(
+  changeLineComment,
+  0
+  /* CommentOption.Toggle */
+);
+var toggleBlockComment = /* @__PURE__ */ command(
+  changeBlockComment,
+  0
+  /* CommentOption.Toggle */
+);
+var toggleBlockCommentByLine = /* @__PURE__ */ command(
+  (o, s) => changeBlockComment(o, s, selectedLineRanges(s)),
+  0
+  /* CommentOption.Toggle */
+);
+function getConfig(state, pos) {
+  let data = state.languageDataAt("commentTokens", pos, 1);
+  return data.length ? data[0] : {};
+}
+var SearchMargin = 50;
+function findBlockComment(state, { open: open2, close }, from, to) {
+  let textBefore = state.sliceDoc(from - SearchMargin, from);
+  let textAfter = state.sliceDoc(to, to + SearchMargin);
+  let spaceBefore = /\s*$/.exec(textBefore)[0].length, spaceAfter = /^\s*/.exec(textAfter)[0].length;
+  let beforeOff = textBefore.length - spaceBefore;
+  if (textBefore.slice(beforeOff - open2.length, beforeOff) == open2 && textAfter.slice(spaceAfter, spaceAfter + close.length) == close) {
+    return {
+      open: { pos: from - spaceBefore, margin: spaceBefore && 1 },
+      close: { pos: to + spaceAfter, margin: spaceAfter && 1 }
+    };
+  }
+  let startText, endText;
+  if (to - from <= 2 * SearchMargin) {
+    startText = endText = state.sliceDoc(from, to);
+  } else {
+    startText = state.sliceDoc(from, from + SearchMargin);
+    endText = state.sliceDoc(to - SearchMargin, to);
+  }
+  let startSpace = /^\s*/.exec(startText)[0].length, endSpace = /\s*$/.exec(endText)[0].length;
+  let endOff = endText.length - endSpace - close.length;
+  if (startText.slice(startSpace, startSpace + open2.length) == open2 && endText.slice(endOff, endOff + close.length) == close) {
+    return {
+      open: {
+        pos: from + startSpace + open2.length,
+        margin: /\s/.test(startText.charAt(startSpace + open2.length)) ? 1 : 0
+      },
+      close: {
+        pos: to - endSpace - close.length,
+        margin: /\s/.test(endText.charAt(endOff - 1)) ? 1 : 0
+      }
+    };
+  }
+  return null;
+}
+function selectedLineRanges(state) {
+  let ranges = [];
+  for (let r of state.selection.ranges) {
+    let fromLine = state.doc.lineAt(r.from);
+    let toLine = r.to <= fromLine.to ? fromLine : state.doc.lineAt(r.to);
+    if (toLine.from > fromLine.from && toLine.from == r.to)
+      toLine = r.to == fromLine.to + 1 ? fromLine : state.doc.lineAt(r.to - 1);
+    let last = ranges.length - 1;
+    if (last >= 0 && ranges[last].to > fromLine.from)
+      ranges[last].to = toLine.to;
+    else
+      ranges.push({ from: fromLine.from + /^\s*/.exec(fromLine.text)[0].length, to: toLine.to });
+  }
+  return ranges;
+}
+function changeBlockComment(option, state, ranges = state.selection.ranges) {
+  let tokens = ranges.map((r) => getConfig(state, r.from).block);
+  if (!tokens.every((c) => c))
+    return null;
+  let comments = ranges.map((r, i) => findBlockComment(state, tokens[i], r.from, r.to));
+  if (option != 2 && !comments.every((c) => c)) {
+    return { changes: state.changes(ranges.map((range, i) => {
+      if (comments[i])
+        return [];
+      return [{ from: range.from, insert: tokens[i].open + " " }, { from: range.to, insert: " " + tokens[i].close }];
+    })) };
+  } else if (option != 1 && comments.some((c) => c)) {
+    let changes = [];
+    for (let i = 0, comment; i < comments.length; i++)
+      if (comment = comments[i]) {
+        let token = tokens[i], { open: open2, close } = comment;
+        changes.push({ from: open2.pos - token.open.length, to: open2.pos + open2.margin }, { from: close.pos - close.margin, to: close.pos + token.close.length });
+      }
+    return { changes };
+  }
+  return null;
+}
+function changeLineComment(option, state, ranges = state.selection.ranges) {
+  let lines = [];
+  let prevLine = -1;
+  for (let { from, to } of ranges) {
+    let startI = lines.length, minIndent = 1e9;
+    let token = getConfig(state, from).line;
+    if (!token)
+      continue;
+    for (let pos = from; pos <= to; ) {
+      let line = state.doc.lineAt(pos);
+      if (line.from > prevLine && (from == to || to > line.from)) {
+        prevLine = line.from;
+        let indent2 = /^\s*/.exec(line.text)[0].length;
+        let empty = indent2 == line.length;
+        let comment = line.text.slice(indent2, indent2 + token.length) == token ? indent2 : -1;
+        if (indent2 < line.text.length && indent2 < minIndent)
+          minIndent = indent2;
+        lines.push({ line, comment, token, indent: indent2, empty, single: false });
+      }
+      pos = line.to + 1;
+    }
+    if (minIndent < 1e9) {
+      for (let i = startI; i < lines.length; i++)
+        if (lines[i].indent < lines[i].line.text.length)
+          lines[i].indent = minIndent;
+    }
+    if (lines.length == startI + 1)
+      lines[startI].single = true;
+  }
+  if (option != 2 && lines.some((l) => l.comment < 0 && (!l.empty || l.single))) {
+    let changes = [];
+    for (let { line, token, indent: indent2, empty, single } of lines)
+      if (single || !empty)
+        changes.push({ from: line.from + indent2, insert: token + " " });
+    let changeSet = state.changes(changes);
+    return { changes: changeSet, selection: state.selection.map(changeSet, 1) };
+  } else if (option != 1 && lines.some((l) => l.comment >= 0)) {
+    let changes = [];
+    for (let { line, comment, token } of lines)
+      if (comment >= 0) {
+        let from = line.from + comment, to = from + token.length;
+        if (line.text[to - line.from] == " ")
+          to++;
+        changes.push({ from, to });
+      }
+    return { changes };
+  }
+  return null;
+}
+var fromHistory = /* @__PURE__ */ import_state2.Annotation.define();
+var isolateHistory = /* @__PURE__ */ import_state2.Annotation.define();
+var invertedEffects = /* @__PURE__ */ import_state2.Facet.define();
+var historyConfig = /* @__PURE__ */ import_state2.Facet.define({
+  combine(configs) {
+    return (0, import_state2.combineConfig)(configs, {
+      minDepth: 100,
+      newGroupDelay: 500,
+      joinToEvent: (_t, isAdjacent2) => isAdjacent2
+    }, {
+      minDepth: Math.max,
+      newGroupDelay: Math.min,
+      joinToEvent: (a2, b) => (tr, adj) => a2(tr, adj) || b(tr, adj)
+    });
+  }
+});
+var historyField_ = /* @__PURE__ */ import_state2.StateField.define({
+  create() {
+    return HistoryState.empty;
+  },
+  update(state, tr) {
+    let config = tr.state.facet(historyConfig);
+    let fromHist = tr.annotation(fromHistory);
+    if (fromHist) {
+      let item = HistEvent.fromTransaction(tr, fromHist.selection), from = fromHist.side;
+      let other = from == 0 ? state.undone : state.done;
+      if (item)
+        other = updateBranch(other, other.length, config.minDepth, item);
+      else
+        other = addSelection(other, tr.startState.selection);
+      return new HistoryState(from == 0 ? fromHist.rest : other, from == 0 ? other : fromHist.rest);
+    }
+    let isolate = tr.annotation(isolateHistory);
+    if (isolate == "full" || isolate == "before")
+      state = state.isolate();
+    if (tr.annotation(import_state2.Transaction.addToHistory) === false)
+      return !tr.changes.empty ? state.addMapping(tr.changes.desc) : state;
+    let event = HistEvent.fromTransaction(tr);
+    let time = tr.annotation(import_state2.Transaction.time), userEvent = tr.annotation(import_state2.Transaction.userEvent);
+    if (event)
+      state = state.addChanges(event, time, userEvent, config, tr);
+    else if (tr.selection)
+      state = state.addSelection(tr.startState.selection, time, userEvent, config.newGroupDelay);
+    if (isolate == "full" || isolate == "after")
+      state = state.isolate();
+    return state;
+  },
+  toJSON(value) {
+    return { done: value.done.map((e) => e.toJSON()), undone: value.undone.map((e) => e.toJSON()) };
+  },
+  fromJSON(json) {
+    return new HistoryState(json.done.map(HistEvent.fromJSON), json.undone.map(HistEvent.fromJSON));
+  }
+});
+function history(config = {}) {
+  return [
+    historyField_,
+    historyConfig.of(config),
+    import_view2.EditorView.domEventHandlers({
+      beforeinput(e, view) {
+        let command2 = e.inputType == "historyUndo" ? undo : e.inputType == "historyRedo" ? redo : null;
+        if (!command2)
+          return false;
+        e.preventDefault();
+        return command2(view);
+      }
+    })
+  ];
+}
+function cmd(side, selection) {
+  return function({ state, dispatch }) {
+    if (!selection && state.readOnly)
+      return false;
+    let historyState = state.field(historyField_, false);
+    if (!historyState)
+      return false;
+    let tr = historyState.pop(side, state, selection);
+    if (!tr)
+      return false;
+    dispatch(tr);
+    return true;
+  };
+}
+var undo = /* @__PURE__ */ cmd(0, false);
+var redo = /* @__PURE__ */ cmd(1, false);
+var undoSelection = /* @__PURE__ */ cmd(0, true);
+var redoSelection = /* @__PURE__ */ cmd(1, true);
+var HistEvent = class _HistEvent {
+  constructor(changes, effects, mapped, startSelection, selectionsAfter) {
+    this.changes = changes;
+    this.effects = effects;
+    this.mapped = mapped;
+    this.startSelection = startSelection;
+    this.selectionsAfter = selectionsAfter;
+  }
+  setSelAfter(after) {
+    return new _HistEvent(this.changes, this.effects, this.mapped, this.startSelection, after);
+  }
+  toJSON() {
+    var _a, _b, _c;
+    return {
+      changes: (_a = this.changes) === null || _a === void 0 ? void 0 : _a.toJSON(),
+      mapped: (_b = this.mapped) === null || _b === void 0 ? void 0 : _b.toJSON(),
+      startSelection: (_c = this.startSelection) === null || _c === void 0 ? void 0 : _c.toJSON(),
+      selectionsAfter: this.selectionsAfter.map((s) => s.toJSON())
+    };
+  }
+  static fromJSON(json) {
+    return new _HistEvent(json.changes && import_state2.ChangeSet.fromJSON(json.changes), [], json.mapped && import_state2.ChangeDesc.fromJSON(json.mapped), json.startSelection && import_state2.EditorSelection.fromJSON(json.startSelection), json.selectionsAfter.map(import_state2.EditorSelection.fromJSON));
+  }
+  // This does not check `addToHistory` and such, it assumes the
+  // transaction needs to be converted to an item. Returns null when
+  // there are no changes or effects in the transaction.
+  static fromTransaction(tr, selection) {
+    let effects = none;
+    for (let invert of tr.startState.facet(invertedEffects)) {
+      let result = invert(tr);
+      if (result.length)
+        effects = effects.concat(result);
+    }
+    if (!effects.length && tr.changes.empty)
+      return null;
+    return new _HistEvent(tr.changes.invert(tr.startState.doc), effects, void 0, selection || tr.startState.selection, none);
+  }
+  static selection(selections) {
+    return new _HistEvent(void 0, none, void 0, void 0, selections);
+  }
+};
+function updateBranch(branch, to, maxLen, newEvent) {
+  let start = to + 1 > maxLen + 20 ? to - maxLen - 1 : 0;
+  let newBranch = branch.slice(start, to);
+  newBranch.push(newEvent);
+  return newBranch;
+}
+function isAdjacent(a2, b) {
+  let ranges = [], isAdjacent2 = false;
+  a2.iterChangedRanges((f, t) => ranges.push(f, t));
+  b.iterChangedRanges((_f, _t, f, t) => {
+    for (let i = 0; i < ranges.length; ) {
+      let from = ranges[i++], to = ranges[i++];
+      if (t >= from && f <= to)
+        isAdjacent2 = true;
+    }
+  });
+  return isAdjacent2;
+}
+function eqSelectionShape(a2, b) {
+  return a2.ranges.length == b.ranges.length && a2.ranges.filter((r, i) => r.empty != b.ranges[i].empty).length === 0;
+}
+function conc(a2, b) {
+  return !a2.length ? b : !b.length ? a2 : a2.concat(b);
+}
+var none = [];
+var MaxSelectionsPerEvent = 200;
+function addSelection(branch, selection) {
+  if (!branch.length) {
+    return [HistEvent.selection([selection])];
+  } else {
+    let lastEvent = branch[branch.length - 1];
+    let sels = lastEvent.selectionsAfter.slice(Math.max(0, lastEvent.selectionsAfter.length - MaxSelectionsPerEvent));
+    if (sels.length && sels[sels.length - 1].eq(selection))
+      return branch;
+    sels.push(selection);
+    return updateBranch(branch, branch.length - 1, 1e9, lastEvent.setSelAfter(sels));
+  }
+}
+function popSelection(branch) {
+  let last = branch[branch.length - 1];
+  let newBranch = branch.slice();
+  newBranch[branch.length - 1] = last.setSelAfter(last.selectionsAfter.slice(0, last.selectionsAfter.length - 1));
+  return newBranch;
+}
+function addMappingToBranch(branch, mapping) {
+  if (!branch.length)
+    return branch;
+  let length = branch.length, selections = none;
+  while (length) {
+    let event = mapEvent(branch[length - 1], mapping, selections);
+    if (event.changes && !event.changes.empty || event.effects.length) {
+      let result = branch.slice(0, length);
+      result[length - 1] = event;
+      return result;
+    } else {
+      mapping = event.mapped;
+      length--;
+      selections = event.selectionsAfter;
+    }
+  }
+  return selections.length ? [HistEvent.selection(selections)] : none;
+}
+function mapEvent(event, mapping, extraSelections) {
+  let selections = conc(event.selectionsAfter.length ? event.selectionsAfter.map((s) => s.map(mapping)) : none, extraSelections);
+  if (!event.changes)
+    return HistEvent.selection(selections);
+  let mappedChanges = event.changes.map(mapping), before = mapping.mapDesc(event.changes, true);
+  let fullMapping = event.mapped ? event.mapped.composeDesc(before) : before;
+  return new HistEvent(mappedChanges, import_state2.StateEffect.mapEffects(event.effects, mapping), fullMapping, event.startSelection.map(before), selections);
+}
+var joinableUserEvent = /^(input\.type|delete)($|\.)/;
+var HistoryState = class _HistoryState {
+  constructor(done, undone, prevTime = 0, prevUserEvent = void 0) {
+    this.done = done;
+    this.undone = undone;
+    this.prevTime = prevTime;
+    this.prevUserEvent = prevUserEvent;
+  }
+  isolate() {
+    return this.prevTime ? new _HistoryState(this.done, this.undone) : this;
+  }
+  addChanges(event, time, userEvent, config, tr) {
+    let done = this.done, lastEvent = done[done.length - 1];
+    if (lastEvent && lastEvent.changes && !lastEvent.changes.empty && event.changes && (!userEvent || joinableUserEvent.test(userEvent)) && (!lastEvent.selectionsAfter.length && time - this.prevTime < config.newGroupDelay && config.joinToEvent(tr, isAdjacent(lastEvent.changes, event.changes)) || // For compose (but not compose.start) events, always join with previous event
+    userEvent == "input.type.compose")) {
+      done = updateBranch(done, done.length - 1, config.minDepth, new HistEvent(event.changes.compose(lastEvent.changes), conc(import_state2.StateEffect.mapEffects(event.effects, lastEvent.changes), lastEvent.effects), lastEvent.mapped, lastEvent.startSelection, none));
+    } else {
+      done = updateBranch(done, done.length, config.minDepth, event);
+    }
+    return new _HistoryState(done, none, time, userEvent);
+  }
+  addSelection(selection, time, userEvent, newGroupDelay) {
+    let last = this.done.length ? this.done[this.done.length - 1].selectionsAfter : none;
+    if (last.length > 0 && time - this.prevTime < newGroupDelay && userEvent == this.prevUserEvent && userEvent && /^select($|\.)/.test(userEvent) && eqSelectionShape(last[last.length - 1], selection))
+      return this;
+    return new _HistoryState(addSelection(this.done, selection), this.undone, time, userEvent);
+  }
+  addMapping(mapping) {
+    return new _HistoryState(addMappingToBranch(this.done, mapping), addMappingToBranch(this.undone, mapping), this.prevTime, this.prevUserEvent);
+  }
+  pop(side, state, onlySelection) {
+    let branch = side == 0 ? this.done : this.undone;
+    if (branch.length == 0)
+      return null;
+    let event = branch[branch.length - 1], selection = event.selectionsAfter[0] || state.selection;
+    if (onlySelection && event.selectionsAfter.length) {
+      return state.update({
+        selection: event.selectionsAfter[event.selectionsAfter.length - 1],
+        annotations: fromHistory.of({ side, rest: popSelection(branch), selection }),
+        userEvent: side == 0 ? "select.undo" : "select.redo",
+        scrollIntoView: true
+      });
+    } else if (!event.changes) {
+      return null;
+    } else {
+      let rest = branch.length == 1 ? none : branch.slice(0, branch.length - 1);
+      if (event.mapped)
+        rest = addMappingToBranch(rest, event.mapped);
+      return state.update({
+        changes: event.changes,
+        selection: event.startSelection,
+        effects: event.effects,
+        annotations: fromHistory.of({ side, rest, selection }),
+        filter: false,
+        userEvent: side == 0 ? "undo" : "redo",
+        scrollIntoView: true
+      });
+    }
+  }
+};
+HistoryState.empty = /* @__PURE__ */ new HistoryState(none, none);
+var historyKeymap = [
+  { key: "Mod-z", run: undo, preventDefault: true },
+  { key: "Mod-y", mac: "Mod-Shift-z", run: redo, preventDefault: true },
+  { linux: "Ctrl-Shift-z", run: redo, preventDefault: true },
+  { key: "Mod-u", run: undoSelection, preventDefault: true },
+  { key: "Alt-u", mac: "Mod-Shift-u", run: redoSelection, preventDefault: true }
+];
+function updateSel(sel, by) {
+  return import_state2.EditorSelection.create(sel.ranges.map(by), sel.mainIndex);
+}
+function setSel(state, selection) {
+  return state.update({ selection, scrollIntoView: true, userEvent: "select" });
+}
+function moveSel({ state, dispatch }, how) {
+  let selection = updateSel(state.selection, how);
+  if (selection.eq(state.selection, true))
+    return false;
+  dispatch(setSel(state, selection));
+  return true;
+}
+function rangeEnd(range, forward) {
+  return import_state2.EditorSelection.cursor(forward ? range.to : range.from);
+}
+function cursorByChar(view, forward) {
+  return moveSel(view, (range) => range.empty ? view.moveByChar(range, forward) : rangeEnd(range, forward));
+}
+function ltrAtCursor(view) {
+  return view.textDirectionAt(view.state.selection.main.head) == import_view2.Direction.LTR;
+}
+var cursorCharLeft = (view) => cursorByChar(view, !ltrAtCursor(view));
+var cursorCharRight = (view) => cursorByChar(view, ltrAtCursor(view));
+function cursorByGroup(view, forward) {
+  return moveSel(view, (range) => range.empty ? view.moveByGroup(range, forward) : rangeEnd(range, forward));
+}
+var cursorGroupLeft = (view) => cursorByGroup(view, !ltrAtCursor(view));
+var cursorGroupRight = (view) => cursorByGroup(view, ltrAtCursor(view));
+var segmenter = typeof Intl != "undefined" && Intl.Segmenter ? /* @__PURE__ */ new Intl.Segmenter(void 0, { granularity: "word" }) : null;
+function interestingNode(state, node, bracketProp) {
+  if (node.type.prop(bracketProp))
+    return true;
+  let len = node.to - node.from;
+  return len && (len > 2 || /[^\s,.;:]/.test(state.sliceDoc(node.from, node.to))) || node.firstChild;
+}
+function moveBySyntax(state, start, forward) {
+  let pos = (0, import_language.syntaxTree)(state).resolveInner(start.head);
+  let bracketProp = forward ? import_common.NodeProp.closedBy : import_common.NodeProp.openedBy;
+  for (let at = start.head; ; ) {
+    let next = forward ? pos.childAfter(at) : pos.childBefore(at);
+    if (!next)
+      break;
+    if (interestingNode(state, next, bracketProp))
+      pos = next;
+    else
+      at = forward ? next.to : next.from;
+  }
+  let bracket = pos.type.prop(bracketProp), match, newPos;
+  if (bracket && (match = forward ? (0, import_language.matchBrackets)(state, pos.from, 1) : (0, import_language.matchBrackets)(state, pos.to, -1)) && match.matched)
+    newPos = forward ? match.end.to : match.end.from;
+  else
+    newPos = forward ? pos.to : pos.from;
+  return import_state2.EditorSelection.cursor(newPos, forward ? -1 : 1);
+}
+var cursorSyntaxLeft = (view) => moveSel(view, (range) => moveBySyntax(view.state, range, !ltrAtCursor(view)));
+var cursorSyntaxRight = (view) => moveSel(view, (range) => moveBySyntax(view.state, range, ltrAtCursor(view)));
+function cursorByLine(view, forward) {
+  return moveSel(view, (range) => {
+    if (!range.empty)
+      return rangeEnd(range, forward);
+    let moved = view.moveVertically(range, forward);
+    return moved.head != range.head ? moved : view.moveToLineBoundary(range, forward);
+  });
+}
+var cursorLineUp = (view) => cursorByLine(view, false);
+var cursorLineDown = (view) => cursorByLine(view, true);
+function pageInfo(view) {
+  let selfScroll = view.scrollDOM.clientHeight < view.scrollDOM.scrollHeight - 2;
+  let marginTop = 0, marginBottom = 0, height;
+  if (selfScroll) {
+    for (let source of view.state.facet(import_view2.EditorView.scrollMargins)) {
+      let margins = source(view);
+      if (margins === null || margins === void 0 ? void 0 : margins.top)
+        marginTop = Math.max(margins === null || margins === void 0 ? void 0 : margins.top, marginTop);
+      if (margins === null || margins === void 0 ? void 0 : margins.bottom)
+        marginBottom = Math.max(margins === null || margins === void 0 ? void 0 : margins.bottom, marginBottom);
+    }
+    height = view.scrollDOM.clientHeight - marginTop - marginBottom;
+  } else {
+    height = (view.dom.ownerDocument.defaultView || window).innerHeight;
+  }
+  return {
+    marginTop,
+    marginBottom,
+    selfScroll,
+    height: Math.max(view.defaultLineHeight, height - 5)
+  };
+}
+function cursorByPage(view, forward) {
+  let page = pageInfo(view);
+  let { state } = view, selection = updateSel(state.selection, (range) => {
+    return range.empty ? view.moveVertically(range, forward, page.height) : rangeEnd(range, forward);
+  });
+  if (selection.eq(state.selection))
+    return false;
+  let effect;
+  if (page.selfScroll) {
+    let startPos = view.coordsAtPos(state.selection.main.head);
+    let scrollRect = view.scrollDOM.getBoundingClientRect();
+    let scrollTop = scrollRect.top + page.marginTop, scrollBottom = scrollRect.bottom - page.marginBottom;
+    if (startPos && startPos.top > scrollTop && startPos.bottom < scrollBottom)
+      effect = import_view2.EditorView.scrollIntoView(selection.main.head, { y: "start", yMargin: startPos.top - scrollTop });
+  }
+  view.dispatch(setSel(state, selection), { effects: effect });
+  return true;
+}
+var cursorPageUp = (view) => cursorByPage(view, false);
+var cursorPageDown = (view) => cursorByPage(view, true);
+function moveByLineBoundary(view, start, forward) {
+  let line = view.lineBlockAt(start.head), moved = view.moveToLineBoundary(start, forward);
+  if (moved.head == start.head && moved.head != (forward ? line.to : line.from))
+    moved = view.moveToLineBoundary(start, forward, false);
+  if (!forward && moved.head == line.from && line.length) {
+    let space3 = /^\s*/.exec(view.state.sliceDoc(line.from, Math.min(line.from + 100, line.to)))[0].length;
+    if (space3 && start.head != line.from + space3)
+      moved = import_state2.EditorSelection.cursor(line.from + space3);
+  }
+  return moved;
+}
+var cursorLineBoundaryForward = (view) => moveSel(view, (range) => moveByLineBoundary(view, range, true));
+var cursorLineBoundaryBackward = (view) => moveSel(view, (range) => moveByLineBoundary(view, range, false));
+var cursorLineBoundaryLeft = (view) => moveSel(view, (range) => moveByLineBoundary(view, range, !ltrAtCursor(view)));
+var cursorLineBoundaryRight = (view) => moveSel(view, (range) => moveByLineBoundary(view, range, ltrAtCursor(view)));
+var cursorLineStart = (view) => moveSel(view, (range) => import_state2.EditorSelection.cursor(view.lineBlockAt(range.head).from, 1));
+var cursorLineEnd = (view) => moveSel(view, (range) => import_state2.EditorSelection.cursor(view.lineBlockAt(range.head).to, -1));
+function toMatchingBracket(state, dispatch, extend) {
+  let found = false, selection = updateSel(state.selection, (range) => {
+    let matching = (0, import_language.matchBrackets)(state, range.head, -1) || (0, import_language.matchBrackets)(state, range.head, 1) || range.head > 0 && (0, import_language.matchBrackets)(state, range.head - 1, 1) || range.head < state.doc.length && (0, import_language.matchBrackets)(state, range.head + 1, -1);
+    if (!matching || !matching.end)
+      return range;
+    found = true;
+    let head = matching.start.from == range.head ? matching.end.to : matching.end.from;
+    return extend ? import_state2.EditorSelection.range(range.anchor, head) : import_state2.EditorSelection.cursor(head);
+  });
+  if (!found)
+    return false;
+  dispatch(setSel(state, selection));
+  return true;
+}
+var cursorMatchingBracket = ({ state, dispatch }) => toMatchingBracket(state, dispatch, false);
+function extendSel(target, how) {
+  let selection = updateSel(target.state.selection, (range) => {
+    let head = how(range);
+    return import_state2.EditorSelection.range(range.anchor, head.head, head.goalColumn, head.bidiLevel || void 0);
+  });
+  if (selection.eq(target.state.selection))
+    return false;
+  target.dispatch(setSel(target.state, selection));
+  return true;
+}
+function selectByChar(view, forward) {
+  return extendSel(view, (range) => view.moveByChar(range, forward));
+}
+var selectCharLeft = (view) => selectByChar(view, !ltrAtCursor(view));
+var selectCharRight = (view) => selectByChar(view, ltrAtCursor(view));
+function selectByGroup(view, forward) {
+  return extendSel(view, (range) => view.moveByGroup(range, forward));
+}
+var selectGroupLeft = (view) => selectByGroup(view, !ltrAtCursor(view));
+var selectGroupRight = (view) => selectByGroup(view, ltrAtCursor(view));
+var selectSyntaxLeft = (view) => extendSel(view, (range) => moveBySyntax(view.state, range, !ltrAtCursor(view)));
+var selectSyntaxRight = (view) => extendSel(view, (range) => moveBySyntax(view.state, range, ltrAtCursor(view)));
+function selectByLine(view, forward) {
+  return extendSel(view, (range) => view.moveVertically(range, forward));
+}
+var selectLineUp = (view) => selectByLine(view, false);
+var selectLineDown = (view) => selectByLine(view, true);
+function selectByPage(view, forward) {
+  return extendSel(view, (range) => view.moveVertically(range, forward, pageInfo(view).height));
+}
+var selectPageUp = (view) => selectByPage(view, false);
+var selectPageDown = (view) => selectByPage(view, true);
+var selectLineBoundaryForward = (view) => extendSel(view, (range) => moveByLineBoundary(view, range, true));
+var selectLineBoundaryBackward = (view) => extendSel(view, (range) => moveByLineBoundary(view, range, false));
+var selectLineBoundaryLeft = (view) => extendSel(view, (range) => moveByLineBoundary(view, range, !ltrAtCursor(view)));
+var selectLineBoundaryRight = (view) => extendSel(view, (range) => moveByLineBoundary(view, range, ltrAtCursor(view)));
+var selectLineStart = (view) => extendSel(view, (range) => import_state2.EditorSelection.cursor(view.lineBlockAt(range.head).from));
+var selectLineEnd = (view) => extendSel(view, (range) => import_state2.EditorSelection.cursor(view.lineBlockAt(range.head).to));
+var cursorDocStart = ({ state, dispatch }) => {
+  dispatch(setSel(state, { anchor: 0 }));
+  return true;
+};
+var cursorDocEnd = ({ state, dispatch }) => {
+  dispatch(setSel(state, { anchor: state.doc.length }));
+  return true;
+};
+var selectDocStart = ({ state, dispatch }) => {
+  dispatch(setSel(state, { anchor: state.selection.main.anchor, head: 0 }));
+  return true;
+};
+var selectDocEnd = ({ state, dispatch }) => {
+  dispatch(setSel(state, { anchor: state.selection.main.anchor, head: state.doc.length }));
+  return true;
+};
+var selectAll = ({ state, dispatch }) => {
+  dispatch(state.update({ selection: { anchor: 0, head: state.doc.length }, userEvent: "select" }));
+  return true;
+};
+var selectLine = ({ state, dispatch }) => {
+  let ranges = selectedLineBlocks(state).map(({ from, to }) => import_state2.EditorSelection.range(from, Math.min(to + 1, state.doc.length)));
+  dispatch(state.update({ selection: import_state2.EditorSelection.create(ranges), userEvent: "select" }));
+  return true;
+};
+var selectParentSyntax = ({ state, dispatch }) => {
+  let selection = updateSel(state.selection, (range) => {
+    let tree = (0, import_language.syntaxTree)(state), stack = tree.resolveStack(range.from, 1);
+    if (range.empty) {
+      let stackBefore = tree.resolveStack(range.from, -1);
+      if (stackBefore.node.from >= stack.node.from && stackBefore.node.to <= stack.node.to)
+        stack = stackBefore;
+    }
+    for (let cur = stack; cur; cur = cur.next) {
+      let { node } = cur;
+      if ((node.from < range.from && node.to >= range.to || node.to > range.to && node.from <= range.from) && cur.next)
+        return import_state2.EditorSelection.range(node.to, node.from);
+    }
+    return range;
+  });
+  if (selection.eq(state.selection))
+    return false;
+  dispatch(setSel(state, selection));
+  return true;
+};
+var simplifySelection = ({ state, dispatch }) => {
+  let cur = state.selection, selection = null;
+  if (cur.ranges.length > 1)
+    selection = import_state2.EditorSelection.create([cur.main]);
+  else if (!cur.main.empty)
+    selection = import_state2.EditorSelection.create([import_state2.EditorSelection.cursor(cur.main.head)]);
+  if (!selection)
+    return false;
+  dispatch(setSel(state, selection));
+  return true;
+};
+function deleteBy(target, by) {
+  if (target.state.readOnly)
+    return false;
+  let event = "delete.selection", { state } = target;
+  let changes = state.changeByRange((range) => {
+    let { from, to } = range;
+    if (from == to) {
+      let towards = by(range);
+      if (towards < from) {
+        event = "delete.backward";
+        towards = skipAtomic(target, towards, false);
+      } else if (towards > from) {
+        event = "delete.forward";
+        towards = skipAtomic(target, towards, true);
+      }
+      from = Math.min(from, towards);
+      to = Math.max(to, towards);
+    } else {
+      from = skipAtomic(target, from, false);
+      to = skipAtomic(target, to, true);
+    }
+    return from == to ? { range } : { changes: { from, to }, range: import_state2.EditorSelection.cursor(from, from < range.head ? -1 : 1) };
+  });
+  if (changes.changes.empty)
+    return false;
+  target.dispatch(state.update(changes, {
+    scrollIntoView: true,
+    userEvent: event,
+    effects: event == "delete.selection" ? import_view2.EditorView.announce.of(state.phrase("Selection deleted")) : void 0
+  }));
+  return true;
+}
+function skipAtomic(target, pos, forward) {
+  if (target instanceof import_view2.EditorView)
+    for (let ranges of target.state.facet(import_view2.EditorView.atomicRanges).map((f) => f(target)))
+      ranges.between(pos, pos, (from, to) => {
+        if (from < pos && to > pos)
+          pos = forward ? to : from;
+      });
+  return pos;
+}
+var deleteByChar = (target, forward, byIndentUnit) => deleteBy(target, (range) => {
+  let pos = range.from, { state } = target, line = state.doc.lineAt(pos), before, targetPos;
+  if (byIndentUnit && !forward && pos > line.from && pos < line.from + 200 && !/[^ \t]/.test(before = line.text.slice(0, pos - line.from))) {
+    if (before[before.length - 1] == "	")
+      return pos - 1;
+    let col = (0, import_state2.countColumn)(before, state.tabSize), drop = col % (0, import_language.getIndentUnit)(state) || (0, import_language.getIndentUnit)(state);
+    for (let i = 0; i < drop && before[before.length - 1 - i] == " "; i++)
+      pos--;
+    targetPos = pos;
+  } else {
+    targetPos = (0, import_state2.findClusterBreak)(line.text, pos - line.from, forward, forward) + line.from;
+    if (targetPos == pos && line.number != (forward ? state.doc.lines : 1))
+      targetPos += forward ? 1 : -1;
+    else if (!forward && /[\ufe00-\ufe0f]/.test(line.text.slice(targetPos - line.from, pos - line.from)))
+      targetPos = (0, import_state2.findClusterBreak)(line.text, targetPos - line.from, false, false) + line.from;
+  }
+  return targetPos;
+});
+var deleteCharBackward = (view) => deleteByChar(view, false, true);
+var deleteCharForward = (view) => deleteByChar(view, true, false);
+var deleteByGroup = (target, forward) => deleteBy(target, (range) => {
+  let pos = range.head, { state } = target, line = state.doc.lineAt(pos);
+  let categorize = state.charCategorizer(pos);
+  for (let cat = null; ; ) {
+    if (pos == (forward ? line.to : line.from)) {
+      if (pos == range.head && line.number != (forward ? state.doc.lines : 1))
+        pos += forward ? 1 : -1;
+      break;
+    }
+    let next = (0, import_state2.findClusterBreak)(line.text, pos - line.from, forward) + line.from;
+    let nextChar = line.text.slice(Math.min(pos, next) - line.from, Math.max(pos, next) - line.from);
+    let nextCat = categorize(nextChar);
+    if (cat != null && nextCat != cat)
+      break;
+    if (nextChar != " " || pos != range.head)
+      cat = nextCat;
+    pos = next;
+  }
+  return pos;
+});
+var deleteGroupBackward = (target) => deleteByGroup(target, false);
+var deleteGroupForward = (target) => deleteByGroup(target, true);
+var deleteToLineEnd = (view) => deleteBy(view, (range) => {
+  let lineEnd = view.lineBlockAt(range.head).to;
+  return range.head < lineEnd ? lineEnd : Math.min(view.state.doc.length, range.head + 1);
+});
+var deleteLineBoundaryBackward = (view) => deleteBy(view, (range) => {
+  let lineStart = view.moveToLineBoundary(range, false).head;
+  return range.head > lineStart ? lineStart : Math.max(0, range.head - 1);
+});
+var deleteLineBoundaryForward = (view) => deleteBy(view, (range) => {
+  let lineStart = view.moveToLineBoundary(range, true).head;
+  return range.head < lineStart ? lineStart : Math.min(view.state.doc.length, range.head + 1);
+});
+var splitLine = ({ state, dispatch }) => {
+  if (state.readOnly)
+    return false;
+  let changes = state.changeByRange((range) => {
+    return {
+      changes: { from: range.from, to: range.to, insert: import_state2.Text.of(["", ""]) },
+      range: import_state2.EditorSelection.cursor(range.from)
+    };
+  });
+  dispatch(state.update(changes, { scrollIntoView: true, userEvent: "input" }));
+  return true;
+};
+var transposeChars = ({ state, dispatch }) => {
+  if (state.readOnly)
+    return false;
+  let changes = state.changeByRange((range) => {
+    if (!range.empty || range.from == 0 || range.from == state.doc.length)
+      return { range };
+    let pos = range.from, line = state.doc.lineAt(pos);
+    let from = pos == line.from ? pos - 1 : (0, import_state2.findClusterBreak)(line.text, pos - line.from, false) + line.from;
+    let to = pos == line.to ? pos + 1 : (0, import_state2.findClusterBreak)(line.text, pos - line.from, true) + line.from;
+    return {
+      changes: { from, to, insert: state.doc.slice(pos, to).append(state.doc.slice(from, pos)) },
+      range: import_state2.EditorSelection.cursor(to)
+    };
+  });
+  if (changes.changes.empty)
+    return false;
+  dispatch(state.update(changes, { scrollIntoView: true, userEvent: "move.character" }));
+  return true;
+};
+function selectedLineBlocks(state) {
+  let blocks = [], upto = -1;
+  for (let range of state.selection.ranges) {
+    let startLine = state.doc.lineAt(range.from), endLine = state.doc.lineAt(range.to);
+    if (!range.empty && range.to == endLine.from)
+      endLine = state.doc.lineAt(range.to - 1);
+    if (upto >= startLine.number) {
+      let prev = blocks[blocks.length - 1];
+      prev.to = endLine.to;
+      prev.ranges.push(range);
+    } else {
+      blocks.push({ from: startLine.from, to: endLine.to, ranges: [range] });
+    }
+    upto = endLine.number + 1;
+  }
+  return blocks;
+}
+function moveLine(state, dispatch, forward) {
+  if (state.readOnly)
+    return false;
+  let changes = [], ranges = [];
+  for (let block of selectedLineBlocks(state)) {
+    if (forward ? block.to == state.doc.length : block.from == 0)
+      continue;
+    let nextLine = state.doc.lineAt(forward ? block.to + 1 : block.from - 1);
+    let size = nextLine.length + 1;
+    if (forward) {
+      changes.push({ from: block.to, to: nextLine.to }, { from: block.from, insert: nextLine.text + state.lineBreak });
+      for (let r of block.ranges)
+        ranges.push(import_state2.EditorSelection.range(Math.min(state.doc.length, r.anchor + size), Math.min(state.doc.length, r.head + size)));
+    } else {
+      changes.push({ from: nextLine.from, to: block.from }, { from: block.to, insert: state.lineBreak + nextLine.text });
+      for (let r of block.ranges)
+        ranges.push(import_state2.EditorSelection.range(r.anchor - size, r.head - size));
+    }
+  }
+  if (!changes.length)
+    return false;
+  dispatch(state.update({
+    changes,
+    scrollIntoView: true,
+    selection: import_state2.EditorSelection.create(ranges, state.selection.mainIndex),
+    userEvent: "move.line"
+  }));
+  return true;
+}
+var moveLineUp = ({ state, dispatch }) => moveLine(state, dispatch, false);
+var moveLineDown = ({ state, dispatch }) => moveLine(state, dispatch, true);
+function copyLine(state, dispatch, forward) {
+  if (state.readOnly)
+    return false;
+  let changes = [];
+  for (let block of selectedLineBlocks(state)) {
+    if (forward)
+      changes.push({ from: block.from, insert: state.doc.slice(block.from, block.to) + state.lineBreak });
+    else
+      changes.push({ from: block.to, insert: state.lineBreak + state.doc.slice(block.from, block.to) });
+  }
+  dispatch(state.update({ changes, scrollIntoView: true, userEvent: "input.copyline" }));
+  return true;
+}
+var copyLineUp = ({ state, dispatch }) => copyLine(state, dispatch, false);
+var copyLineDown = ({ state, dispatch }) => copyLine(state, dispatch, true);
+var deleteLine = (view) => {
+  if (view.state.readOnly)
+    return false;
+  let { state } = view, changes = state.changes(selectedLineBlocks(state).map(({ from, to }) => {
+    if (from > 0)
+      from--;
+    else if (to < state.doc.length)
+      to++;
+    return { from, to };
+  }));
+  let selection = updateSel(state.selection, (range) => {
+    let dist = void 0;
+    if (view.lineWrapping) {
+      let block = view.lineBlockAt(range.head), pos = view.coordsAtPos(range.head, range.assoc || 1);
+      if (pos)
+        dist = block.bottom + view.documentTop - pos.bottom + view.defaultLineHeight / 2;
+    }
+    return view.moveVertically(range, true, dist);
+  }).map(changes);
+  view.dispatch({ changes, selection, scrollIntoView: true, userEvent: "delete.line" });
+  return true;
+};
+function isBetweenBrackets(state, pos) {
+  if (/\(\)|\[\]|\{\}/.test(state.sliceDoc(pos - 1, pos + 1)))
+    return { from: pos, to: pos };
+  let context = (0, import_language.syntaxTree)(state).resolveInner(pos);
+  let before = context.childBefore(pos), after = context.childAfter(pos), closedBy;
+  if (before && after && before.to <= pos && after.from >= pos && (closedBy = before.type.prop(import_common.NodeProp.closedBy)) && closedBy.indexOf(after.name) > -1 && state.doc.lineAt(before.to).from == state.doc.lineAt(after.from).from && !/\S/.test(state.sliceDoc(before.to, after.from)))
+    return { from: before.to, to: after.from };
+  return null;
+}
+var insertNewlineAndIndent = /* @__PURE__ */ newlineAndIndent(false);
+var insertBlankLine = /* @__PURE__ */ newlineAndIndent(true);
+function newlineAndIndent(atEof) {
+  return ({ state, dispatch }) => {
+    if (state.readOnly)
+      return false;
+    let changes = state.changeByRange((range) => {
+      let { from, to } = range, line = state.doc.lineAt(from);
+      let explode = !atEof && from == to && isBetweenBrackets(state, from);
+      if (atEof)
+        from = to = (to <= line.to ? line : state.doc.lineAt(to)).to;
+      let cx = new import_language.IndentContext(state, { simulateBreak: from, simulateDoubleBreak: !!explode });
+      let indent2 = (0, import_language.getIndentation)(cx, from);
+      if (indent2 == null)
+        indent2 = (0, import_state2.countColumn)(/^\s*/.exec(state.doc.lineAt(from).text)[0], state.tabSize);
+      while (to < line.to && /\s/.test(line.text[to - line.from]))
+        to++;
+      if (explode)
+        ({ from, to } = explode);
+      else if (from > line.from && from < line.from + 100 && !/\S/.test(line.text.slice(0, from)))
+        from = line.from;
+      let insert = ["", (0, import_language.indentString)(state, indent2)];
+      if (explode)
+        insert.push((0, import_language.indentString)(state, cx.lineIndent(line.from, -1)));
+      return {
+        changes: { from, to, insert: import_state2.Text.of(insert) },
+        range: import_state2.EditorSelection.cursor(from + 1 + insert[1].length)
+      };
+    });
+    dispatch(state.update(changes, { scrollIntoView: true, userEvent: "input" }));
+    return true;
+  };
+}
+function changeBySelectedLine(state, f) {
+  let atLine = -1;
+  return state.changeByRange((range) => {
+    let changes = [];
+    for (let pos = range.from; pos <= range.to; ) {
+      let line = state.doc.lineAt(pos);
+      if (line.number > atLine && (range.empty || range.to > line.from)) {
+        f(line, changes, range);
+        atLine = line.number;
+      }
+      pos = line.to + 1;
+    }
+    let changeSet = state.changes(changes);
+    return {
+      changes,
+      range: import_state2.EditorSelection.range(changeSet.mapPos(range.anchor, 1), changeSet.mapPos(range.head, 1))
+    };
+  });
+}
+var indentSelection = ({ state, dispatch }) => {
+  if (state.readOnly)
+    return false;
+  let updated = /* @__PURE__ */ Object.create(null);
+  let context = new import_language.IndentContext(state, { overrideIndentation: (start) => {
+    let found = updated[start];
+    return found == null ? -1 : found;
+  } });
+  let changes = changeBySelectedLine(state, (line, changes2, range) => {
+    let indent2 = (0, import_language.getIndentation)(context, line.from);
+    if (indent2 == null)
+      return;
+    if (!/\S/.test(line.text))
+      indent2 = 0;
+    let cur = /^\s*/.exec(line.text)[0];
+    let norm = (0, import_language.indentString)(state, indent2);
+    if (cur != norm || range.from < line.from + cur.length) {
+      updated[line.from] = indent2;
+      changes2.push({ from: line.from, to: line.from + cur.length, insert: norm });
+    }
+  });
+  if (!changes.changes.empty)
+    dispatch(state.update(changes, { userEvent: "indent" }));
+  return true;
+};
+var indentMore = ({ state, dispatch }) => {
+  if (state.readOnly)
+    return false;
+  dispatch(state.update(changeBySelectedLine(state, (line, changes) => {
+    changes.push({ from: line.from, insert: state.facet(import_language.indentUnit) });
+  }), { userEvent: "input.indent" }));
+  return true;
+};
+var indentLess = ({ state, dispatch }) => {
+  if (state.readOnly)
+    return false;
+  dispatch(state.update(changeBySelectedLine(state, (line, changes) => {
+    let space3 = /^\s*/.exec(line.text)[0];
+    if (!space3)
+      return;
+    let col = (0, import_state2.countColumn)(space3, state.tabSize), keep = 0;
+    let insert = (0, import_language.indentString)(state, Math.max(0, col - (0, import_language.getIndentUnit)(state)));
+    while (keep < space3.length && keep < insert.length && space3.charCodeAt(keep) == insert.charCodeAt(keep))
+      keep++;
+    changes.push({ from: line.from + keep, to: line.from + space3.length, insert: insert.slice(keep) });
+  }), { userEvent: "delete.dedent" }));
+  return true;
+};
+var toggleTabFocusMode = (view) => {
+  view.setTabFocusMode();
+  return true;
+};
+var emacsStyleKeymap = [
+  { key: "Ctrl-b", run: cursorCharLeft, shift: selectCharLeft, preventDefault: true },
+  { key: "Ctrl-f", run: cursorCharRight, shift: selectCharRight },
+  { key: "Ctrl-p", run: cursorLineUp, shift: selectLineUp },
+  { key: "Ctrl-n", run: cursorLineDown, shift: selectLineDown },
+  { key: "Ctrl-a", run: cursorLineStart, shift: selectLineStart },
+  { key: "Ctrl-e", run: cursorLineEnd, shift: selectLineEnd },
+  { key: "Ctrl-d", run: deleteCharForward },
+  { key: "Ctrl-h", run: deleteCharBackward },
+  { key: "Ctrl-k", run: deleteToLineEnd },
+  { key: "Ctrl-Alt-h", run: deleteGroupBackward },
+  { key: "Ctrl-o", run: splitLine },
+  { key: "Ctrl-t", run: transposeChars },
+  { key: "Ctrl-v", run: cursorPageDown }
+];
+var standardKeymap = /* @__PURE__ */ [
+  { key: "ArrowLeft", run: cursorCharLeft, shift: selectCharLeft, preventDefault: true },
+  { key: "Mod-ArrowLeft", mac: "Alt-ArrowLeft", run: cursorGroupLeft, shift: selectGroupLeft, preventDefault: true },
+  { mac: "Cmd-ArrowLeft", run: cursorLineBoundaryLeft, shift: selectLineBoundaryLeft, preventDefault: true },
+  { key: "ArrowRight", run: cursorCharRight, shift: selectCharRight, preventDefault: true },
+  { key: "Mod-ArrowRight", mac: "Alt-ArrowRight", run: cursorGroupRight, shift: selectGroupRight, preventDefault: true },
+  { mac: "Cmd-ArrowRight", run: cursorLineBoundaryRight, shift: selectLineBoundaryRight, preventDefault: true },
+  { key: "ArrowUp", run: cursorLineUp, shift: selectLineUp, preventDefault: true },
+  { mac: "Cmd-ArrowUp", run: cursorDocStart, shift: selectDocStart },
+  { mac: "Ctrl-ArrowUp", run: cursorPageUp, shift: selectPageUp },
+  { key: "ArrowDown", run: cursorLineDown, shift: selectLineDown, preventDefault: true },
+  { mac: "Cmd-ArrowDown", run: cursorDocEnd, shift: selectDocEnd },
+  { mac: "Ctrl-ArrowDown", run: cursorPageDown, shift: selectPageDown },
+  { key: "PageUp", run: cursorPageUp, shift: selectPageUp },
+  { key: "PageDown", run: cursorPageDown, shift: selectPageDown },
+  { key: "Home", run: cursorLineBoundaryBackward, shift: selectLineBoundaryBackward, preventDefault: true },
+  { key: "Mod-Home", run: cursorDocStart, shift: selectDocStart },
+  { key: "End", run: cursorLineBoundaryForward, shift: selectLineBoundaryForward, preventDefault: true },
+  { key: "Mod-End", run: cursorDocEnd, shift: selectDocEnd },
+  { key: "Enter", run: insertNewlineAndIndent, shift: insertNewlineAndIndent },
+  { key: "Mod-a", run: selectAll },
+  { key: "Backspace", run: deleteCharBackward, shift: deleteCharBackward },
+  { key: "Delete", run: deleteCharForward },
+  { key: "Mod-Backspace", mac: "Alt-Backspace", run: deleteGroupBackward },
+  { key: "Mod-Delete", mac: "Alt-Delete", run: deleteGroupForward },
+  { mac: "Mod-Backspace", run: deleteLineBoundaryBackward },
+  { mac: "Mod-Delete", run: deleteLineBoundaryForward }
+].concat(/* @__PURE__ */ emacsStyleKeymap.map((b) => ({ mac: b.key, run: b.run, shift: b.shift })));
+var defaultKeymap = /* @__PURE__ */ [
+  { key: "Alt-ArrowLeft", mac: "Ctrl-ArrowLeft", run: cursorSyntaxLeft, shift: selectSyntaxLeft },
+  { key: "Alt-ArrowRight", mac: "Ctrl-ArrowRight", run: cursorSyntaxRight, shift: selectSyntaxRight },
+  { key: "Alt-ArrowUp", run: moveLineUp },
+  { key: "Shift-Alt-ArrowUp", run: copyLineUp },
+  { key: "Alt-ArrowDown", run: moveLineDown },
+  { key: "Shift-Alt-ArrowDown", run: copyLineDown },
+  { key: "Escape", run: simplifySelection },
+  { key: "Mod-Enter", run: insertBlankLine },
+  { key: "Alt-l", mac: "Ctrl-l", run: selectLine },
+  { key: "Mod-i", run: selectParentSyntax, preventDefault: true },
+  { key: "Mod-[", run: indentLess },
+  { key: "Mod-]", run: indentMore },
+  { key: "Mod-Alt-\\", run: indentSelection },
+  { key: "Shift-Mod-k", run: deleteLine },
+  { key: "Shift-Mod-\\", run: cursorMatchingBracket },
+  { key: "Mod-/", run: toggleComment },
+  { key: "Alt-A", run: toggleBlockComment },
+  { key: "Ctrl-m", mac: "Shift-Alt-m", run: toggleTabFocusMode }
+].concat(standardKeymap);
+var indentWithTab = { key: "Tab", run: indentMore, shift: indentLess };
+
+// new-script.ts
+var import_obsidian5 = require("obsidian");
+function insertion(text, line) {
+  const lines = text.split("\n");
+  let end = Math.min(line, lines.length - 1), fence = "", start = -1;
+  for (let n = 0; n <= end; n++) {
+    const value = lines[n].replace(/^\s*(?:>\s*)+/, "").trim();
+    if (n === 0 && value === "---") {
+      fence = "---";
+      start = n;
+      continue;
+    }
+    const marker = value.match(/^(`{3,}|~{3,}|\$\$)/)?.[1];
+    if (fence) {
+      if (n > start && (fence === "---" ? value === "---" : value.startsWith(fence))) {
+        fence = "";
+        start = -1;
+      }
+    } else if (marker && !(value.length > marker.length && value.endsWith(marker))) {
+      fence = marker;
+      start = n;
+    }
+  }
+  if (fence) {
+    let closed = false;
+    for (let n = end + 1; n < lines.length; n++) if (lines[n].replace(/^\s*(?:>\s*)+/, "").trim().startsWith(fence)) {
+      end = n;
+      closed = true;
+      break;
+    }
+    if (!closed) throw Error("Close the current code, math, or frontmatter block before inserting.");
+  }
+  if (lines[end].trim()) while (end + 1 < lines.length && lines[end + 1].trim()) end++;
+  const quote = lines[end].match(/^(\s*(?:>\s*)+)/)?.[1] || "";
+  const offset = lines.slice(0, end + 1).join("\n").length;
+  return { offset, prefix: quote };
+}
+function insertionText(text, at, raw) {
+  const tail = text.slice(at.offset), prefix = at.prefix;
+  const after = prefix ? "\n" + prefix + "\n" : tail.startsWith("\n\n") ? "" : tail.startsWith("\n") ? "\n" : "\n\n";
+  return "\n" + prefix + "\n" + prefix + raw + after;
+}
+var NewScriptModal = class extends import_obsidian5.Modal {
+  constructor(plugin, note, editor, after, line) {
+    super(plugin.app);
+    this.plugin = plugin;
+    this.note = note;
+    this.editor = editor;
+    this.after = after;
+    this.line = line;
+    this.identifier = crypto.randomUUID().replace(/-/g, "");
+  }
+  async onOpen() {
+    this.modalEl.addClass("code-links-dialog", "code-links-new-script");
+    this.titleEl.setText("New code block");
+    const file = this.plugin.app.vault.getAbstractFileByPath(this.note);
+    if (!(file instanceof import_obsidian5.TFile)) {
+      new import_obsidian5.Notice("Open a note first");
+      this.close();
+      return;
+    }
+    const expected = this.editor?.getValue() ?? await this.plugin.app.vault.read(file);
+    const selectedLine = this.line ?? this.editor?.getCursor("to").line;
+    const grid = this.contentEl.createDiv("code-links-create-fields");
+    const field = (title, parent = grid) => {
+      const row = parent.createEl("label", { cls: "code-links-create-field" });
+      row.createSpan({ text: title });
+      return row;
+    };
+    const languageRow = field("Language");
+    const lang = languageRow.createEl("select");
+    lang.hidden = true;
+    const choices = languageRow.createDiv("code-links-language-choices");
+    const languageButtons = [];
+    for (const [value, { label: label3 }] of Object.entries(capabilities).filter(([, value2]) => value2.creatable)) {
+      lang.createEl("option", { value, text: label3 });
+      const button = choices.createEl("button", { text: label3, attr: { type: "button" } });
+      languageButtons.push(button);
+      button.dataset.language = value;
+      button.onclick = () => {
+        lang.value = value;
+        lang.dispatchEvent(new Event("change"));
+      };
+    }
+    lang.value = creationLanguage(this.plugin.settings.newLanguage || "python");
+    const paintLanguage = () => {
+      for (const button of languageButtons) {
+        const selected = button.dataset.language === lang.value;
+        button.toggleClass("is-active", selected);
+        button.setAttribute("aria-pressed", String(selected));
+      }
+    };
+    paintLanguage();
+    const name = field("Name").createEl("input", { attr: { type: "text", spellcheck: "false", placeholder: "calculation.py" } });
+    const folder = field("Folder").createEl("input", { attr: { type: "text", spellcheck: "false" } });
+    const label2 = field("Label").createEl("input", { attr: { type: "text", placeholder: "Optional" } });
+    const sandboxRow = this.contentEl.createEl("label", { cls: "code-links-create-sandbox" });
+    const sandbox = sandboxRow.createEl("input", { attr: { type: "checkbox" } });
+    sandboxRow.createSpan({ text: "Sandbox only" });
+    sandboxRow.createSpan({ text: "Runs isolated \xB7 no file until saved", cls: "code-links-create-hint" });
+    sandboxRow.title = "Temporary code and output stay on this Mac until you choose Save as script.";
+    const advanced = this.contentEl.createEl("details", { cls: "code-links-create-advanced" });
+    advanced.createEl("summary", { text: "Advanced" });
+    const advancedGrid = advanced.createDiv("code-links-create-fields");
+    const height = field("Visible lines", advancedGrid).createEl("input", { attr: { placeholder: "Auto \xB7 up to 10", inputmode: "numeric" } });
+    const cwd = field("Run from", advancedGrid).createEl("input", { value: "script", attr: { placeholder: "script, root, or vault-relative folder" } });
+    const interpreter = field("Interpreter", advancedGrid).createEl("input", { attr: { placeholder: "Use language default", spellcheck: "false" } });
+    const args = field("Arguments", advancedGrid).createEl("input", { attr: { placeholder: 'JSON list, e.g. ["--steps", "10"]', spellcheck: "false" } });
+    const timeout = field("Timeout (s)", advancedGrid).createEl("input", { attr: { placeholder: "300", inputmode: "numeric" } });
+    const starter = field("Initial code", advancedGrid).createEl("select");
+    starter.createEl("option", { value: "blank", text: "Blank" });
+    starter.createEl("option", { value: "starter", text: "Small starter" });
+    const preview = folder.parentElement.createDiv("code-links-create-preview");
+    const error = this.contentEl.createDiv("code-links-dialog-error");
+    const recovery = this.contentEl.createDiv("code-links-create-recovery");
+    recovery.hidden = true;
+    const footer = this.contentEl.createDiv("code-links-dialog-footer");
+    footer.createEl("button", { text: "Cancel" }).onclick = () => this.close();
+    const create = footer.createEl("button", { text: "Create", cls: "mod-cta" });
+    let suggested = "", busy = false, inserted = false, defaultsGeneration = 0, receipt;
+    const refresh = () => {
+      const canRun = capabilities[lang.value].runnable;
+      sandboxRow.hidden = !canRun;
+      if (!canRun) sandbox.checked = false;
+      for (const input of [cwd, interpreter, args, timeout]) input.parentElement.hidden = !canRun;
+      interpreter.parentElement.querySelector("span").textContent = ["c", "cpp"].includes(lang.value) ? "Compiler" : "Interpreter";
+      preview.setText(name.value + (sandbox.checked ? " \xB7 local sandbox, no file yet" : " \xB7 new file"));
+      preview.title = (folder.value ? folder.value + "/" : "") + name.value;
+    };
+    sandbox.onchange = refresh;
+    const defaults = async () => {
+      const generation = ++defaultsGeneration;
+      const chosen = lang.value;
+      refresh();
+      try {
+        const data = await this.plugin.call("new-defaults", { note: this.note, language: chosen, folder_rule: this.plugin.settings.newFolderRule });
+        if (generation !== defaultsGeneration) return;
+        if (!name.value || name.value === suggested) {
+          name.value = data.name;
+          suggested = data.name;
+        } else name.value = switchExtension(name.value, chosen);
+        if (!folder.value) folder.value = data.folder;
+        refresh();
+      } catch (e) {
+        if (generation === defaultsGeneration) error.setText(String(e));
+      }
+    };
+    lang.onchange = () => {
+      paintLanguage();
+      void defaults();
+    };
+    name.oninput = folder.oninput = refresh;
+    const insert = async (raw) => {
+      if (this.editor) {
+        if (this.plugin.app.workspace.getActiveFile()?.path !== this.note || this.editor.getValue() !== expected) throw Error("The note changed while this dialog was open. Copy the link or reopen at the new insertion point.");
+        const at = insertion(expected, selectedLine ?? 0), chunk = insertionText(expected, at, raw);
+        this.editor.replaceRange(chunk, this.editor.offsetToPos(at.offset));
+        this.editor.setCursor(this.editor.offsetToPos(at.offset + chunk.length));
+      } else await this.plugin.app.vault.process(file, (text) => {
+        if (text !== expected) throw Error("The note changed while this dialog was open. Copy the link or reopen.");
+        let line = text.split("\n").length - 1;
+        if (this.after) {
+          const position = text.indexOf(this.after);
+          if (position < 0 || position !== text.lastIndexOf(this.after)) throw Error("Select this exact occurrence in editing mode to insert below it.");
+          line = text.slice(0, position + this.after.length).split("\n").length - 1;
+        }
+        const at = insertion(text, line);
+        return text.slice(0, at.offset) + insertionText(text, at, raw) + text.slice(at.offset);
+      });
+    };
+    const submit = async () => {
+      if (busy) return;
+      busy = true;
+      create.disabled = true;
+      error.empty();
+      try {
+        const run = {};
+        if (capabilities[lang.value].runnable) {
+          if (cwd.value.trim() && cwd.value.trim() !== "script") run.cwd = cwd.value.trim();
+          if (interpreter.value.trim()) run.interpreter = interpreter.value.trim();
+          if (args.value.trim()) run.args = JSON.parse(args.value);
+          if (timeout.value.trim()) run.timeout = Number(timeout.value);
+        }
+        receipt = receipt || await this.plugin.call("new-create", { id: this.identifier, note: this.note, language: lang.value, name: name.value, folder: folder.value, label: label2.value, sandbox: sandbox.checked, starter: starter.value === "starter", max_lines: height.value.trim() ? Number(height.value) : void 0, run });
+        await this.plugin.edits.begin(this.note, receipt.raw);
+        if (!inserted) {
+          await insert(receipt.raw);
+          inserted = true;
+        }
+        await this.plugin.call("new-complete", { id: receipt.id });
+        this.plugin.settings.newLanguage = lang.value;
+        await this.plugin.saveSettings();
+        this.close();
+        this.plugin.edits.focusNext(this.note, receipt.raw);
+      } catch (e) {
+        error.setText(String(e).replace(/^Error: /, ""));
+        if (receipt) {
+          recovery.hidden = false;
+          recovery.empty();
+          recovery.createSpan({ text: "Script preserved. " });
+          recovery.createEl("button", { text: "Copy block link" }).onclick = () => void navigator.clipboard.writeText(receipt.raw);
+        }
+      } finally {
+        busy = false;
+        create.disabled = false;
+      }
+    };
+    create.onclick = () => void submit();
+    this.contentEl.onkeydown = (e) => {
+      if (e.key === "Enter" && !e.isComposing && e.target instanceof HTMLInputElement) {
+        e.preventDefault();
+        void submit();
+      }
+    };
+    await defaults();
+    name.focus();
+    name.select();
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
+var SaveSandboxModal = class extends import_obsidian5.Modal {
+  constructor(plugin, initial, save) {
+    super(plugin.app);
+    this.initial = initial;
+    this.save = save;
+  }
+  onOpen() {
+    this.modalEl.addClass("code-links-dialog", "code-links-new-script");
+    this.titleEl.setText("Save as script");
+    const fields = this.contentEl.createDiv("code-links-create-fields");
+    const input = (title, value) => {
+      const row = fields.createEl("label", { cls: "code-links-create-field" });
+      row.createSpan({ text: title });
+      return row.createEl("input", { value, attr: { spellcheck: "false" } });
+    };
+    const name = input("Name", this.initial.name), folder = input("Folder", this.initial.folder);
+    const error = this.contentEl.createDiv("code-links-dialog-error");
+    const footer = this.contentEl.createDiv("code-links-dialog-footer");
+    footer.createEl("button", { text: "Cancel" }).onclick = () => this.close();
+    const save = footer.createEl("button", { text: "Save script", cls: "mod-cta" });
+    const submit = async () => {
+      if (save.disabled) return;
+      save.disabled = true;
+      try {
+        await this.save({ name: name.value, folder: folder.value });
+        this.close();
+      } catch (e) {
+        error.setText(String(e).replace(/^Error: /, ""));
+      } finally {
+        save.disabled = false;
+      }
+    };
+    save.onclick = () => void submit();
+    this.contentEl.onkeydown = (e) => {
+      if (e.key === "Enter" && !e.isComposing) {
+        e.preventDefault();
+        void submit();
+      }
+    };
+    name.focus();
+    name.select();
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
+var DraftLibraryModal = class extends import_obsidian5.Modal {
+  constructor(plugin) {
+    super(plugin.app);
+    this.plugin = plugin;
+  }
+  async onOpen() {
+    this.modalEl.addClass("code-links-dialog");
+    this.titleEl.setText("Drafts and unfinished creations");
+    const host = this.contentEl;
+    host.setText("Loading\u2026");
+    try {
+      const [drafts, created] = await Promise.all([this.plugin.call("edit-list"), this.plugin.call("new-list")]);
+      host.empty();
+      const items = [...drafts.sessions.filter((s) => ["editing", "saving", "promoted"].includes(s.state)), ...created.creations.filter((r) => !r.sandbox)];
+      if (!items.length && !drafts.issues?.length) host.createDiv({ text: "No unfinished drafts or creations." });
+      for (const item of items) {
+        const row = host.createDiv("code-links-draft-row");
+        row.createDiv({ text: item.raw || item.relative, cls: "code-links-draft-name" });
+        row.createDiv({ text: [item.kind === "experiment" ? "Local sandbox" : item.kind || "Script", item.state, item.note].filter(Boolean).join(" \xB7 "), cls: "code-links-create-hint" });
+        const actions = row.createDiv("code-links-draft-actions");
+        if (item.raw) actions.createEl("button", { text: "Copy block link" }).onclick = () => void navigator.clipboard.writeText(item.raw);
+        if (item.note) actions.createEl("button", { text: "Open note" }).onclick = () => {
+          void this.plugin.app.workspace.openLinkText(item.note, "");
+          this.close();
+        };
+      }
+      for (const issue of drafts.issues || []) host.createDiv({ text: "Draft preserved for recovery: " + issue.path + " \u2014 " + issue.error, cls: "code-links-dialog-error" });
+    } catch (error) {
+      host.setText(String(error));
+    }
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
+var RunSettingsModal = class extends import_obsidian5.Modal {
+  constructor(plugin, target, changed) {
+    super(plugin.app);
+    this.plugin = plugin;
+    this.target = target;
+    this.changed = changed;
+  }
+  async onOpen() {
+    this.modalEl.addClass("code-links-dialog", "code-links-new-script");
+    this.titleEl.setText("Script run settings");
+    try {
+      const saved = await this.plugin.call("new-settings", { target: this.target });
+      const fields = this.contentEl.createDiv("code-links-create-fields");
+      const field = (title, value, placeholder) => {
+        const row = fields.createEl("label", { cls: "code-links-create-field" });
+        row.createSpan({ text: title });
+        return row.createEl("input", { value, attr: { placeholder, spellcheck: "false" } });
+      };
+      const cwd = field("Run from", saved.settings.cwd || "script", "script, root, or vault folder");
+      const interpreter = field("Interpreter", saved.settings.interpreter || "", "Language default");
+      const args = field("Arguments", saved.settings.args ? JSON.stringify(saved.settings.args) : "", 'JSON list, e.g. ["--steps", "10"]');
+      const timeout = field("Timeout (s)", saved.settings.timeout?.toString() || "", "300");
+      const error = this.contentEl.createDiv("code-links-dialog-error"), footer = this.contentEl.createDiv("code-links-dialog-footer");
+      footer.createEl("button", { text: "Cancel" }).onclick = () => this.close();
+      const save = footer.createEl("button", { text: "Save settings", cls: "mod-cta" });
+      const submit = async () => {
+        if (save.disabled) return;
+        save.disabled = true;
+        try {
+          const settings = {};
+          if (cwd.value.trim() && cwd.value.trim() !== "script") settings.cwd = cwd.value.trim();
+          if (interpreter.value.trim()) settings.interpreter = interpreter.value.trim();
+          if (args.value.trim()) settings.args = JSON.parse(args.value);
+          if (timeout.value.trim()) settings.timeout = Number(timeout.value);
+          await this.plugin.call("new-settings", { target: this.target, settings, expected_sha256: saved.sha256 });
+          this.changed();
+          this.close();
+        } catch (e) {
+          error.setText(String(e).replace(/^Error: /, ""));
+        } finally {
+          save.disabled = false;
+        }
+      };
+      save.onclick = () => void submit();
+      this.contentEl.onkeydown = (e) => {
+        if (e.key === "Enter" && !e.isComposing) {
+          e.preventDefault();
+          void submit();
+        }
+      };
+    } catch (error) {
+      this.contentEl.setText(String(error));
+    }
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
+
+// edit-fragments.ts
+var import_state3 = require("@codemirror/state");
+var import_view3 = require("@codemirror/view");
+var setSegments = import_state3.StateEffect.define();
+var segments = import_state3.StateField.define({
+  create: () => [],
+  update(value, transaction) {
+    for (const effect of transaction.effects) if (effect.is(setSegments)) return effect.value;
+    return transaction.docChanged ? value.map((s) => ({ ...s, from: transaction.changes.mapPos(s.from, -1), to: transaction.changes.mapPos(s.to, 1) })) : value;
+  }
+});
+var protectGaps = import_state3.EditorState.transactionFilter.of((transaction) => {
+  if (!transaction.docChanged) return transaction;
+  const parts = transaction.startState.field(segments);
+  let valid = true;
+  transaction.changes.iterChanges((from, to) => {
+    if (!parts.some((s) => from >= s.from && to <= s.to)) valid = false;
+  });
+  return valid ? transaction : [];
+});
+function assembled(texts, lines) {
+  let doc = "";
+  const parts = [];
+  texts.forEach((text, index) => {
+    if (index) doc += "\n\u22EF omitted lines \u22EF\n";
+    const from = doc.length;
+    doc += text;
+    parts.push({ from, to: doc.length, line: lines[index] });
+  });
+  return { doc, parts };
+}
+function draftTexts(state) {
+  return state.field(segments).map((s) => state.doc.sliceString(s.from, s.to));
+}
+function sourceLine(number, state) {
+  if (number < 1 || number > state.doc.lines) return String(number);
+  const at = state.doc.line(number).from;
+  const part = state.field(segments).find((s) => at >= s.from && at <= s.to);
+  return part ? String(part.line + number - state.doc.lineAt(part.from).number) : "\xB7";
+}
+var gapStyle = import_view3.ViewPlugin.fromClass(class {
+  constructor(view) {
+    this.decorations = this.build(view);
+  }
+  update(update) {
+    if (update.docChanged) this.decorations = this.build(update.view);
+  }
+  build(view) {
+    return import_view3.Decoration.set(view.state.field(segments).slice(1).map((s) => import_view3.Decoration.line({ class: "code-links-edit-gap" }).range(view.state.doc.lineAt(s.from - 1).from)));
+  }
+}, { decorations: (value) => value.decorations });
+
+// inline-edit.ts
+var key = (note, raw) => JSON.stringify([note, raw]);
+var running = (result) => !!result && ["queued", "starting", "running", "stopping"].includes(result.state);
+var InlineEdits = class {
+  constructor(plugin) {
+    this.plugin = plugin;
+    this.drafts = /* @__PURE__ */ new Map();
+  }
+  async initialize() {
+    if (!this.plugin.settings.inlineEditing) return;
+    const { sessions, issues } = await this.plugin.call("edit-list");
+    if (issues?.length) new import_obsidian6.Notice("Some saved drafts need recovery. Open Code Links: Sandbox drafts and unfinished creations.");
+    for (const session of sessions) if (["editing", "saving"].includes(session.state)) this.remember(session);
+  }
+  remember(session) {
+    const d = { session, editable: new import_state4.Compartment(), persisted: session.draft.slice(), busy: false, listeners: /* @__PURE__ */ new Set(), refresh: /* @__PURE__ */ new Set(), views: /* @__PURE__ */ new Set() };
+    this.drafts.set(key(session.note, session.raw), d);
+    return d;
+  }
+  texts(d) {
+    return d.state ? draftTexts(d.state) : d.session.draft.slice();
+  }
+  dirty(d) {
+    return this.texts(d).some((s, i) => s !== d.session.fragments[i].text);
+  }
+  find(note, raw) {
+    const id2 = raw.match(/^!\{\{sandbox:([a-f0-9]{32})[|}]/)?.[1];
+    return id2 ? [...this.drafts.values()].find((d) => d.session.id === id2) : this.drafts.get(key(note, raw));
+  }
+  has(note, raw) {
+    return !!this.find(note, raw);
+  }
+  async attachSandbox(note, raw) {
+    if (this.find(note, raw)) return { state: "editing" };
+    const id2 = raw.match(/^!\{\{sandbox:([a-f0-9]{32})[|}]/)?.[1];
+    if (!id2) throw Error("Invalid sandbox link");
+    const session = await this.plugin.call("experiment-inspect", { id: id2 });
+    if (session.state === "editing") this.remember(session);
+    return session;
+  }
+  focusNext(note, raw) {
+    this.focusRequest = { note, raw, until: Date.now() + 3e3 };
+    const view = [...this.find(note, raw)?.views || []].find((v) => v.dom.isConnected);
+    if (view) {
+      this.focusRequest = void 0;
+      requestAnimationFrame(() => {
+        if (view.dom.isConnected) {
+          view.dom.scrollIntoView({ block: "nearest" });
+          view.dispatch({ selection: { anchor: view.state.doc.length } });
+          view.focus();
+        }
+      });
+    }
+  }
+  async begin(note, raw, experiment = false) {
+    if (experiment && !runnable(linkPath(raw))) throw Error("This language does not support execution or experiments");
+    if (!this.plugin.settings.inlineEditing) throw Error("Inline editing is not enabled in this vault");
+    const existing = this.drafts.get(key(note, raw));
+    if (existing) return;
+    if (raw.startsWith("!{{sandbox:")) {
+      await this.attachSandbox(note, raw);
+      return;
+    }
+    this.remember(await this.plugin.call(experiment ? "experiment-start" : "edit-start", { raw, note }));
+  }
+  schedule(d) {
+    clearTimeout(d.timer);
+    d.timer = setTimeout(() => {
+      d.timer = void 0;
+      void this.flush(d).catch((e) => new import_obsidian6.Notice("Draft not saved: " + String(e)));
+    }, 650);
+  }
+  async flush(d) {
+    clearTimeout(d.timer);
+    d.timer = void 0;
+    if (d.writing) {
+      await d.writing;
+      return this.flush(d);
+    }
+    const texts = this.texts(d);
+    if (JSON.stringify(texts) === JSON.stringify(d.persisted)) return;
+    d.writing = this.plugin.call("edit-draft", { id: d.session.id, revision: d.session.revision, fragments: texts }).then((s) => {
+      d.session = s;
+      d.persisted = texts;
+    }).finally(() => {
+      d.writing = void 0;
+    });
+    await d.writing;
+    if (JSON.stringify(this.texts(d)) !== JSON.stringify(d.persisted)) return this.flush(d);
+  }
+  async flushAll() {
+    for (const d of this.drafts.values()) await this.flush(d);
+  }
+  repaint(note) {
+    for (const d of this.drafts.values()) if (d.session.note === note || d.session.new_script) for (const f of d.listeners) f();
+  }
+  dispose() {
+    for (const d of this.drafts.values()) clearTimeout(d.poll);
+  }
+  async pollExperiment(d) {
+    clearTimeout(d.poll);
+    d.poll = void 0;
+    if (d.polling) return d.polling;
+    d.polling = this.plugin.call("experiment-output", { id: d.session.id }).then((result) => {
+      d.experiment = result;
+      for (const f of d.listeners) f();
+    }).catch((error) => {
+      d.experiment = { state: "unavailable", revision: -1, valid: false, error: String(error) };
+      for (const f of d.listeners) f();
+    }).finally(() => {
+      d.polling = void 0;
+      if (d.listeners.size && running(d.experiment)) d.poll = setTimeout(() => void this.pollExperiment(d), 750);
+    });
+    await d.polling;
+  }
+  async runExperiment(d, note = d.session.note, raw = d.session.raw) {
+    if (!runnable(d.session.path)) {
+      new import_obsidian6.Notice("This language does not support execution or experiments");
+      return;
+    }
+    if (d.busy) return;
+    d.busy = true;
+    for (const f of d.listeners) f();
+    try {
+      if (running(d.experiment)) await this.plugin.call("experiment-stop", { id: d.session.id });
+      else {
+        await this.flush(d);
+        await this.plugin.call("experiment-run", { id: d.session.id, revision: d.session.revision });
+        this.plugin.outputs.setPreference(note, raw, { open: true });
+      }
+      await this.pollExperiment(d);
+    } catch (error) {
+      new import_obsidian6.Notice(String(error));
+    } finally {
+      d.busy = false;
+      for (const f of d.listeners) f();
+    }
+  }
+  async save(d, run) {
+    if (run && !runnable(d.session.path)) {
+      new import_obsidian6.Notice("This language does not support execution");
+      return;
+    }
+    if (d.session.kind === "experiment") {
+      try {
+        if (run) await this.runExperiment(d);
+        else await this.flush(d);
+      } catch (error) {
+        new import_obsidian6.Notice(String(error));
+      }
+      return;
+    }
+    if (d.busy) return;
+    d.busy = true;
+    for (const f of d.listeners) f();
+    try {
+      await this.flush(d);
+      await this.plugin.ensureSavedNotes();
+      const preview = await this.plugin.call("edit-preview", { id: d.session.id });
+      const study = this.plugin.app.plugins.plugins["study-studio"];
+      const api = study?.codeAnnotationApi;
+      const report = api?.sourceImpact ? await api.sourceImpact(d.session.path) : void 0;
+      if (study && !report) throw Error("Update Study Studio before saving annotated source");
+      const acknowledge = [];
+      if (report?.records.length) {
+        const allowed = await new Promise((resolve) => {
+          const menu = new import_obsidian6.Menu();
+          menu.addItem((i) => i.setTitle(`Save; preserve ${report.records.length} annotation(s), which may need review`).setIcon("check").onClick(() => resolve(true)));
+          menu.addItem((i) => i.setTitle("Keep editing").onClick(() => resolve(false)));
+          menu.onHide(() => resolve(false));
+          const host = this.plugin.app.workspace.containerEl.getBoundingClientRect();
+          menu.showAtPosition({ x: host.x + host.width / 2, y: host.y + 120 });
+        });
+        if (!allowed) return;
+        acknowledge.push(...report.records.map((r) => r.id));
+      }
+      await this.plugin.ensureSavedNotes();
+      const saved = await this.plugin.call("edit-save", { id: d.session.id, revision: preview.revision, annotation_report: report, acknowledge, config_dir: this.plugin.app.vault.configDir, study_enabled: !!study });
+      const pref = this.plugin.outputs.preference(saved.note, saved.raw);
+      this.plugin.outputs.setPreference(saved.note, saved.new_raw || saved.raw, { ...pref, open: run || pref.open });
+      this.drafts.delete(key(d.session.note, d.session.raw));
+      d.session = saved;
+      this.plugin.outputs.sourceChanged(saved.path);
+      for (const refresh of [...d.refresh]) refresh(saved.new_raw);
+      if (run) await this.plugin.call("run-start", { raws: [saved.new_raw || saved.raw], expected_sha256: saved.submitted_sha256, force: true });
+      new import_obsidian6.Notice(run ? "Saved and queued" : "Source saved");
+    } catch (error) {
+      new import_obsidian6.Notice(String(error));
+    } finally {
+      d.busy = false;
+      for (const f of d.listeners) f();
+    }
+  }
+  async discard(d) {
+    if (d.busy) return;
+    d.busy = true;
+    for (const f of d.listeners) f();
+    try {
+      await this.flush(d);
+      if (d.session.kind === "experiment") {
+        await this.plugin.call("experiment-stop", { id: d.session.id });
+        for (let tries = 0; tries < 20; tries++) {
+          const result = await this.plugin.call("experiment-status", { id: d.session.id });
+          if (!running(result)) break;
+          await new Promise((r) => setTimeout(r, 250));
+        }
+      }
+      await this.plugin.call(d.session.kind === "experiment" ? "experiment-discard" : "edit-discard", { id: d.session.id, revision: d.session.revision });
+      clearTimeout(d.poll);
+      this.drafts.delete(key(d.session.note, d.session.raw));
+      for (const refresh of [...d.refresh]) refresh();
+    } catch (error) {
+      new import_obsidian6.Notice(String(error));
+    } finally {
+      d.busy = false;
+      for (const f of d.listeners) f();
+    }
+  }
+  mount(host, note, raw, extensions, refresh, replaceLink) {
+    const d = this.find(note, raw);
+    if (!d) return;
+    const experiment = d.session.kind === "experiment";
+    const canRun = runnable(d.session.path);
+    host.empty();
+    host.addClass("code-links-editing");
+    host.toggleClass("code-links-experiment", experiment);
+    const header = host.createDiv("code-links-header");
+    header.createSpan({ text: raw.split("|")[1]?.replace(/}}.*$/, "") || d.session.path.split("/").pop(), cls: "code-links-target" });
+    const state = header.createSpan({ cls: "code-links-edit-state" });
+    state.title = experiment ? d.session.new_script ? "Local sandbox on this Mac \xB7 saves as " + d.session.path : "Disposable working copy of " + d.session.path + ". The original source is never changed." : "Saved output is hidden while editing. Source changes only when you save.";
+    if (d.session.scope_warning) {
+      state.title += " \xB7 " + d.session.scope_warning;
+      host.createDiv({ text: d.session.scope_warning, cls: "code-links-scope-warning" });
+    }
+    if (d.session.state === "saving") {
+      state.setText("Save interrupted");
+      host.createDiv({ cls: "code-links-edit-message", text: "Recovery is required before further edits. Transaction " + d.session.transaction });
+      return () => host.removeClass("code-links-editing");
+    }
+    const buttons = [];
+    const button = (icon, title, action) => {
+      const b = header.createEl("button", { cls: "clickable-icon", attr: { type: "button", title, "aria-label": title } });
+      (0, import_obsidian6.setIcon)(b, icon);
+      b.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        action(e);
+      };
+      buttons.push(b);
+      return b;
+    };
+    let experimentRun;
+    const copyCode = () => host.ownerDocument.defaultView.navigator.clipboard.writeText(this.texts(d).join("\n\u22EF omitted lines \u22EF\n"));
+    const copyOutput = async () => {
+      try {
+        await this.flush(d);
+        const result = await this.plugin.call("experiment-output", { id: d.session.id, full: true });
+        if (!result.valid) throw Error("The draft changed; run it again before copying output");
+        await host.ownerDocument.defaultView.navigator.clipboard.writeText(result.text);
+      } catch (error) {
+        new import_obsidian6.Notice(String(error));
+      }
+    };
+    const saveAs = () => new SaveSandboxModal(this.plugin, d.session.new_script, async (destination) => {
+      if (d.busy) throw Error("Wait for the current action to finish");
+      d.busy = true;
+      for (const f of d.listeners) f();
+      try {
+        await this.flush(d);
+        const saved = await this.plugin.call("experiment-save-as", { id: d.session.id, revision: d.session.revision, destination });
+        await (replaceLink ? replaceLink(raw, saved.raw) : this.plugin.replace(note, raw, saved.raw));
+        await this.plugin.call("new-complete", { id: saved.id });
+        await this.plugin.call("experiment-discard", { id: d.session.id, revision: d.session.revision });
+        clearTimeout(d.poll);
+        this.drafts.delete(key(d.session.note, d.session.raw));
+        for (const f of [...d.refresh]) f();
+      } finally {
+        d.busy = false;
+        for (const f of d.listeners) f();
+      }
+    }).open();
+    if (experiment) {
+      if (canRun) experimentRun = button("play", "Run experiment", () => void this.runExperiment(d, note, raw));
+      button("copy", "Copy edited excerpt", () => void copyCode());
+      if (d.session.new_script) button("file-plus", "Save as script", () => void saveAs());
+    } else {
+      button("check", "Save source", () => void this.save(d, false));
+      if (canRun) {
+        const saveRun = button("check", "Save and run whole file", () => void this.save(d, true));
+        const badge = saveRun.createSpan({ cls: "code-links-save-run-badge" });
+        (0, import_obsidian6.setIcon)(badge, "play");
+        saveRun.addClass("code-links-save-run");
+      }
+    }
+    const confirmDiscard = (_event) => {
+      if (!this.dirty(d)) {
+        void this.discard(d);
+        return;
+      }
+      const menu = new import_obsidian6.Menu();
+      menu.addItem((i) => i.setTitle("Discard these edits").setIcon("trash-2").onClick(() => void this.discard(d)));
+      menu.addItem((i) => i.setTitle("Keep editing"));
+      const anchor = header.getBoundingClientRect();
+      menu.showAtPosition({ x: Math.max(anchor.left, anchor.right - 24), y: anchor.bottom });
+    };
+    button("x", experiment ? "Discard experiment" : "Discard draft", confirmDiscard);
+    const body = host.createDiv("code-links-code code-links-edit-code");
+    const maxLines = Number(raw.match(/\{height=(\d+)\}$/)?.[1] || 10);
+    body.style.maxHeight = `calc(${maxLines} * var(--code-links-line-height,19.5px))`;
+    if (!d.state) {
+      const content = assembled(d.session.draft, d.session.fragments.map((f) => f.start));
+      d.state = import_state4.EditorState.create({ doc: content.doc, extensions: [...extensions(d.session.path), history(), segments, protectGaps, gapStyle, d.editable.of([]), import_view4.keymap.of([{ key: "Mod-s", run: () => {
+        void this.save(d, false);
+        return true;
+      } }, { key: "Mod-Enter", run: () => {
+        if (!runnable(d.session.path)) {
+          new import_obsidian6.Notice("This language does not support execution");
+          return true;
+        }
+        void this.save(d, true);
+        return true;
+      } }, ...historyKeymap, ...defaultKeymap, indentWithTab]), (0, import_view4.lineNumbers)({ formatNumber: sourceLine })] }).update({ effects: setSegments.of(content.parts) }).state;
+    }
+    body.style.height = `calc(${Math.min(maxLines, Math.max(1, d.state.doc.lines))} * var(--code-links-line-height,19.5px))`;
+    const view = new import_view4.EditorView({ parent: body, root: host.ownerDocument, state: d.state, dispatchTransactions: (transactions) => {
+      view.update(transactions);
+      d.state = view.state;
+      if (transactions.some((t) => t.docChanged)) {
+        this.schedule(d);
+        for (const listener of d.listeners) listener();
+      }
+    } });
+    const drawer = experiment && canRun ? host.createEl("details", { cls: "code-links-output" }) : void 0;
+    let outputStatus, outputText;
+    if (drawer) {
+      const summary = drawer.createEl("summary", { cls: "code-links-output-summary" });
+      summary.createSpan({ text: "Experiment output", cls: "code-links-output-label" });
+      outputStatus = summary.createSpan({ cls: "code-links-output-status" });
+      const copy = summary.createEl("button", { cls: "clickable-icon code-links-output-copy", attr: { title: "Copy experiment output", "aria-label": "Copy experiment output" } });
+      (0, import_obsidian6.setIcon)(copy, "copy");
+      copy.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        void copyOutput();
+      };
+      outputText = drawer.createDiv("code-links-output-body").createEl("pre", { cls: "code-links-output-text" });
+      drawer.open = !!this.plugin.outputs.preference(note, raw).open;
+      summary.onclick = (e) => {
+        if (e.target.closest("button")) return;
+        e.preventDefault();
+        drawer.open = !drawer.open;
+        this.plugin.outputs.setPreference(note, raw, { open: drawer.open });
+        paint();
+      };
+    }
+    let busy = false, rows = -1;
+    const paint = () => {
+      if (d.state && view.state !== d.state) view.setState(d.state);
+      const nextRows = Math.min(maxLines, Math.max(1, view.state.doc.lines));
+      if (nextRows !== rows) {
+        rows = nextRows;
+        body.style.height = `calc(${rows} * var(--code-links-line-height,19.5px))`;
+      }
+      state.setText(experiment ? d.session.new_script ? "Sandbox draft" : "Experiment" : d.busy ? "Saving\u2026" : this.dirty(d) ? "Unsaved edits" : "Editing");
+      for (const b of buttons) b.disabled = d.busy;
+      if (experimentRun) {
+        const active2 = running(d.experiment);
+        (0, import_obsidian6.setIcon)(experimentRun, active2 ? "square" : "play");
+        experimentRun.title = active2 ? "Stop experiment" : "Run experiment";
+        experimentRun.setAttribute("aria-label", experimentRun.title);
+      }
+      if (drawer && outputStatus && outputText) {
+        const result = d.experiment;
+        drawer.hidden = !result || result.state === "none";
+        host.toggleClass("has-output", !drawer.hidden);
+        const valid = result?.valid && result.revision === d.session.revision && JSON.stringify(this.texts(d)) === JSON.stringify(d.persisted);
+        const labels = { ok: "Finished", failed: "Failed", queued: "Queued", starting: "Starting\u2026", running: "Running", stopped: "Stopped", timeout: "Timed out", interrupted: "Interrupted", unavailable: "Unavailable" };
+        outputStatus.setText(result?.cleanup_pending ? "Cleanup pending" : !valid && !running(result) ? "Edited \u2014 run again" : (labels[result?.state || ""] || "") + (result?.duration_s != null ? " \xB7 " + (result.duration_s < 0.1 ? "<0.1" : result.duration_s.toFixed(1)) + " s" : ""));
+        outputStatus.title = [result?.error, result?.launcher, ...Object.entries(result?.environment_overrides || {}).map(([name, value]) => `${name}=${value}`)].filter(Boolean).join("\n");
+        drawer.style.setProperty("--code-links-output-lines", String(this.plugin.outputs.preference(note, raw).lines || 12));
+        drawer.open = !!this.plugin.outputs.preference(note, raw).open;
+        const text = drawer.open && valid ? (result?.text || "").replace(/\n$/, "") : "";
+        if (outputText.textContent !== text) outputText.textContent = text;
+      }
+      if (busy !== d.busy) {
+        busy = d.busy;
+        view.dispatch({ effects: d.editable.reconfigure([import_state4.EditorState.readOnly.of(busy), import_view4.EditorView.editable.of(!busy)]) });
+      }
+    };
+    d.listeners.add(paint);
+    d.refresh.add(refresh);
+    d.views.add(view);
+    paint();
+    if (this.focusRequest?.note === note && this.focusRequest.raw === raw) {
+      const focus = this.focusRequest;
+      this.focusRequest = void 0;
+      requestAnimationFrame(() => {
+        if (Date.now() < focus.until && host.isConnected) {
+          host.scrollIntoView({ block: "nearest" });
+          view.dispatch({ selection: { anchor: view.state.doc.length } });
+          view.focus();
+        }
+      });
+    }
+    host.oncontextmenu = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const menu = new import_obsidian6.Menu();
+      menu.addItem((i) => i.setTitle("Copy edited excerpt").setIcon("copy").onClick(copyCode));
+      if (!experiment) menu.addItem((i) => i.setTitle("Save source").setIcon("check").onClick(() => void this.save(d, false)));
+      if (canRun) menu.addItem((i) => i.setTitle(experiment ? "Run experiment" : "Save and run whole file").setIcon("play").onClick(() => void this.save(d, true)));
+      menu.addItem((i) => i.setTitle(experiment ? "Discard experiment" : "Discard draft").setIcon("x").onClick(() => confirmDiscard(e)));
+      if (experiment) {
+        if (d.session.new_script) menu.addItem((i) => i.setTitle("Save as script").setIcon("file-plus").onClick(saveAs));
+        menu.addSeparator();
+        menu.addItem((i) => i.setTitle("Copy experiment output").setIcon("copy").onClick(copyOutput));
+        menu.addItem((i) => i.setTitle("Maximum visible output lines\u2026").setIcon("rows-3").onClick(() => this.plugin.outputHeight(this.plugin.outputs.preference(note, raw).lines || 12, (n) => this.plugin.outputs.setPreference(note, raw, { lines: n }))));
+        this.plugin.outputs.noteMenu(menu, note);
+      }
+      menu.showAtMouseEvent(e);
+    };
+    if (experiment && canRun) void this.pollExperiment(d);
+    return () => {
+      d.listeners.delete(paint);
+      d.refresh.delete(refresh);
+      d.views.delete(view);
+      if (!d.listeners.size) clearTimeout(d.poll);
+      view.destroy();
+      host.removeClass("code-links-editing", "code-links-experiment", "has-output");
+    };
+  }
+};
+
+// quit-flush.ts
+async function boundedDraftFlush(flush, limitMs = 3e3) {
+  let timer;
+  try {
+    return await Promise.race([
+      Promise.resolve().then(flush).then(() => "saved", () => "failed"),
+      new Promise((resolve) => {
+        timer = setTimeout(() => resolve("timeout"), limitMs);
+      })
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+// code-language.ts
+var import_view7 = require("@codemirror/view");
+var import_language6 = require("@codemirror/language");
+
+// node_modules/@lezer/lr/dist/index.js
+var import_common2 = require("@lezer/common");
 var Stack = class _Stack {
   /**
   @internal
@@ -1245,7 +4414,7 @@ function overrides(token, prev, tableData, tableOffset) {
 var verbose = typeof process != "undefined" && process.env && /\bparse\b/.test(process.env.LOG);
 var stackIDs = null;
 function cutAt(tree, pos, side) {
-  let cursor = tree.cursor(import_common.IterMode.IncludeAnonymous);
+  let cursor = tree.cursor(import_common2.IterMode.IncludeAnonymous);
   cursor.moveTo(pos);
   for (; ; ) {
     if (!(side < 0 ? cursor.childBefore(pos) : cursor.childAfter(pos)))
@@ -1325,13 +4494,13 @@ var FragmentCursor = class {
         this.nextStart = start;
         return null;
       }
-      if (next instanceof import_common.Tree) {
+      if (next instanceof import_common2.Tree) {
         if (start == pos) {
           if (start < this.safeFrom)
             return null;
           let end = start + next.length;
           if (end <= this.safeTo) {
-            let lookAhead = next.prop(import_common.NodeProp.lookAhead);
+            let lookAhead = next.prop(import_common2.NodeProp.lookAhead);
             if (!lookAhead || end + lookAhead < this.fragment.to)
               return next;
           }
@@ -1608,16 +4777,16 @@ var Parse = class {
       let strictCx = stack.curContext && stack.curContext.tracker.strict, cxHash = strictCx ? stack.curContext.hash : 0;
       for (let cached = this.fragments.nodeAt(start); cached; ) {
         let match = this.parser.nodeSet.types[cached.type.id] == cached.type ? parser4.getGoto(stack.state, cached.type.id) : -1;
-        if (match > -1 && cached.length && (!strictCx || (cached.prop(import_common.NodeProp.contextHash) || 0) == cxHash)) {
+        if (match > -1 && cached.length && (!strictCx || (cached.prop(import_common2.NodeProp.contextHash) || 0) == cxHash)) {
           stack.useNode(cached, match);
           if (verbose)
             console.log(base + this.stackID(stack) + ` (via reuse of ${parser4.getName(cached.type.id)})`);
           return true;
         }
-        if (!(cached instanceof import_common.Tree) || cached.children.length == 0 || cached.positions[0] > 0)
+        if (!(cached instanceof import_common2.Tree) || cached.children.length == 0 || cached.positions[0] > 0)
           break;
         let inner = cached.children[0];
-        if (inner instanceof import_common.Tree && cached.positions[0] == 0)
+        if (inner instanceof import_common2.Tree && cached.positions[0] == 0)
           cached = inner;
         else
           break;
@@ -1725,7 +4894,7 @@ var Parse = class {
   // Convert the stack's buffer to a syntax tree.
   stackToTree(stack) {
     stack.close();
-    return import_common.Tree.build({
+    return import_common2.Tree.build({
       buffer: StackBufferCursor.create(stack),
       nodeSet: this.parser.nodeSet,
       topID: this.topTerm,
@@ -1778,7 +4947,7 @@ var ContextTracker = class {
     this.strict = spec.strict !== false;
   }
 };
-var LRParser = class _LRParser extends import_common.Parser {
+var LRParser = class _LRParser extends import_common2.Parser {
   /**
   @internal
   */
@@ -1802,7 +4971,7 @@ var LRParser = class _LRParser extends import_common.Parser {
       for (let propSpec of spec.nodeProps) {
         let prop = propSpec[0];
         if (typeof prop == "string")
-          prop = import_common.NodeProp[prop];
+          prop = import_common2.NodeProp[prop];
         for (let i = 1; i < propSpec.length; ) {
           let next = propSpec[i++];
           if (next >= 0) {
@@ -1815,7 +4984,7 @@ var LRParser = class _LRParser extends import_common.Parser {
           }
         }
       }
-    this.nodeSet = new import_common.NodeSet(nodeNames.map((name, i) => import_common.NodeType.define({
+    this.nodeSet = new import_common2.NodeSet(nodeNames.map((name, i) => import_common2.NodeType.define({
       name: i >= this.minRepeatTerm ? void 0 : name,
       id: i,
       props: nodeProps[i],
@@ -1826,7 +4995,7 @@ var LRParser = class _LRParser extends import_common.Parser {
     if (spec.propSources)
       this.nodeSet = this.nodeSet.extend(...spec.propSources);
     this.strict = false;
-    this.bufferLength = import_common.DefaultBufferLength;
+    this.bufferLength = import_common2.DefaultBufferLength;
     let tokenArray = decodeArray(spec.tokenData);
     this.context = spec.context;
     this.specializerSpecs = spec.specialized || [];
@@ -2157,7 +5326,7 @@ var newline = 10;
 var carriageReturn = 13;
 var space = 32;
 var tab = 9;
-var hash = 35;
+var hash2 = 35;
 var parenOpen = 40;
 var dot = 46;
 var braceOpen = 123;
@@ -2210,7 +5379,7 @@ var newlines = new ExternalTokenizer((input, stack) => {
       input.advance();
       spaces2++;
     }
-    if (input.next == newline || input.next == carriageReturn || input.next == hash)
+    if (input.next == newline || input.next == carriageReturn || input.next == hash2)
       input.acceptToken(blankLineStart, -spaces2);
   } else if (isLineBreak(input.next)) {
     input.acceptToken(newline$1, 1);
@@ -2229,7 +5398,7 @@ var indentation = new ExternalTokenizer((input, stack) => {
       input.advance();
       chars++;
     }
-    if (depth != context.indent && input.next != newline && input.next != carriageReturn && input.next != hash) {
+    if (depth != context.indent && input.next != newline && input.next != carriageReturn && input.next != hash2) {
       if (depth < context.indent) input.acceptToken(dedent, -chars);
       else input.acceptToken(indent);
     }
@@ -2303,7 +5472,7 @@ var legacyPrint = new ExternalTokenizer((input) => {
   for (let off = 0; ; off++) {
     let next = input.peek(off);
     if (next == space || next == tab) continue;
-    if (next != parenOpen && next != dot && next != newline && next != carriageReturn && next != hash)
+    if (next != parenOpen && next != dot && next != newline && next != carriageReturn && next != hash2)
       input.acceptToken(printKeyword);
     return;
   }
@@ -2438,13 +5607,13 @@ var parser = LRParser.deserialize({
 });
 
 // node_modules/@codemirror/lang-python/dist/index.js
-var import_language2 = require("@codemirror/language");
-var import_common2 = require("@lezer/common");
+var import_language3 = require("@codemirror/language");
+var import_common3 = require("@lezer/common");
 
 // node_modules/@codemirror/autocomplete/dist/index.js
-var import_state2 = require("@codemirror/state");
-var import_view2 = require("@codemirror/view");
-var import_language = require("@codemirror/language");
+var import_state5 = require("@codemirror/state");
+var import_view5 = require("@codemirror/view");
+var import_language2 = require("@codemirror/language");
 function toSet(chars) {
   let flat = Object.keys(chars).join("");
   let words2 = /\w/.test(flat);
@@ -2472,7 +5641,7 @@ function completeFromList(list) {
 }
 function ifNotIn(nodes, source) {
   return (context) => {
-    for (let pos = (0, import_language.syntaxTree)(context.state).resolveInner(context.pos, -1); pos; pos = pos.parent) {
+    for (let pos = (0, import_language2.syntaxTree)(context.state).resolveInner(context.pos, -1); pos; pos = pos.parent) {
       if (nodes.indexOf(pos.name) > -1)
         return null;
       if (pos.type.isTop)
@@ -2481,9 +5650,9 @@ function ifNotIn(nodes, source) {
     return source(context);
   };
 }
-var pickedCompletion = /* @__PURE__ */ import_state2.Annotation.define();
+var pickedCompletion = /* @__PURE__ */ import_state5.Annotation.define();
 var windows = typeof navigator == "object" && /* @__PURE__ */ /Win/.test(navigator.platform);
-var baseTheme = /* @__PURE__ */ import_view2.EditorView.baseTheme({
+var baseTheme = /* @__PURE__ */ import_view5.EditorView.baseTheme({
   ".cm-tooltip.cm-tooltip-autocomplete": {
     "& > ul": {
       fontFamily: "monospace",
@@ -2623,8 +5792,8 @@ var FieldRange = class _FieldRange {
     this.to = to;
   }
   map(changes) {
-    let from = changes.mapPos(this.from, -1, import_state2.MapMode.TrackDel);
-    let to = changes.mapPos(this.to, 1, import_state2.MapMode.TrackDel);
+    let from = changes.mapPos(this.from, -1, import_state5.MapMode.TrackDel);
+    let to = changes.mapPos(this.to, 1, import_state5.MapMode.TrackDel);
     return from == null || to == null ? null : new _FieldRange(this.field, from, to);
   }
 };
@@ -2640,7 +5809,7 @@ var Snippet = class _Snippet {
       if (text.length) {
         let indent2 = baseIndent, tabs = /^\t*/.exec(line)[0].length;
         for (let i = 0; i < tabs; i++)
-          indent2 += state.facet(import_language.indentUnit);
+          indent2 += state.facet(import_language2.indentUnit);
         lineStart.push(pos + indent2.length - tabs);
         line = indent2 + line.slice(tabs);
       }
@@ -2695,7 +5864,7 @@ var Snippet = class _Snippet {
     return new _Snippet(lines, positions);
   }
 };
-var fieldMarker = /* @__PURE__ */ import_view2.Decoration.widget({ widget: /* @__PURE__ */ new class extends import_view2.WidgetType {
+var fieldMarker = /* @__PURE__ */ import_view5.Decoration.widget({ widget: /* @__PURE__ */ new class extends import_view5.WidgetType {
   toDOM() {
     let span = document.createElement("span");
     span.className = "cm-snippetFieldPosition";
@@ -2705,12 +5874,12 @@ var fieldMarker = /* @__PURE__ */ import_view2.Decoration.widget({ widget: /* @_
     return false;
   }
 }() });
-var fieldRange = /* @__PURE__ */ import_view2.Decoration.mark({ class: "cm-snippetField" });
+var fieldRange = /* @__PURE__ */ import_view5.Decoration.mark({ class: "cm-snippetField" });
 var ActiveSnippet = class _ActiveSnippet {
   constructor(ranges, active2) {
     this.ranges = ranges;
     this.active = active2;
-    this.deco = import_view2.Decoration.set(ranges.map((r) => (r.from == r.to ? fieldMarker : fieldRange).range(r.from, r.to)), true);
+    this.deco = import_view5.Decoration.set(ranges.map((r) => (r.from == r.to ? fieldMarker : fieldRange).range(r.from, r.to)), true);
   }
   map(changes) {
     let ranges = [];
@@ -2726,13 +5895,13 @@ var ActiveSnippet = class _ActiveSnippet {
     return sel.ranges.every((range) => this.ranges.some((r) => r.field == this.active && r.from <= range.from && r.to >= range.to));
   }
 };
-var setActive = /* @__PURE__ */ import_state2.StateEffect.define({
+var setActive = /* @__PURE__ */ import_state5.StateEffect.define({
   map(value, changes) {
     return value && value.map(changes);
   }
 });
-var moveToField = /* @__PURE__ */ import_state2.StateEffect.define();
-var snippetState = /* @__PURE__ */ import_state2.StateField.define({
+var moveToField = /* @__PURE__ */ import_state5.StateEffect.define();
+var snippetState = /* @__PURE__ */ import_state5.StateField.define({
   create() {
     return null;
   },
@@ -2749,10 +5918,10 @@ var snippetState = /* @__PURE__ */ import_state2.StateField.define({
       value = null;
     return value;
   },
-  provide: (f) => import_view2.EditorView.decorations.from(f, (val) => val ? val.deco : import_view2.Decoration.none)
+  provide: (f) => import_view5.EditorView.decorations.from(f, (val) => val ? val.deco : import_view5.Decoration.none)
 });
 function fieldSelection(ranges, field) {
-  return import_state2.EditorSelection.create(ranges.filter((r) => r.field == field).map((r) => import_state2.EditorSelection.range(r.from, r.to)));
+  return import_state5.EditorSelection.create(ranges.filter((r) => r.field == field).map((r) => import_state5.EditorSelection.range(r.from, r.to)));
 }
 function snippet(template) {
   let snippet2 = Snippet.parse(template);
@@ -2760,9 +5929,9 @@ function snippet(template) {
     let { text, ranges } = snippet2.instantiate(editor.state, from);
     let { main } = editor.state.selection;
     let spec = {
-      changes: { from, to: to == main.from ? main.to : to, insert: import_state2.Text.of(text) },
+      changes: { from, to: to == main.from ? main.to : to, insert: import_state5.Text.of(text) },
       scrollIntoView: true,
-      annotations: completion ? [pickedCompletion.of(completion), import_state2.Transaction.userEvent.of("input.complete")] : void 0
+      annotations: completion ? [pickedCompletion.of(completion), import_state5.Transaction.userEvent.of("input.complete")] : void 0
     };
     if (ranges.length)
       spec.selection = fieldSelection(ranges, 0);
@@ -2770,7 +5939,7 @@ function snippet(template) {
       let active2 = new ActiveSnippet(ranges, 0);
       let effects = spec.effects = [setActive.of(active2)];
       if (editor.state.field(snippetState, false) === void 0)
-        effects.push(import_state2.StateEffect.appendConfig.of([snippetState, addSnippetKeymap, snippetPointerHandler, baseTheme]));
+        effects.push(import_state5.StateEffect.appendConfig.of([snippetState, addSnippetKeymap, snippetPointerHandler, baseTheme]));
     }
     editor.dispatch(editor.state.update(spec));
   };
@@ -2802,16 +5971,16 @@ var defaultSnippetKeymap = [
   { key: "Tab", run: nextSnippetField, shift: prevSnippetField },
   { key: "Escape", run: clearSnippet }
 ];
-var snippetKeymap = /* @__PURE__ */ import_state2.Facet.define({
+var snippetKeymap = /* @__PURE__ */ import_state5.Facet.define({
   combine(maps) {
     return maps.length ? maps[0] : defaultSnippetKeymap;
   }
 });
-var addSnippetKeymap = /* @__PURE__ */ import_state2.Prec.highest(/* @__PURE__ */ import_view2.keymap.compute([snippetKeymap], (state) => state.facet(snippetKeymap)));
+var addSnippetKeymap = /* @__PURE__ */ import_state5.Prec.highest(/* @__PURE__ */ import_view5.keymap.compute([snippetKeymap], (state) => state.facet(snippetKeymap)));
 function snippetCompletion(template, completion) {
   return { ...completion, apply: snippet(template) };
 }
-var snippetPointerHandler = /* @__PURE__ */ import_view2.EditorView.domEventHandlers({
+var snippetPointerHandler = /* @__PURE__ */ import_view5.EditorView.domEventHandlers({
   mousedown(event, view) {
     let active2 = view.state.field(snippetState, false), pos;
     if (!active2 || (pos = view.posAtCoords({ x: event.clientX, y: event.clientY })) == null)
@@ -2827,14 +5996,14 @@ var snippetPointerHandler = /* @__PURE__ */ import_view2.EditorView.domEventHand
     return true;
   }
 });
-var closedBracket = /* @__PURE__ */ new class extends import_state2.RangeValue {
+var closedBracket = /* @__PURE__ */ new class extends import_state5.RangeValue {
 }();
 closedBracket.startSide = 1;
 closedBracket.endSide = -1;
 var android = typeof navigator == "object" && /* @__PURE__ */ /Android\b/.test(navigator.userAgent);
 
 // node_modules/@codemirror/lang-python/dist/index.js
-var cache = /* @__PURE__ */ new import_common2.NodeWeakMap();
+var cache = /* @__PURE__ */ new import_common3.NodeWeakMap();
 var ScopeNodes = /* @__PURE__ */ new Set([
   "Script",
   "Body",
@@ -2903,7 +6072,7 @@ function getScope(doc, node) {
     let name = doc.sliceString(node2.from, node2.to);
     completions.push({ label: name, type });
   }
-  node.cursor(import_common2.IterMode.IncludeAnonymous).iterate((node2) => {
+  node.cursor(import_common3.IterMode.IncludeAnonymous).iterate((node2) => {
     if (node2.name) {
       let gather = gatherCompletions[node2.name];
       if (gather && gather(node2, def, top) || !top && ScopeNodes.has(node2.name))
@@ -2921,7 +6090,7 @@ function getScope(doc, node) {
 var Identifier = /^[\w\xa1-\uffff][\w\d\xa1-\uffff]*$/;
 var dontComplete = ["String", "FormatString", "Comment", "PropertyName"];
 function localCompletionSource(context) {
-  let inner = (0, import_language2.syntaxTree)(context.state).resolveInner(context.pos, -1);
+  let inner = (0, import_language3.syntaxTree)(context.state).resolveInner(context.pos, -1);
   if (dontComplete.indexOf(inner.name) > -1)
     return null;
   let isWord = inner.name == "VariableName" || inner.to - inner.from < 20 && Identifier.test(context.state.sliceDoc(inner.from, inner.to));
@@ -3178,11 +6347,11 @@ function indentBody(context, node) {
     return null;
   return base + context.unit;
 }
-var pythonLanguage = /* @__PURE__ */ import_language2.LRLanguage.define({
+var pythonLanguage = /* @__PURE__ */ import_language3.LRLanguage.define({
   name: "python",
   parser: /* @__PURE__ */ parser.configure({
     props: [
-      /* @__PURE__ */ import_language2.indentNodeProp.add({
+      /* @__PURE__ */ import_language3.indentNodeProp.add({
         Body: (context) => {
           var _a;
           let body = /^\s*(#|$)/.test(context.textAfter) && innerBody(context) || context.node;
@@ -3201,9 +6370,9 @@ var pythonLanguage = /* @__PURE__ */ import_language2.LRLanguage.define({
             return cx.baseIndent + cx.unit;
           return cx.continue();
         },
-        "TupleExpression ComprehensionExpression ParamList ArgList ParenthesizedExpression": /* @__PURE__ */ (0, import_language2.delimitedIndent)({ closing: ")" }),
-        "DictionaryExpression DictionaryComprehensionExpression SetExpression SetComprehensionExpression": /* @__PURE__ */ (0, import_language2.delimitedIndent)({ closing: "}" }),
-        "ArrayExpression ArrayComprehensionExpression": /* @__PURE__ */ (0, import_language2.delimitedIndent)({ closing: "]" }),
+        "TupleExpression ComprehensionExpression ParamList ArgList ParenthesizedExpression": /* @__PURE__ */ (0, import_language3.delimitedIndent)({ closing: ")" }),
+        "DictionaryExpression DictionaryComprehensionExpression SetExpression SetComprehensionExpression": /* @__PURE__ */ (0, import_language3.delimitedIndent)({ closing: "}" }),
+        "ArrayExpression ArrayComprehensionExpression": /* @__PURE__ */ (0, import_language3.delimitedIndent)({ closing: "]" }),
         MemberExpression: (cx) => cx.baseIndent + cx.unit,
         "String FormatString": () => null,
         Script: (context) => {
@@ -3212,8 +6381,8 @@ var pythonLanguage = /* @__PURE__ */ import_language2.LRLanguage.define({
           return (_a = inner && indentBody(context, inner)) !== null && _a !== void 0 ? _a : context.continue();
         }
       }),
-      /* @__PURE__ */ import_language2.foldNodeProp.add({
-        "ArrayExpression DictionaryExpression SetExpression TupleExpression": import_language2.foldInside,
+      /* @__PURE__ */ import_language3.foldNodeProp.add({
+        "ArrayExpression DictionaryExpression SetExpression TupleExpression": import_language3.foldInside,
         Body: (node, state) => ({ from: node.from + 1, to: node.to - (node.to == state.doc.length ? 0 : 1) }),
         "String FormatString": (node, state) => ({ from: state.doc.lineAt(node.from).to, to: node.to })
       })
@@ -3247,120 +6416,11 @@ var pythonLanguage = /* @__PURE__ */ import_language2.LRLanguage.define({
   }
 });
 function python() {
-  return new import_language2.LanguageSupport(pythonLanguage, [
+  return new import_language3.LanguageSupport(pythonLanguage, [
     pythonLanguage.data.of({ autocomplete: localCompletionSource }),
     pythonLanguage.data.of({ autocomplete: globalCompletion })
   ]);
 }
-
-// node_modules/@codemirror/legacy-modes/mode/mathematica.js
-var Identifier2 = "[a-zA-Z\\$][a-zA-Z0-9\\$]*";
-var pBase = "(?:\\d+)";
-var pFloat = "(?:\\.\\d+|\\d+\\.\\d*|\\d+)";
-var pFloatBase = "(?:\\.\\w+|\\w+\\.\\w*|\\w+)";
-var pPrecision = "(?:`(?:`?" + pFloat + ")?)";
-var reBaseForm = new RegExp("(?:" + pBase + "(?:\\^\\^" + pFloatBase + pPrecision + "?(?:\\*\\^[+-]?\\d+)?))");
-var reFloatForm = new RegExp("(?:" + pFloat + pPrecision + "?(?:\\*\\^[+-]?\\d+)?)");
-var reIdInContext = new RegExp("(?:`?)(?:" + Identifier2 + ")(?:`(?:" + Identifier2 + "))*(?:`?)");
-function tokenBase(stream, state) {
-  var ch;
-  ch = stream.next();
-  if (ch === '"') {
-    state.tokenize = tokenString;
-    return state.tokenize(stream, state);
-  }
-  if (ch === "(") {
-    if (stream.eat("*")) {
-      state.commentLevel++;
-      state.tokenize = tokenComment;
-      return state.tokenize(stream, state);
-    }
-  }
-  stream.backUp(1);
-  if (stream.match(reBaseForm, true, false)) {
-    return "number";
-  }
-  if (stream.match(reFloatForm, true, false)) {
-    return "number";
-  }
-  if (stream.match(/(?:In|Out)\[[0-9]*\]/, true, false)) {
-    return "atom";
-  }
-  if (stream.match(/([a-zA-Z\$][a-zA-Z0-9\$]*(?:`[a-zA-Z0-9\$]+)*::usage)/, true, false)) {
-    return "meta";
-  }
-  if (stream.match(/([a-zA-Z\$][a-zA-Z0-9\$]*(?:`[a-zA-Z0-9\$]+)*::[a-zA-Z\$][a-zA-Z0-9\$]*):?/, true, false)) {
-    return "string.special";
-  }
-  if (stream.match(/([a-zA-Z\$][a-zA-Z0-9\$]*\s*:)(?:(?:[a-zA-Z\$][a-zA-Z0-9\$]*)|(?:[^:=>~@\^\&\*\)\[\]'\?,\|])).*/, true, false)) {
-    return "variableName.special";
-  }
-  if (stream.match(/[a-zA-Z\$][a-zA-Z0-9\$]*_+[a-zA-Z\$][a-zA-Z0-9\$]*/, true, false)) {
-    return "variableName.special";
-  }
-  if (stream.match(/[a-zA-Z\$][a-zA-Z0-9\$]*_+/, true, false)) {
-    return "variableName.special";
-  }
-  if (stream.match(/_+[a-zA-Z\$][a-zA-Z0-9\$]*/, true, false)) {
-    return "variableName.special";
-  }
-  if (stream.match(/\\\[[a-zA-Z\$][a-zA-Z0-9\$]*\]/, true, false)) {
-    return "character";
-  }
-  if (stream.match(/(?:\[|\]|{|}|\(|\))/, true, false)) {
-    return "bracket";
-  }
-  if (stream.match(/(?:#[a-zA-Z\$][a-zA-Z0-9\$]*|#+[0-9]?)/, true, false)) {
-    return "variableName.constant";
-  }
-  if (stream.match(reIdInContext, true, false)) {
-    return "keyword";
-  }
-  if (stream.match(/(?:\\|\+|\-|\*|\/|,|;|\.|:|@|~|=|>|<|&|\||_|`|'|\^|\?|!|%)/, true, false)) {
-    return "operator";
-  }
-  stream.next();
-  return "error";
-}
-function tokenString(stream, state) {
-  var next, end = false, escaped = false;
-  while ((next = stream.next()) != null) {
-    if (next === '"' && !escaped) {
-      end = true;
-      break;
-    }
-    escaped = !escaped && next === "\\";
-  }
-  if (end && !escaped) {
-    state.tokenize = tokenBase;
-  }
-  return "string";
-}
-function tokenComment(stream, state) {
-  var prev, next;
-  while (state.commentLevel > 0 && (next = stream.next()) != null) {
-    if (prev === "(" && next === "*") state.commentLevel++;
-    if (prev === "*" && next === ")") state.commentLevel--;
-    prev = next;
-  }
-  if (state.commentLevel <= 0) {
-    state.tokenize = tokenBase;
-  }
-  return "comment";
-}
-var mathematica = {
-  name: "mathematica",
-  startState: function() {
-    return { tokenize: tokenBase, commentLevel: 0 };
-  },
-  token: function(stream, state) {
-    if (stream.eatSpace()) return null;
-    return state.tokenize(stream, state);
-  },
-  languageData: {
-    commentTokens: { block: { open: "(*", close: "*)" } }
-  }
-};
 
 // node_modules/@lezer/cpp/dist/index.js
 var import_highlight2 = require("@lezer/highlight");
@@ -3503,22 +6563,22 @@ var parser2 = LRParser.deserialize({
 });
 
 // node_modules/@codemirror/lang-cpp/dist/index.js
-var import_language3 = require("@codemirror/language");
-var cppLanguage = /* @__PURE__ */ import_language3.LRLanguage.define({
+var import_language4 = require("@codemirror/language");
+var cppLanguage = /* @__PURE__ */ import_language4.LRLanguage.define({
   name: "cpp",
   parser: /* @__PURE__ */ parser2.configure({
     props: [
-      /* @__PURE__ */ import_language3.indentNodeProp.add({
-        IfStatement: /* @__PURE__ */ (0, import_language3.continuedIndent)({ except: /^\s*({|else\b)/ }),
-        TryStatement: /* @__PURE__ */ (0, import_language3.continuedIndent)({ except: /^\s*({|catch)\b/ }),
-        LabeledStatement: import_language3.flatIndent,
+      /* @__PURE__ */ import_language4.indentNodeProp.add({
+        IfStatement: /* @__PURE__ */ (0, import_language4.continuedIndent)({ except: /^\s*({|else\b)/ }),
+        TryStatement: /* @__PURE__ */ (0, import_language4.continuedIndent)({ except: /^\s*({|catch)\b/ }),
+        LabeledStatement: import_language4.flatIndent,
         CaseStatement: (context) => context.baseIndent + context.unit,
         BlockComment: () => null,
-        CompoundStatement: /* @__PURE__ */ (0, import_language3.delimitedIndent)({ closing: "}" }),
-        Statement: /* @__PURE__ */ (0, import_language3.continuedIndent)({ except: /^{/ })
+        CompoundStatement: /* @__PURE__ */ (0, import_language4.delimitedIndent)({ closing: "}" }),
+        Statement: /* @__PURE__ */ (0, import_language4.continuedIndent)({ except: /^{/ })
       }),
-      /* @__PURE__ */ import_language3.foldNodeProp.add({
-        "DeclarationList CompoundStatement EnumeratorList FieldDeclarationList InitializerList": import_language3.foldInside,
+      /* @__PURE__ */ import_language4.foldNodeProp.add({
+        "DeclarationList CompoundStatement EnumeratorList FieldDeclarationList InitializerList": import_language4.foldInside,
         BlockComment(tree) {
           return { from: tree.from + 2, to: tree.to - 2 };
         }
@@ -3532,7 +6592,7 @@ var cppLanguage = /* @__PURE__ */ import_language3.LRLanguage.define({
   }
 });
 function cpp() {
-  return new import_language3.LanguageSupport(cppLanguage);
+  return new import_language4.LanguageSupport(cppLanguage);
 }
 
 // node_modules/@lezer/javascript/dist/index.js
@@ -3749,10 +6809,10 @@ var parser3 = LRParser.deserialize({
 });
 
 // node_modules/@codemirror/lang-javascript/dist/index.js
-var import_language4 = require("@codemirror/language");
-var import_state3 = require("@codemirror/state");
-var import_view3 = require("@codemirror/view");
-var import_common3 = require("@lezer/common");
+var import_language5 = require("@codemirror/language");
+var import_state6 = require("@codemirror/state");
+var import_view6 = require("@codemirror/view");
+var import_common4 = require("@lezer/common");
 var snippets2 = [
   /* @__PURE__ */ snippetCompletion("function ${name}(${params}) {\n	${}\n}", {
     label: "function",
@@ -3827,7 +6887,7 @@ var typescriptSnippets = /* @__PURE__ */ snippets2.concat([
     type: "keyword"
   })
 ]);
-var cache2 = /* @__PURE__ */ new import_common3.NodeWeakMap();
+var cache2 = /* @__PURE__ */ new import_common4.NodeWeakMap();
 var ScopeNodes2 = /* @__PURE__ */ new Set([
   "Script",
   "Block",
@@ -3871,7 +6931,7 @@ function getScope2(doc, node) {
     let name = doc.sliceString(node2.from, node2.to);
     completions.push({ label: name, type });
   }
-  node.cursor(import_common3.IterMode.IncludeAnonymous).iterate((node2) => {
+  node.cursor(import_common4.IterMode.IncludeAnonymous).iterate((node2) => {
     if (top) {
       top = false;
     } else if (node2.name) {
@@ -3887,7 +6947,7 @@ function getScope2(doc, node) {
   cache2.set(node, completions);
   return completions;
 }
-var Identifier3 = /^[\w$\xa1-\uffff][\w$\d\xa1-\uffff]*$/;
+var Identifier2 = /^[\w$\xa1-\uffff][\w$\d\xa1-\uffff]*$/;
 var dontComplete2 = [
   "TemplateString",
   "String",
@@ -3910,10 +6970,10 @@ var dontComplete2 = [
   "?."
 ];
 function localCompletionSource2(context) {
-  let inner = (0, import_language4.syntaxTree)(context.state).resolveInner(context.pos, -1);
+  let inner = (0, import_language5.syntaxTree)(context.state).resolveInner(context.pos, -1);
   if (dontComplete2.indexOf(inner.name) > -1)
     return null;
-  let isWord = inner.name == "VariableName" || inner.to - inner.from < 20 && Identifier3.test(context.state.sliceDoc(inner.from, inner.to));
+  let isWord = inner.name == "VariableName" || inner.to - inner.from < 20 && Identifier2.test(context.state.sliceDoc(inner.from, inner.to));
   if (!isWord && !context.explicit)
     return null;
   let options = [];
@@ -3924,25 +6984,25 @@ function localCompletionSource2(context) {
   return {
     options,
     from: isWord ? inner.from : context.pos,
-    validFor: Identifier3
+    validFor: Identifier2
   };
 }
-var javascriptLanguage = /* @__PURE__ */ import_language4.LRLanguage.define({
+var javascriptLanguage = /* @__PURE__ */ import_language5.LRLanguage.define({
   name: "javascript",
   parser: /* @__PURE__ */ parser3.configure({
     props: [
-      /* @__PURE__ */ import_language4.indentNodeProp.add({
-        IfStatement: /* @__PURE__ */ (0, import_language4.continuedIndent)({ except: /^\s*({|else\b)/ }),
-        TryStatement: /* @__PURE__ */ (0, import_language4.continuedIndent)({ except: /^\s*({|catch\b|finally\b)/ }),
-        LabeledStatement: import_language4.flatIndent,
+      /* @__PURE__ */ import_language5.indentNodeProp.add({
+        IfStatement: /* @__PURE__ */ (0, import_language5.continuedIndent)({ except: /^\s*({|else\b)/ }),
+        TryStatement: /* @__PURE__ */ (0, import_language5.continuedIndent)({ except: /^\s*({|catch\b|finally\b)/ }),
+        LabeledStatement: import_language5.flatIndent,
         SwitchBody: (context) => {
           let after = context.textAfter, closed = /^\s*\}/.test(after), isCase = /^\s*(case|default)\b/.test(after);
           return context.baseIndent + (closed ? 0 : isCase ? 1 : 2) * context.unit;
         },
-        Block: /* @__PURE__ */ (0, import_language4.delimitedIndent)({ closing: "}" }),
+        Block: /* @__PURE__ */ (0, import_language5.delimitedIndent)({ closing: "}" }),
         ArrowFunction: (cx) => cx.baseIndent + cx.unit,
         "TemplateString BlockComment": () => null,
-        "Statement Property": /* @__PURE__ */ (0, import_language4.continuedIndent)({ except: /^{/ }),
+        "Statement Property": /* @__PURE__ */ (0, import_language5.continuedIndent)({ except: /^{/ }),
         JSXElement(context) {
           let closed = /^\s*<\//.test(context.textAfter);
           return context.lineIndent(context.node.from) + (closed ? 0 : context.unit);
@@ -3955,8 +7015,8 @@ var javascriptLanguage = /* @__PURE__ */ import_language4.LRLanguage.define({
           return context.column(context.node.from) + context.unit;
         }
       }),
-      /* @__PURE__ */ import_language4.foldNodeProp.add({
-        "Block ClassBody SwitchBody EnumBody ObjectExpression ArrayExpression ObjectType": import_language4.foldInside,
+      /* @__PURE__ */ import_language5.foldNodeProp.add({
+        "Block ClassBody SwitchBody EnumBody ObjectExpression ArrayExpression ObjectType": import_language5.foldInside,
         BlockComment(tree) {
           return { from: tree.from + 2, to: tree.to - 2 };
         }
@@ -3972,16 +7032,16 @@ var javascriptLanguage = /* @__PURE__ */ import_language4.LRLanguage.define({
 });
 var jsxSublanguage = {
   test: (node) => /^JSX/.test(node.name),
-  facet: /* @__PURE__ */ (0, import_language4.defineLanguageFacet)({ commentTokens: { block: { open: "{/*", close: "*/}" } } })
+  facet: /* @__PURE__ */ (0, import_language5.defineLanguageFacet)({ commentTokens: { block: { open: "{/*", close: "*/}" } } })
 };
 var typescriptLanguage = /* @__PURE__ */ javascriptLanguage.configure({ dialect: "ts" }, "typescript");
 var jsxLanguage = /* @__PURE__ */ javascriptLanguage.configure({
   dialect: "jsx",
-  props: [/* @__PURE__ */ import_language4.sublanguageProp.add((n) => n.isTop ? [jsxSublanguage] : void 0)]
+  props: [/* @__PURE__ */ import_language5.sublanguageProp.add((n) => n.isTop ? [jsxSublanguage] : void 0)]
 });
 var tsxLanguage = /* @__PURE__ */ javascriptLanguage.configure({
   dialect: "jsx ts",
-  props: [/* @__PURE__ */ import_language4.sublanguageProp.add((n) => n.isTop ? [jsxSublanguage] : void 0)]
+  props: [/* @__PURE__ */ import_language5.sublanguageProp.add((n) => n.isTop ? [jsxSublanguage] : void 0)]
 }, "typescript");
 var kwCompletion = (name) => ({ label: name, type: "keyword" });
 var keywords = /* @__PURE__ */ "break case const continue default delete export extends false finally in instanceof let new return static super switch this throw true typeof var yield".split(" ").map(kwCompletion);
@@ -3989,7 +7049,7 @@ var typescriptKeywords = /* @__PURE__ */ keywords.concat(/* @__PURE__ */ ["decla
 function javascript(config = {}) {
   let lang = config.jsx ? config.typescript ? tsxLanguage : jsxLanguage : config.typescript ? typescriptLanguage : javascriptLanguage;
   let completions = config.typescript ? typescriptSnippets.concat(typescriptKeywords) : snippets2.concat(keywords);
-  return new import_language4.LanguageSupport(lang, [
+  return new import_language5.LanguageSupport(lang, [
     javascriptLanguage.data.of({
       autocomplete: ifNotIn(dontComplete2, completeFromList(completions))
     }),
@@ -4016,13 +7076,13 @@ function elementName(doc, tree, max = doc.length) {
   return "";
 }
 var android2 = typeof navigator == "object" && /* @__PURE__ */ /Android\b/.test(navigator.userAgent);
-var autoCloseTags = /* @__PURE__ */ import_view3.EditorView.inputHandler.of((view, from, to, text, defaultInsert) => {
+var autoCloseTags = /* @__PURE__ */ import_view6.EditorView.inputHandler.of((view, from, to, text, defaultInsert) => {
   if ((android2 ? view.composing : view.compositionStarted) || view.state.readOnly || from != to || text != ">" && text != "/" || !javascriptLanguage.isActiveAt(view.state, from, -1))
     return false;
   let base = defaultInsert(), { state } = base;
   let closeTags = state.changeByRange((range) => {
     var _a;
-    let { head } = range, around = (0, import_language4.syntaxTree)(state).resolveInner(head - 1, -1), name;
+    let { head } = range, around = (0, import_language5.syntaxTree)(state).resolveInner(head - 1, -1), name;
     if (around.name == "JSXStartTag")
       around = around.parent;
     if (state.doc.sliceString(head - 1, head) != text || around.name == "JSXAttributeValue" && around.to > head) ;
@@ -4032,7 +7092,7 @@ var autoCloseTags = /* @__PURE__ */ import_view3.EditorView.inputHandler.of((vie
       let empty = around.parent, base2 = empty.parent;
       if (base2 && empty.from == head - 2 && ((name = elementName(state.doc, base2.firstChild, head)) || ((_a = base2.firstChild) === null || _a === void 0 ? void 0 : _a.name) == "JSXFragmentTag")) {
         let insert = `${name}>`;
-        return { range: import_state3.EditorSelection.cursor(head + insert.length, -1), changes: { from: head, insert } };
+        return { range: import_state6.EditorSelection.cursor(head + insert.length, -1), changes: { from: head, insert } };
       }
     } else if (text == ">") {
       let openTag = findOpenTag(around);
@@ -4050,3104 +7110,114 @@ var autoCloseTags = /* @__PURE__ */ import_view3.EditorView.inputHandler.of((vie
   return true;
 });
 
-// link-syntax.ts
-var reservedTarget = (target) => /^\s*blank:/i.test(target);
-function linkTokens(text) {
-  const result = [];
-  const start = /!?\{\{|(?<!`)``dir:/g;
-  let m;
-  while (m = start.exec(text)) {
-    const at = m.index;
-    if (m[0].startsWith("``")) {
-      const end = text.indexOf("``", at + 2);
-      if (end < 0 || text.slice(at, end).includes("\n")) continue;
-      result.push({ raw: text.slice(at, end + 2), index: at });
-      start.lastIndex = end + 2;
-      continue;
-    }
-    let pos = at + (m[0][0] === "!" ? 3 : 2), depth = 1;
-    while (pos < text.length && text[pos] !== "\n" && depth) {
-      if (text.slice(pos, pos + 2) === "{{") {
-        depth++;
-        pos += 2;
-      } else if (text.slice(pos, pos + 2) === "}}") {
-        depth--;
-        pos += 2;
-      } else pos++;
-    }
-    if (depth) continue;
-    let raw = text.slice(at, pos);
-    if (/^!?\{\{\s*blank:/i.test(raw)) {
-      start.lastIndex = pos;
-      continue;
-    }
-    const height = text.slice(pos).match(/^\{height=\d+\}/);
-    if (height) {
-      raw += height[0];
-      pos += height[0].length;
-    }
-    if (!raw.startsWith("{{links:") && raw.slice(m[0].length, -2).includes("{{")) continue;
-    result.push({ raw, index: at });
-    start.lastIndex = pos;
+// node_modules/@codemirror/legacy-modes/mode/mathematica.js
+var Identifier3 = "[a-zA-Z\\$][a-zA-Z0-9\\$]*";
+var pBase = "(?:\\d+)";
+var pFloat = "(?:\\.\\d+|\\d+\\.\\d*|\\d+)";
+var pFloatBase = "(?:\\.\\w+|\\w+\\.\\w*|\\w+)";
+var pPrecision = "(?:`(?:`?" + pFloat + ")?)";
+var reBaseForm = new RegExp("(?:" + pBase + "(?:\\^\\^" + pFloatBase + pPrecision + "?(?:\\*\\^[+-]?\\d+)?))");
+var reFloatForm = new RegExp("(?:" + pFloat + pPrecision + "?(?:\\*\\^[+-]?\\d+)?)");
+var reIdInContext = new RegExp("(?:`?)(?:" + Identifier3 + ")(?:`(?:" + Identifier3 + "))*(?:`?)");
+function tokenBase(stream, state) {
+  var ch;
+  ch = stream.next();
+  if (ch === '"') {
+    state.tokenize = tokenString;
+    return state.tokenize(stream, state);
   }
-  return result;
+  if (ch === "(") {
+    if (stream.eat("*")) {
+      state.commentLevel++;
+      state.tokenize = tokenComment;
+      return state.tokenize(stream, state);
+    }
+  }
+  stream.backUp(1);
+  if (stream.match(reBaseForm, true, false)) {
+    return "number";
+  }
+  if (stream.match(reFloatForm, true, false)) {
+    return "number";
+  }
+  if (stream.match(/(?:In|Out)\[[0-9]*\]/, true, false)) {
+    return "atom";
+  }
+  if (stream.match(/([a-zA-Z\$][a-zA-Z0-9\$]*(?:`[a-zA-Z0-9\$]+)*::usage)/, true, false)) {
+    return "meta";
+  }
+  if (stream.match(/([a-zA-Z\$][a-zA-Z0-9\$]*(?:`[a-zA-Z0-9\$]+)*::[a-zA-Z\$][a-zA-Z0-9\$]*):?/, true, false)) {
+    return "string.special";
+  }
+  if (stream.match(/([a-zA-Z\$][a-zA-Z0-9\$]*\s*:)(?:(?:[a-zA-Z\$][a-zA-Z0-9\$]*)|(?:[^:=>~@\^\&\*\)\[\]'\?,\|])).*/, true, false)) {
+    return "variableName.special";
+  }
+  if (stream.match(/[a-zA-Z\$][a-zA-Z0-9\$]*_+[a-zA-Z\$][a-zA-Z0-9\$]*/, true, false)) {
+    return "variableName.special";
+  }
+  if (stream.match(/[a-zA-Z\$][a-zA-Z0-9\$]*_+/, true, false)) {
+    return "variableName.special";
+  }
+  if (stream.match(/_+[a-zA-Z\$][a-zA-Z0-9\$]*/, true, false)) {
+    return "variableName.special";
+  }
+  if (stream.match(/\\\[[a-zA-Z\$][a-zA-Z0-9\$]*\]/, true, false)) {
+    return "character";
+  }
+  if (stream.match(/(?:\[|\]|{|}|\(|\))/, true, false)) {
+    return "bracket";
+  }
+  if (stream.match(/(?:#[a-zA-Z\$][a-zA-Z0-9\$]*|#+[0-9]?)/, true, false)) {
+    return "variableName.constant";
+  }
+  if (stream.match(reIdInContext, true, false)) {
+    return "keyword";
+  }
+  if (stream.match(/(?:\\|\+|\-|\*|\/|,|;|\.|:|@|~|=|>|<|&|\||_|`|'|\^|\?|!|%)/, true, false)) {
+    return "operator";
+  }
+  stream.next();
+  return "error";
 }
-function canonical(raw) {
-  return raw.startsWith("``dir:") ? "{{" + raw.slice(2, -2) + "}}" : raw;
+function tokenString(stream, state) {
+  var next, end = false, escaped = false;
+  while ((next = stream.next()) != null) {
+    if (next === '"' && !escaped) {
+      end = true;
+      break;
+    }
+    escaped = !escaped && next === "\\";
+  }
+  if (end && !escaped) {
+    state.tokenize = tokenBase;
+  }
+  return "string";
 }
-function groupItems(raw) {
-  if (!raw.startsWith("{{links:")) return null;
-  const sep = raw.indexOf("|");
-  if (sep < 0) throw Error("Use {{links:Label|{{code.py}}; [[Note]]}}");
-  const label2 = raw.slice(8, sep).trim();
-  if (!label2) throw Error("Reference group needs a label");
-  const body = raw.slice(sep + 1, -2);
-  const items = [];
-  let at = 0;
-  const pattern = /\s*(?:;\s*)?(\{\{[^\n{}]+\}\}|\[\[[^\n]+?\]\]|\[[^\]\n]+\]\(https?:\/\/[^\s)]+\)|https?:\/\/[^\s;]+)\s*/y;
-  while (at < body.length) {
-    pattern.lastIndex = at;
-    const m = pattern.exec(body);
-    if (!m) throw Error("Separate code, note or web links with semicolons");
-    items.push(m[1]);
-    at = pattern.lastIndex;
-    if (items.length > 40) throw Error("Use at most 40 references per group");
+function tokenComment(stream, state) {
+  var prev, next;
+  while (state.commentLevel > 0 && (next = stream.next()) != null) {
+    if (prev === "(" && next === "*") state.commentLevel++;
+    if (prev === "*" && next === ")") state.commentLevel--;
+    prev = next;
   }
-  if (!items.length) throw Error("Reference group is empty");
-  return { label: label2, items };
+  if (state.commentLevel <= 0) {
+    state.tokenize = tokenBase;
+  }
+  return "comment";
 }
-function linkLabel(raw) {
-  if (raw.startsWith("{{links:")) return raw.slice(8, raw.indexOf("|"));
-  raw = canonical(raw);
-  return raw.match(/\|([^}]*)\}\}/)?.[1] || raw.replace(/^!?\{\{|\}\}.*$/g, "").replace(/^dir:/, "");
-}
-
-// render-links.ts
-function protectLinkEmphasis(source) {
-  if (!source.includes("{{")) return source;
-  const literals = [];
-  const literal = /^ {0,3}(`{3,}|~{3,})[^\n]*\n[\s\S]*?^ {0,3}\1[^\n]*$|(`+)[^`]*?\2|\$\$[\s\S]*?\$\$|(?<![\\$])\$(?!\$)[^\n$]*?\$/gm;
-  for (const m of source.matchAll(literal)) literals.push([m.index, m.index + m[0].length]);
-  let result = source;
-  for (const token of linkTokens(source).reverse()) {
-    if (token.raw.startsWith("``") || token.raw.startsWith("{{links:") || literals.some(([a2, b]) => token.index >= a2 && token.index < b)) continue;
-    const safe = token.raw.replace(/(?<!\\)[_*]/g, "\\$&");
-    result = result.slice(0, token.index) + safe + result.slice(token.index + token.raw.length);
-  }
-  return result;
-}
-function renderSourceLinks(el, source, make) {
-  const doc = el.ownerDocument;
-  for (const match of linkTokens(source)) {
-    const raw = match.raw;
-    if (raw.startsWith("``dir:")) {
-      const value = raw.slice(2, -2);
-      const code = Array.from(el.querySelectorAll("code")).find((n) => !n.closest("pre") && n.textContent === value);
-      if (code) code.replaceWith(make(raw));
-      continue;
-    }
-    const group = raw.startsWith("{{links:");
-    const escaped = [...raw].map((c) => c === "_" || c === "*" ? "[\\" + c + "]?" : c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("");
-    const w = doc.createTreeWalker(el, 4);
-    const spans = [];
-    let text = "";
-    while (w.nextNode()) {
-      const n = w.currentNode;
-      if (n.parentElement?.closest(group ? "pre,code,.code-links-target,.code-links-panel,script,style" : "pre,code,a,.code-links-panel,script,style")) {
-        text += "\n";
-        continue;
-      }
-      const start = text.length;
-      text += n.textContent || "";
-      spans.push({ node: n, start, end: text.length });
-    }
-    let found = new RegExp(escaped).exec(text);
-    if (!found && group) {
-      const visible = raw.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, p, l) => l || p).replace(/\[([^\]]+)\]\(https?:[^)]+\)/g, "$1");
-      const at = text.indexOf(visible);
-      if (at >= 0) found = Object.assign([visible], { index: at });
-    }
-    if (!found) continue;
-    const first = spans.find((n) => n.start <= found.index && n.end > found.index);
-    const end = found.index + found[0].length;
-    const last = spans.find((n) => n.start < end && n.end >= end);
-    if (!first || !last) continue;
-    const range = doc.createRange();
-    range.setStart(first.node, found.index - first.start);
-    range.setEnd(last.node, end - last.start);
-    range.deleteContents();
-    range.insertNode(make(raw));
-  }
-  const walker = doc.createTreeWalker(el, 4);
-  const nodes = [];
-  while (walker.nextNode()) {
-    const n = walker.currentNode;
-    if (!n.parentElement?.closest("pre,code,a,.code-links-panel,script,style")) nodes.push(n);
-  }
-  for (const n of nodes) {
-    const text = n.textContent || "";
-    const matches = linkTokens(text);
-    if (!matches.length) continue;
-    const frag = doc.createDocumentFragment();
-    let prev = 0;
-    for (const m of matches) {
-      frag.append(text.slice(prev, m.index));
-      frag.append(make(m.raw));
-      prev = m.index + m.raw.length;
-    }
-    frag.append(text.slice(prev));
-    n.replaceWith(frag);
-  }
-}
-
-// extra-links.ts
-var import_obsidian2 = require("obsidian");
-function inPresentation(modal) {
-  const container = modal.modalEl.parentElement;
-  const full = modal.modalEl.ownerDocument.fullscreenElement;
-  if (full && container) {
-    full.append(container);
-    container.addEventListener("keydown", (e) => {
-      e.stopPropagation();
-      if (e.key === "Escape") {
-        e.preventDefault();
-        modal.close();
-      }
-    });
-  }
-}
-var LinkSupport = class {
-  constructor(plugin) {
-    this.plugin = plugin;
-    this.cache = /* @__PURE__ */ new Map();
-    this.pending = /* @__PURE__ */ new Map();
-  }
-  inspect(raw) {
-    raw = canonical(raw);
-    const old = this.cache.get(raw);
-    if (old && Date.now() - old.time < 1500) return Promise.resolve(old.value);
-    return new Promise((resolve) => {
-      const list = this.pending.get(raw) || [];
-      list.push(resolve);
-      this.pending.set(raw, list);
-      if (!this.timer) this.timer = setTimeout(() => void this.flush(), 30);
-    });
-  }
-  async flush() {
-    this.timer = void 0;
-    const batch = this.pending;
-    this.pending = /* @__PURE__ */ new Map();
-    try {
-      const result = await this.plugin.call("inspect-many", { raws: [...batch.keys()] });
-      for (const [raw, list] of batch) {
-        const value = result[raw] ?? { error: "Too many links; reopen this note" };
-        this.cache.set(raw, { time: Date.now(), value });
-        list.forEach((f) => f(value));
-      }
-    } catch (e) {
-      for (const list of batch.values()) list.forEach((f) => f({ error: String(e) }));
-    }
-  }
-  dispose() {
-    if (this.timer) clearTimeout(this.timer);
-    for (const list of this.pending.values()) list.forEach((f) => f({ error: "Plugin unloaded" }));
-    this.pending.clear();
-  }
-  async activate(raw) {
-    try {
-      if (raw.startsWith("{{links:")) {
-        new ReferenceModal(this.plugin, raw, "").open();
-        return;
-      }
-      const info = await this.plugin.call("inspect", { raw: canonical(raw) });
-      if (!info.exists) {
-        if (!info.creatable) throw Error("Target is unavailable; no file was created");
-        await this.plugin.call("create", { raw: canonical(raw) });
-        this.cache.clear();
-        this.plugin.lastIndex = 0;
-        this.refreshLinks();
-      }
-      await this.plugin.launch(canonical(raw));
-    } catch (e) {
-      new import_obsidian2.Notice(String(e));
-    }
-  }
-  refreshLinks() {
-    for (const el of Array.from(document.querySelectorAll(".code-links-target[data-raw]"))) void this.paint(el, el.dataset.raw);
-  }
-  async paint(el, raw) {
-    if (raw.startsWith("{{links:")) {
-      el.classList.add("code-links-group");
-      el.title = "Open references";
-      return;
-    }
-    const target = canonical(raw).replace(/^!?\{\{/, "").split(/[|#}]/)[0];
-    el.classList.add(target.startsWith("dir:") ? "code-links-directory" : /\.(tsv|csv)$/i.test(target) ? "code-links-data" : "code-links-code-link");
-    const info = await this.inspect(raw);
-    el.classList.toggle("code-links-missing", !info.exists && !info.error);
-    el.classList.toggle("code-links-invalid", !!info.error);
-    el.title = info.error || info.path + (info.exists ? "" : info.creatable ? " \xB7 Click to create; right-click to choose folder" : " \xB7 Unavailable");
-  }
-  element(raw, source, writer, doc = document) {
-    const a2 = doc.createElement("a");
-    a2.className = "code-links-target";
-    a2.textContent = linkLabel(raw);
-    a2.dataset.raw = raw;
-    a2.tabIndex = 0;
-    a2.setAttribute("role", "link");
-    a2.onclick = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (raw.startsWith("{{links:")) new ReferenceModal(this.plugin, raw, source).open();
-      else void this.activate(raw);
-    };
-    a2.onkeydown = (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        if (raw.startsWith("{{links:")) new ReferenceModal(this.plugin, raw, source).open();
-        else void this.activate(raw);
-      }
-    };
-    a2.oncontextmenu = (e) => void this.menu(e, raw, source, writer);
-    a2.onmouseenter = () => void this.paint(a2, raw);
-    void this.paint(a2, raw);
-    return a2;
-  }
-  async menu(e, raw, source, writer) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (raw.startsWith("{{links:")) {
-      const menu = new import_obsidian2.Menu();
-      menu.addItem((i) => i.setTitle("Open references").onClick(() => new ReferenceModal(this.plugin, raw, source).open()));
-      if (writer) {
-        menu.addItem((i) => i.setTitle("Edit reference group\u2026").onClick(() => new GroupEditor(this.plugin, raw, (v) => writer(raw, v), true).open()));
-        menu.addItem((i) => i.setTitle("Ungroup references").onClick(async () => {
-          try {
-            await writer(raw, groupItems(raw).items.join(" \xB7 "));
-          } catch (e2) {
-            new import_obsidian2.Notice(String(e2));
-          }
-        }));
-      }
-      menu.addItem((i) => i.setTitle("Copy link source").onClick(() => navigator.clipboard.writeText(raw)));
-      menu.showAtMouseEvent(e);
-      return;
-    }
-    try {
-      const info = await this.plugin.call("inspect", { raw: canonical(raw) });
-      if (info.directory) {
-        await this.plugin.launch(canonical(raw), void 0, "current", "finder");
-        return;
-      }
-      if (!info.exists && info.creatable) {
-        new CreateModal(this.plugin, raw, writer).open();
-        return;
-      }
-      this.plugin.linkMenu(e, canonical(raw), source, writer);
-    } catch (err) {
-      new import_obsidian2.Notice(String(err));
-    }
-  }
-};
-var ReferenceModal = class extends import_obsidian2.Modal {
-  constructor(plugin, raw, source) {
-    super(plugin.app);
-    this.plugin = plugin;
-    this.raw = raw;
-    this.source = source;
-  }
-  onOpen() {
-    inPresentation(this);
-    try {
-      const group = groupItems(this.raw);
-      this.titleEl.setText(group.label);
-      this.modalEl.classList.add("code-links-references");
-      this.contentEl.createEl("button", { text: "Close references" }).onclick = () => this.close();
-      for (const raw of group.items) {
-        const row = this.contentEl.createDiv("code-links-reference-row");
-        if (raw.startsWith("{{")) row.append(this.plugin.links.element(raw, this.source, null));
-        else if (raw.startsWith("[[")) {
-          const [target, label2] = raw.slice(2, -2).split("|");
-          const a2 = row.createEl("a", { text: label2 || target, cls: "internal-link" });
-          a2.title = target;
-          a2.onclick = () => void this.plugin.app.workspace.openLinkText(target, this.source, true);
-        } else {
-          const match = raw.match(/^\[([^\]]+)\]\((https?:\/\/[^)]+)\)$/);
-          const url = match ? match[2] : raw;
-          row.createEl("a", { text: match ? match[1] : url, href: url, attr: { target: "_blank", rel: "noopener" } });
-        }
-      }
-    } catch (e) {
-      this.contentEl.setText(String(e));
-    }
-  }
-  onClose() {
-    this.contentEl.empty();
-  }
-};
-var CreateModal = class extends import_obsidian2.Modal {
-  constructor(plugin, raw, writer) {
-    super(plugin.app);
-    this.plugin = plugin;
-    this.raw = raw;
-    this.writer = writer;
-  }
-  async onOpen() {
-    inPresentation(this);
-    this.titleEl.setText("Create linked file");
-    const info = await this.plugin.call("inspect", { raw: canonical(this.raw) });
-    if (!this.contentEl.isConnected) return;
-    const target = canonical(this.raw).slice(2, -2).split("|")[0];
-    const filename = target.split(/[/:]/).pop();
-    let alias = target.includes(":") ? target.split(":")[0] : "";
-    let folder = target.includes("/") ? target.slice(target.indexOf(":") + 1).split("/").slice(0, -1).join("/") : alias ? "" : "scripts";
-    const roots = await this.plugin.call("roots");
-    const entries = roots.items.filter((r) => !r.retired && !r.redirect);
-    const location = this.contentEl.createEl("p", { text: info.path });
-    new import_obsidian2.Setting(this.contentEl).setName("Location").addDropdown((d) => {
-      d.addOption("", "This vault");
-      for (const r of entries) d.addOption(r.name, r.name + ":");
-      d.setValue(alias).onChange((v) => {
-        alias = v;
-        folder = "";
-        location.setText((alias ? alias + ":" : "") + filename);
-      });
-    });
-    new import_obsidian2.Setting(this.contentEl).addButton((b) => b.setButtonText("Browse folders\u2026").onClick(async () => {
-      try {
-        const gallery = this.plugin.app.plugins.getPlugin("image-gallery")?.api;
-        if (!gallery?.pickFolder) throw Error("Enable the updated Image Gallery plugin to browse folders");
-        const base = entries.find((r) => r.name === alias)?.path;
-        const picked = await gallery.pickFolder({ label: alias ? alias + ":" : "This vault", start: folder, base });
-        if (picked !== null) {
-          folder = picked;
-          location.setText((alias ? alias + ":" : "") + (folder ? folder + "/" : "") + filename);
-        }
-      } catch (e) {
-        new import_obsidian2.Notice(String(e));
-      }
-    }));
-    new import_obsidian2.Setting(this.contentEl).addButton((b) => b.setButtonText("Create and open").setCta().onClick(async () => {
-      b.setDisabled(true);
-      try {
-        const newTarget = (alias ? alias + ":" : "") + (folder ? folder + "/" : "./") + filename;
-        const label2 = canonical(this.raw).match(/\|([^}]+)\}\}/)?.[1];
-        const next = "{{" + newTarget + (label2 ? "|" + label2 : "") + "}}";
-        if (!this.writer && next !== canonical(this.raw)) throw Error("Edit the note or slide to save a different link location");
-        if (this.writer && next !== this.raw) await this.writer(this.raw, next);
-        await this.plugin.call("create", { raw: next });
-        this.plugin.links.cache.clear();
-        this.plugin.lastIndex = 0;
-        await this.plugin.launch(next);
-        this.close();
-      } catch (e) {
-        new import_obsidian2.Notice(String(e));
-        b.setDisabled(false);
-      }
-    }));
-  }
-  onClose() {
-    this.contentEl.empty();
-  }
-};
-var GroupEditor = class extends import_obsidian2.Modal {
-  constructor(plugin, text, save, group = false) {
-    super(plugin.app);
-    this.plugin = plugin;
-    this.text = text;
-    this.save = save;
-    this.group = group;
-  }
-  onOpen() {
-    inPresentation(this);
-    this.titleEl.setText(this.group ? "Edit reference group" : "Combine selected links");
-    let label2 = "References", body = this.text;
-    if (this.group) {
-      const g = groupItems(this.text);
-      label2 = g.label;
-      body = g.items.join("; ");
-    }
-    new import_obsidian2.Setting(this.contentEl).setName("Display label").addText((t) => t.setValue(label2).onChange((v) => label2 = v));
-    let input;
-    new import_obsidian2.Setting(this.contentEl).setName("References").setDesc("Code links, [[notes or PDFs]], and web links. Separate them with semicolons.").addTextArea((t) => {
-      t.setValue(body).onChange((v) => body = v);
-      input = t.inputEl;
-      t.inputEl.rows = 8;
-      t.inputEl.style.width = "100%";
-    });
-    new import_obsidian2.Setting(this.contentEl).addButton((b) => b.setButtonText("Add from gallery\u2026").onClick(async () => {
-      try {
-        const gallery = this.plugin.app.plugins.getPlugin("image-gallery")?.api;
-        if (!gallery?.pickFile) throw Error("Enable Image Gallery first");
-        const file = await gallery.pickFile({ title: "Add a reference" });
-        if (file) {
-          body += (body.trim() ? "; " : "") + file.link;
-          input.value = body;
-        }
-      } catch (e) {
-        new import_obsidian2.Notice(String(e));
-      }
-    }));
-    const preview = this.contentEl.createDiv("code-links-group-preview");
-    new import_obsidian2.Setting(this.contentEl).addButton((b) => b.setButtonText("Preview references").onClick(() => {
-      preview.empty();
-      try {
-        const g = groupItems("{{links:" + label2 + "|" + body + "}}");
-        for (const raw of g.items) preview.createEl("p", { text: raw });
-      } catch (e) {
-        preview.setText(String(e));
-      }
-    })).addButton((b) => b.setButtonText("Save group").setCta().onClick(async () => {
-      try {
-        if (/[|{}\n]/.test(label2)) throw Error("Use a plain label without pipes or braces");
-        const value = "{{links:" + label2 + "|" + body.trim() + "}}";
-        groupItems(value);
-        await this.save(value);
-        this.close();
-      } catch (e) {
-        new import_obsidian2.Notice(String(e));
-      }
-    }));
-  }
-  onClose() {
-    this.contentEl.empty();
-  }
-};
-
-// run-output.ts
-var import_obsidian3 = require("obsidian");
-var import_fs = require("fs");
-var import_promises = require("fs/promises");
-var import_path = require("path");
-var import_os = require("os");
-var import_crypto = require("crypto");
-var unavailable = /* @__PURE__ */ new Set(["stale-source", "stale-config", "source-missing", "guardian-lost", "interrupted", "checking", "not-run-revision-changed"]);
-var active = /* @__PURE__ */ new Set(["queued", "running"]);
-var hash2 = (s) => (0, import_crypto.createHash)("sha256").update(s).digest("hex");
-var sourceOnly = (raw) => raw.replace(/^!/, "").replace(/#[^|}]+/, "").replace(/\{height=\d+\}$/, "");
-var RunOutputs = class {
-  constructor(plugin) {
-    this.plugin = plugin;
-    this.allPanels = /* @__PURE__ */ new Set();
-    this.panels = /* @__PURE__ */ new Set();
-    this.prefs = {};
-    this.noteDefaults = {};
-    this.pending = /* @__PURE__ */ new Set();
-    this.recordPending = /* @__PURE__ */ new Set();
-    this.validated = /* @__PURE__ */ new Map();
-    this.configWatch = /* @__PURE__ */ new Map();
-    this.settingsRevision = 0;
-    this.queuedChecks = /* @__PURE__ */ new Map();
-    this.disposed = false;
-    this.saveChain = Promise.resolve();
-    this.directory = (0, import_path.join)((0, import_os.homedir)(), "Library/Application Support/CodeLinks/runs/records");
-    this.perf = { statusBatches: 0, outputReads: 0, outputBytes: 0, activePanels: 0 };
-    this.prefPath = (0, import_path.join)(plugin.root(), plugin.app.vault.configDir, "plugins", plugin.manifest.id, "output-ui.json");
-  }
-  async initialize() {
-    try {
-      const p = JSON.parse(await (0, import_promises.readFile)(this.prefPath, "utf8"));
-      this.prefs = p.blocks || {};
-      this.noteDefaults = p.notes || {};
-    } catch {
-    }
-  }
-  ensureWatch() {
-    if (this.watcher || this.starting || this.disposed) return;
-    this.starting = (0, import_promises.mkdir)(this.directory, { recursive: true }).then(() => {
-      if (this.disposed || !this.panels.size) return;
-      this.watcher = (0, import_fs.watch)(this.directory, { persistent: false }, (_event, file) => {
-        const id2 = String(file || "").replace(/\.json$/, "");
-        if (!/^[a-f0-9]{64}$/.test(id2)) return;
-        for (const p of this.panels) if (p.run.id === id2) this.recordPending.add(id2);
-        this.scheduleRefresh();
-      });
-      this.watcher.on("error", () => {
-        this.watcher?.close();
-        this.watcher = void 0;
-      });
-    }).finally(() => this.starting = void 0);
-  }
-  track(panel) {
-    for (const ref of this.allPanels) if (!ref.deref()) this.allPanels.delete(ref);
-    this.allPanels.add(new WeakRef(panel));
-    this.watchSettings();
-  }
-  untrack(panel) {
-    for (const ref of this.allPanels) if (!ref.deref() || ref.deref() === panel) this.allPanels.delete(ref);
-    this.watchSettings();
-  }
-  get closed() {
-    return this.disposed;
-  }
-  attach(panel) {
-    if (this.disposed) return;
-    this.panels.add(panel);
-    if (panel.settingsDirty) {
-      this.pending.add(panel.raw);
-      this.scheduleRefresh();
-    }
-    this.perf.activePanels = this.panels.size;
-    this.ensureWatch();
-  }
-  detach(panel) {
-    this.panels.delete(panel);
-    this.perf.activePanels = this.panels.size;
-    if (!this.panels.size) {
-      this.watcher?.close();
-      this.watcher = void 0;
-      clearTimeout(this.refreshTimer);
-      this.refreshTimer = void 0;
-      this.pending.clear();
-      this.recordPending.clear();
-      this.validated.clear();
-      this.queuedChecks.clear();
-      clearTimeout(this.liveTimer);
-    }
-  }
-  watchSettings() {
-    const tracked = [...this.allPanels].map((ref) => ref.deref()).filter((p) => !!p);
-    const paths = new Set(this.disposed || !tracked.length ? [] : tracked.flatMap((p) => [(0, import_path.join)(p.run.spec.root, ".code-links.json"), (0, import_path.join)(p.run.spec.root, ".venv/bin/python"), p.run.spec.interpreter, p.run.spec.interpreter_realpath]));
-    for (const [path, fn] of this.configWatch) if (!paths.has(path)) {
-      (0, import_fs.unwatchFile)(path, fn);
-      this.configWatch.delete(path);
-    }
-    for (const path of paths) {
-      if (!path || this.configWatch.has(path)) continue;
-      const fn = (curr, prev) => {
-        if (["dev", "ino", "size", "mtimeMs", "ctimeMs"].every((k) => curr[k] === prev[k])) return;
-        this.settingsRevision++;
-        this.validated.clear();
-        for (const ref of this.allPanels) {
-          const p = ref.deref();
-          if (!p) continue;
-          p.settingsDirty = true;
-          p.update({ ...p.run, state: "checking", valid: false });
-          if (this.panels.has(p)) this.pending.add(p.raw);
-        }
-        this.scheduleRefresh();
-      };
-      this.configWatch.set(path, fn);
-      (0, import_fs.watchFile)(path, { interval: 2e3, persistent: false }, fn);
-    }
-  }
-  sourceChanged(path) {
-    for (const p of this.panels) if (p.run.spec.source === path) this.changed(p.raw);
-  }
-  key(note, raw) {
-    return hash2(note + "\0" + raw);
-  }
-  preference(note, raw) {
-    return { open: this.noteDefaults[note] ?? false, lines: 12, ...this.prefs[this.key(note, raw)] };
-  }
-  setPreference(note, raw, change) {
-    const key2 = this.key(note, raw);
-    this.prefs[key2] = { ...this.prefs[key2], ...change, note };
-    this.save();
-    this.plugin.edits?.repaint(note);
-  }
-  save() {
-    clearTimeout(this.saveTimer);
-    this.saveTimer = setTimeout(() => {
-      void this.persist();
-    }, 250);
-  }
-  persist() {
-    const payload = JSON.stringify({ blocks: this.prefs, notes: this.noteDefaults });
-    this.saveChain = this.saveChain.then(async () => {
-      await (0, import_promises.writeFile)(this.prefPath + ".tmp", payload);
-      await (0, import_promises.rename)(this.prefPath + ".tmp", this.prefPath);
-    }).catch((e) => {
-      new import_obsidian3.Notice("Could not save output preferences: " + String(e));
-    });
-    return this.saveChain;
-  }
-  foldAll(note, expanded) {
-    this.noteDefaults[note] = expanded;
-    for (const [key2, pref] of Object.entries(this.prefs)) if (pref.note === note) delete this.prefs[key2].open;
-    for (const p of this.panels) if (p.note === note) {
-      delete this.prefs[p.key]?.open;
-      p.setExpanded(expanded, false);
-    }
-    this.save();
-    this.plugin.edits?.repaint(note);
-  }
-  changed(raw) {
-    if (![...this.panels].some((p) => p.raw === raw)) return;
-    for (const p of this.panels) if (p.raw === raw) p.update({ ...p.run, state: "checking", valid: false });
-    this.pending.add(raw);
-    this.scheduleRefresh();
-  }
-  refreshRecord(id2) {
-    this.recordPending.add(id2);
-    this.scheduleRefresh();
-  }
-  scheduleRefresh() {
-    if (this.refreshTimer || !this.pending.size && !this.recordPending.size || this.disposed) return;
-    this.refreshTimer = setTimeout(() => {
-      this.refreshTimer = void 0;
-      void this.refreshPending();
-    }, 250);
-  }
-  async refreshPending() {
-    const revision = this.settingsRevision, raws = [...this.pending], ids = [...this.recordPending];
-    this.pending.clear();
-    this.recordPending.clear();
-    if (this.disposed) return;
-    for (const id2 of ids) {
-      try {
-        const panel = [...this.panels].find((p) => p.run.id === id2);
-        if (!panel) continue;
-        if (panel.settingsDirty) {
-          raws.push(panel.raw);
-          continue;
-        }
-        const rec = JSON.parse(await (0, import_promises.readFile)((0, import_path.join)(this.directory, id2 + ".json"), "utf8"));
-        const st = await (0, import_promises.stat)(rec.spec.source, { bigint: true });
-        const signature = [st.dev, st.ino, st.size, st.mtimeNs, st.ctimeNs].map(Number);
-        const same = JSON.stringify(signature) === JSON.stringify(rec.source_signature);
-        const previous = this.validated.get(id2) || panel.run;
-        let value = { ...rec, current_signature: signature, active: active.has(rec.state), valid: same && !rec.changed_during_run };
-        if (rec.state === "not-run-revision-changed") value = { ...value, valid: false };
-        else if (rec.changed_during_run) value = { ...value, state: "stale-source", valid: false };
-        else if (!same) {
-          if (active.has(rec.state)) value = { ...value, state: "stale-source", valid: false };
-          else if (previous && previous.run_id === rec.run_id && JSON.stringify(signature) === JSON.stringify(previous.current_signature)) value = { ...previous, ...rec, current_signature: signature, valid: previous.valid, state: previous.state };
-          else {
-            raws.push(panel.raw);
-            continue;
-          }
-        }
-        const now = Date.now() / 1e3;
-        const checkQueued = rec.state === "queued" && now - (this.queuedChecks.get(id2) ?? rec.queued_at ?? now) > 15;
-        if (checkQueued || rec.state === "running" && now - (rec.started_at || now) - (rec.duration_s || 0) > 3) {
-          if (checkQueued) this.queuedChecks.set(id2, now);
-          raws.push(panel.raw);
-          continue;
-        }
-        if (!this.disposed && revision === this.settingsRevision) {
-          for (const p of this.panels) if (p.run.id === id2 && !p.settingsDirty) p.update(value);
-        }
-      } catch (e) {
-        for (const p of this.panels) if (p.run.id === id2) raws.push(p.raw);
-      }
-    }
-    const targets = [...new Set(raws)].map((raw) => [...this.panels].find((p) => p.raw === raw)).filter((p) => !!p);
-    if (targets.length && !this.disposed) {
-      try {
-        this.perf.statusBatches++;
-        const result = await this.plugin.call("run-status", { sources: targets.map((p) => p.run.spec.source) });
-        if (!this.disposed && revision === this.settingsRevision) {
-          targets.forEach((target, i) => {
-            let s = result.entries[i];
-            if (!s) return;
-            if (!s.spec) s = { ...target.run, state: "source-missing", valid: false, error: s.error };
-            if (s.state === "none" && s.id !== target.run.id) s = { ...s, state: "stale-config" };
-            if (s.current_signature) this.validated.set(s.id, s);
-            for (const p of this.panels) if (p.raw === target.raw) {
-              p.settingsDirty = false;
-              p.update(s);
-            }
-          });
-          this.watchSettings();
-        }
-      } catch (e) {
-        for (const target of targets) target.update({ ...target.run, state: "source-missing", valid: false, error: String(e) });
-      }
-    }
-    clearTimeout(this.liveTimer);
-    if (!this.disposed && [...this.panels].some((p) => active.has(p.run.state) || p.run.active)) this.liveTimer = setTimeout(() => {
-      for (const p of this.panels) if (active.has(p.run.state) || p.run.active) this.recordPending.add(p.run.id);
-      this.scheduleRefresh();
-    }, 1500);
-  }
-  async run(raw, force = false) {
-    const result = await this.plugin.call("run-start", { raws: [raw], force });
-    this.pending.add(raw);
-    this.scheduleRefresh();
-    return result;
-  }
-  async stop(id2) {
-    await this.plugin.call("run-cancel", { ids: [id2] });
-  }
-  async runNote(force = false) {
-    await this.plugin.edits?.flushAll();
-    const view = this.plugin.app.workspace.getActiveViewOfType(import_obsidian3.MarkdownView);
-    if (!view?.file) return;
-    const text = view.getMode() === "source" ? view.editor.getValue() : await this.plugin.app.vault.cachedRead(view.file);
-    const plan = await this.plugin.call("run-plan", { text });
-    const bad = plan.entries.filter((e) => e.error);
-    if (bad.length) throw Error(`${bad.length} linked source(s) unavailable; resolve these before Run All`);
-    const raws = plan.entries.filter((e) => !e.duplicate).map((e) => e.raw);
-    if (!raws.length) {
-      new import_obsidian3.Notice("No runnable code blocks in this note");
-      return;
-    }
-    const result = await this.plugin.call("run-start", { raws, force });
-    new import_obsidian3.Notice(`${result.queued.length} queued \xB7 ${result.reused.length} saved results reused${result.skipped?.length ? ` \xB7 ${result.skipped.length} unsaved drafts skipped` : ""}`);
-    for (const raw of raws) this.pending.add(raw);
-    this.scheduleRefresh();
-  }
-  async stopNote() {
-    const view = this.plugin.app.workspace.getActiveViewOfType(import_obsidian3.MarkdownView);
-    if (!view?.file) return;
-    const text = view.getMode() === "source" ? view.editor.getValue() : await this.plugin.app.vault.cachedRead(view.file);
-    const plan = await this.plugin.call("run-plan", { text });
-    await this.plugin.call("run-cancel", { ids: [...new Set(plan.entries.filter((e) => active.has(e.state) || e.active).map((e) => e.id))] });
-  }
-  noteMenu(menu, note) {
-    menu.addItem((i) => i.setTitle("Expand all outputs in note").setIcon("unfold-vertical").onClick(() => this.foldAll(note, true)));
-    menu.addItem((i) => i.setTitle("Collapse all outputs in note").setIcon("fold-vertical").onClick(() => this.foldAll(note, false)));
-  }
-  async dispose() {
-    this.disposed = true;
-    this.watcher?.close();
-    clearTimeout(this.refreshTimer);
-    clearTimeout(this.saveTimer);
-    clearTimeout(this.liveTimer);
-    for (const ref of [...this.allPanels]) ref.deref()?.destroy();
-    this.allPanels.clear();
-    this.watchSettings();
-    await this.persist();
-  }
-};
-var OutputPanel = class {
-  constructor(owner, raw, note, run, host, runButton, previewSignature, refreshPreview) {
-    this.owner = owner;
-    this.raw = raw;
-    this.note = note;
-    this.host = host;
-    this.runButton = runButton;
-    this.previewSignature = previewSignature;
-    this.refreshPreview = refreshPreview;
-    this.previewStale = false;
-    this.settingsDirty = false;
-    this.appeared = false;
-    this.visible = false;
-    this.disposed = false;
-    this.generation = 0;
-    this.loaded = "";
-    this.run = run;
-    this.key = owner.key(note, raw);
-    this.details = host.createEl("details", { cls: "code-links-output" });
-    this.summary = this.details.createEl("summary", { cls: "code-links-output-summary" });
-    this.summary.createSpan({ text: "Output", cls: "code-links-output-label" });
-    this.statusEl = this.summary.createSpan({ cls: "code-links-output-status" });
-    this.count = this.summary.createSpan({ cls: "code-links-output-count" });
-    this.count.hidden = true;
-    this.copy = this.summary.createEl("button", { cls: "clickable-icon code-links-output-copy", attr: { type: "button", "aria-label": "Copy output", title: "Copy output" } });
-    (0, import_obsidian3.setIcon)(this.copy, "copy");
-    this.copy.onclick = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      void this.copyOutput();
-    };
-    this.body = this.details.createDiv("code-links-output-body");
-    this.details.open = !!owner.preference(note, raw).open;
-    this.summary.onclick = (e) => {
-      if (e.target.closest("button")) return;
-      e.preventDefault();
-      this.setExpanded(!this.details.open);
-    };
-    this.details.ontoggle = () => {
-      if (this.disposed) return;
-      if (this.details.open) void this.show();
-      else {
-        this.generation++;
-        this.body.empty();
-        this.loaded = "";
-      }
-    };
-    this.observer = new IntersectionObserver((entries) => {
-      if (owner.closed) {
-        this.destroy();
-        return;
-      }
-      const wasVisible = this.visible;
-      this.visible = entries.some((e) => e.isIntersecting) && host.isConnected;
-      if (this.visible) {
-        owner.attach(this);
-        this.setExpanded(!!owner.preference(note, raw).open, false);
-        if (this.appeared && !wasVisible) owner.refreshRecord(this.run.id);
-        this.appeared = true;
-        void this.show();
-      } else {
-        owner.detach(this);
-        this.generation++;
-        if (this.body.isConnected && this.details.open) this.body.style.height = this.body.getBoundingClientRect().height + "px";
-        this.body.empty();
-        this.loaded = "";
-      }
-    }, { rootMargin: "100px" });
-    this.observer.observe(host);
-    this.body.oncontextmenu = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const menu = new import_obsidian3.Menu();
-      const selected = this.body.ownerDocument.getSelection()?.toString();
-      if (selected) menu.addItem((i) => i.setTitle("Copy selection").onClick(() => this.body.ownerDocument.defaultView.navigator.clipboard.writeText(selected)));
-      menu.addItem((i) => i.setTitle("Copy output").onClick(() => void this.copyOutput()));
-      this.heightMenu(menu);
-      owner.noteMenu(menu, note);
-      menu.showAtMouseEvent(e);
-    };
-    this.runButton.onclick = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      void this.action();
-    };
-    owner.track(this);
-    this.update(run);
-  }
-  setExpanded(value, persist = true) {
-    this.details.open = value;
-    if (persist) this.owner.setPreference(this.note, this.raw, { open: value, ...{ note: this.note } });
-    if (!value) {
-      this.generation++;
-      this.body.empty();
-      this.loaded = "";
-    } else void this.show();
-  }
-  previewChanged() {
-    this.previewStale = true;
-    this.generation++;
-    this.body.empty();
-    this.loaded = "";
-    this.statusEl.textContent = "Source changed \u2014 refresh preview";
-  }
-  async action(force = false) {
-    try {
-      if (active.has(this.run.state) || this.run.active) await this.owner.stop(this.run.id);
-      else {
-        this.setExpanded(true);
-        if (this.previewStale) await this.refreshPreview();
-        await this.owner.run(this.raw, force);
-      }
-    } catch (e) {
-      new import_obsidian3.Notice(String(e));
-    }
-  }
-  update(run) {
-    if (run.run_id !== this.run.run_id || unavailable.has(run.state)) this.count.hidden = true;
-    this.run = run;
-    if (run.current_signature && JSON.stringify(run.current_signature) !== JSON.stringify(this.previewSignature)) this.previewStale = true;
-    this.details.hidden = run.state === "none";
-    this.host.toggleClass("has-output", !this.details.hidden);
-    const busy = active.has(run.state) || run.active;
-    (0, import_obsidian3.setIcon)(this.runButton, busy ? "square" : "play");
-    this.runButton.setAttribute("aria-label", busy ? "Stop run" : "Run whole file");
-    this.runButton.title = busy ? "Stop run" : `Run whole file: ${run.spec.source.split("/").pop()}. The entire source runs, including lines outside this excerpt.`;
-    const duration = run.duration_s == null ? "" : run.duration_s < 0.1 ? "<0.1 s" : `${run.duration_s.toFixed(1)} s`;
-    const labels = { "not-run-revision-changed": "Not run \u2014 saved source changed", none: "Not run", queued: "Queued", running: "Running", ok: run.stderr ? "Finished \xB7 warnings" : "Finished", failed: "Failed", stopped: "Stopped", timeout: "Timed out", "worker-lost": "Interrupted", "guardian-lost": "Interrupted \xB7 possible surviving processes", "stale-source": "Source changed \u2014 run again", "stale-config": "Settings changed \u2014 run again", "source-missing": "Source not found", checking: "Checking source\u2026", interrupted: "Interrupted" };
-    this.statusEl.textContent = (labels[run.state] || run.state) + (duration && !unavailable.has(run.state) ? " \xB7 " + duration : "");
-    this.statusEl.title = run.finished_at ? new Date(run.finished_at * 1e3).toLocaleString() : "";
-    this.details.dataset.state = run.state;
-    if (run.last_attempt) this.statusEl.textContent += " \xB7 showing previous saved result";
-    if (run.truncated) this.statusEl.textContent += " \xB7 output capped at 1 MiB";
-    this.copy.disabled = unavailable.has(run.state) || run.changed_during_run === true || run.state === "queued";
-    if (unavailable.has(run.state) || run.changed_during_run) {
-      this.generation++;
-      this.body.empty();
-      this.loaded = "";
-      return;
-    }
-    if (this.previewStale) {
-      this.previewChanged();
-      return;
-    }
-    void this.show();
-  }
-  async show() {
-    if (this.disposed || this.previewStale || !this.visible || !this.details.open || this.details.hidden || unavailable.has(this.run.state) || this.run.changed_during_run) return;
-    const path = this.run.state === "running" ? this.run.preview_path : this.run.log_path;
-    if (!path) return;
-    const version = [this.run.run_id, this.run.state, this.run.bytes, this.end].join(":");
-    if (version === this.loaded) return;
-    this.loaded = version;
-    const generation = ++this.generation;
-    try {
-      const size = (await (0, import_promises.stat)(path)).size, end = Math.min(this.end ?? size, size), start = Math.max(0, end - 48 * 1024);
-      const file = await (0, import_promises.open)(path, "r");
-      let data;
-      try {
-        data = Buffer.alloc(end - start);
-        const r = await file.read(data, 0, data.length, start);
-        data = data.subarray(0, r.bytesRead);
-      } finally {
-        await file.close();
-      }
-      this.owner.perf.outputReads++;
-      this.owner.perf.outputBytes += data.length;
-      if (this.disposed || generation !== this.generation) return;
-      let text = data.toString("utf8");
-      let pageStart = start;
-      if (start && text.includes("\n")) {
-        const cut = text.indexOf("\n") + 1;
-        pageStart += Buffer.byteLength(text.slice(0, cut));
-        text = text.slice(cut);
-      }
-      const oldPre = this.body.querySelector("pre"), scrollTop = oldPre?.scrollTop || 0, scrollLeft = oldPre?.scrollLeft || 0;
-      const selection = this.body.ownerDocument.getSelection();
-      if (oldPre && selection && !selection.isCollapsed && selection.anchorNode && oldPre.contains(selection.anchorNode)) {
-        this.loaded = "";
-        return;
-      }
-      const follow = !!oldPre && scrollTop + oldPre.clientHeight >= oldPre.scrollHeight - 2;
-      this.body.style.height = "";
-      this.body.empty();
-      if (pageStart) {
-        const previous = this.body.createEl("button", { text: "Earlier output", cls: "code-links-output-page" });
-        previous.onclick = (e) => {
-          e.stopPropagation();
-          this.end = pageStart;
-          void this.show();
-        };
-      }
-      const pre = this.body.createEl("pre", { cls: "code-links-output-text" });
-      pre.textContent = text || "(Program finished without printed output.)";
-      pre.style.setProperty("--code-links-output-lines", String(this.owner.preference(this.note, this.raw).lines || 12));
-      const lines = text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
-      this.count.textContent = !pageStart && !this.run.truncated ? `${lines} lines` : "Paged output";
-      this.count.hidden = pre.scrollHeight <= pre.clientHeight;
-      pre.scrollTop = follow ? pre.scrollHeight : scrollTop;
-      pre.scrollLeft = scrollLeft;
-      if (this.end != null && end < size) {
-        const latest = this.body.createEl("button", { text: "Latest output", cls: "code-links-output-page" });
-        latest.onclick = (e) => {
-          e.stopPropagation();
-          this.end = void 0;
-          void this.show();
-        };
-      }
-    } catch (e) {
-      if (!this.disposed && generation === this.generation) {
-        this.loaded = "";
-        this.body.setText("Output is not available yet.");
-      }
-    }
-  }
-  async copyOutput() {
-    try {
-      if (this.previewStale) {
-        new import_obsidian3.Notice("Refresh the source preview before copying its output");
-        return;
-      }
-      const r = await this.owner.plugin.call("run-output", { id: this.run.id, full: true });
-      if (!r.text) {
-        new import_obsidian3.Notice(unavailable.has(r.state) ? "Source changed \u2014 run again" : "No printed output");
-        return;
-      }
-      await this.host.ownerDocument.defaultView.navigator.clipboard.writeText(r.text);
-      new import_obsidian3.Notice("Output copied");
-    } catch (e) {
-      new import_obsidian3.Notice(String(e));
-    }
-  }
-  heightMenu(menu) {
-    menu.addItem((i) => i.setTitle("Maximum visible output lines\u2026").setIcon("rows-3").onClick(() => this.owner.plugin.outputHeight(this.owner.preference(this.note, this.raw).lines || 12, (n) => {
-      this.owner.setPreference(this.note, this.raw, { lines: n, ...{ note: this.note } });
-      this.body.querySelector("pre")?.style.setProperty("--code-links-output-lines", String(n));
-    })));
-  }
-  menu(menu) {
-    const busy = active.has(this.run.state) || this.run.active;
-    menu.addItem((i) => i.setTitle(busy ? "Stop run" : "Run whole file").setIcon(busy ? "square" : "play").onClick(() => void this.action()));
-    if (!busy) menu.addItem((i) => i.setTitle("Rerun whole file").onClick(() => void this.action(true)));
-    menu.addItem((i) => i.setTitle(/\.(wl|wls)$/i.test(this.run.spec.source) ? "Open complete source in Wolfram" : "Open complete source in Neovim").setIcon("file-code").onClick(() => void this.owner.plugin.launch(sourceOnly(this.raw))));
-    menu.addSeparator();
-    menu.addItem((i) => i.setTitle(this.details.open ? "Collapse output" : "Expand output").onClick(() => this.setExpanded(!this.details.open)));
-    menu.addItem((i) => i.setTitle("Copy output").setDisabled(this.copy.disabled).onClick(() => void this.copyOutput()));
-    this.heightMenu(menu);
-    this.owner.noteMenu(menu, this.note);
-    menu.addSeparator();
-  }
-  destroy() {
-    this.disposed = true;
-    this.generation++;
-    this.observer.disconnect();
-    this.owner.detach(this);
-    this.owner.untrack(this);
-    this.details.remove();
-    this.host.removeClass("has-output");
-  }
-};
-
-// excerpt-dialog.ts
-var import_obsidian4 = require("obsidian");
-var ExcerptDialog = class extends import_obsidian4.Modal {
-  constructor(plugin, raw, note, replace) {
-    super(plugin.app);
-    this.plugin = plugin;
-    this.raw = raw;
-    this.note = note;
-    this.replace = replace;
-    this.alive = true;
-  }
-  onOpen() {
-    this.modalEl.addClass("code-links-dialog");
-    this.titleEl.setText("Code excerpt");
-    const simple = this.raw.match(/^!\{\{([^#|}]+)#L([1-9]\d*)(?:-L?([1-9]\d*))?(?:\|([^}]*))?\}\}(?:\{height=(\d+)\})?$/);
-    const intro = this.contentEl.createEl("p", { cls: "code-links-dialog-help", text: "Choose the source lines shown in this block. Run always executes the complete source file." });
-    const form = this.contentEl.createDiv("code-links-dialog-fields");
-    const field = (parent, label3, value, type = "text") => {
-      const wrap = parent.createEl("label", { cls: "code-links-dialog-field" });
-      wrap.createSpan({ text: label3 });
-      const input = wrap.createEl("input", { type, value });
-      input.disabled = !simple;
-      return input;
-    };
-    const source = field(form, "Source file", simple?.[1] || "");
-    source.placeholder = "scripts/calculation.py";
-    source.spellcheck = false;
-    source.setAttribute("autocorrect", "off");
-    source.setAttribute("autocapitalize", "off");
-    const suggestions = form.createEl("datalist");
-    suggestions.id = "code-links-targets-" + Math.random().toString(36).slice(2);
-    source.setAttribute("list", suggestions.id);
-    source.oninput = () => {
-      suggestions.empty();
-      const q = source.value.toLowerCase();
-      let n = 0;
-      for (const f of this.plugin.files) if (f.target.toLowerCase().includes(q)) {
-        suggestions.createEl("option", { value: f.target });
-        if (++n === 20) break;
-      }
-    };
-    const label2 = field(form, "Label (optional)", simple?.[4] || "");
-    label2.placeholder = "Energy calculation";
-    const row = form.createDiv("code-links-dialog-columns");
-    const start = field(row, "Start line", simple?.[2] || "", "number"), end = field(row, "End line", simple?.[3] || simple?.[2] || "", "number");
-    for (const input of [start, end]) {
-      input.min = "1";
-      input.step = "1";
-    }
-    const display = form.createDiv("code-links-dialog-columns");
-    const height = field(display, "Maximum visible code lines", simple?.[5] || this.raw.match(/\{height=(\d+)\}$/)?.[1] || "", "number");
-    height.disabled = false;
-    height.min = "3";
-    height.max = "40";
-    height.step = "1";
-    height.placeholder = "Auto \xB7 up to 10 lines";
-    const runnable = /\.(py|wl|wls)(?:#|\||\})/i.test(this.raw);
-    const output = runnable ? field(display, "Maximum visible output lines", String(this.plugin.outputs.preference(this.note, this.raw).lines || 12), "number") : null;
-    if (output) {
-      output.disabled = false;
-      output.min = "3";
-      output.max = "80";
-      output.step = "1";
-    }
-    form.createEl("p", { cls: "code-links-dialog-help", text: "Leave code height empty for Auto: short code fits exactly; more than 10 lines scrolls. Output height is a separate display preference." });
-    const advanced = this.contentEl.createEl("details", { cls: "code-links-dialog-advanced" });
-    advanced.createEl("summary", { text: "Advanced link" });
-    const rawInput = advanced.createEl("textarea", { value: this.raw, attr: { rows: "3", "aria-label": "Complete excerpt link" } });
-    let advancedEdited = !simple;
-    rawInput.oninput = () => {
-      advancedEdited = true;
-      for (const input of [source, label2, start, end]) input.disabled = true;
-    };
-    if (!simple) {
-      advanced.open = true;
-      form.createEl("p", { cls: "code-links-dialog-help", text: "This block uses a tracked, filtered, or multi-range selection. Edit its complete link below to preserve that selection." });
-    }
-    const error = this.contentEl.createDiv("code-links-dialog-error");
-    error.setAttribute("role", "status");
-    const previewBox = this.contentEl.createDiv("code-links-dialog-preview");
-    previewBox.hidden = true;
-    const footer = this.contentEl.createDiv("code-links-dialog-footer");
-    const preview = footer.createEl("button", { text: "Preview lines" }), cancel = footer.createEl("button", { text: "Cancel" }), apply = footer.createEl("button", { text: "Apply changes", cls: "mod-cta" });
-    cancel.onclick = () => this.close();
-    const integer = (input, lo, hi, name) => {
-      const n = Number(input.value);
-      if (!Number.isInteger(n) || n < lo || n > hi) throw Error(`${name}: enter a whole number from ${lo} to ${hi}.`);
-      return n;
-    };
-    const link = () => {
-      const h = height.value.trim() ? integer(height, 3, 40, "Code lines") : null;
-      const suffix = h == null ? "" : `{height=${h}}`;
-      if (output) integer(output, 3, 80, "Output lines");
-      if (advancedEdited) return rawInput.value.replace(/\{height=\d+\}$/, "") + suffix;
-      const a2 = integer(start, 1, 1e9, "Start line"), b = integer(end, 1, 1e9, "End line");
-      if (b < a2) throw Error("End line must be at or after Start line.");
-      if (!source.value.trim()) throw Error("Choose a source file.");
-      if (/[|{}\r\n]/.test(label2.value)) throw Error("Label cannot contain |, braces, or line breaks.");
-      return `!{{${source.value.trim()}#L${a2}-L${b}${label2.value ? "|" + label2.value : ""}}}${suffix}`;
-    };
-    const validate = async (save) => {
-      apply.disabled = preview.disabled = true;
-      error.setText("");
-      try {
-        const value = link();
-        const info = await this.plugin.call("inspect", { raw: value });
-        if (!info.exists) throw Error("Source file was not found.");
-        const read = await this.plugin.call("read", { raw: value });
-        if (read.full) throw Error("Choose source lines for this excerpt.");
-        if (!this.alive) return;
-        if (save) {
-          await this.replace(this.raw, value);
-          if (output) this.plugin.outputs.setPreference(this.note, value, { ...this.plugin.outputs.preference(this.note, this.raw), note: this.note, lines: Number(output.value) });
-          this.close();
-        } else {
-          previewBox.empty();
-          previewBox.hidden = false;
-          previewBox.createDiv({ text: `${read.lines.length} selected lines \xB7 preview of first ${Math.min(12, read.lines.length)}`, cls: "code-links-dialog-help" });
-          previewBox.createEl("pre", { text: read.lines.slice(0, 12).map((s, i) => `${read.line_numbers[i] ?? "\u2026"}  ${s}`).join("\n").slice(0, 12e3) });
-        }
-      } catch (e) {
-        if (this.alive) error.setText(String(e).replace(/^Error: /, ""));
-      } finally {
-        apply.disabled = preview.disabled = false;
-      }
-    };
-    preview.onclick = () => void validate(false);
-    apply.onclick = () => void validate(true);
-    this.contentEl.onkeydown = (e) => {
-      if (e.key === "Enter" && e.target !== rawInput && e.target !== source && !apply.disabled) {
-        e.preventDefault();
-        void validate(true);
-      }
-    };
-    (simple ? source : rawInput).focus();
-  }
-  onClose() {
-    this.alive = false;
-    this.contentEl.empty();
-  }
-};
-
-// output-appearance.ts
-var terminalColors = { outputForeground: "#8fe388", outputBackground: "#08110b" };
-function outputColor(value, fallback2) {
-  return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : fallback2;
-}
-var OutputAppearance = class {
-  constructor(workspace, colors) {
-    this.workspace = workspace;
-    this.colors = colors;
-    this.disposed = false;
-    this.documents = /* @__PURE__ */ new Map();
-  }
-  apply(doc) {
-    if (this.disposed || !doc.body) return;
-    let entry = this.documents.get(doc);
-    if (!entry) {
-      const style = doc.body.style;
-      entry = { style, previous: ["--code-links-output-fg", "--code-links-output-bg"].map((name) => ({ name, value: style.getPropertyValue(name), priority: style.getPropertyPriority(name) })) };
-      this.documents.set(doc, entry);
-    }
-    const colors = this.colors();
-    entry.style.setProperty("--code-links-output-fg", colors.outputForeground);
-    entry.style.setProperty("--code-links-output-bg", colors.outputBackground);
-  }
-  refresh() {
-    this.apply(document);
-    this.workspace.iterateAllLeaves((leaf) => this.apply(leaf.view.containerEl.ownerDocument));
-  }
-  release(doc) {
-    const entry = this.documents.get(doc);
-    if (!entry) return;
-    for (const p of entry.previous) {
-      if (p.value) entry.style.setProperty(p.name, p.value, p.priority);
-      else entry.style.removeProperty(p.name);
-    }
-    this.documents.delete(doc);
-  }
-  dispose() {
-    this.disposed = true;
-    for (const doc of this.documents.keys()) this.release(doc);
-  }
-};
-
-// inline-edit.ts
-var import_obsidian6 = require("obsidian");
-var import_state6 = require("@codemirror/state");
-var import_view6 = require("@codemirror/view");
-
-// node_modules/@codemirror/commands/dist/index.js
-var import_state4 = require("@codemirror/state");
-var import_view4 = require("@codemirror/view");
-var import_language5 = require("@codemirror/language");
-var import_common4 = require("@lezer/common");
-var toggleComment = (target) => {
-  let { state } = target, line = state.doc.lineAt(state.selection.main.from), config = getConfig(target.state, line.from);
-  return config.line ? toggleLineComment(target) : config.block ? toggleBlockCommentByLine(target) : false;
-};
-function command(f, option) {
-  return ({ state, dispatch }) => {
-    if (state.readOnly)
-      return false;
-    let tr = f(option, state);
-    if (!tr)
-      return false;
-    dispatch(state.update(tr));
-    return true;
-  };
-}
-var toggleLineComment = /* @__PURE__ */ command(
-  changeLineComment,
-  0
-  /* CommentOption.Toggle */
-);
-var toggleBlockComment = /* @__PURE__ */ command(
-  changeBlockComment,
-  0
-  /* CommentOption.Toggle */
-);
-var toggleBlockCommentByLine = /* @__PURE__ */ command(
-  (o, s) => changeBlockComment(o, s, selectedLineRanges(s)),
-  0
-  /* CommentOption.Toggle */
-);
-function getConfig(state, pos) {
-  let data = state.languageDataAt("commentTokens", pos, 1);
-  return data.length ? data[0] : {};
-}
-var SearchMargin = 50;
-function findBlockComment(state, { open: open2, close }, from, to) {
-  let textBefore = state.sliceDoc(from - SearchMargin, from);
-  let textAfter = state.sliceDoc(to, to + SearchMargin);
-  let spaceBefore = /\s*$/.exec(textBefore)[0].length, spaceAfter = /^\s*/.exec(textAfter)[0].length;
-  let beforeOff = textBefore.length - spaceBefore;
-  if (textBefore.slice(beforeOff - open2.length, beforeOff) == open2 && textAfter.slice(spaceAfter, spaceAfter + close.length) == close) {
-    return {
-      open: { pos: from - spaceBefore, margin: spaceBefore && 1 },
-      close: { pos: to + spaceAfter, margin: spaceAfter && 1 }
-    };
-  }
-  let startText, endText;
-  if (to - from <= 2 * SearchMargin) {
-    startText = endText = state.sliceDoc(from, to);
-  } else {
-    startText = state.sliceDoc(from, from + SearchMargin);
-    endText = state.sliceDoc(to - SearchMargin, to);
-  }
-  let startSpace = /^\s*/.exec(startText)[0].length, endSpace = /\s*$/.exec(endText)[0].length;
-  let endOff = endText.length - endSpace - close.length;
-  if (startText.slice(startSpace, startSpace + open2.length) == open2 && endText.slice(endOff, endOff + close.length) == close) {
-    return {
-      open: {
-        pos: from + startSpace + open2.length,
-        margin: /\s/.test(startText.charAt(startSpace + open2.length)) ? 1 : 0
-      },
-      close: {
-        pos: to - endSpace - close.length,
-        margin: /\s/.test(endText.charAt(endOff - 1)) ? 1 : 0
-      }
-    };
-  }
-  return null;
-}
-function selectedLineRanges(state) {
-  let ranges = [];
-  for (let r of state.selection.ranges) {
-    let fromLine = state.doc.lineAt(r.from);
-    let toLine = r.to <= fromLine.to ? fromLine : state.doc.lineAt(r.to);
-    if (toLine.from > fromLine.from && toLine.from == r.to)
-      toLine = r.to == fromLine.to + 1 ? fromLine : state.doc.lineAt(r.to - 1);
-    let last = ranges.length - 1;
-    if (last >= 0 && ranges[last].to > fromLine.from)
-      ranges[last].to = toLine.to;
-    else
-      ranges.push({ from: fromLine.from + /^\s*/.exec(fromLine.text)[0].length, to: toLine.to });
-  }
-  return ranges;
-}
-function changeBlockComment(option, state, ranges = state.selection.ranges) {
-  let tokens = ranges.map((r) => getConfig(state, r.from).block);
-  if (!tokens.every((c) => c))
-    return null;
-  let comments = ranges.map((r, i) => findBlockComment(state, tokens[i], r.from, r.to));
-  if (option != 2 && !comments.every((c) => c)) {
-    return { changes: state.changes(ranges.map((range, i) => {
-      if (comments[i])
-        return [];
-      return [{ from: range.from, insert: tokens[i].open + " " }, { from: range.to, insert: " " + tokens[i].close }];
-    })) };
-  } else if (option != 1 && comments.some((c) => c)) {
-    let changes = [];
-    for (let i = 0, comment; i < comments.length; i++)
-      if (comment = comments[i]) {
-        let token = tokens[i], { open: open2, close } = comment;
-        changes.push({ from: open2.pos - token.open.length, to: open2.pos + open2.margin }, { from: close.pos - close.margin, to: close.pos + token.close.length });
-      }
-    return { changes };
-  }
-  return null;
-}
-function changeLineComment(option, state, ranges = state.selection.ranges) {
-  let lines = [];
-  let prevLine = -1;
-  for (let { from, to } of ranges) {
-    let startI = lines.length, minIndent = 1e9;
-    let token = getConfig(state, from).line;
-    if (!token)
-      continue;
-    for (let pos = from; pos <= to; ) {
-      let line = state.doc.lineAt(pos);
-      if (line.from > prevLine && (from == to || to > line.from)) {
-        prevLine = line.from;
-        let indent2 = /^\s*/.exec(line.text)[0].length;
-        let empty = indent2 == line.length;
-        let comment = line.text.slice(indent2, indent2 + token.length) == token ? indent2 : -1;
-        if (indent2 < line.text.length && indent2 < minIndent)
-          minIndent = indent2;
-        lines.push({ line, comment, token, indent: indent2, empty, single: false });
-      }
-      pos = line.to + 1;
-    }
-    if (minIndent < 1e9) {
-      for (let i = startI; i < lines.length; i++)
-        if (lines[i].indent < lines[i].line.text.length)
-          lines[i].indent = minIndent;
-    }
-    if (lines.length == startI + 1)
-      lines[startI].single = true;
-  }
-  if (option != 2 && lines.some((l) => l.comment < 0 && (!l.empty || l.single))) {
-    let changes = [];
-    for (let { line, token, indent: indent2, empty, single } of lines)
-      if (single || !empty)
-        changes.push({ from: line.from + indent2, insert: token + " " });
-    let changeSet = state.changes(changes);
-    return { changes: changeSet, selection: state.selection.map(changeSet, 1) };
-  } else if (option != 1 && lines.some((l) => l.comment >= 0)) {
-    let changes = [];
-    for (let { line, comment, token } of lines)
-      if (comment >= 0) {
-        let from = line.from + comment, to = from + token.length;
-        if (line.text[to - line.from] == " ")
-          to++;
-        changes.push({ from, to });
-      }
-    return { changes };
-  }
-  return null;
-}
-var fromHistory = /* @__PURE__ */ import_state4.Annotation.define();
-var isolateHistory = /* @__PURE__ */ import_state4.Annotation.define();
-var invertedEffects = /* @__PURE__ */ import_state4.Facet.define();
-var historyConfig = /* @__PURE__ */ import_state4.Facet.define({
-  combine(configs) {
-    return (0, import_state4.combineConfig)(configs, {
-      minDepth: 100,
-      newGroupDelay: 500,
-      joinToEvent: (_t, isAdjacent2) => isAdjacent2
-    }, {
-      minDepth: Math.max,
-      newGroupDelay: Math.min,
-      joinToEvent: (a2, b) => (tr, adj) => a2(tr, adj) || b(tr, adj)
-    });
-  }
-});
-var historyField_ = /* @__PURE__ */ import_state4.StateField.define({
-  create() {
-    return HistoryState.empty;
+var mathematica = {
+  name: "mathematica",
+  startState: function() {
+    return { tokenize: tokenBase, commentLevel: 0 };
   },
-  update(state, tr) {
-    let config = tr.state.facet(historyConfig);
-    let fromHist = tr.annotation(fromHistory);
-    if (fromHist) {
-      let item = HistEvent.fromTransaction(tr, fromHist.selection), from = fromHist.side;
-      let other = from == 0 ? state.undone : state.done;
-      if (item)
-        other = updateBranch(other, other.length, config.minDepth, item);
-      else
-        other = addSelection(other, tr.startState.selection);
-      return new HistoryState(from == 0 ? fromHist.rest : other, from == 0 ? other : fromHist.rest);
-    }
-    let isolate = tr.annotation(isolateHistory);
-    if (isolate == "full" || isolate == "before")
-      state = state.isolate();
-    if (tr.annotation(import_state4.Transaction.addToHistory) === false)
-      return !tr.changes.empty ? state.addMapping(tr.changes.desc) : state;
-    let event = HistEvent.fromTransaction(tr);
-    let time = tr.annotation(import_state4.Transaction.time), userEvent = tr.annotation(import_state4.Transaction.userEvent);
-    if (event)
-      state = state.addChanges(event, time, userEvent, config, tr);
-    else if (tr.selection)
-      state = state.addSelection(tr.startState.selection, time, userEvent, config.newGroupDelay);
-    if (isolate == "full" || isolate == "after")
-      state = state.isolate();
-    return state;
+  token: function(stream, state) {
+    if (stream.eatSpace()) return null;
+    return state.tokenize(stream, state);
   },
-  toJSON(value) {
-    return { done: value.done.map((e) => e.toJSON()), undone: value.undone.map((e) => e.toJSON()) };
-  },
-  fromJSON(json) {
-    return new HistoryState(json.done.map(HistEvent.fromJSON), json.undone.map(HistEvent.fromJSON));
-  }
-});
-function history(config = {}) {
-  return [
-    historyField_,
-    historyConfig.of(config),
-    import_view4.EditorView.domEventHandlers({
-      beforeinput(e, view) {
-        let command2 = e.inputType == "historyUndo" ? undo : e.inputType == "historyRedo" ? redo : null;
-        if (!command2)
-          return false;
-        e.preventDefault();
-        return command2(view);
-      }
-    })
-  ];
-}
-function cmd(side, selection) {
-  return function({ state, dispatch }) {
-    if (!selection && state.readOnly)
-      return false;
-    let historyState = state.field(historyField_, false);
-    if (!historyState)
-      return false;
-    let tr = historyState.pop(side, state, selection);
-    if (!tr)
-      return false;
-    dispatch(tr);
-    return true;
-  };
-}
-var undo = /* @__PURE__ */ cmd(0, false);
-var redo = /* @__PURE__ */ cmd(1, false);
-var undoSelection = /* @__PURE__ */ cmd(0, true);
-var redoSelection = /* @__PURE__ */ cmd(1, true);
-var HistEvent = class _HistEvent {
-  constructor(changes, effects, mapped, startSelection, selectionsAfter) {
-    this.changes = changes;
-    this.effects = effects;
-    this.mapped = mapped;
-    this.startSelection = startSelection;
-    this.selectionsAfter = selectionsAfter;
-  }
-  setSelAfter(after) {
-    return new _HistEvent(this.changes, this.effects, this.mapped, this.startSelection, after);
-  }
-  toJSON() {
-    var _a, _b, _c;
-    return {
-      changes: (_a = this.changes) === null || _a === void 0 ? void 0 : _a.toJSON(),
-      mapped: (_b = this.mapped) === null || _b === void 0 ? void 0 : _b.toJSON(),
-      startSelection: (_c = this.startSelection) === null || _c === void 0 ? void 0 : _c.toJSON(),
-      selectionsAfter: this.selectionsAfter.map((s) => s.toJSON())
-    };
-  }
-  static fromJSON(json) {
-    return new _HistEvent(json.changes && import_state4.ChangeSet.fromJSON(json.changes), [], json.mapped && import_state4.ChangeDesc.fromJSON(json.mapped), json.startSelection && import_state4.EditorSelection.fromJSON(json.startSelection), json.selectionsAfter.map(import_state4.EditorSelection.fromJSON));
-  }
-  // This does not check `addToHistory` and such, it assumes the
-  // transaction needs to be converted to an item. Returns null when
-  // there are no changes or effects in the transaction.
-  static fromTransaction(tr, selection) {
-    let effects = none;
-    for (let invert of tr.startState.facet(invertedEffects)) {
-      let result = invert(tr);
-      if (result.length)
-        effects = effects.concat(result);
-    }
-    if (!effects.length && tr.changes.empty)
-      return null;
-    return new _HistEvent(tr.changes.invert(tr.startState.doc), effects, void 0, selection || tr.startState.selection, none);
-  }
-  static selection(selections) {
-    return new _HistEvent(void 0, none, void 0, void 0, selections);
+  languageData: {
+    commentTokens: { block: { open: "(*", close: "*)" } }
   }
 };
-function updateBranch(branch, to, maxLen, newEvent) {
-  let start = to + 1 > maxLen + 20 ? to - maxLen - 1 : 0;
-  let newBranch = branch.slice(start, to);
-  newBranch.push(newEvent);
-  return newBranch;
-}
-function isAdjacent(a2, b) {
-  let ranges = [], isAdjacent2 = false;
-  a2.iterChangedRanges((f, t) => ranges.push(f, t));
-  b.iterChangedRanges((_f, _t, f, t) => {
-    for (let i = 0; i < ranges.length; ) {
-      let from = ranges[i++], to = ranges[i++];
-      if (t >= from && f <= to)
-        isAdjacent2 = true;
-    }
-  });
-  return isAdjacent2;
-}
-function eqSelectionShape(a2, b) {
-  return a2.ranges.length == b.ranges.length && a2.ranges.filter((r, i) => r.empty != b.ranges[i].empty).length === 0;
-}
-function conc(a2, b) {
-  return !a2.length ? b : !b.length ? a2 : a2.concat(b);
-}
-var none = [];
-var MaxSelectionsPerEvent = 200;
-function addSelection(branch, selection) {
-  if (!branch.length) {
-    return [HistEvent.selection([selection])];
-  } else {
-    let lastEvent = branch[branch.length - 1];
-    let sels = lastEvent.selectionsAfter.slice(Math.max(0, lastEvent.selectionsAfter.length - MaxSelectionsPerEvent));
-    if (sels.length && sels[sels.length - 1].eq(selection))
-      return branch;
-    sels.push(selection);
-    return updateBranch(branch, branch.length - 1, 1e9, lastEvent.setSelAfter(sels));
-  }
-}
-function popSelection(branch) {
-  let last = branch[branch.length - 1];
-  let newBranch = branch.slice();
-  newBranch[branch.length - 1] = last.setSelAfter(last.selectionsAfter.slice(0, last.selectionsAfter.length - 1));
-  return newBranch;
-}
-function addMappingToBranch(branch, mapping) {
-  if (!branch.length)
-    return branch;
-  let length = branch.length, selections = none;
-  while (length) {
-    let event = mapEvent(branch[length - 1], mapping, selections);
-    if (event.changes && !event.changes.empty || event.effects.length) {
-      let result = branch.slice(0, length);
-      result[length - 1] = event;
-      return result;
-    } else {
-      mapping = event.mapped;
-      length--;
-      selections = event.selectionsAfter;
-    }
-  }
-  return selections.length ? [HistEvent.selection(selections)] : none;
-}
-function mapEvent(event, mapping, extraSelections) {
-  let selections = conc(event.selectionsAfter.length ? event.selectionsAfter.map((s) => s.map(mapping)) : none, extraSelections);
-  if (!event.changes)
-    return HistEvent.selection(selections);
-  let mappedChanges = event.changes.map(mapping), before = mapping.mapDesc(event.changes, true);
-  let fullMapping = event.mapped ? event.mapped.composeDesc(before) : before;
-  return new HistEvent(mappedChanges, import_state4.StateEffect.mapEffects(event.effects, mapping), fullMapping, event.startSelection.map(before), selections);
-}
-var joinableUserEvent = /^(input\.type|delete)($|\.)/;
-var HistoryState = class _HistoryState {
-  constructor(done, undone, prevTime = 0, prevUserEvent = void 0) {
-    this.done = done;
-    this.undone = undone;
-    this.prevTime = prevTime;
-    this.prevUserEvent = prevUserEvent;
-  }
-  isolate() {
-    return this.prevTime ? new _HistoryState(this.done, this.undone) : this;
-  }
-  addChanges(event, time, userEvent, config, tr) {
-    let done = this.done, lastEvent = done[done.length - 1];
-    if (lastEvent && lastEvent.changes && !lastEvent.changes.empty && event.changes && (!userEvent || joinableUserEvent.test(userEvent)) && (!lastEvent.selectionsAfter.length && time - this.prevTime < config.newGroupDelay && config.joinToEvent(tr, isAdjacent(lastEvent.changes, event.changes)) || // For compose (but not compose.start) events, always join with previous event
-    userEvent == "input.type.compose")) {
-      done = updateBranch(done, done.length - 1, config.minDepth, new HistEvent(event.changes.compose(lastEvent.changes), conc(import_state4.StateEffect.mapEffects(event.effects, lastEvent.changes), lastEvent.effects), lastEvent.mapped, lastEvent.startSelection, none));
-    } else {
-      done = updateBranch(done, done.length, config.minDepth, event);
-    }
-    return new _HistoryState(done, none, time, userEvent);
-  }
-  addSelection(selection, time, userEvent, newGroupDelay) {
-    let last = this.done.length ? this.done[this.done.length - 1].selectionsAfter : none;
-    if (last.length > 0 && time - this.prevTime < newGroupDelay && userEvent == this.prevUserEvent && userEvent && /^select($|\.)/.test(userEvent) && eqSelectionShape(last[last.length - 1], selection))
-      return this;
-    return new _HistoryState(addSelection(this.done, selection), this.undone, time, userEvent);
-  }
-  addMapping(mapping) {
-    return new _HistoryState(addMappingToBranch(this.done, mapping), addMappingToBranch(this.undone, mapping), this.prevTime, this.prevUserEvent);
-  }
-  pop(side, state, onlySelection) {
-    let branch = side == 0 ? this.done : this.undone;
-    if (branch.length == 0)
-      return null;
-    let event = branch[branch.length - 1], selection = event.selectionsAfter[0] || state.selection;
-    if (onlySelection && event.selectionsAfter.length) {
-      return state.update({
-        selection: event.selectionsAfter[event.selectionsAfter.length - 1],
-        annotations: fromHistory.of({ side, rest: popSelection(branch), selection }),
-        userEvent: side == 0 ? "select.undo" : "select.redo",
-        scrollIntoView: true
-      });
-    } else if (!event.changes) {
-      return null;
-    } else {
-      let rest = branch.length == 1 ? none : branch.slice(0, branch.length - 1);
-      if (event.mapped)
-        rest = addMappingToBranch(rest, event.mapped);
-      return state.update({
-        changes: event.changes,
-        selection: event.startSelection,
-        effects: event.effects,
-        annotations: fromHistory.of({ side, rest, selection }),
-        filter: false,
-        userEvent: side == 0 ? "undo" : "redo",
-        scrollIntoView: true
-      });
-    }
-  }
-};
-HistoryState.empty = /* @__PURE__ */ new HistoryState(none, none);
-var historyKeymap = [
-  { key: "Mod-z", run: undo, preventDefault: true },
-  { key: "Mod-y", mac: "Mod-Shift-z", run: redo, preventDefault: true },
-  { linux: "Ctrl-Shift-z", run: redo, preventDefault: true },
-  { key: "Mod-u", run: undoSelection, preventDefault: true },
-  { key: "Alt-u", mac: "Mod-Shift-u", run: redoSelection, preventDefault: true }
-];
-function updateSel(sel, by) {
-  return import_state4.EditorSelection.create(sel.ranges.map(by), sel.mainIndex);
-}
-function setSel(state, selection) {
-  return state.update({ selection, scrollIntoView: true, userEvent: "select" });
-}
-function moveSel({ state, dispatch }, how) {
-  let selection = updateSel(state.selection, how);
-  if (selection.eq(state.selection, true))
-    return false;
-  dispatch(setSel(state, selection));
-  return true;
-}
-function rangeEnd(range, forward) {
-  return import_state4.EditorSelection.cursor(forward ? range.to : range.from);
-}
-function cursorByChar(view, forward) {
-  return moveSel(view, (range) => range.empty ? view.moveByChar(range, forward) : rangeEnd(range, forward));
-}
-function ltrAtCursor(view) {
-  return view.textDirectionAt(view.state.selection.main.head) == import_view4.Direction.LTR;
-}
-var cursorCharLeft = (view) => cursorByChar(view, !ltrAtCursor(view));
-var cursorCharRight = (view) => cursorByChar(view, ltrAtCursor(view));
-function cursorByGroup(view, forward) {
-  return moveSel(view, (range) => range.empty ? view.moveByGroup(range, forward) : rangeEnd(range, forward));
-}
-var cursorGroupLeft = (view) => cursorByGroup(view, !ltrAtCursor(view));
-var cursorGroupRight = (view) => cursorByGroup(view, ltrAtCursor(view));
-var segmenter = typeof Intl != "undefined" && Intl.Segmenter ? /* @__PURE__ */ new Intl.Segmenter(void 0, { granularity: "word" }) : null;
-function interestingNode(state, node, bracketProp) {
-  if (node.type.prop(bracketProp))
-    return true;
-  let len = node.to - node.from;
-  return len && (len > 2 || /[^\s,.;:]/.test(state.sliceDoc(node.from, node.to))) || node.firstChild;
-}
-function moveBySyntax(state, start, forward) {
-  let pos = (0, import_language5.syntaxTree)(state).resolveInner(start.head);
-  let bracketProp = forward ? import_common4.NodeProp.closedBy : import_common4.NodeProp.openedBy;
-  for (let at = start.head; ; ) {
-    let next = forward ? pos.childAfter(at) : pos.childBefore(at);
-    if (!next)
-      break;
-    if (interestingNode(state, next, bracketProp))
-      pos = next;
-    else
-      at = forward ? next.to : next.from;
-  }
-  let bracket = pos.type.prop(bracketProp), match, newPos;
-  if (bracket && (match = forward ? (0, import_language5.matchBrackets)(state, pos.from, 1) : (0, import_language5.matchBrackets)(state, pos.to, -1)) && match.matched)
-    newPos = forward ? match.end.to : match.end.from;
-  else
-    newPos = forward ? pos.to : pos.from;
-  return import_state4.EditorSelection.cursor(newPos, forward ? -1 : 1);
-}
-var cursorSyntaxLeft = (view) => moveSel(view, (range) => moveBySyntax(view.state, range, !ltrAtCursor(view)));
-var cursorSyntaxRight = (view) => moveSel(view, (range) => moveBySyntax(view.state, range, ltrAtCursor(view)));
-function cursorByLine(view, forward) {
-  return moveSel(view, (range) => {
-    if (!range.empty)
-      return rangeEnd(range, forward);
-    let moved = view.moveVertically(range, forward);
-    return moved.head != range.head ? moved : view.moveToLineBoundary(range, forward);
-  });
-}
-var cursorLineUp = (view) => cursorByLine(view, false);
-var cursorLineDown = (view) => cursorByLine(view, true);
-function pageInfo(view) {
-  let selfScroll = view.scrollDOM.clientHeight < view.scrollDOM.scrollHeight - 2;
-  let marginTop = 0, marginBottom = 0, height;
-  if (selfScroll) {
-    for (let source of view.state.facet(import_view4.EditorView.scrollMargins)) {
-      let margins = source(view);
-      if (margins === null || margins === void 0 ? void 0 : margins.top)
-        marginTop = Math.max(margins === null || margins === void 0 ? void 0 : margins.top, marginTop);
-      if (margins === null || margins === void 0 ? void 0 : margins.bottom)
-        marginBottom = Math.max(margins === null || margins === void 0 ? void 0 : margins.bottom, marginBottom);
-    }
-    height = view.scrollDOM.clientHeight - marginTop - marginBottom;
-  } else {
-    height = (view.dom.ownerDocument.defaultView || window).innerHeight;
-  }
-  return {
-    marginTop,
-    marginBottom,
-    selfScroll,
-    height: Math.max(view.defaultLineHeight, height - 5)
-  };
-}
-function cursorByPage(view, forward) {
-  let page = pageInfo(view);
-  let { state } = view, selection = updateSel(state.selection, (range) => {
-    return range.empty ? view.moveVertically(range, forward, page.height) : rangeEnd(range, forward);
-  });
-  if (selection.eq(state.selection))
-    return false;
-  let effect;
-  if (page.selfScroll) {
-    let startPos = view.coordsAtPos(state.selection.main.head);
-    let scrollRect = view.scrollDOM.getBoundingClientRect();
-    let scrollTop = scrollRect.top + page.marginTop, scrollBottom = scrollRect.bottom - page.marginBottom;
-    if (startPos && startPos.top > scrollTop && startPos.bottom < scrollBottom)
-      effect = import_view4.EditorView.scrollIntoView(selection.main.head, { y: "start", yMargin: startPos.top - scrollTop });
-  }
-  view.dispatch(setSel(state, selection), { effects: effect });
-  return true;
-}
-var cursorPageUp = (view) => cursorByPage(view, false);
-var cursorPageDown = (view) => cursorByPage(view, true);
-function moveByLineBoundary(view, start, forward) {
-  let line = view.lineBlockAt(start.head), moved = view.moveToLineBoundary(start, forward);
-  if (moved.head == start.head && moved.head != (forward ? line.to : line.from))
-    moved = view.moveToLineBoundary(start, forward, false);
-  if (!forward && moved.head == line.from && line.length) {
-    let space3 = /^\s*/.exec(view.state.sliceDoc(line.from, Math.min(line.from + 100, line.to)))[0].length;
-    if (space3 && start.head != line.from + space3)
-      moved = import_state4.EditorSelection.cursor(line.from + space3);
-  }
-  return moved;
-}
-var cursorLineBoundaryForward = (view) => moveSel(view, (range) => moveByLineBoundary(view, range, true));
-var cursorLineBoundaryBackward = (view) => moveSel(view, (range) => moveByLineBoundary(view, range, false));
-var cursorLineBoundaryLeft = (view) => moveSel(view, (range) => moveByLineBoundary(view, range, !ltrAtCursor(view)));
-var cursorLineBoundaryRight = (view) => moveSel(view, (range) => moveByLineBoundary(view, range, ltrAtCursor(view)));
-var cursorLineStart = (view) => moveSel(view, (range) => import_state4.EditorSelection.cursor(view.lineBlockAt(range.head).from, 1));
-var cursorLineEnd = (view) => moveSel(view, (range) => import_state4.EditorSelection.cursor(view.lineBlockAt(range.head).to, -1));
-function toMatchingBracket(state, dispatch, extend) {
-  let found = false, selection = updateSel(state.selection, (range) => {
-    let matching = (0, import_language5.matchBrackets)(state, range.head, -1) || (0, import_language5.matchBrackets)(state, range.head, 1) || range.head > 0 && (0, import_language5.matchBrackets)(state, range.head - 1, 1) || range.head < state.doc.length && (0, import_language5.matchBrackets)(state, range.head + 1, -1);
-    if (!matching || !matching.end)
-      return range;
-    found = true;
-    let head = matching.start.from == range.head ? matching.end.to : matching.end.from;
-    return extend ? import_state4.EditorSelection.range(range.anchor, head) : import_state4.EditorSelection.cursor(head);
-  });
-  if (!found)
-    return false;
-  dispatch(setSel(state, selection));
-  return true;
-}
-var cursorMatchingBracket = ({ state, dispatch }) => toMatchingBracket(state, dispatch, false);
-function extendSel(target, how) {
-  let selection = updateSel(target.state.selection, (range) => {
-    let head = how(range);
-    return import_state4.EditorSelection.range(range.anchor, head.head, head.goalColumn, head.bidiLevel || void 0);
-  });
-  if (selection.eq(target.state.selection))
-    return false;
-  target.dispatch(setSel(target.state, selection));
-  return true;
-}
-function selectByChar(view, forward) {
-  return extendSel(view, (range) => view.moveByChar(range, forward));
-}
-var selectCharLeft = (view) => selectByChar(view, !ltrAtCursor(view));
-var selectCharRight = (view) => selectByChar(view, ltrAtCursor(view));
-function selectByGroup(view, forward) {
-  return extendSel(view, (range) => view.moveByGroup(range, forward));
-}
-var selectGroupLeft = (view) => selectByGroup(view, !ltrAtCursor(view));
-var selectGroupRight = (view) => selectByGroup(view, ltrAtCursor(view));
-var selectSyntaxLeft = (view) => extendSel(view, (range) => moveBySyntax(view.state, range, !ltrAtCursor(view)));
-var selectSyntaxRight = (view) => extendSel(view, (range) => moveBySyntax(view.state, range, ltrAtCursor(view)));
-function selectByLine(view, forward) {
-  return extendSel(view, (range) => view.moveVertically(range, forward));
-}
-var selectLineUp = (view) => selectByLine(view, false);
-var selectLineDown = (view) => selectByLine(view, true);
-function selectByPage(view, forward) {
-  return extendSel(view, (range) => view.moveVertically(range, forward, pageInfo(view).height));
-}
-var selectPageUp = (view) => selectByPage(view, false);
-var selectPageDown = (view) => selectByPage(view, true);
-var selectLineBoundaryForward = (view) => extendSel(view, (range) => moveByLineBoundary(view, range, true));
-var selectLineBoundaryBackward = (view) => extendSel(view, (range) => moveByLineBoundary(view, range, false));
-var selectLineBoundaryLeft = (view) => extendSel(view, (range) => moveByLineBoundary(view, range, !ltrAtCursor(view)));
-var selectLineBoundaryRight = (view) => extendSel(view, (range) => moveByLineBoundary(view, range, ltrAtCursor(view)));
-var selectLineStart = (view) => extendSel(view, (range) => import_state4.EditorSelection.cursor(view.lineBlockAt(range.head).from));
-var selectLineEnd = (view) => extendSel(view, (range) => import_state4.EditorSelection.cursor(view.lineBlockAt(range.head).to));
-var cursorDocStart = ({ state, dispatch }) => {
-  dispatch(setSel(state, { anchor: 0 }));
-  return true;
-};
-var cursorDocEnd = ({ state, dispatch }) => {
-  dispatch(setSel(state, { anchor: state.doc.length }));
-  return true;
-};
-var selectDocStart = ({ state, dispatch }) => {
-  dispatch(setSel(state, { anchor: state.selection.main.anchor, head: 0 }));
-  return true;
-};
-var selectDocEnd = ({ state, dispatch }) => {
-  dispatch(setSel(state, { anchor: state.selection.main.anchor, head: state.doc.length }));
-  return true;
-};
-var selectAll = ({ state, dispatch }) => {
-  dispatch(state.update({ selection: { anchor: 0, head: state.doc.length }, userEvent: "select" }));
-  return true;
-};
-var selectLine = ({ state, dispatch }) => {
-  let ranges = selectedLineBlocks(state).map(({ from, to }) => import_state4.EditorSelection.range(from, Math.min(to + 1, state.doc.length)));
-  dispatch(state.update({ selection: import_state4.EditorSelection.create(ranges), userEvent: "select" }));
-  return true;
-};
-var selectParentSyntax = ({ state, dispatch }) => {
-  let selection = updateSel(state.selection, (range) => {
-    let tree = (0, import_language5.syntaxTree)(state), stack = tree.resolveStack(range.from, 1);
-    if (range.empty) {
-      let stackBefore = tree.resolveStack(range.from, -1);
-      if (stackBefore.node.from >= stack.node.from && stackBefore.node.to <= stack.node.to)
-        stack = stackBefore;
-    }
-    for (let cur = stack; cur; cur = cur.next) {
-      let { node } = cur;
-      if ((node.from < range.from && node.to >= range.to || node.to > range.to && node.from <= range.from) && cur.next)
-        return import_state4.EditorSelection.range(node.to, node.from);
-    }
-    return range;
-  });
-  if (selection.eq(state.selection))
-    return false;
-  dispatch(setSel(state, selection));
-  return true;
-};
-var simplifySelection = ({ state, dispatch }) => {
-  let cur = state.selection, selection = null;
-  if (cur.ranges.length > 1)
-    selection = import_state4.EditorSelection.create([cur.main]);
-  else if (!cur.main.empty)
-    selection = import_state4.EditorSelection.create([import_state4.EditorSelection.cursor(cur.main.head)]);
-  if (!selection)
-    return false;
-  dispatch(setSel(state, selection));
-  return true;
-};
-function deleteBy(target, by) {
-  if (target.state.readOnly)
-    return false;
-  let event = "delete.selection", { state } = target;
-  let changes = state.changeByRange((range) => {
-    let { from, to } = range;
-    if (from == to) {
-      let towards = by(range);
-      if (towards < from) {
-        event = "delete.backward";
-        towards = skipAtomic(target, towards, false);
-      } else if (towards > from) {
-        event = "delete.forward";
-        towards = skipAtomic(target, towards, true);
-      }
-      from = Math.min(from, towards);
-      to = Math.max(to, towards);
-    } else {
-      from = skipAtomic(target, from, false);
-      to = skipAtomic(target, to, true);
-    }
-    return from == to ? { range } : { changes: { from, to }, range: import_state4.EditorSelection.cursor(from, from < range.head ? -1 : 1) };
-  });
-  if (changes.changes.empty)
-    return false;
-  target.dispatch(state.update(changes, {
-    scrollIntoView: true,
-    userEvent: event,
-    effects: event == "delete.selection" ? import_view4.EditorView.announce.of(state.phrase("Selection deleted")) : void 0
-  }));
-  return true;
-}
-function skipAtomic(target, pos, forward) {
-  if (target instanceof import_view4.EditorView)
-    for (let ranges of target.state.facet(import_view4.EditorView.atomicRanges).map((f) => f(target)))
-      ranges.between(pos, pos, (from, to) => {
-        if (from < pos && to > pos)
-          pos = forward ? to : from;
-      });
-  return pos;
-}
-var deleteByChar = (target, forward, byIndentUnit) => deleteBy(target, (range) => {
-  let pos = range.from, { state } = target, line = state.doc.lineAt(pos), before, targetPos;
-  if (byIndentUnit && !forward && pos > line.from && pos < line.from + 200 && !/[^ \t]/.test(before = line.text.slice(0, pos - line.from))) {
-    if (before[before.length - 1] == "	")
-      return pos - 1;
-    let col = (0, import_state4.countColumn)(before, state.tabSize), drop = col % (0, import_language5.getIndentUnit)(state) || (0, import_language5.getIndentUnit)(state);
-    for (let i = 0; i < drop && before[before.length - 1 - i] == " "; i++)
-      pos--;
-    targetPos = pos;
-  } else {
-    targetPos = (0, import_state4.findClusterBreak)(line.text, pos - line.from, forward, forward) + line.from;
-    if (targetPos == pos && line.number != (forward ? state.doc.lines : 1))
-      targetPos += forward ? 1 : -1;
-    else if (!forward && /[\ufe00-\ufe0f]/.test(line.text.slice(targetPos - line.from, pos - line.from)))
-      targetPos = (0, import_state4.findClusterBreak)(line.text, targetPos - line.from, false, false) + line.from;
-  }
-  return targetPos;
-});
-var deleteCharBackward = (view) => deleteByChar(view, false, true);
-var deleteCharForward = (view) => deleteByChar(view, true, false);
-var deleteByGroup = (target, forward) => deleteBy(target, (range) => {
-  let pos = range.head, { state } = target, line = state.doc.lineAt(pos);
-  let categorize = state.charCategorizer(pos);
-  for (let cat = null; ; ) {
-    if (pos == (forward ? line.to : line.from)) {
-      if (pos == range.head && line.number != (forward ? state.doc.lines : 1))
-        pos += forward ? 1 : -1;
-      break;
-    }
-    let next = (0, import_state4.findClusterBreak)(line.text, pos - line.from, forward) + line.from;
-    let nextChar = line.text.slice(Math.min(pos, next) - line.from, Math.max(pos, next) - line.from);
-    let nextCat = categorize(nextChar);
-    if (cat != null && nextCat != cat)
-      break;
-    if (nextChar != " " || pos != range.head)
-      cat = nextCat;
-    pos = next;
-  }
-  return pos;
-});
-var deleteGroupBackward = (target) => deleteByGroup(target, false);
-var deleteGroupForward = (target) => deleteByGroup(target, true);
-var deleteToLineEnd = (view) => deleteBy(view, (range) => {
-  let lineEnd = view.lineBlockAt(range.head).to;
-  return range.head < lineEnd ? lineEnd : Math.min(view.state.doc.length, range.head + 1);
-});
-var deleteLineBoundaryBackward = (view) => deleteBy(view, (range) => {
-  let lineStart = view.moveToLineBoundary(range, false).head;
-  return range.head > lineStart ? lineStart : Math.max(0, range.head - 1);
-});
-var deleteLineBoundaryForward = (view) => deleteBy(view, (range) => {
-  let lineStart = view.moveToLineBoundary(range, true).head;
-  return range.head < lineStart ? lineStart : Math.min(view.state.doc.length, range.head + 1);
-});
-var splitLine = ({ state, dispatch }) => {
-  if (state.readOnly)
-    return false;
-  let changes = state.changeByRange((range) => {
-    return {
-      changes: { from: range.from, to: range.to, insert: import_state4.Text.of(["", ""]) },
-      range: import_state4.EditorSelection.cursor(range.from)
-    };
-  });
-  dispatch(state.update(changes, { scrollIntoView: true, userEvent: "input" }));
-  return true;
-};
-var transposeChars = ({ state, dispatch }) => {
-  if (state.readOnly)
-    return false;
-  let changes = state.changeByRange((range) => {
-    if (!range.empty || range.from == 0 || range.from == state.doc.length)
-      return { range };
-    let pos = range.from, line = state.doc.lineAt(pos);
-    let from = pos == line.from ? pos - 1 : (0, import_state4.findClusterBreak)(line.text, pos - line.from, false) + line.from;
-    let to = pos == line.to ? pos + 1 : (0, import_state4.findClusterBreak)(line.text, pos - line.from, true) + line.from;
-    return {
-      changes: { from, to, insert: state.doc.slice(pos, to).append(state.doc.slice(from, pos)) },
-      range: import_state4.EditorSelection.cursor(to)
-    };
-  });
-  if (changes.changes.empty)
-    return false;
-  dispatch(state.update(changes, { scrollIntoView: true, userEvent: "move.character" }));
-  return true;
-};
-function selectedLineBlocks(state) {
-  let blocks = [], upto = -1;
-  for (let range of state.selection.ranges) {
-    let startLine = state.doc.lineAt(range.from), endLine = state.doc.lineAt(range.to);
-    if (!range.empty && range.to == endLine.from)
-      endLine = state.doc.lineAt(range.to - 1);
-    if (upto >= startLine.number) {
-      let prev = blocks[blocks.length - 1];
-      prev.to = endLine.to;
-      prev.ranges.push(range);
-    } else {
-      blocks.push({ from: startLine.from, to: endLine.to, ranges: [range] });
-    }
-    upto = endLine.number + 1;
-  }
-  return blocks;
-}
-function moveLine(state, dispatch, forward) {
-  if (state.readOnly)
-    return false;
-  let changes = [], ranges = [];
-  for (let block of selectedLineBlocks(state)) {
-    if (forward ? block.to == state.doc.length : block.from == 0)
-      continue;
-    let nextLine = state.doc.lineAt(forward ? block.to + 1 : block.from - 1);
-    let size = nextLine.length + 1;
-    if (forward) {
-      changes.push({ from: block.to, to: nextLine.to }, { from: block.from, insert: nextLine.text + state.lineBreak });
-      for (let r of block.ranges)
-        ranges.push(import_state4.EditorSelection.range(Math.min(state.doc.length, r.anchor + size), Math.min(state.doc.length, r.head + size)));
-    } else {
-      changes.push({ from: nextLine.from, to: block.from }, { from: block.to, insert: state.lineBreak + nextLine.text });
-      for (let r of block.ranges)
-        ranges.push(import_state4.EditorSelection.range(r.anchor - size, r.head - size));
-    }
-  }
-  if (!changes.length)
-    return false;
-  dispatch(state.update({
-    changes,
-    scrollIntoView: true,
-    selection: import_state4.EditorSelection.create(ranges, state.selection.mainIndex),
-    userEvent: "move.line"
-  }));
-  return true;
-}
-var moveLineUp = ({ state, dispatch }) => moveLine(state, dispatch, false);
-var moveLineDown = ({ state, dispatch }) => moveLine(state, dispatch, true);
-function copyLine(state, dispatch, forward) {
-  if (state.readOnly)
-    return false;
-  let changes = [];
-  for (let block of selectedLineBlocks(state)) {
-    if (forward)
-      changes.push({ from: block.from, insert: state.doc.slice(block.from, block.to) + state.lineBreak });
-    else
-      changes.push({ from: block.to, insert: state.lineBreak + state.doc.slice(block.from, block.to) });
-  }
-  dispatch(state.update({ changes, scrollIntoView: true, userEvent: "input.copyline" }));
-  return true;
-}
-var copyLineUp = ({ state, dispatch }) => copyLine(state, dispatch, false);
-var copyLineDown = ({ state, dispatch }) => copyLine(state, dispatch, true);
-var deleteLine = (view) => {
-  if (view.state.readOnly)
-    return false;
-  let { state } = view, changes = state.changes(selectedLineBlocks(state).map(({ from, to }) => {
-    if (from > 0)
-      from--;
-    else if (to < state.doc.length)
-      to++;
-    return { from, to };
-  }));
-  let selection = updateSel(state.selection, (range) => {
-    let dist = void 0;
-    if (view.lineWrapping) {
-      let block = view.lineBlockAt(range.head), pos = view.coordsAtPos(range.head, range.assoc || 1);
-      if (pos)
-        dist = block.bottom + view.documentTop - pos.bottom + view.defaultLineHeight / 2;
-    }
-    return view.moveVertically(range, true, dist);
-  }).map(changes);
-  view.dispatch({ changes, selection, scrollIntoView: true, userEvent: "delete.line" });
-  return true;
-};
-function isBetweenBrackets(state, pos) {
-  if (/\(\)|\[\]|\{\}/.test(state.sliceDoc(pos - 1, pos + 1)))
-    return { from: pos, to: pos };
-  let context = (0, import_language5.syntaxTree)(state).resolveInner(pos);
-  let before = context.childBefore(pos), after = context.childAfter(pos), closedBy;
-  if (before && after && before.to <= pos && after.from >= pos && (closedBy = before.type.prop(import_common4.NodeProp.closedBy)) && closedBy.indexOf(after.name) > -1 && state.doc.lineAt(before.to).from == state.doc.lineAt(after.from).from && !/\S/.test(state.sliceDoc(before.to, after.from)))
-    return { from: before.to, to: after.from };
-  return null;
-}
-var insertNewlineAndIndent = /* @__PURE__ */ newlineAndIndent(false);
-var insertBlankLine = /* @__PURE__ */ newlineAndIndent(true);
-function newlineAndIndent(atEof) {
-  return ({ state, dispatch }) => {
-    if (state.readOnly)
-      return false;
-    let changes = state.changeByRange((range) => {
-      let { from, to } = range, line = state.doc.lineAt(from);
-      let explode = !atEof && from == to && isBetweenBrackets(state, from);
-      if (atEof)
-        from = to = (to <= line.to ? line : state.doc.lineAt(to)).to;
-      let cx = new import_language5.IndentContext(state, { simulateBreak: from, simulateDoubleBreak: !!explode });
-      let indent2 = (0, import_language5.getIndentation)(cx, from);
-      if (indent2 == null)
-        indent2 = (0, import_state4.countColumn)(/^\s*/.exec(state.doc.lineAt(from).text)[0], state.tabSize);
-      while (to < line.to && /\s/.test(line.text[to - line.from]))
-        to++;
-      if (explode)
-        ({ from, to } = explode);
-      else if (from > line.from && from < line.from + 100 && !/\S/.test(line.text.slice(0, from)))
-        from = line.from;
-      let insert = ["", (0, import_language5.indentString)(state, indent2)];
-      if (explode)
-        insert.push((0, import_language5.indentString)(state, cx.lineIndent(line.from, -1)));
-      return {
-        changes: { from, to, insert: import_state4.Text.of(insert) },
-        range: import_state4.EditorSelection.cursor(from + 1 + insert[1].length)
-      };
-    });
-    dispatch(state.update(changes, { scrollIntoView: true, userEvent: "input" }));
-    return true;
-  };
-}
-function changeBySelectedLine(state, f) {
-  let atLine = -1;
-  return state.changeByRange((range) => {
-    let changes = [];
-    for (let pos = range.from; pos <= range.to; ) {
-      let line = state.doc.lineAt(pos);
-      if (line.number > atLine && (range.empty || range.to > line.from)) {
-        f(line, changes, range);
-        atLine = line.number;
-      }
-      pos = line.to + 1;
-    }
-    let changeSet = state.changes(changes);
-    return {
-      changes,
-      range: import_state4.EditorSelection.range(changeSet.mapPos(range.anchor, 1), changeSet.mapPos(range.head, 1))
-    };
-  });
-}
-var indentSelection = ({ state, dispatch }) => {
-  if (state.readOnly)
-    return false;
-  let updated = /* @__PURE__ */ Object.create(null);
-  let context = new import_language5.IndentContext(state, { overrideIndentation: (start) => {
-    let found = updated[start];
-    return found == null ? -1 : found;
-  } });
-  let changes = changeBySelectedLine(state, (line, changes2, range) => {
-    let indent2 = (0, import_language5.getIndentation)(context, line.from);
-    if (indent2 == null)
-      return;
-    if (!/\S/.test(line.text))
-      indent2 = 0;
-    let cur = /^\s*/.exec(line.text)[0];
-    let norm = (0, import_language5.indentString)(state, indent2);
-    if (cur != norm || range.from < line.from + cur.length) {
-      updated[line.from] = indent2;
-      changes2.push({ from: line.from, to: line.from + cur.length, insert: norm });
-    }
-  });
-  if (!changes.changes.empty)
-    dispatch(state.update(changes, { userEvent: "indent" }));
-  return true;
-};
-var indentMore = ({ state, dispatch }) => {
-  if (state.readOnly)
-    return false;
-  dispatch(state.update(changeBySelectedLine(state, (line, changes) => {
-    changes.push({ from: line.from, insert: state.facet(import_language5.indentUnit) });
-  }), { userEvent: "input.indent" }));
-  return true;
-};
-var indentLess = ({ state, dispatch }) => {
-  if (state.readOnly)
-    return false;
-  dispatch(state.update(changeBySelectedLine(state, (line, changes) => {
-    let space3 = /^\s*/.exec(line.text)[0];
-    if (!space3)
-      return;
-    let col = (0, import_state4.countColumn)(space3, state.tabSize), keep = 0;
-    let insert = (0, import_language5.indentString)(state, Math.max(0, col - (0, import_language5.getIndentUnit)(state)));
-    while (keep < space3.length && keep < insert.length && space3.charCodeAt(keep) == insert.charCodeAt(keep))
-      keep++;
-    changes.push({ from: line.from + keep, to: line.from + space3.length, insert: insert.slice(keep) });
-  }), { userEvent: "delete.dedent" }));
-  return true;
-};
-var toggleTabFocusMode = (view) => {
-  view.setTabFocusMode();
-  return true;
-};
-var emacsStyleKeymap = [
-  { key: "Ctrl-b", run: cursorCharLeft, shift: selectCharLeft, preventDefault: true },
-  { key: "Ctrl-f", run: cursorCharRight, shift: selectCharRight },
-  { key: "Ctrl-p", run: cursorLineUp, shift: selectLineUp },
-  { key: "Ctrl-n", run: cursorLineDown, shift: selectLineDown },
-  { key: "Ctrl-a", run: cursorLineStart, shift: selectLineStart },
-  { key: "Ctrl-e", run: cursorLineEnd, shift: selectLineEnd },
-  { key: "Ctrl-d", run: deleteCharForward },
-  { key: "Ctrl-h", run: deleteCharBackward },
-  { key: "Ctrl-k", run: deleteToLineEnd },
-  { key: "Ctrl-Alt-h", run: deleteGroupBackward },
-  { key: "Ctrl-o", run: splitLine },
-  { key: "Ctrl-t", run: transposeChars },
-  { key: "Ctrl-v", run: cursorPageDown }
-];
-var standardKeymap = /* @__PURE__ */ [
-  { key: "ArrowLeft", run: cursorCharLeft, shift: selectCharLeft, preventDefault: true },
-  { key: "Mod-ArrowLeft", mac: "Alt-ArrowLeft", run: cursorGroupLeft, shift: selectGroupLeft, preventDefault: true },
-  { mac: "Cmd-ArrowLeft", run: cursorLineBoundaryLeft, shift: selectLineBoundaryLeft, preventDefault: true },
-  { key: "ArrowRight", run: cursorCharRight, shift: selectCharRight, preventDefault: true },
-  { key: "Mod-ArrowRight", mac: "Alt-ArrowRight", run: cursorGroupRight, shift: selectGroupRight, preventDefault: true },
-  { mac: "Cmd-ArrowRight", run: cursorLineBoundaryRight, shift: selectLineBoundaryRight, preventDefault: true },
-  { key: "ArrowUp", run: cursorLineUp, shift: selectLineUp, preventDefault: true },
-  { mac: "Cmd-ArrowUp", run: cursorDocStart, shift: selectDocStart },
-  { mac: "Ctrl-ArrowUp", run: cursorPageUp, shift: selectPageUp },
-  { key: "ArrowDown", run: cursorLineDown, shift: selectLineDown, preventDefault: true },
-  { mac: "Cmd-ArrowDown", run: cursorDocEnd, shift: selectDocEnd },
-  { mac: "Ctrl-ArrowDown", run: cursorPageDown, shift: selectPageDown },
-  { key: "PageUp", run: cursorPageUp, shift: selectPageUp },
-  { key: "PageDown", run: cursorPageDown, shift: selectPageDown },
-  { key: "Home", run: cursorLineBoundaryBackward, shift: selectLineBoundaryBackward, preventDefault: true },
-  { key: "Mod-Home", run: cursorDocStart, shift: selectDocStart },
-  { key: "End", run: cursorLineBoundaryForward, shift: selectLineBoundaryForward, preventDefault: true },
-  { key: "Mod-End", run: cursorDocEnd, shift: selectDocEnd },
-  { key: "Enter", run: insertNewlineAndIndent, shift: insertNewlineAndIndent },
-  { key: "Mod-a", run: selectAll },
-  { key: "Backspace", run: deleteCharBackward, shift: deleteCharBackward },
-  { key: "Delete", run: deleteCharForward },
-  { key: "Mod-Backspace", mac: "Alt-Backspace", run: deleteGroupBackward },
-  { key: "Mod-Delete", mac: "Alt-Delete", run: deleteGroupForward },
-  { mac: "Mod-Backspace", run: deleteLineBoundaryBackward },
-  { mac: "Mod-Delete", run: deleteLineBoundaryForward }
-].concat(/* @__PURE__ */ emacsStyleKeymap.map((b) => ({ mac: b.key, run: b.run, shift: b.shift })));
-var defaultKeymap = /* @__PURE__ */ [
-  { key: "Alt-ArrowLeft", mac: "Ctrl-ArrowLeft", run: cursorSyntaxLeft, shift: selectSyntaxLeft },
-  { key: "Alt-ArrowRight", mac: "Ctrl-ArrowRight", run: cursorSyntaxRight, shift: selectSyntaxRight },
-  { key: "Alt-ArrowUp", run: moveLineUp },
-  { key: "Shift-Alt-ArrowUp", run: copyLineUp },
-  { key: "Alt-ArrowDown", run: moveLineDown },
-  { key: "Shift-Alt-ArrowDown", run: copyLineDown },
-  { key: "Escape", run: simplifySelection },
-  { key: "Mod-Enter", run: insertBlankLine },
-  { key: "Alt-l", mac: "Ctrl-l", run: selectLine },
-  { key: "Mod-i", run: selectParentSyntax, preventDefault: true },
-  { key: "Mod-[", run: indentLess },
-  { key: "Mod-]", run: indentMore },
-  { key: "Mod-Alt-\\", run: indentSelection },
-  { key: "Shift-Mod-k", run: deleteLine },
-  { key: "Shift-Mod-\\", run: cursorMatchingBracket },
-  { key: "Mod-/", run: toggleComment },
-  { key: "Alt-A", run: toggleBlockComment },
-  { key: "Ctrl-m", mac: "Shift-Alt-m", run: toggleTabFocusMode }
-].concat(standardKeymap);
-var indentWithTab = { key: "Tab", run: indentMore, shift: indentLess };
-
-// new-script.ts
-var import_obsidian5 = require("obsidian");
-function insertion(text, line) {
-  const lines = text.split("\n");
-  let end = Math.min(line, lines.length - 1), fence = "", start = -1;
-  for (let n = 0; n <= end; n++) {
-    const value = lines[n].replace(/^\s*(?:>\s*)+/, "").trim();
-    if (n === 0 && value === "---") {
-      fence = "---";
-      start = n;
-      continue;
-    }
-    const marker = value.match(/^(`{3,}|~{3,}|\$\$)/)?.[1];
-    if (fence) {
-      if (n > start && (fence === "---" ? value === "---" : value.startsWith(fence))) {
-        fence = "";
-        start = -1;
-      }
-    } else if (marker && !(value.length > marker.length && value.endsWith(marker))) {
-      fence = marker;
-      start = n;
-    }
-  }
-  if (fence) {
-    let closed = false;
-    for (let n = end + 1; n < lines.length; n++) if (lines[n].replace(/^\s*(?:>\s*)+/, "").trim().startsWith(fence)) {
-      end = n;
-      closed = true;
-      break;
-    }
-    if (!closed) throw Error("Close the current code, math, or frontmatter block before inserting.");
-  }
-  if (lines[end].trim()) while (end + 1 < lines.length && lines[end + 1].trim()) end++;
-  const quote = lines[end].match(/^(\s*(?:>\s*)+)/)?.[1] || "";
-  const offset = lines.slice(0, end + 1).join("\n").length;
-  return { offset, prefix: quote };
-}
-function insertionText(text, at, raw) {
-  const tail = text.slice(at.offset), prefix = at.prefix;
-  const after = prefix ? "\n" + prefix + "\n" : tail.startsWith("\n\n") ? "" : tail.startsWith("\n") ? "\n" : "\n\n";
-  return "\n" + prefix + "\n" + prefix + raw + after;
-}
-var NewScriptModal = class extends import_obsidian5.Modal {
-  constructor(plugin, note, editor, after, line) {
-    super(plugin.app);
-    this.plugin = plugin;
-    this.note = note;
-    this.editor = editor;
-    this.after = after;
-    this.line = line;
-    this.identifier = crypto.randomUUID().replace(/-/g, "");
-  }
-  async onOpen() {
-    this.modalEl.addClass("code-links-dialog", "code-links-new-script");
-    this.titleEl.setText("New code block");
-    const file = this.plugin.app.vault.getAbstractFileByPath(this.note);
-    if (!(file instanceof import_obsidian5.TFile)) {
-      new import_obsidian5.Notice("Open a note first");
-      this.close();
-      return;
-    }
-    const expected = this.editor?.getValue() ?? await this.plugin.app.vault.read(file);
-    const selectedLine = this.line ?? this.editor?.getCursor("to").line;
-    const grid = this.contentEl.createDiv("code-links-create-fields");
-    const field = (title, parent = grid) => {
-      const row = parent.createEl("label", { cls: "code-links-create-field" });
-      row.createSpan({ text: title });
-      return row;
-    };
-    const languageRow = field("Language");
-    const lang = languageRow.createEl("select");
-    lang.hidden = true;
-    const choices = languageRow.createDiv("code-links-language-choices");
-    const languageButtons = [];
-    for (const [value, label3] of [["python", "Python"], ["wolfram", "Wolfram"], ["shell", "Shell"]]) {
-      lang.createEl("option", { value, text: label3 });
-      const button = choices.createEl("button", { text: label3, attr: { type: "button" } });
-      languageButtons.push(button);
-      button.dataset.language = value;
-      button.onclick = () => {
-        lang.value = value;
-        lang.dispatchEvent(new Event("change"));
-      };
-    }
-    lang.value = this.plugin.settings.newLanguage || "python";
-    const paintLanguage = () => {
-      for (const button of languageButtons) {
-        const selected = button.dataset.language === lang.value;
-        button.toggleClass("is-active", selected);
-        button.setAttribute("aria-pressed", String(selected));
-      }
-    };
-    paintLanguage();
-    const name = field("Name").createEl("input", { attr: { type: "text", spellcheck: "false", placeholder: "calculation.py" } });
-    const folder = field("Folder").createEl("input", { attr: { type: "text", spellcheck: "false" } });
-    const label2 = field("Label").createEl("input", { attr: { type: "text", placeholder: "Optional" } });
-    const sandboxRow = this.contentEl.createEl("label", { cls: "code-links-create-sandbox" });
-    const sandbox = sandboxRow.createEl("input", { attr: { type: "checkbox" } });
-    sandboxRow.createSpan({ text: "Sandbox only" });
-    sandboxRow.createSpan({ text: "Runs isolated \xB7 no file until saved", cls: "code-links-create-hint" });
-    sandboxRow.title = "Temporary code and output stay on this Mac until you choose Save as script.";
-    const advanced = this.contentEl.createEl("details", { cls: "code-links-create-advanced" });
-    advanced.createEl("summary", { text: "Advanced" });
-    const advancedGrid = advanced.createDiv("code-links-create-fields");
-    const height = field("Visible lines", advancedGrid).createEl("input", { attr: { placeholder: "Auto \xB7 up to 10", inputmode: "numeric" } });
-    const cwd = field("Run from", advancedGrid).createEl("input", { value: "script", attr: { placeholder: "script, root, or vault-relative folder" } });
-    const interpreter = field("Interpreter", advancedGrid).createEl("input", { attr: { placeholder: "Use language default", spellcheck: "false" } });
-    const args = field("Arguments", advancedGrid).createEl("input", { attr: { placeholder: 'JSON list, e.g. ["--steps", "10"]', spellcheck: "false" } });
-    const timeout = field("Timeout (s)", advancedGrid).createEl("input", { attr: { placeholder: "300", inputmode: "numeric" } });
-    const starter = field("Initial code", advancedGrid).createEl("select");
-    starter.createEl("option", { value: "blank", text: "Blank" });
-    starter.createEl("option", { value: "starter", text: "Small starter" });
-    const preview = folder.parentElement.createDiv("code-links-create-preview");
-    const error = this.contentEl.createDiv("code-links-dialog-error");
-    const recovery = this.contentEl.createDiv("code-links-create-recovery");
-    recovery.hidden = true;
-    const footer = this.contentEl.createDiv("code-links-dialog-footer");
-    footer.createEl("button", { text: "Cancel" }).onclick = () => this.close();
-    const create = footer.createEl("button", { text: "Create", cls: "mod-cta" });
-    let suggested = "", busy = false, inserted = false, receipt;
-    const refresh = () => {
-      preview.setText(name.value + (sandbox.checked ? " \xB7 local sandbox, no file yet" : " \xB7 new file"));
-      preview.title = (folder.value ? folder.value + "/" : "") + name.value;
-    };
-    sandbox.onchange = refresh;
-    const defaults = async () => {
-      try {
-        const data = await this.plugin.call("new-defaults", { note: this.note, language: lang.value, folder_rule: this.plugin.settings.newFolderRule });
-        if (!name.value || name.value === suggested) {
-          name.value = data.name;
-          suggested = data.name;
-        } else {
-          name.value = name.value.replace(/\.(py|wl|wls|sh|bash|zsh)$/i, { python: ".py", wolfram: ".wls", shell: ".sh" }[lang.value] || ".py");
-        }
-        if (!folder.value) folder.value = data.folder;
-        refresh();
-      } catch (e) {
-        error.setText(String(e));
-      }
-    };
-    lang.onchange = () => {
-      paintLanguage();
-      void defaults();
-    };
-    name.oninput = folder.oninput = refresh;
-    const insert = async (raw) => {
-      if (this.editor) {
-        if (this.plugin.app.workspace.getActiveFile()?.path !== this.note || this.editor.getValue() !== expected) throw Error("The note changed while this dialog was open. Copy the link or reopen at the new insertion point.");
-        const at = insertion(expected, selectedLine ?? 0), chunk = insertionText(expected, at, raw);
-        this.editor.replaceRange(chunk, this.editor.offsetToPos(at.offset));
-        this.editor.setCursor(this.editor.offsetToPos(at.offset + chunk.length));
-      } else await this.plugin.app.vault.process(file, (text) => {
-        if (text !== expected) throw Error("The note changed while this dialog was open. Copy the link or reopen.");
-        let line = text.split("\n").length - 1;
-        if (this.after) {
-          const position = text.indexOf(this.after);
-          if (position < 0 || position !== text.lastIndexOf(this.after)) throw Error("Select this exact occurrence in editing mode to insert below it.");
-          line = text.slice(0, position + this.after.length).split("\n").length - 1;
-        }
-        const at = insertion(text, line);
-        return text.slice(0, at.offset) + insertionText(text, at, raw) + text.slice(at.offset);
-      });
-    };
-    const submit = async () => {
-      if (busy) return;
-      busy = true;
-      create.disabled = true;
-      error.empty();
-      try {
-        const run = {};
-        if (cwd.value.trim() && cwd.value.trim() !== "script") run.cwd = cwd.value.trim();
-        if (interpreter.value.trim()) run.interpreter = interpreter.value.trim();
-        if (args.value.trim()) run.args = JSON.parse(args.value);
-        if (timeout.value.trim()) run.timeout = Number(timeout.value);
-        receipt = receipt || await this.plugin.call("new-create", { id: this.identifier, note: this.note, language: lang.value, name: name.value, folder: folder.value, label: label2.value, sandbox: sandbox.checked, starter: starter.value === "starter", max_lines: height.value.trim() ? Number(height.value) : void 0, run });
-        await this.plugin.edits.begin(this.note, receipt.raw);
-        if (!inserted) {
-          await insert(receipt.raw);
-          inserted = true;
-        }
-        await this.plugin.call("new-complete", { id: receipt.id });
-        this.plugin.settings.newLanguage = lang.value;
-        await this.plugin.saveSettings();
-        this.close();
-        this.plugin.edits.focusNext(this.note, receipt.raw);
-      } catch (e) {
-        error.setText(String(e).replace(/^Error: /, ""));
-        if (receipt) {
-          recovery.hidden = false;
-          recovery.empty();
-          recovery.createSpan({ text: "Script preserved. " });
-          recovery.createEl("button", { text: "Copy block link" }).onclick = () => void navigator.clipboard.writeText(receipt.raw);
-        }
-      } finally {
-        busy = false;
-        create.disabled = false;
-      }
-    };
-    create.onclick = () => void submit();
-    this.contentEl.onkeydown = (e) => {
-      if (e.key === "Enter" && !e.isComposing && e.target instanceof HTMLInputElement) {
-        e.preventDefault();
-        void submit();
-      }
-    };
-    await defaults();
-    name.focus();
-    name.select();
-  }
-  onClose() {
-    this.contentEl.empty();
-  }
-};
-var SaveSandboxModal = class extends import_obsidian5.Modal {
-  constructor(plugin, initial, save) {
-    super(plugin.app);
-    this.initial = initial;
-    this.save = save;
-  }
-  onOpen() {
-    this.modalEl.addClass("code-links-dialog", "code-links-new-script");
-    this.titleEl.setText("Save as script");
-    const fields = this.contentEl.createDiv("code-links-create-fields");
-    const input = (title, value) => {
-      const row = fields.createEl("label", { cls: "code-links-create-field" });
-      row.createSpan({ text: title });
-      return row.createEl("input", { value, attr: { spellcheck: "false" } });
-    };
-    const name = input("Name", this.initial.name), folder = input("Folder", this.initial.folder);
-    const error = this.contentEl.createDiv("code-links-dialog-error");
-    const footer = this.contentEl.createDiv("code-links-dialog-footer");
-    footer.createEl("button", { text: "Cancel" }).onclick = () => this.close();
-    const save = footer.createEl("button", { text: "Save script", cls: "mod-cta" });
-    const submit = async () => {
-      if (save.disabled) return;
-      save.disabled = true;
-      try {
-        await this.save({ name: name.value, folder: folder.value });
-        this.close();
-      } catch (e) {
-        error.setText(String(e).replace(/^Error: /, ""));
-      } finally {
-        save.disabled = false;
-      }
-    };
-    save.onclick = () => void submit();
-    this.contentEl.onkeydown = (e) => {
-      if (e.key === "Enter" && !e.isComposing) {
-        e.preventDefault();
-        void submit();
-      }
-    };
-    name.focus();
-    name.select();
-  }
-  onClose() {
-    this.contentEl.empty();
-  }
-};
-var DraftLibraryModal = class extends import_obsidian5.Modal {
-  constructor(plugin) {
-    super(plugin.app);
-    this.plugin = plugin;
-  }
-  async onOpen() {
-    this.modalEl.addClass("code-links-dialog");
-    this.titleEl.setText("Drafts and unfinished creations");
-    const host = this.contentEl;
-    host.setText("Loading\u2026");
-    try {
-      const [drafts, created] = await Promise.all([this.plugin.call("edit-list"), this.plugin.call("new-list")]);
-      host.empty();
-      const items = [...drafts.sessions.filter((s) => ["editing", "saving", "promoted"].includes(s.state)), ...created.creations.filter((r) => !r.sandbox)];
-      if (!items.length && !drafts.issues?.length) host.createDiv({ text: "No unfinished drafts or creations." });
-      for (const item of items) {
-        const row = host.createDiv("code-links-draft-row");
-        row.createDiv({ text: item.raw || item.relative, cls: "code-links-draft-name" });
-        row.createDiv({ text: [item.kind === "experiment" ? "Local sandbox" : item.kind || "Script", item.state, item.note].filter(Boolean).join(" \xB7 "), cls: "code-links-create-hint" });
-        const actions = row.createDiv("code-links-draft-actions");
-        if (item.raw) actions.createEl("button", { text: "Copy block link" }).onclick = () => void navigator.clipboard.writeText(item.raw);
-        if (item.note) actions.createEl("button", { text: "Open note" }).onclick = () => {
-          void this.plugin.app.workspace.openLinkText(item.note, "");
-          this.close();
-        };
-      }
-      for (const issue of drafts.issues || []) host.createDiv({ text: "Draft preserved for recovery: " + issue.path + " \u2014 " + issue.error, cls: "code-links-dialog-error" });
-    } catch (error) {
-      host.setText(String(error));
-    }
-  }
-  onClose() {
-    this.contentEl.empty();
-  }
-};
-var RunSettingsModal = class extends import_obsidian5.Modal {
-  constructor(plugin, target, changed) {
-    super(plugin.app);
-    this.plugin = plugin;
-    this.target = target;
-    this.changed = changed;
-  }
-  async onOpen() {
-    this.modalEl.addClass("code-links-dialog", "code-links-new-script");
-    this.titleEl.setText("Script run settings");
-    try {
-      const saved = await this.plugin.call("new-settings", { target: this.target });
-      const fields = this.contentEl.createDiv("code-links-create-fields");
-      const field = (title, value, placeholder) => {
-        const row = fields.createEl("label", { cls: "code-links-create-field" });
-        row.createSpan({ text: title });
-        return row.createEl("input", { value, attr: { placeholder, spellcheck: "false" } });
-      };
-      const cwd = field("Run from", saved.settings.cwd || "script", "script, root, or vault folder");
-      const interpreter = field("Interpreter", saved.settings.interpreter || "", "Language default");
-      const args = field("Arguments", saved.settings.args ? JSON.stringify(saved.settings.args) : "", 'JSON list, e.g. ["--steps", "10"]');
-      const timeout = field("Timeout (s)", saved.settings.timeout?.toString() || "", "300");
-      const error = this.contentEl.createDiv("code-links-dialog-error"), footer = this.contentEl.createDiv("code-links-dialog-footer");
-      footer.createEl("button", { text: "Cancel" }).onclick = () => this.close();
-      const save = footer.createEl("button", { text: "Save settings", cls: "mod-cta" });
-      const submit = async () => {
-        if (save.disabled) return;
-        save.disabled = true;
-        try {
-          const settings = {};
-          if (cwd.value.trim() && cwd.value.trim() !== "script") settings.cwd = cwd.value.trim();
-          if (interpreter.value.trim()) settings.interpreter = interpreter.value.trim();
-          if (args.value.trim()) settings.args = JSON.parse(args.value);
-          if (timeout.value.trim()) settings.timeout = Number(timeout.value);
-          await this.plugin.call("new-settings", { target: this.target, settings, expected_sha256: saved.sha256 });
-          this.changed();
-          this.close();
-        } catch (e) {
-          error.setText(String(e).replace(/^Error: /, ""));
-        } finally {
-          save.disabled = false;
-        }
-      };
-      save.onclick = () => void submit();
-      this.contentEl.onkeydown = (e) => {
-        if (e.key === "Enter" && !e.isComposing) {
-          e.preventDefault();
-          void submit();
-        }
-      };
-    } catch (error) {
-      this.contentEl.setText(String(error));
-    }
-  }
-  onClose() {
-    this.contentEl.empty();
-  }
-};
-
-// edit-fragments.ts
-var import_state5 = require("@codemirror/state");
-var import_view5 = require("@codemirror/view");
-var setSegments = import_state5.StateEffect.define();
-var segments = import_state5.StateField.define({
-  create: () => [],
-  update(value, transaction) {
-    for (const effect of transaction.effects) if (effect.is(setSegments)) return effect.value;
-    return transaction.docChanged ? value.map((s) => ({ ...s, from: transaction.changes.mapPos(s.from, -1), to: transaction.changes.mapPos(s.to, 1) })) : value;
-  }
-});
-var protectGaps = import_state5.EditorState.transactionFilter.of((transaction) => {
-  if (!transaction.docChanged) return transaction;
-  const parts = transaction.startState.field(segments);
-  let valid = true;
-  transaction.changes.iterChanges((from, to) => {
-    if (!parts.some((s) => from >= s.from && to <= s.to)) valid = false;
-  });
-  return valid ? transaction : [];
-});
-function assembled(texts, lines) {
-  let doc = "";
-  const parts = [];
-  texts.forEach((text, index) => {
-    if (index) doc += "\n\u22EF omitted lines \u22EF\n";
-    const from = doc.length;
-    doc += text;
-    parts.push({ from, to: doc.length, line: lines[index] });
-  });
-  return { doc, parts };
-}
-function draftTexts(state) {
-  return state.field(segments).map((s) => state.doc.sliceString(s.from, s.to));
-}
-function sourceLine(number, state) {
-  if (number < 1 || number > state.doc.lines) return String(number);
-  const at = state.doc.line(number).from;
-  const part = state.field(segments).find((s) => at >= s.from && at <= s.to);
-  return part ? String(part.line + number - state.doc.lineAt(part.from).number) : "\xB7";
-}
-var gapStyle = import_view5.ViewPlugin.fromClass(class {
-  constructor(view) {
-    this.decorations = this.build(view);
-  }
-  update(update) {
-    if (update.docChanged) this.decorations = this.build(update.view);
-  }
-  build(view) {
-    return import_view5.Decoration.set(view.state.field(segments).slice(1).map((s) => import_view5.Decoration.line({ class: "code-links-edit-gap" }).range(view.state.doc.lineAt(s.from - 1).from)));
-  }
-}, { decorations: (value) => value.decorations });
-
-// inline-edit.ts
-var key = (note, raw) => JSON.stringify([note, raw]);
-var running = (result) => !!result && ["queued", "starting", "running", "stopping"].includes(result.state);
-var InlineEdits = class {
-  constructor(plugin) {
-    this.plugin = plugin;
-    this.drafts = /* @__PURE__ */ new Map();
-  }
-  async initialize() {
-    if (!this.plugin.settings.inlineEditing) return;
-    const { sessions, issues } = await this.plugin.call("edit-list");
-    if (issues?.length) new import_obsidian6.Notice("Some saved drafts need recovery. Open Code Links: Sandbox drafts and unfinished creations.");
-    for (const session of sessions) if (["editing", "saving"].includes(session.state)) this.remember(session);
-  }
-  remember(session) {
-    const d = { session, editable: new import_state6.Compartment(), persisted: session.draft.slice(), busy: false, listeners: /* @__PURE__ */ new Set(), refresh: /* @__PURE__ */ new Set(), views: /* @__PURE__ */ new Set() };
-    this.drafts.set(key(session.note, session.raw), d);
-    return d;
-  }
-  texts(d) {
-    return d.state ? draftTexts(d.state) : d.session.draft.slice();
-  }
-  dirty(d) {
-    return this.texts(d).some((s, i) => s !== d.session.fragments[i].text);
-  }
-  find(note, raw) {
-    const id2 = raw.match(/^!\{\{sandbox:([a-f0-9]{32})[|}]/)?.[1];
-    return id2 ? [...this.drafts.values()].find((d) => d.session.id === id2) : this.drafts.get(key(note, raw));
-  }
-  has(note, raw) {
-    return !!this.find(note, raw);
-  }
-  async attachSandbox(note, raw) {
-    if (this.find(note, raw)) return { state: "editing" };
-    const id2 = raw.match(/^!\{\{sandbox:([a-f0-9]{32})[|}]/)?.[1];
-    if (!id2) throw Error("Invalid sandbox link");
-    const session = await this.plugin.call("experiment-inspect", { id: id2 });
-    if (session.state === "editing") this.remember(session);
-    return session;
-  }
-  focusNext(note, raw) {
-    this.focusRequest = { note, raw, until: Date.now() + 3e3 };
-    const view = [...this.find(note, raw)?.views || []].find((v) => v.dom.isConnected);
-    if (view) {
-      this.focusRequest = void 0;
-      requestAnimationFrame(() => {
-        if (view.dom.isConnected) {
-          view.dom.scrollIntoView({ block: "nearest" });
-          view.dispatch({ selection: { anchor: view.state.doc.length } });
-          view.focus();
-        }
-      });
-    }
-  }
-  async begin(note, raw, experiment = false) {
-    if (!this.plugin.settings.inlineEditing) throw Error("Inline editing is not enabled in this vault");
-    const existing = this.drafts.get(key(note, raw));
-    if (existing) return;
-    if (raw.startsWith("!{{sandbox:")) {
-      await this.attachSandbox(note, raw);
-      return;
-    }
-    this.remember(await this.plugin.call(experiment ? "experiment-start" : "edit-start", { raw, note }));
-  }
-  schedule(d) {
-    clearTimeout(d.timer);
-    d.timer = setTimeout(() => {
-      d.timer = void 0;
-      void this.flush(d).catch((e) => new import_obsidian6.Notice("Draft not saved: " + String(e)));
-    }, 650);
-  }
-  async flush(d) {
-    clearTimeout(d.timer);
-    d.timer = void 0;
-    if (d.writing) {
-      await d.writing;
-      return this.flush(d);
-    }
-    const texts = this.texts(d);
-    if (JSON.stringify(texts) === JSON.stringify(d.persisted)) return;
-    d.writing = this.plugin.call("edit-draft", { id: d.session.id, revision: d.session.revision, fragments: texts }).then((s) => {
-      d.session = s;
-      d.persisted = texts;
-    }).finally(() => {
-      d.writing = void 0;
-    });
-    await d.writing;
-    if (JSON.stringify(this.texts(d)) !== JSON.stringify(d.persisted)) return this.flush(d);
-  }
-  async flushAll() {
-    for (const d of this.drafts.values()) await this.flush(d);
-  }
-  repaint(note) {
-    for (const d of this.drafts.values()) if (d.session.note === note || d.session.new_script) for (const f of d.listeners) f();
-  }
-  dispose() {
-    for (const d of this.drafts.values()) clearTimeout(d.poll);
-  }
-  async pollExperiment(d) {
-    clearTimeout(d.poll);
-    d.poll = void 0;
-    if (d.polling) return d.polling;
-    d.polling = this.plugin.call("experiment-output", { id: d.session.id }).then((result) => {
-      d.experiment = result;
-      for (const f of d.listeners) f();
-    }).catch((error) => {
-      d.experiment = { state: "unavailable", revision: -1, valid: false, error: String(error) };
-      for (const f of d.listeners) f();
-    }).finally(() => {
-      d.polling = void 0;
-      if (d.listeners.size && running(d.experiment)) d.poll = setTimeout(() => void this.pollExperiment(d), 750);
-    });
-    await d.polling;
-  }
-  async runExperiment(d, note = d.session.note, raw = d.session.raw) {
-    if (d.busy) return;
-    d.busy = true;
-    for (const f of d.listeners) f();
-    try {
-      if (running(d.experiment)) await this.plugin.call("experiment-stop", { id: d.session.id });
-      else {
-        await this.flush(d);
-        await this.plugin.call("experiment-run", { id: d.session.id, revision: d.session.revision });
-        this.plugin.outputs.setPreference(note, raw, { open: true });
-      }
-      await this.pollExperiment(d);
-    } catch (error) {
-      new import_obsidian6.Notice(String(error));
-    } finally {
-      d.busy = false;
-      for (const f of d.listeners) f();
-    }
-  }
-  async save(d, run) {
-    if (d.session.kind === "experiment") {
-      try {
-        if (run) await this.runExperiment(d);
-        else await this.flush(d);
-      } catch (error) {
-        new import_obsidian6.Notice(String(error));
-      }
-      return;
-    }
-    if (d.busy) return;
-    d.busy = true;
-    for (const f of d.listeners) f();
-    try {
-      await this.flush(d);
-      await this.plugin.ensureSavedNotes();
-      const preview = await this.plugin.call("edit-preview", { id: d.session.id });
-      const study = this.plugin.app.plugins.plugins["study-studio"];
-      const api = study?.codeAnnotationApi;
-      const report = api?.sourceImpact ? await api.sourceImpact(d.session.path) : void 0;
-      if (study && !report) throw Error("Update Study Studio before saving annotated source");
-      const acknowledge = [];
-      if (report?.records.length) {
-        const allowed = await new Promise((resolve) => {
-          const menu = new import_obsidian6.Menu();
-          menu.addItem((i) => i.setTitle(`Save; preserve ${report.records.length} annotation(s), which may need review`).setIcon("check").onClick(() => resolve(true)));
-          menu.addItem((i) => i.setTitle("Keep editing").onClick(() => resolve(false)));
-          menu.onHide(() => resolve(false));
-          const host = this.plugin.app.workspace.containerEl.getBoundingClientRect();
-          menu.showAtPosition({ x: host.x + host.width / 2, y: host.y + 120 });
-        });
-        if (!allowed) return;
-        acknowledge.push(...report.records.map((r) => r.id));
-      }
-      await this.plugin.ensureSavedNotes();
-      const saved = await this.plugin.call("edit-save", { id: d.session.id, revision: preview.revision, annotation_report: report, acknowledge, config_dir: this.plugin.app.vault.configDir, study_enabled: !!study });
-      const pref = this.plugin.outputs.preference(saved.note, saved.raw);
-      this.plugin.outputs.setPreference(saved.note, saved.new_raw || saved.raw, { ...pref, open: run || pref.open });
-      this.drafts.delete(key(d.session.note, d.session.raw));
-      d.session = saved;
-      this.plugin.outputs.sourceChanged(saved.path);
-      for (const refresh of [...d.refresh]) refresh(saved.new_raw);
-      if (run) await this.plugin.call("run-start", { raws: [saved.new_raw || saved.raw], expected_sha256: saved.submitted_sha256, force: true });
-      new import_obsidian6.Notice(run ? "Saved and queued" : "Source saved");
-    } catch (error) {
-      new import_obsidian6.Notice(String(error));
-    } finally {
-      d.busy = false;
-      for (const f of d.listeners) f();
-    }
-  }
-  async discard(d) {
-    if (d.busy) return;
-    d.busy = true;
-    for (const f of d.listeners) f();
-    try {
-      await this.flush(d);
-      if (d.session.kind === "experiment") {
-        await this.plugin.call("experiment-stop", { id: d.session.id });
-        for (let tries = 0; tries < 20; tries++) {
-          const result = await this.plugin.call("experiment-status", { id: d.session.id });
-          if (!running(result)) break;
-          await new Promise((r) => setTimeout(r, 250));
-        }
-      }
-      await this.plugin.call(d.session.kind === "experiment" ? "experiment-discard" : "edit-discard", { id: d.session.id, revision: d.session.revision });
-      clearTimeout(d.poll);
-      this.drafts.delete(key(d.session.note, d.session.raw));
-      for (const refresh of [...d.refresh]) refresh();
-    } catch (error) {
-      new import_obsidian6.Notice(String(error));
-    } finally {
-      d.busy = false;
-      for (const f of d.listeners) f();
-    }
-  }
-  mount(host, note, raw, extensions, refresh, replaceLink) {
-    const d = this.find(note, raw);
-    if (!d) return;
-    const experiment = d.session.kind === "experiment";
-    host.empty();
-    host.addClass("code-links-editing");
-    host.toggleClass("code-links-experiment", experiment);
-    const header = host.createDiv("code-links-header");
-    header.createSpan({ text: raw.split("|")[1]?.replace(/}}.*$/, "") || d.session.path.split("/").pop(), cls: "code-links-target" });
-    const state = header.createSpan({ cls: "code-links-edit-state" });
-    state.title = experiment ? d.session.new_script ? "Local sandbox on this Mac \xB7 saves as " + d.session.path : "Disposable working copy of " + d.session.path + ". The original source is never changed." : "Saved output is hidden while editing. Source changes only when you save.";
-    if (d.session.scope_warning) {
-      state.title += " \xB7 " + d.session.scope_warning;
-      host.createDiv({ text: d.session.scope_warning, cls: "code-links-scope-warning" });
-    }
-    if (d.session.state === "saving") {
-      state.setText("Save interrupted");
-      host.createDiv({ cls: "code-links-edit-message", text: "Recovery is required before further edits. Transaction " + d.session.transaction });
-      return () => host.removeClass("code-links-editing");
-    }
-    const buttons = [];
-    const button = (icon, title, action) => {
-      const b = header.createEl("button", { cls: "clickable-icon", attr: { type: "button", title, "aria-label": title } });
-      (0, import_obsidian6.setIcon)(b, icon);
-      b.onclick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        action(e);
-      };
-      buttons.push(b);
-      return b;
-    };
-    let experimentRun;
-    const copyCode = () => host.ownerDocument.defaultView.navigator.clipboard.writeText(this.texts(d).join("\n\u22EF omitted lines \u22EF\n"));
-    const copyOutput = async () => {
-      try {
-        await this.flush(d);
-        const result = await this.plugin.call("experiment-output", { id: d.session.id, full: true });
-        if (!result.valid) throw Error("The draft changed; run it again before copying output");
-        await host.ownerDocument.defaultView.navigator.clipboard.writeText(result.text);
-      } catch (error) {
-        new import_obsidian6.Notice(String(error));
-      }
-    };
-    const saveAs = () => new SaveSandboxModal(this.plugin, d.session.new_script, async (destination) => {
-      if (d.busy) throw Error("Wait for the current action to finish");
-      d.busy = true;
-      for (const f of d.listeners) f();
-      try {
-        await this.flush(d);
-        const saved = await this.plugin.call("experiment-save-as", { id: d.session.id, revision: d.session.revision, destination });
-        await (replaceLink ? replaceLink(raw, saved.raw) : this.plugin.replace(note, raw, saved.raw));
-        await this.plugin.call("new-complete", { id: saved.id });
-        await this.plugin.call("experiment-discard", { id: d.session.id, revision: d.session.revision });
-        clearTimeout(d.poll);
-        this.drafts.delete(key(d.session.note, d.session.raw));
-        for (const f of [...d.refresh]) f();
-      } finally {
-        d.busy = false;
-        for (const f of d.listeners) f();
-      }
-    }).open();
-    if (experiment) {
-      experimentRun = button("play", "Run experiment", () => void this.runExperiment(d, note, raw));
-      button("copy", "Copy edited excerpt", () => void copyCode());
-      if (d.session.new_script) button("file-plus", "Save as script", () => void saveAs());
-    } else {
-      button("check", "Save source", () => void this.save(d, false));
-      const saveRun = button("check", "Save and run whole file", () => void this.save(d, true));
-      const badge = saveRun.createSpan({ cls: "code-links-save-run-badge" });
-      (0, import_obsidian6.setIcon)(badge, "play");
-      saveRun.addClass("code-links-save-run");
-    }
-    const confirmDiscard = (_event) => {
-      if (!this.dirty(d)) {
-        void this.discard(d);
-        return;
-      }
-      const menu = new import_obsidian6.Menu();
-      menu.addItem((i) => i.setTitle("Discard these edits").setIcon("trash-2").onClick(() => void this.discard(d)));
-      menu.addItem((i) => i.setTitle("Keep editing"));
-      const anchor = header.getBoundingClientRect();
-      menu.showAtPosition({ x: Math.max(anchor.left, anchor.right - 24), y: anchor.bottom });
-    };
-    button("x", experiment ? "Discard experiment" : "Discard draft", confirmDiscard);
-    const body = host.createDiv("code-links-code code-links-edit-code");
-    const maxLines = Number(raw.match(/\{height=(\d+)\}$/)?.[1] || 10);
-    body.style.maxHeight = `calc(${maxLines} * var(--code-links-line-height,19.5px))`;
-    if (!d.state) {
-      const content = assembled(d.session.draft, d.session.fragments.map((f) => f.start));
-      d.state = import_state6.EditorState.create({ doc: content.doc, extensions: [...extensions(d.session.path), history(), segments, protectGaps, gapStyle, d.editable.of([]), import_view6.keymap.of([{ key: "Mod-s", run: () => {
-        void this.save(d, false);
-        return true;
-      } }, { key: "Mod-Enter", run: () => {
-        void this.save(d, true);
-        return true;
-      } }, ...historyKeymap, ...defaultKeymap, indentWithTab]), (0, import_view6.lineNumbers)({ formatNumber: sourceLine })] }).update({ effects: setSegments.of(content.parts) }).state;
-    }
-    body.style.height = `calc(${Math.min(maxLines, Math.max(1, d.state.doc.lines))} * var(--code-links-line-height,19.5px))`;
-    const view = new import_view6.EditorView({ parent: body, root: host.ownerDocument, state: d.state, dispatchTransactions: (transactions) => {
-      view.update(transactions);
-      d.state = view.state;
-      if (transactions.some((t) => t.docChanged)) {
-        this.schedule(d);
-        for (const listener of d.listeners) listener();
-      }
-    } });
-    const drawer = experiment ? host.createEl("details", { cls: "code-links-output" }) : void 0;
-    let outputStatus, outputText;
-    if (drawer) {
-      const summary = drawer.createEl("summary", { cls: "code-links-output-summary" });
-      summary.createSpan({ text: "Experiment output", cls: "code-links-output-label" });
-      outputStatus = summary.createSpan({ cls: "code-links-output-status" });
-      const copy = summary.createEl("button", { cls: "clickable-icon code-links-output-copy", attr: { title: "Copy experiment output", "aria-label": "Copy experiment output" } });
-      (0, import_obsidian6.setIcon)(copy, "copy");
-      copy.onclick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        void copyOutput();
-      };
-      outputText = drawer.createDiv("code-links-output-body").createEl("pre", { cls: "code-links-output-text" });
-      drawer.open = !!this.plugin.outputs.preference(note, raw).open;
-      summary.onclick = (e) => {
-        if (e.target.closest("button")) return;
-        e.preventDefault();
-        drawer.open = !drawer.open;
-        this.plugin.outputs.setPreference(note, raw, { open: drawer.open });
-        paint();
-      };
-    }
-    let busy = false, rows = -1;
-    const paint = () => {
-      if (d.state && view.state !== d.state) view.setState(d.state);
-      const nextRows = Math.min(maxLines, Math.max(1, view.state.doc.lines));
-      if (nextRows !== rows) {
-        rows = nextRows;
-        body.style.height = `calc(${rows} * var(--code-links-line-height,19.5px))`;
-      }
-      state.setText(experiment ? d.session.new_script ? "Sandbox draft" : "Experiment" : d.busy ? "Saving\u2026" : this.dirty(d) ? "Unsaved edits" : "Editing");
-      for (const b of buttons) b.disabled = d.busy;
-      if (experimentRun) {
-        const active2 = running(d.experiment);
-        (0, import_obsidian6.setIcon)(experimentRun, active2 ? "square" : "play");
-        experimentRun.title = active2 ? "Stop experiment" : "Run experiment";
-        experimentRun.setAttribute("aria-label", experimentRun.title);
-      }
-      if (drawer && outputStatus && outputText) {
-        const result = d.experiment;
-        drawer.hidden = !result || result.state === "none";
-        host.toggleClass("has-output", !drawer.hidden);
-        const valid = result?.valid && result.revision === d.session.revision && JSON.stringify(this.texts(d)) === JSON.stringify(d.persisted);
-        const labels = { ok: "Finished", failed: "Failed", queued: "Queued", starting: "Starting\u2026", running: "Running", stopped: "Stopped", timeout: "Timed out", interrupted: "Interrupted", unavailable: "Unavailable" };
-        outputStatus.setText(result?.cleanup_pending ? "Cleanup pending" : !valid && !running(result) ? "Edited \u2014 run again" : (labels[result?.state || ""] || "") + (result?.duration_s != null ? " \xB7 " + (result.duration_s < 0.1 ? "<0.1" : result.duration_s.toFixed(1)) + " s" : ""));
-        outputStatus.title = [result?.error, result?.launcher, ...Object.entries(result?.environment_overrides || {}).map(([name, value]) => `${name}=${value}`)].filter(Boolean).join("\n");
-        drawer.style.setProperty("--code-links-output-lines", String(this.plugin.outputs.preference(note, raw).lines || 12));
-        drawer.open = !!this.plugin.outputs.preference(note, raw).open;
-        const text = drawer.open && valid ? (result?.text || "").replace(/\n$/, "") : "";
-        if (outputText.textContent !== text) outputText.textContent = text;
-      }
-      if (busy !== d.busy) {
-        busy = d.busy;
-        view.dispatch({ effects: d.editable.reconfigure([import_state6.EditorState.readOnly.of(busy), import_view6.EditorView.editable.of(!busy)]) });
-      }
-    };
-    d.listeners.add(paint);
-    d.refresh.add(refresh);
-    d.views.add(view);
-    paint();
-    if (this.focusRequest?.note === note && this.focusRequest.raw === raw) {
-      const focus = this.focusRequest;
-      this.focusRequest = void 0;
-      requestAnimationFrame(() => {
-        if (Date.now() < focus.until && host.isConnected) {
-          host.scrollIntoView({ block: "nearest" });
-          view.dispatch({ selection: { anchor: view.state.doc.length } });
-          view.focus();
-        }
-      });
-    }
-    host.oncontextmenu = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const menu = new import_obsidian6.Menu();
-      menu.addItem((i) => i.setTitle("Copy edited excerpt").setIcon("copy").onClick(copyCode));
-      if (!experiment) menu.addItem((i) => i.setTitle("Save source").setIcon("check").onClick(() => void this.save(d, false)));
-      menu.addItem((i) => i.setTitle(experiment ? "Run experiment" : "Save and run whole file").setIcon("play").onClick(() => void this.save(d, true)));
-      menu.addItem((i) => i.setTitle(experiment ? "Discard experiment" : "Discard draft").setIcon("x").onClick(() => confirmDiscard(e)));
-      if (experiment) {
-        if (d.session.new_script) menu.addItem((i) => i.setTitle("Save as script").setIcon("file-plus").onClick(saveAs));
-        menu.addSeparator();
-        menu.addItem((i) => i.setTitle("Copy experiment output").setIcon("copy").onClick(copyOutput));
-        menu.addItem((i) => i.setTitle("Maximum visible output lines\u2026").setIcon("rows-3").onClick(() => this.plugin.outputHeight(this.plugin.outputs.preference(note, raw).lines || 12, (n) => this.plugin.outputs.setPreference(note, raw, { lines: n }))));
-        this.plugin.outputs.noteMenu(menu, note);
-      }
-      menu.showAtMouseEvent(e);
-    };
-    if (experiment) void this.pollExperiment(d);
-    return () => {
-      d.listeners.delete(paint);
-      d.refresh.delete(refresh);
-      d.views.delete(view);
-      if (!d.listeners.size) clearTimeout(d.poll);
-      view.destroy();
-      host.removeClass("code-links-editing", "code-links-experiment", "has-output");
-    };
-  }
-};
-
-// quit-flush.ts
-async function boundedDraftFlush(flush, limitMs = 3e3) {
-  let timer;
-  try {
-    return await Promise.race([
-      Promise.resolve().then(flush).then(() => "saved", () => "failed"),
-      new Promise((resolve) => {
-        timer = setTimeout(() => resolve("timeout"), limitMs);
-      })
-    ]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
-}
 
 // node_modules/@codemirror/legacy-modes/mode/shell.js
 var words = {};
@@ -7370,7 +7440,35 @@ var shell = {
   }
 };
 
-// main.ts
+// pseudocode.ts
+var pseudocode = {
+  startState: () => null,
+  token(stream) {
+    if (stream.eatSpace()) return null;
+    if (stream.match("//")) {
+      stream.skipToEnd();
+      return "comment";
+    }
+    const quote = stream.peek();
+    if (quote === '"' || quote === "'") {
+      stream.next();
+      let escaped = false;
+      while (!stream.eol()) {
+        const char = stream.next();
+        if (char === quote && !escaped) break;
+        escaped = char === "\\" && !escaped;
+      }
+      return "string";
+    }
+    if (stream.match(/^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/)) return "number";
+    if (stream.match(/^(?:<-|:=|←|==|!=|<=|>=|[=+*/%<>!-])/)) return "operator";
+    if (stream.match(/^[\p{L}_][\p{L}\p{N}_]*/u)) return /^(?:algorithm|begin|end|if|then|else|elseif|endif|for|each|in|to|downto|step|do|endfor|while|endwhile|repeat|until|return|break|continue|function|procedure|endfunction|endprocedure|input|output|print|read|write|and|or|not|true|false|null)$/i.test(stream.current()) ? "keyword" : null;
+    stream.next();
+    return null;
+  }
+};
+
+// code-language.ts
 var wolframLanguage = import_language6.StreamLanguage.define(mathematica);
 var wolframClasses = { keyword: "keyword", string: "string", number: "number", comment: "comment", operator: "operator", atom: "special", meta: "special", character: "string", "string.special": "string", "variableName.special": "special", "variableName.constant": "special" };
 var wolframMarks = Object.fromEntries([...new Set(Object.values(wolframClasses))].map((cls) => [cls, import_view7.Decoration.mark({ class: "code-links-wl-" + cls })]));
@@ -7396,27 +7494,13 @@ var wolframColors = import_view7.ViewPlugin.fromClass(class {
     return import_view7.Decoration.set(ranges, true);
   }
 }, { decorations: (v) => v.decorations });
-var label = linkLabel;
-function withHeight(raw, n) {
-  return raw.replace(/\{height=\d+\}$/, "") + `{height=${n}}`;
-}
-var excerptHighlight = import_language6.HighlightStyle.define([
-  { tag: import_highlight4.tags.keyword, color: "var(--code-keyword, #c792ea)" },
-  { tag: import_highlight4.tags.string, color: "var(--code-string, #a3be8c)" },
-  { tag: import_highlight4.tags.number, color: "var(--code-value, #d19a66)" },
-  { tag: import_highlight4.tags.comment, color: "var(--code-comment, #8796a5)", fontStyle: "italic" },
-  { tag: import_highlight4.tags.function(import_highlight4.tags.variableName), color: "var(--code-function, #82aaff)" },
-  { tag: import_highlight4.tags.operator, color: "var(--code-operator, #89ddff)" },
-  { tag: [import_highlight4.tags.atom, import_highlight4.tags.meta, import_highlight4.tags.special(import_highlight4.tags.variableName), import_highlight4.tags.constant(import_highlight4.tags.variableName)], color: "var(--code-property, #e5c07b)" },
-  { tag: [import_highlight4.tags.character, import_highlight4.tags.special(import_highlight4.tags.string)], color: "var(--code-string, #a3be8c)" },
-  { tag: import_highlight4.tags.typeName, color: "var(--code-property, #e5c07b)" }
-]);
 function language(path) {
   if (/\.(wl|wls)$/i.test(path)) return [wolframLanguage, wolframColors];
-  if (/\.py$/.test(path)) return python();
+  if (languageForPath(path) === "pseudocode") return [import_language6.StreamLanguage.define(pseudocode), wolframColors];
+  if (/\.py$/i.test(path)) return python();
   if (/\.(sh|bash|zsh)$/i.test(path)) return [import_language6.StreamLanguage.define(shell), wolframColors];
-  if (/\.(c|cpp|cc|h|hpp)$/.test(path)) return cpp();
-  if (/\.[jt]sx?$/.test(path)) return javascript({ typescript: /\.tsx?$/.test(path), jsx: /x$/.test(path) });
+  if (/\.(c|cpp|cc|cxx|h|hpp)$/i.test(path)) return cpp();
+  if (/\.(?:[jt]sx?|mjs|cjs)$/i.test(path)) return javascript({ typescript: /\.tsx?$/i.test(path), jsx: /[jt]sx$/i.test(path) });
   const matcher = new import_view7.MatchDecorator({ regexp: /\b(?:TOTAL|energy|delta|E-fermi|POSITION|FORCE|Iteration)\b|[+-]?\b\d+(?:\.\d*)?(?:[Ee][+-]?\d+)?/g, decoration: (m) => import_view7.Decoration.mark({ class: /^[A-Za-z]/.test(m[0]) ? "code-links-keyword" : "code-links-number" }) });
   return import_view7.ViewPlugin.fromClass(class {
     constructor(view) {
@@ -7427,6 +7511,23 @@ function language(path) {
     }
   }, { decorations: (v) => v.decorations });
 }
+
+// main.ts
+var label = linkLabel;
+function withHeight(raw, n) {
+  return raw.replace(/\{height=\d+\}$/, "") + `{height=${n}}`;
+}
+var excerptHighlight = import_language7.HighlightStyle.define([
+  { tag: import_highlight4.tags.keyword, color: "var(--code-keyword, #c792ea)" },
+  { tag: import_highlight4.tags.string, color: "var(--code-string, #a3be8c)" },
+  { tag: import_highlight4.tags.number, color: "var(--code-value, #d19a66)" },
+  { tag: import_highlight4.tags.comment, color: "var(--code-comment, #8796a5)", fontStyle: "italic" },
+  { tag: import_highlight4.tags.function(import_highlight4.tags.variableName), color: "var(--code-function, #82aaff)" },
+  { tag: import_highlight4.tags.operator, color: "var(--code-operator, #89ddff)" },
+  { tag: [import_highlight4.tags.atom, import_highlight4.tags.meta, import_highlight4.tags.special(import_highlight4.tags.variableName), import_highlight4.tags.constant(import_highlight4.tags.variableName)], color: "var(--code-property, #e5c07b)" },
+  { tag: [import_highlight4.tags.character, import_highlight4.tags.special(import_highlight4.tags.string)], color: "var(--code-string, #a3be8c)" },
+  { tag: import_highlight4.tags.typeName, color: "var(--code-property, #e5c07b)" }
+]);
 var Reader = class extends import_obsidian7.MarkdownRenderChild {
   constructor(el, plugin, raw, source, replaceLink = (old, value) => plugin.replace(source, old, value), createBelow) {
     super(el);
@@ -7490,7 +7591,7 @@ var Reader = class extends import_obsidian7.MarkdownRenderChild {
       this.view?.destroy();
       this.view = void 0;
       this.editCleanup?.();
-      this.editCleanup = this.plugin.edits.mount(this.containerEl, this.source, this.raw, (path) => [(0, import_language6.syntaxHighlighting)(excerptHighlight), language(path), import_view7.EditorView.theme({ "&": { height: "100%", fontSize: "var(--code-links-font-size,13px)" }, ".cm-scroller": { overflow: "auto", fontFamily: "var(--font-monospace)" }, ".cm-line": { lineHeight: "1.5em" }, ".cm-gutters": { backgroundColor: "var(--background-secondary)", color: "var(--text-muted)" } })], (raw) => {
+      this.editCleanup = this.plugin.edits.mount(this.containerEl, this.source, this.raw, (path) => [(0, import_language7.syntaxHighlighting)(excerptHighlight), language(path), import_view8.EditorView.theme({ "&": { height: "100%", fontSize: "var(--code-links-font-size,13px)" }, ".cm-scroller": { overflow: "auto", fontFamily: "var(--font-monospace)" }, ".cm-line": { lineHeight: "1.5em" }, ".cm-gutters": { backgroundColor: "var(--background-secondary)", color: "var(--text-muted)" } })], (raw) => {
         if (raw) this.raw = raw;
         this.editCleanup?.();
         this.editCleanup = void 0;
@@ -7517,23 +7618,25 @@ var Reader = class extends import_obsidian7.MarkdownRenderChild {
       title.onclick = () => void this.plugin.launch(this.raw);
       header.createSpan({ text: `${r.fragments.map((f) => `${f.start}\u2013${f.end}`).join(", ")}`, cls: "code-links-status" });
       header.title = r.path + " \xB7 " + r.status;
-      this.watched = r.path;
-      this.watcher = () => {
-        if (this.active) {
-          header.addClass("code-links-stale");
-          header.title = "Source changed since preview. Right-click and refresh to verify.";
-          const status = header.querySelector(".code-links-status");
-          if (status) status.textContent = "SOURCE CHANGED \xB7 refresh to verify";
-          this.output?.previewChanged();
-          this.plugin.outputs.changed(this.raw);
-        }
+      const listener = (curr) => {
+        if (!this.active || generation !== this.refreshGeneration || this.watcher !== listener) return;
+        const fields = [curr.dev, curr.ino, curr.size, curr.mtimeNs, curr.ctimeNs];
+        if (fields.every((value) => value !== void 0) && Array.isArray(r.signature) && r.signature.length === 5 && fields.every((value, i) => Number(value) === r.signature[i])) return;
+        header.addClass("code-links-stale");
+        header.title = "Source changed since preview. Right-click and refresh to verify.";
+        const status = header.querySelector(".code-links-status");
+        if (status) status.textContent = "SOURCE CHANGED \xB7 refresh to verify";
+        this.output?.previewChanged();
+        this.plugin.outputs.changed(this.raw);
       };
-      (0, import_fs2.watchFile)(r.path, { interval: 2e3, persistent: false }, this.watcher);
+      this.watched = r.path;
+      this.watcher = listener;
+      (0, import_fs2.watchFile)(r.path, { bigint: true, interval: 2e3, persistent: false }, listener);
       const body = this.containerEl.createDiv("code-links-code");
       const visibleLines = Math.min(r.link.height, Math.max(1, r.lines.length));
       body.style.height = `calc(${visibleLines} * var(--code-links-line-height, 19.5px))`;
       body.style.maxHeight = `calc(${r.link.height} * var(--code-links-line-height, 19.5px))`;
-      this.view = new import_view7.EditorView({ parent: body, root: body.ownerDocument, state: import_state7.EditorState.create({ doc: r.lines.join("\n"), extensions: [codeMarks, import_state7.EditorState.readOnly.of(true), import_view7.EditorView.editable.of(false), import_view7.EditorView.contentAttributes.of({ tabindex: "0" }), (0, import_view7.lineNumbers)({ formatNumber: (n) => r.line_numbers[n - 1] == null ? "\xB7" : String(r.line_numbers[n - 1]) }), (0, import_language6.syntaxHighlighting)(excerptHighlight), language(r.path), import_view7.EditorView.theme({ "&": { height: "100%", fontSize: "var(--code-links-font-size, 13px)" }, ".cm-scroller": { overflow: "auto", fontFamily: "var(--font-monospace)" }, ".cm-line": { lineHeight: "1.5em" }, ".cm-gutters": { backgroundColor: "var(--background-secondary)", color: "var(--text-muted)" } })] }) });
+      this.view = new import_view8.EditorView({ parent: body, root: body.ownerDocument, state: import_state7.EditorState.create({ doc: r.lines.join("\n"), extensions: [codeMarks, import_state7.EditorState.readOnly.of(true), import_view8.EditorView.editable.of(false), import_view8.EditorView.contentAttributes.of({ tabindex: "0" }), (0, import_view8.lineNumbers)({ formatNumber: (n) => r.line_numbers[n - 1] == null ? "\xB7" : String(r.line_numbers[n - 1]) }), (0, import_language7.syntaxHighlighting)(excerptHighlight), language(r.path), import_view8.EditorView.theme({ "&": { height: "100%", fontSize: "var(--code-links-font-size, 13px)" }, ".cm-scroller": { overflow: "auto", fontFamily: "var(--font-monospace)" }, ".cm-line": { lineHeight: "1.5em" }, ".cm-gutters": { backgroundColor: "var(--background-secondary)", color: "var(--text-muted)" } })] }) });
       this.annotations = new CodeAnnotations(this.plugin, this.source, this.raw, r, this.view, this.containerEl, header);
       if (this.replaceLink && this.plugin.settings.inlineEditing) {
         const edit = header.createEl("button", { cls: "clickable-icon code-links-edit", attr: { type: "button", title: "Edit code", "aria-label": "Edit code" } });
@@ -7543,7 +7646,7 @@ var Reader = class extends import_obsidian7.MarkdownRenderChild {
           e.stopPropagation();
           void this.plugin.edits.begin(this.source, this.raw).then(() => this.refreshExcerpt()).catch((error) => new import_obsidian7.Notice(String(error)));
         };
-        if (r.run) {
+        if (r.run && runnable(r.path)) {
           const experiment = header.createEl("button", { cls: "clickable-icon code-links-edit", attr: { type: "button", title: "Experiment in a disposable copy", "aria-label": "Experiment in a disposable copy" } });
           (0, import_obsidian7.setIcon)(experiment, "flask-conical");
           experiment.onclick = (e) => {
@@ -7553,7 +7656,7 @@ var Reader = class extends import_obsidian7.MarkdownRenderChild {
           };
         }
       }
-      if (r.run && this.replaceLink) {
+      if (r.run && runnable(r.path) && this.replaceLink) {
         const run = header.createEl("button", { cls: "code-links-run clickable-icon", attr: { type: "button", title: "Run whole file", "aria-label": "Run whole file" } });
         (0, import_obsidian7.setIcon)(run, "play");
         this.output = new OutputPanel(this.plugin.outputs, this.raw, this.source, r.run, this.containerEl, run, r.signature, () => this.refreshExcerpt());
@@ -7767,7 +7870,7 @@ var Suggest = class extends import_obsidian7.EditorSuggest {
     editor.replaceRange("{{" + item.target + "}}", start, { line: end.line, ch: end.ch + (suffix === "}}" ? 2 : 0) });
   }
 };
-var LinkWidget = class extends import_view7.WidgetType {
+var LinkWidget = class extends import_view8.WidgetType {
   constructor(plugin, raw, source) {
     super();
     this.plugin = plugin;
@@ -7809,7 +7912,7 @@ var LinkWidget = class extends import_view7.WidgetType {
   }
 };
 function live(plugin) {
-  return import_view7.ViewPlugin.fromClass(class {
+  return import_view8.ViewPlugin.fromClass(class {
     constructor(view) {
       this.decorations = this.build(view);
     }
@@ -7817,7 +7920,7 @@ function live(plugin) {
       if (u2.docChanged || u2.viewportChanged || u2.selectionSet || u2.startState.field(import_obsidian7.editorLivePreviewField, false) !== u2.state.field(import_obsidian7.editorLivePreviewField, false)) this.decorations = this.build(u2.view);
     }
     build(view) {
-      if (view.state.field(import_obsidian7.editorLivePreviewField, false) === false) return import_view7.Decoration.none;
+      if (view.state.field(import_obsidian7.editorLivePreviewField, false) === false) return import_view8.Decoration.none;
       const builder = new import_state7.RangeSetBuilder();
       const source = view.state.field(import_obsidian7.editorInfoField, false)?.file?.path || "";
       for (const range of view.visibleRanges) {
@@ -7825,7 +7928,7 @@ function live(plugin) {
         for (const m of linkTokens(text)) {
           const from = range.from + m.index, to = from + m.raw.length;
           if (view.state.selection.ranges.some((s) => s.from <= to && s.to >= from)) continue;
-          const node = (0, import_language6.syntaxTree)(view.state).resolveInner(from, 1);
+          const node = (0, import_language7.syntaxTree)(view.state).resolveInner(from, 1);
           let blocked = false;
           for (let n = node; n; n = n.parent) {
             if (/codeblock|fenced|math/i.test(n.name) || /inline-code/i.test(n.name) && !m.raw.startsWith("``dir:")) {
@@ -7833,7 +7936,7 @@ function live(plugin) {
               break;
             }
           }
-          if (!blocked) builder.add(from, to, import_view7.Decoration.replace({ widget: new LinkWidget(plugin, m.raw, source) }));
+          if (!blocked) builder.add(from, to, import_view8.Decoration.replace({ widget: new LinkWidget(plugin, m.raw, source) }));
         }
       }
       return builder.finish();
@@ -8075,11 +8178,11 @@ var CodeLinks = class extends import_obsidian7.Plugin {
     }));
     this.registerEditorSuggest(new Suggest(this));
     this.registerEditorExtension(live(this));
-    this.registerEditorExtension(import_view7.EditorView.domEventHandlers({ contextmenu: (e, view) => {
+    this.registerEditorExtension(import_view8.EditorView.domEventHandlers({ contextmenu: (e, view) => {
       if (!e.target.closest(".cm-inline-code")) return false;
       const pos = view.posAtCoords({ x: e.clientX, y: e.clientY });
       if (pos == null) return false;
-      let node = (0, import_language6.syntaxTree)(view.state).resolveInner(pos, 1);
+      let node = (0, import_language7.syntaxTree)(view.state).resolveInner(pos, 1);
       while (node.parent && !/inline.?code/i.test(node.name)) node = node.parent;
       if (!/inline.?code/i.test(node.name)) return false;
       const value = view.state.doc.sliceString(node.from, node.to).replace(/^`+|`+$/g, "");

@@ -1,13 +1,11 @@
 {
   "schema": 1,
-  "plugin": "code-links",
   "pluginId": "code-links",
-  "sourceCommit": "fe228561b2216bcbb480edf38637eaf1e23d8903",
-  "release": "code-edit-20261025",
-  "releaseIdentity": "code-edit-20261025-fe228561b221",
+  "sourceCommit": "d84c844172186a01273ad7d27355d331785336bb",
+  "releaseIdentity": "code-links-0.11.0-20261104-d84c844-v2",
   "files": {
-    "main.js": "c820ea208c02aa44b759ed13fdf202c2ddba3c3f2af762472fdc8a609efc4a5e",
-    "styles.css": "83828f3a91e27bb8b22d8daf46de84bc799a431f25837237f4ab205f0b47937b",
-    "manifest.json": "930e0fc442f67c5800ac779b349183dab22a9c439db5306146590827007b8aac"
+    "main.js": "2bf7a67f8bb133617a4ad0d54fd20098fab946ac2d96dd71d48d7a256f275c06",
+    "styles.css": "a2b007e1ee76ec30a23515f78f77fef5d05e06a0bef8201c2a9535187cdfeaf0",
+    "manifest.json": "ce6aa64be3f666dc5b3798bc37b089f825c73f8e368926710cf0bc53ddb4fd1f"
   }
 }
