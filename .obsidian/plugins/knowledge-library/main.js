@@ -1550,6 +1550,10 @@ var require_admission = __commonJS({
         this.paused = /* @__PURE__ */ new Set();
         this.timers = /* @__PURE__ */ new Map();
         this.closed = false;
+        this.maintenanceJobs = /* @__PURE__ */ new Map();
+        this.maintenanceFailures = /* @__PURE__ */ new Map();
+        this.maintenanceBusy = false;
+        this.maintenanceBlocked = false;
       }
       acceptStatus(status, version = this.pathsVersion) {
         if (version !== this.pathsVersion) return false;
@@ -1592,18 +1596,121 @@ var require_admission = __commonJS({
       }
       async start() {
         const status = await this.client.request({ op: "live-status" });
+        if (this.closed) return;
         this.meta = { profile: status.profile, epoch: status.epoch };
         this.acceptStatus(status.data);
         this.plugin.lastSequence = status.data.sequence;
         const recovery = await this.request("live-recover");
+        if (this.closed) return;
         if (recovery.pending.length) new Notice2(`${recovery.pending.length} admission reviews are pending; reopen note review to reconcile.`, 1e4);
         if (recovery.recovered.length) {
           const fresh = await this.refreshPaths();
+          if (this.closed) return;
           this.plugin.lastSequence = fresh.sequence;
         }
-        const images = await this.request("live-image-change");
-        if (images.changed) this.plugin.refreshBrowsers();
         for (const p of this.paths) this.schedule(p);
+      }
+      imageEventsReady() {
+        if (this.closed || this.reader || this.imageEventsAttached) return;
+        this.imageEventsAttached = true;
+        Promise.resolve(this.ready).then(() => {
+          if (!this.closed) this.queueMaintenance("images", null, 0);
+        }).catch((error) => this.maintenanceError("ready", error));
+      }
+      maintenanceError(key, error) {
+        if (this.closed) return;
+        const attempts = (this.maintenanceFailures.get(key) || 0) + 1;
+        this.maintenanceFailures.set(key, attempts);
+        if (!this.maintenanceNotified) {
+          this.maintenanceNotified = true;
+          new Notice2("Index maintenance pending: " + error.message, 6e3);
+        }
+        return Math.min(3e4, 1e3 * 2 ** Math.min(attempts - 1, 5));
+      }
+      queueMaintenance(kind, path2 = null, delay = 0) {
+        if (this.closed || this.reader) return;
+        const key = kind + ":" + (path2 || ""), old = this.maintenanceJobs.get(key);
+        const due = Math.max(Date.now() + delay, old?.retryAt || 0);
+        this.maintenanceJobs.set(key, { ...old, key, kind, path: path2, due, retryAt: old?.retryAt || 0 });
+        if (kind !== "image" && kind !== "images" || this.imageEventsAttached) this.wakeMaintenance(due);
+      }
+      wakeMaintenance(nextDue = null) {
+        if (this.closed || this.reader || this.maintenanceBusy || this.maintenanceBlocked) return;
+        let due = nextDue ?? Infinity;
+        if (nextDue === null) for (const job of this.maintenanceJobs.values()) {
+          if ((job.kind === "image" || job.kind === "images") && !this.imageEventsAttached) continue;
+          due = Math.min(due, job.due);
+          if (due <= Date.now()) break;
+        }
+        if (due === Infinity) return;
+        if (this.maintenanceTimer != null && this.maintenanceDue <= due) return;
+        clearTimeout(this.maintenanceTimer);
+        this.maintenanceDue = due;
+        this.maintenanceTimer = setTimeout(() => {
+          this.maintenanceTimer = null;
+          return this.pumpMaintenance();
+        }, Math.max(0, due - Date.now()));
+      }
+      async pumpMaintenance() {
+        if (this.closed || this.reader || this.maintenanceBusy || this.maintenanceBlocked) return;
+        if (this.client.dead) {
+          this.maintenanceBlocked = true;
+          this.maintenanceError("service", new Error("Local index service is unavailable. Reopen the index to reconnect."));
+          return;
+        }
+        this.maintenanceBusy = true;
+        try {
+          try {
+            await this.ready;
+          } catch (error) {
+            this.maintenanceBlocked = true;
+            this.maintenanceError("ready", error);
+            return;
+          }
+          if (this.closed) return;
+          let job;
+          for (const queued of this.maintenanceJobs.values()) {
+            if ((queued.kind === "image" || queued.kind === "images") && !this.imageEventsAttached) continue;
+            if (queued.due <= Date.now()) {
+              job = queued;
+              break;
+            }
+          }
+          if (!job) return;
+          this.maintenanceJobs.delete(job.key);
+          const covered = new Map(job.covered || []);
+          if (job.kind === "images") {
+            for (const queued of this.maintenanceJobs.values()) if (queued.kind === "image") {
+              covered.set(queued.key, queued);
+              this.maintenanceJobs.delete(queued.key);
+            }
+          }
+          try {
+            if (job.kind === "image" || job.kind === "images") {
+              const result = await this.request("live-image-change", job.path ? { path: job.path } : {});
+              if (!this.closed && result.changed) {
+                this.plugin.refreshBrowsers();
+                if (job.path) this.refreshImage(job.path);
+                for (const dirty of covered.values()) this.refreshImage(dirty.path);
+              }
+            } else if (job.kind === "sync") await this.sync(job.path);
+            else if (job.kind === "discover") await this.discover(job.path);
+            else if (job.kind === "recover") await this.runRecovery();
+            if (this.closed) return;
+            this.maintenanceFailures.delete(job.key);
+            for (const dirty of covered.values()) this.maintenanceFailures.delete(dirty.key);
+            if (!this.maintenanceFailures.size) this.maintenanceNotified = false;
+          } catch (error) {
+            if (this.closed) return;
+            const retryAt = Date.now() + this.maintenanceError(job.key, error);
+            const dirty = this.maintenanceJobs.get(job.key) || job;
+            if (this.client.dead) this.maintenanceBlocked = true;
+            this.maintenanceJobs.set(job.key, { ...dirty, due: error.retryable === false ? Infinity : Math.max(dirty.due, retryAt), retryAt: error.retryable === false ? 0 : retryAt, covered: [...covered] });
+          }
+        } finally {
+          this.maintenanceBusy = false;
+          this.wakeMaintenance();
+        }
       }
       async request(op, args = {}) {
         let result;
@@ -1671,29 +1778,15 @@ var require_admission = __commonJS({
       schedule(path2) {
         if (this.closed) return;
         if (/\.(png|jpe?g|gif|webp|svg|avif)$/i.test(path2)) {
-          clearTimeout(this.timers.get(path2));
-          this.timers.set(path2, setTimeout(async () => {
-            this.timers.delete(path2);
-            try {
-              await this.ready;
-              const result = await this.request("live-image-change", { path: path2 });
-              if (result.changed) {
-                this.plugin.refreshBrowsers();
-                this.refreshImage(path2);
-              }
-            } catch (error) {
-              new Notice2("Image update pending: " + error.message);
-            }
-          }, 300));
+          this.queueMaintenance("image", path2, 300);
           return;
         }
+        if (!path2.endsWith(".md")) return;
         if (!this.paths.has(path2)) {
-          clearTimeout(this.timers.get(path2));
-          this.timers.set(path2, setTimeout(() => this.discover(path2), 1200));
+          this.queueMaintenance("discover", path2, 1200);
           return;
         }
-        clearTimeout(this.timers.get(path2));
-        this.timers.set(path2, setTimeout(() => this.sync(path2).catch((e) => new Notice2("Index update pending: " + e.message)), 1800));
+        this.queueMaintenance("sync", path2, 1800);
       }
       refreshImage(path2) {
         const file = this.plugin.app.vault.getAbstractFileByPath(path2);
@@ -1704,7 +1797,6 @@ var require_admission = __commonJS({
         });
       }
       async sync(path2) {
-        this.timers.delete(path2);
         if (this.closed) return;
         if (this.paused.has(path2)) {
           this.schedule(path2);
@@ -1714,6 +1806,7 @@ var require_admission = __commonJS({
         const file = this.plugin.app.vault.getAbstractFileByPath(path2);
         if (file) {
           const disk = await this.plugin.app.vault.read(file);
+          if (this.closed) return;
           if (views.some((v) => v.editor && hash(v.editor.getValue()) !== hash(disk))) {
             this.schedule(path2);
             return;
@@ -1721,6 +1814,7 @@ var require_admission = __commonJS({
         }
         try {
           const result = await this.request("live-sync", { path: path2 });
+          if (this.closed) return;
           if (result.repair && file) {
             const repair = result.repair, view = views.find((v) => v.editor);
             if (view && hash(view.editor.getValue()) === repair.beforeHash) {
@@ -1728,47 +1822,51 @@ var require_admission = __commonJS({
               const changes = repair.insertions.map((i) => ({ from: editor.posToOffset(i.line < editor.lineCount() ? { line: i.line, ch: 0 } : { line: editor.lastLine(), ch: editor.getLine(editor.lastLine()).length }), insert: i.text }));
               editor.cm.dispatch({ changes, annotations: Transaction.addToHistory.of(false) });
             } else if (!views.length) {
-              await this.plugin.app.vault.process(file, (current) => hash(current) === repair.beforeHash ? repair.proposedText : current);
+              await this.plugin.app.vault.process(file, (current) => !this.closed && hash(current) === repair.beforeHash ? repair.proposedText : current);
             }
             this.schedule(path2);
           }
           if (result.receipt) this.plugin.refreshBrowsers();
         } catch (e) {
           if (e.message.startsWith("Note changed during synchronization")) this.schedule(path2);
-          else new Notice2("Index update pending: " + e.message, 6e3);
+          else throw e;
         }
       }
       async discover(path2) {
-        this.timers.delete(path2);
         if (this.closed || !path2.endsWith(".md")) return;
         try {
           await this.ready;
+          if (this.closed) return;
           const file = this.plugin.app.vault.getAbstractFileByPath(path2);
           if (file && (await this.plugin.app.vault.read(file)).includes("<!-- knowledge-library:")) {
+            if (this.closed) return;
             const result = await this.request("live-relocate", { path: path2 });
+            if (this.closed) return;
             if (result.receipt) {
               this.paths.add(path2);
               this.schedule(path2);
               this.plugin.refreshBrowsers();
             }
           }
-          await this.recover();
+          this.recover();
         } catch (e) {
-          if (!e.message.startsWith("Note changed during synchronization")) new Notice2("Index source check: " + e.message);
+          if (e.message.startsWith("Note changed during synchronization")) this.schedule(path2);
+          else throw e;
         }
       }
-      async recover() {
+      recover() {
+        this.queueMaintenance("recover");
+      }
+      async runRecovery() {
         if (this.closed) return;
-        try {
-          await this.ready;
-          const result = await this.request("live-recover");
-          if (result.recovered.length) {
-            await this.refreshPaths();
+        const result = await this.request("live-recover");
+        if (this.closed) return;
+        if (result.recovered.length) {
+          await this.refreshPaths();
+          if (!this.closed) {
             this.plugin.refreshBrowsers();
             new Notice2("Finished the saved index admission.");
           }
-        } catch (e) {
-          new Notice2("Index admission recovery: " + e.message, 8e3);
         }
       }
       async rename(file, oldPath) {
@@ -1801,6 +1899,8 @@ var require_admission = __commonJS({
         this.closed = true;
         clearTimeout(this.recoveryTimer);
         clearTimeout(this.movedPathsTimer);
+        clearTimeout(this.maintenanceTimer);
+        this.maintenanceJobs.clear();
         for (const t of this.timers.values()) clearTimeout(t);
         this.client.close();
       }
@@ -8227,6 +8327,13 @@ var require_component_saved_observation = __commonJS({
   "plugin/component-saved-observation.js"(exports2, module2) {
     var { componentFile } = require_component_file_ready();
     var { NoteTargetChanged } = require_component_note_target();
+    function observationReady(plan) {
+      if (plan.sourceState === "awaiting" || plan.issues?.some((i) => ["enrollment-waiting", "awaiting-source"].includes(i.kind))) {
+        const error = new NoteTargetChanged("The saved observation is waiting for its integrated source.");
+        error.relatedPaths = [.../* @__PURE__ */ new Set([...plan.retryPaths || [], ...(plan.issues || []).flatMap((i) => i.relatedPaths || [])])];
+        throw error;
+      }
+    }
     function savedObservation(plugin, { targets, request, finish, canWrite, isClosed, dispatch }) {
       const missingGuard = (path2) => {
         if (isClosed() || plugin.admission.paused.has(path2)) throw new NoteTargetChanged("The saved observation is waiting.");
@@ -8234,17 +8341,14 @@ var require_component_saved_observation = __commonJS({
         if (views.some((v) => v.containerEl?.querySelector(".kl-component-editing,.math-studio-host") || v.getMode() === "source" && v.editor?.getValue())) throw new NoteTargetChanged("An open source draft is waiting to be saved.");
         if (plugin.app.vault.getAbstractFileByPath(path2)) throw new NoteTargetChanged("The note reappeared during observation.");
       };
-      const ready = (plan) => {
-        if (plan.sourceState === "awaiting" || plan.issues?.some((i) => ["enrollment-waiting", "awaiting-source"].includes(i.kind))) throw new NoteTargetChanged("The saved observation is waiting for its integrated source.");
-      };
-      return async (path2) => {
+      return async (path2, context = {}) => {
         if (isClosed()) throw new NoteTargetChanged();
         if (!await canWrite(path2)) return false;
         const file = await componentFile(plugin.app.vault, path2);
         if (!file) {
           missingGuard(path2);
-          const plan2 = await request("live-component-plan", { path: path2, text: "", operation: "observe" });
-          ready(plan2);
+          const plan2 = await request("live-component-plan", { ...context, path: path2, text: "", operation: "observe" });
+          observationReady(plan2);
           missingGuard(path2);
           await finish(path2, plan2, plan2.text);
           return true;
@@ -8253,8 +8357,8 @@ var require_component_saved_observation = __commonJS({
         if (!target || target.file !== file) throw new NoteTargetChanged();
         if (await plugin.app.vault.read(file) !== target.text) throw new NoteTargetChanged("The editor and saved note have not converged.");
         targets.check(target);
-        const plan = await request("live-component-plan", { path: path2, text: target.text, operation: "observe" });
-        ready(plan);
+        const plan = await request("live-component-plan", { ...context, path: path2, text: target.text, operation: "observe" });
+        observationReady(plan);
         if (await plugin.app.vault.read(file) !== target.text) throw new NoteTargetChanged("The saved note changed during observation.");
         await targets.apply(target, plan.text, (owner) => dispatch(owner, target.text, plan.text));
         await finish(path2, plan, plan.text);
@@ -8262,7 +8366,7 @@ var require_component_saved_observation = __commonJS({
       };
     }
     async function heldOpenPaths(plugin, targets) {
-      const held = new Set(plugin.admission.paused);
+      const held = new Set(plugin.admission.paused), captured = [];
       const paths = new Set(plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view?.file?.path).filter(Boolean));
       for (const path2 of paths) {
         try {
@@ -8272,13 +8376,56 @@ var require_component_saved_observation = __commonJS({
             continue;
           }
           targets.check(target);
+          captured.push(target);
         } catch {
           held.add(path2);
         }
       }
+      for (const target of captured) {
+        try {
+          targets.check(target);
+        } catch {
+          held.add(target.path);
+        }
+      }
+      for (const path2 of plugin.admission.paused) held.add(path2);
+      for (const leaf of plugin.app.workspace.getLeavesOfType("markdown")) {
+        const path2 = leaf.view?.file?.path;
+        if (path2 && !paths.has(path2)) held.add(path2);
+      }
       return [...held];
     }
-    module2.exports = { savedObservation, heldOpenPaths };
+    function guardedObservationRequest(plugin, targets, send, { candidatePaths = () => [] } = {}) {
+      const plans = /* @__PURE__ */ new Map();
+      plugin.register(() => plans.clear());
+      const guard = async (path2, extra = []) => ({
+        heldPaths: (await heldOpenPaths(plugin, targets)).filter((p) => p !== path2),
+        candidatePaths: [.../* @__PURE__ */ new Set([path2, ...candidatePaths(), ...extra])].filter((p) => typeof p === "string" && p.endsWith(".md")).sort()
+      });
+      return async (op, args = {}) => {
+        await plugin.admission.ready;
+        const ordinary = op === "live-component-plan" && ["edit", "observe"].includes(args.operation || "edit");
+        const context = ordinary ? { path: args.path, candidates: args.candidatePaths || [] } : op === "live-component-finish" ? plans.get(args.token) : null;
+        let sampled;
+        try {
+          sampled = context ? await guard(context.path, context.candidates) : null;
+          const result = await send(op, sampled ? { ...args, ...sampled } : args);
+          const awaiting = ordinary && (result.sourceState === "awaiting" || result.issues?.some((issue) => ["awaiting-source", "enrollment-waiting"].includes(issue.kind)));
+          if (awaiting) result.retryPaths = [.../* @__PURE__ */ new Set([...sampled.heldPaths, ...sampled.candidatePaths])];
+          if (ordinary && result.token && !awaiting) plans.set(result.token, context);
+          if (op === "live-component-finish") plans.delete(args.token);
+          return result;
+        } catch (error) {
+          if (error.code === "relocation-deferred") {
+            const changed = new NoteTargetChanged(error.message);
+            changed.relatedPaths = [...sampled?.heldPaths || [], ...sampled?.candidatePaths || []];
+            throw changed;
+          }
+          throw error;
+        }
+      };
+    }
+    module2.exports = { savedObservation, heldOpenPaths, guardedObservationRequest, observationReady };
   }
 });
 
@@ -8288,19 +8435,19 @@ var require_component_location_startup = __commonJS({
     function locationStartup({ request, observe, canWrite = async () => true, isClosed = () => false, onStatus = () => {
     }, now = Date.now, retryDelay = 6e4 }) {
       let done = false, pendingRun = null, nextAttempt = 0;
-      let state = { done: false, running: false, pendingPaths: [], excludedPaths: [], errors: [] };
+      let state = { done: false, running: false, pendingPaths: [], excludedPaths: [], ambiguousKeys: {}, errors: [] };
       const publish = (values) => {
         state = { ...state, ...values };
         if (!isClosed()) onStatus({ ...state });
       };
       const yieldTurn = () => new Promise((resolve) => setTimeout(resolve, 0));
       async function pass() {
-        const destinations = /* @__PURE__ */ new Set(), remaining = /* @__PURE__ */ new Set(), held = /* @__PURE__ */ new Set(), unknown = /* @__PURE__ */ new Set(), excluded = /* @__PURE__ */ new Set(), errors = [];
+        const destinations = /* @__PURE__ */ new Set(), remaining = /* @__PURE__ */ new Set(), held = /* @__PURE__ */ new Set(), unknown = /* @__PURE__ */ new Set(), excluded = /* @__PURE__ */ new Set(), errors = [], ambiguousKeys = {};
         const failure = (path2, error) => {
           if (path2 !== null) held.add(path2);
           errors.push({ path: path2, reason: error.message || String(error) });
         };
-        publish({ running: true, pendingPaths: [], excludedPaths: [], errors: [] });
+        publish({ running: true, pendingPaths: [], excludedPaths: [], ambiguousKeys: {}, errors: [] });
         try {
           let cursor = null;
           do {
@@ -8308,6 +8455,7 @@ var require_component_location_startup = __commonJS({
             const page = await request("live-component-location-audit", { cursor, limit: 100 });
             if (isClosed()) return;
             for (const path2 of page.destinationPaths || []) destinations.add(path2);
+            for (const [key, paths] of Object.entries(page.ambiguousKeys || {})) ambiguousKeys[key] = [.../* @__PURE__ */ new Set([...ambiguousKeys[key] || [], ...paths])].sort();
             for (const path2 of [...page.changedPaths || [], ...page.missingPaths || []]) remaining.add(path2);
             for (const item of page.unknownPaths || []) {
               unknown.add(item.path);
@@ -8319,6 +8467,7 @@ var require_component_location_startup = __commonJS({
             await yieldTurn();
           } while (true);
           const ordered = [...destinations, ...[...remaining].filter((path2) => !destinations.has(path2))];
+          const candidatePaths = [.../* @__PURE__ */ new Set([...destinations, ...[...unknown].filter((path2) => path2.endsWith(".md"))])].sort();
           for (const path2 of /* @__PURE__ */ new Set([...ordered, ...held])) {
             if (isClosed()) return;
             if (unknown.has(path2)) continue;
@@ -8335,7 +8484,7 @@ var require_component_location_startup = __commonJS({
             if (isClosed()) return;
             if (held.has(path2)) continue;
             try {
-              const result = await observe(path2);
+              const result = await observe(path2, { candidatePaths });
               if (result === false || result?.held) failure(path2, "Observation held");
             } catch (error) {
               failure(path2, error);
@@ -8365,7 +8514,7 @@ var require_component_location_startup = __commonJS({
           throw error;
         } finally {
           if (!done) nextAttempt = now() + retryDelay;
-          publish({ done, running: false, pendingPaths: [...held].filter((path2) => unknown.has(path2) || !excluded.has(path2)).sort(), excludedPaths: [...excluded].sort(), errors });
+          publish({ done, running: false, pendingPaths: [...held].filter((path2) => unknown.has(path2) || !excluded.has(path2)).sort(), excludedPaths: [...excluded].sort(), ambiguousKeys, errors });
         }
       }
       function run() {
@@ -8434,56 +8583,89 @@ var require_component_external_observer = __commonJS({
   "plugin/component-external-observer.js"(exports2, module2) {
     var { componentHeaders } = require_component_model();
     function watch(plugin, { accepted, reconcile, onError, canWrite = async () => true, isRegistered = async () => false, delay = 750 }) {
-      const pending = /* @__PURE__ */ new Map();
+      const pending = /* @__PURE__ */ new Map(), active = /* @__PURE__ */ new Map(), attempts = /* @__PURE__ */ new Map(), related = /* @__PURE__ */ new Map(), observed = /* @__PURE__ */ new Set();
       let closed = false;
-      const schedule = (path2) => {
+      const resolved = (path2) => {
+        attempts.delete(path2);
+        related.delete(path2);
+        observed.delete(path2);
+      };
+      const enqueue = (path2, wait) => {
         if (closed) return;
         clearTimeout(pending.get(path2));
         pending.set(path2, setTimeout(() => {
           pending.delete(path2);
-          void check(path2).catch((error) => {
+          active.set(path2, (active.get(path2) || 0) + 1);
+          void check(path2).then((result) => {
+            if (result !== false) resolved(path2);
+          }).catch((error) => {
             if (!closed) onError(error);
+          }).finally(() => {
+            const count = active.get(path2) || 0;
+            if (count > 1) active.set(path2, count - 1);
+            else active.delete(path2);
           });
-        }, delay));
+        }, wait));
+      };
+      const schedule = (path2) => {
+        attempts.delete(path2);
+        enqueue(path2, delay);
+      };
+      const retry = (path2, paths = [], wasObserved = false) => {
+        if (closed) return;
+        if (wasObserved) observed.add(path2);
+        related.set(path2, /* @__PURE__ */ new Set([...related.get(path2) || [], ...paths, path2]));
+        if (pending.has(path2)) return;
+        const count = attempts.get(path2) || 0;
+        attempts.set(path2, Math.min(count + 1, 16));
+        enqueue(path2, Math.min(3e4, delay * 2 ** count));
+      };
+      const changed = (path2) => {
+        const wake = [...related].filter(([, paths]) => paths.has(path2)).map(([held2]) => held2);
+        schedule(path2);
+        for (const held2 of wake) if (held2 !== path2) schedule(held2);
       };
       const readKnown = async (path2, read) => {
         try {
           return await read();
         } catch (error) {
-          schedule(path2);
+          retry(path2);
           throw error;
         }
       };
       const viewsFor = (path2) => plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view).filter((v) => v.file?.path === path2);
       const held = (path2, views) => {
         if (views.some((v) => v.containerEl.querySelector(".kl-component-editing, .math-studio-host")) || plugin.admission.paused.has(path2)) {
-          schedule(path2);
+          retry(path2);
           return true;
         }
         return false;
       };
       async function check(path2) {
         if (closed || !await canWrite(path2)) return;
-        if (held(path2, viewsFor(path2))) return;
+        if (held(path2, viewsFor(path2))) return false;
         const file = plugin.app.vault.getAbstractFileByPath(path2);
         if (!file) {
-          if (await readKnown(path2, () => isRegistered(path2)) && !closed && !held(path2, viewsFor(path2))) await reconcile(path2);
+          if (await readKnown(path2, () => isRegistered(path2)) && !closed) {
+            if (held(path2, viewsFor(path2))) return false;
+            return reconcile(path2);
+          }
           return;
         }
         const disk = await readKnown(path2, () => plugin.app.vault.read(file));
         if (closed || accepted.get(path2) === disk) return;
-        if (!componentHeaders(disk).some((header) => header.id) && !await readKnown(path2, () => isRegistered(path2))) return;
+        if (!observed.has(path2) && !componentHeaders(disk).some((header) => header.id) && !await readKnown(path2, () => isRegistered(path2))) return;
         if (closed) return;
         const views = viewsFor(path2);
-        if (held(path2, views)) return;
+        if (held(path2, views)) return false;
         if (views.some((v) => v.getMode() === "source" && v.editor?.getValue() !== disk)) {
-          schedule(path2);
-          return;
+          retry(path2);
+          return false;
         }
-        await reconcile(path2);
+        return reconcile(path2);
       }
       const subscribe = (event) => plugin.registerEvent(plugin.app.vault.on(event, (file) => {
-        if (file.path?.endsWith(".md")) schedule(file.path);
+        if (file.path?.endsWith(".md")) changed(file.path);
       }));
       for (const event of ["modify", "delete"]) subscribe(event);
       plugin.app.workspace.onLayoutReady(() => {
@@ -8493,8 +8675,12 @@ var require_component_external_observer = __commonJS({
         closed = true;
         for (const timer of pending.values()) clearTimeout(timer);
         pending.clear();
+        active.clear();
+        attempts.clear();
+        related.clear();
+        observed.clear();
       });
-      return { schedule };
+      return { schedule, retry, resolved, pendingPaths: () => [.../* @__PURE__ */ new Set([...pending.keys(), ...active.keys()])] };
     }
     module2.exports = { watch };
   }
@@ -8538,7 +8724,7 @@ var require_component_identities = __commonJS({
     function registerComponentIdentities(plugin) {
       const canWrite = require_component_write_scope().scope(plugin);
       const targets = noteTargets(plugin);
-      let queue = Promise.resolve(), closed = false, startup;
+      let queue = Promise.resolve(), closed = false, startup, external;
       const states = /* @__PURE__ */ new Map(), accepted = /* @__PURE__ */ new Map(), timers = /* @__PURE__ */ new Map(), stateRequests = /* @__PURE__ */ new Map();
       const serialize = (fn) => {
         const result = queue.catch(() => {
@@ -8551,10 +8737,12 @@ var require_component_identities = __commonJS({
         });
         return result;
       };
-      const request = async (op, args) => {
-        await plugin.admission.ready;
-        return plugin.admission.request(op, args);
-      };
+      const request = require_component_saved_observation().guardedObservationRequest(
+        plugin,
+        targets,
+        (op, args) => plugin.admission.request(op, args),
+        { candidatePaths: () => [...external?.pendingPaths?.() || [], ...[...timers.keys()].map((view) => pathOf(view)).filter(Boolean)] }
+      );
       const pathOf = (view) => view.state.field(editorInfoField, false)?.file?.path;
       const report = (issues, path2) => {
         const saved = plugin.settings.componentIdentityNotices || [];
@@ -8580,6 +8768,7 @@ var require_component_identities = __commonJS({
       const finish = async (path2, plan, text) => {
         const result = await request("live-component-finish", { token: plan.token, text });
         accepted.set(path2, text);
+        external?.resolved(path2);
         states.set(path2, new Map(result.states.map((s) => [s.at, s])));
         report(result.issues, path2);
         const pending = plugin.settings.pendingComponentUpdates || {}, previous = pending[path2];
@@ -8609,23 +8798,47 @@ var require_component_identities = __commonJS({
         if (!path2 || closed) return;
         if (!await canWrite(path2)) throw Error("This note is outside the enabled callout pilot.");
         const original = view.state.doc.toString();
-        const plan = await request("live-component-plan", { path: path2, text, operation, ...syncAt ? { syncAt } : {}, ...ancestor ? { ancestor } : {} });
+        let plan;
+        try {
+          plan = await request("live-component-plan", { path: path2, text, operation, ...syncAt ? { syncAt } : {}, ...ancestor ? { ancestor } : {} });
+        } catch (error) {
+          if (error instanceof NoteTargetChanged && ["edit", "observe"].includes(operation)) retryLater(view, path2, error.relatedPaths);
+          throw error;
+        }
+        if (["edit", "observe"].includes(operation)) {
+          try {
+            require_component_saved_observation().observationReady(plan);
+          } catch (error) {
+            retryLater(view, path2, error.relatedPaths);
+            throw error;
+          }
+        }
         if (view.state.doc.toString() !== original) throw Error("The note changed while its callout identity was being checked. Try the edit again.");
         if (plan.text !== original) view.dispatch({ changes: difference(original, plan.text), annotations: [history ? isolateHistory.of("full") : Transaction.addToHistory.of(false)], userEvent: "input.callout-identity", effects });
         const save = async () => {
           for (const leaf of plugin.app.workspace.getLeavesOfType("markdown")) if (leaf.view?.file?.path === path2 && leaf.view.save) await leaf.view.save();
         };
-        await finishWhenSaved(plugin.app.vault, path2, plan.text, () => finish(path2, plan, plan.text), { save });
-        if (plan.issues?.some((i) => i.kind === "enrollment-waiting" || i.kind === "awaiting-source")) retryLater(view, path2);
+        try {
+          await finishWhenSaved(plugin.app.vault, path2, plan.text, () => finish(path2, plan, plan.text), { save });
+        } catch (error) {
+          if (error instanceof NoteTargetChanged && ["edit", "observe"].includes(operation)) retryLater(view, path2, error.relatedPaths);
+          throw error;
+        }
+        if (plan.issues?.some((i) => i.kind === "enrollment-waiting" || i.kind === "awaiting-source")) {
+          clearTimeout(timers.get(view));
+          timers.set(view, setTimeout(() => {
+            timers.delete(view);
+            if (pathOf(view) !== path2) return;
+            accepted.delete(path2);
+            observe(view).catch((error) => new Notice2(error.message));
+          }, 25e3));
+        }
       };
-      const retryLater = (view, path2, delay = 25e3) => {
+      const retryLater = (view, path2, related = []) => {
         clearTimeout(timers.get(view));
-        timers.set(view, setTimeout(() => {
-          timers.delete(view);
-          if (pathOf(view) !== path2) return;
-          accepted.delete(path2);
-          observe(view).catch((error) => new Notice2(error.message));
-        }, delay));
+        timers.delete(view);
+        accepted.delete(path2);
+        external?.retry(path2, related, true);
       };
       const observe = (view, operation = "observe") => serialize(async () => {
         const path2 = pathOf(view);
@@ -8634,12 +8847,12 @@ var require_component_identities = __commonJS({
           const target = await targets.capture(path2);
           if (!target || accepted.get(path2) === target.text) return;
           const plan = await request("live-component-plan", { path: path2, text: target.text, operation });
+          require_component_saved_observation().observationReady(plan);
           await targets.apply(target, plan.text, (owner) => owner.editor.cm.dispatch({ changes: difference(target.text, plan.text), annotations: Transaction.addToHistory.of(false), userEvent: "input.callout-identity" }));
           await finishWhenSaved(plugin.app.vault, path2, plan.text, () => finish(path2, plan, plan.text));
-          if (plan.issues?.some((i) => i.kind === "enrollment-waiting" || i.kind === "awaiting-source")) retryLater(view, path2);
         } catch (error) {
           if (error instanceof NoteTargetChanged) {
-            if (!closed) retryLater(view, path2, 750);
+            if (!closed) retryLater(view, path2, error.relatedPaths);
             return;
           }
           throw error;
@@ -8673,46 +8886,52 @@ var require_component_identities = __commonJS({
         };
       };
       const updatePath = async (path2, ids = [], undoToken = null) => {
-        if (!await canWrite(path2)) return null;
-        const file = await componentFile(plugin.app.vault, path2);
-        if (!file) {
-          const removed = await request("live-component-plan", { path: path2, text: "", operation: "observe" });
-          await finish(path2, removed, removed.text);
-          return null;
-        }
-        if (plugin.admission.paused.has(path2)) throw Error("An admission is finishing; index updates will retry.");
-        const views = plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view).filter((v) => v.file?.path === path2);
-        if (views.some((v) => v.containerEl.querySelector(".kl-component-editing"))) throw Error("Finish the open callout edit to apply its index update.");
-        const view = views.find((v) => v.getMode() === "source" && v.editor?.cm), text = view ? view.editor.getValue() : await plugin.app.vault.read(file);
-        const receipts = [], pending = plugin.settings.pendingComponentWrites || {};
-        let resumedPlan = null;
-        for (const token of pending[path2] || []) {
-          await componentSaved(plugin.app.vault, path2, text);
-          const resumed = await request("live-component-propagation-resume", { token, text, ids });
-          if (resumed.state === "rebase") {
-            resumedPlan = resumed.plan;
-            break;
+        try {
+          if (!await canWrite(path2)) return null;
+          const file = await componentFile(plugin.app.vault, path2);
+          if (!file) {
+            const removed = await request("live-component-plan", { path: path2, text: "", operation: "observe" });
+            await finish(path2, removed, removed.text);
+            return null;
           }
-          if (resumed.state === "complete" && resumed.updates.length) receipts.push({ path: path2, token, count: resumed.updates.length });
+          if (plugin.admission.paused.has(path2)) throw Error("An admission is finishing; index updates will retry.");
+          const views = plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view).filter((v) => v.file?.path === path2);
+          if (views.some((v) => v.containerEl.querySelector(".kl-component-editing"))) throw Error("Finish the open callout edit to apply its index update.");
+          const view = views.find((v) => v.getMode() === "source" && v.editor?.cm), text = view ? view.editor.getValue() : await plugin.app.vault.read(file);
+          const receipts = [], pending = plugin.settings.pendingComponentWrites || {};
+          let resumedPlan = null;
+          for (const token of pending[path2] || []) {
+            await componentSaved(plugin.app.vault, path2, text);
+            const resumed = await request("live-component-propagation-resume", { token, text, ids });
+            if (resumed.state === "rebase") {
+              resumedPlan = resumed.plan;
+              break;
+            }
+            if (resumed.state === "complete" && resumed.updates.length) receipts.push({ path: path2, token, count: resumed.updates.length });
+          }
+          const plan = resumedPlan || (undoToken ? await request("live-component-propagation-undo", { token: undoToken, text }) : ids.length ? await request("live-component-propagation-plan", { path: path2, text, ids }) : await request("live-component-plan", { path: path2, text, operation: "observe" }));
+          require_component_saved_observation().observationReady(plan);
+          if (plan.updates?.length) {
+            pending[path2] = [plan.token];
+            plugin.settings.pendingComponentWrites = pending;
+            await plugin.persist();
+          }
+          if (view) {
+            if (view.editor.getValue() !== text) throw Error("The note changed during its index update; it will be retried.");
+            if (plan.text !== text) view.editor.cm.dispatch({ changes: difference(text, plan.text), annotations: Transaction.addToHistory.of(false), userEvent: "input.callout-identity" });
+          } else if (plan.text !== text) await plugin.app.vault.process(file, (current) => {
+            if (current !== text) throw Error("A note changed during its index update; it will be retried.");
+            return plan.text;
+          });
+          await componentSaved(plugin.app.vault, path2, plan.text);
+          if (view && view.editor.getValue() !== plan.text) throw Error("The note changed before its index update finished. The update receipt is preserved.");
+          await finish(path2, plan, plan.text);
+          if (plan.updates?.length) receipts.push({ path: path2, token: plan.token, count: plan.updates.length });
+          return receipts;
+        } catch (error) {
+          if (error instanceof NoteTargetChanged) external?.retry(path2, error.relatedPaths, true);
+          throw error;
         }
-        const plan = resumedPlan || (undoToken ? await request("live-component-propagation-undo", { token: undoToken, text }) : ids.length ? await request("live-component-propagation-plan", { path: path2, text, ids }) : await request("live-component-plan", { path: path2, text, operation: "observe" }));
-        if (plan.updates?.length) {
-          pending[path2] = [plan.token];
-          plugin.settings.pendingComponentWrites = pending;
-          await plugin.persist();
-        }
-        if (view) {
-          if (view.editor.getValue() !== text) throw Error("The note changed during its index update; it will be retried.");
-          if (plan.text !== text) view.editor.cm.dispatch({ changes: difference(text, plan.text), annotations: Transaction.addToHistory.of(false), userEvent: "input.callout-identity" });
-        } else if (plan.text !== text) await plugin.app.vault.process(file, (current) => {
-          if (current !== text) throw Error("A note changed during its index update; it will be retried.");
-          return plan.text;
-        });
-        await componentSaved(plugin.app.vault, path2, plan.text);
-        if (view && view.editor.getValue() !== plan.text) throw Error("The note changed before its index update finished. The update receipt is preserved.");
-        await finish(path2, plan, plan.text);
-        if (plan.updates?.length) receipts.push({ path: path2, token: plan.token, count: plan.updates.length });
-        return receipts;
       };
       const updatedNotice = (receipts) => {
         if (!receipts.length) return;
@@ -8861,10 +9080,18 @@ var require_component_identities = __commonJS({
         commit: (view, expected, change, operation = "edit", reservedHeaders = false, effects = []) => serialize(async () => {
           if (view.state.doc.toString() !== expected) throw Error("The callout changed while its editor was open.");
           if (accepted.get(pathOf(view)) !== expected) {
-            const p = await request("live-component-plan", { path: pathOf(view), text: expected, operation: "observe" });
-            if (p.text !== expected) {
-              if (!reservedHeaders) throw Error("Callout identity is initializing. Reopen the editor in a moment.");
-            } else await finish(pathOf(view), p, expected);
+            try {
+              const p = await request("live-component-plan", { path: pathOf(view), text: expected, operation: "observe" });
+              if (p.text !== expected) {
+                if (!reservedHeaders) throw Error("Callout identity is initializing. Reopen the editor in a moment.");
+              } else {
+                require_component_saved_observation().observationReady(p);
+                await finish(pathOf(view), p, expected);
+              }
+            } catch (error) {
+              if (error instanceof NoteTargetChanged) retryLater(view, pathOf(view), error.relatedPaths);
+              throw error;
+            }
           }
           const proposed = expected.slice(0, change.from) + change.insert + expected.slice(change.to);
           await transact(view, proposed, operation, true, null, null, effects);
@@ -8927,7 +9154,7 @@ var require_component_identities = __commonJS({
           const held = await require_component_saved_observation().heldOpenPaths(plugin, targets);
           return request(op, { ...args, heldPaths: [.../* @__PURE__ */ new Set([...args.heldPaths, ...held])] });
         }) : request(op, args),
-        observe: (path2) => serialize(() => savedObserve(path2)),
+        observe: (path2, context) => serialize(() => savedObserve(path2, context)),
         canWrite,
         isClosed: () => closed,
         onStatus: (status) => {
@@ -9043,13 +9270,13 @@ var require_component_identities = __commonJS({
           return true;
         } })
       ]);
-      const external = require_component_external_observer().watch(plugin, {
+      external = require_component_external_observer().watch(plugin, {
         accepted,
         canWrite,
         isRegistered: async (path2) => (await request("live-component-registered", { path: path2 })).registered,
         reconcile: (path2) => serialize(() => savedObserve(path2)).catch((error) => {
           if (error instanceof NoteTargetChanged) {
-            external.schedule(path2);
+            external.retry(path2, error.relatedPaths, true);
             return false;
           }
           throw error;
@@ -15744,9 +15971,7 @@ module.exports = class KnowledgeLibraryPlugin extends Plugin {
       this.referenceLayoutReady = true;
       this.documentFeed?.wake();
     });
-    this.registerEvent(this.app.vault.on("create", (file) => {
-      if (/\.(png|jpe?g|gif|webp|svg|avif)$/i.test(file.path)) this.admission.schedule(file.path);
-    }));
+    this.registerImageEvents();
     this.registerEvent(this.app.vault.on("modify", (file) => this.admission.schedule(file.path)));
     this.registerEvent(this.app.vault.on("delete", (file) => this.admission.schedule(file.path)));
     this.registerEvent(this.app.vault.on("rename", (file, oldPath) => this.admission.rename(file, oldPath)));
@@ -15842,6 +16067,18 @@ module.exports = class KnowledgeLibraryPlugin extends Plugin {
     if (this.referenceDisplayError) this.referenceStatus.setAttribute("title", this.referenceDisplayError);
     else this.referenceStatus.removeAttribute("title");
   }
+  registerImageEvents() {
+    if (this.reader || this.imageEventsRegistered) return;
+    this.imageEventsRegistered = true;
+    this.app.workspace.onLayoutReady(() => {
+      if (this.unloading) return;
+      this.registerEvent(this.app.vault.on("create", (file) => {
+        if (/\.(png|jpe?g|gif|webp|svg|avif)$/i.test(file.path)) this.admission?.schedule(file.path);
+      }));
+      this.imageEventsAttached = true;
+      this.admission?.imageEventsReady?.();
+    });
+  }
   startService() {
     this.documentFeed?.close();
     this.admission?.close();
@@ -15862,10 +16099,11 @@ module.exports = class KnowledgeLibraryPlugin extends Plugin {
       return;
     }
     this.admission = new AdmissionAdapter(this, client);
-    this.admission.ready = this.admission.start();
-    this.admission.ready.catch((e) => new Notice("Index service: " + e.message));
-    this.calloutAPI?.serviceChanged();
     const adapter = this.admission;
+    adapter.ready = adapter.start();
+    adapter.ready.catch((e) => adapter.maintenanceError("ready", e));
+    if (this.imageEventsAttached) adapter.imageEventsReady();
+    this.calloutAPI?.serviceChanged();
     const excludedFolders = [...this.settings.referenceTemplateFolders || []];
     const coreFolder = this.app.internalPlugins?.getPluginById?.("templates")?.instance?.options?.folder;
     const templaterFolder = this.app.plugins?.plugins?.["templater-obsidian"]?.settings?.templates_folder;

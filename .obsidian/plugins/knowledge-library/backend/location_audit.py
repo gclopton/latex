@@ -55,6 +55,14 @@ def _dead_home_keys(live, registry):
     return keys
 
 
+def _dead_occurrence_keys(live, registry):
+    # A source-first observation may already have promoted another copy. The
+    # original occurrence is still evidence even though it is no longer either
+    # recorded home. Non-home copies can be moved through the same workflow.
+    return {(row['id'], at) for at, row in registry.occurrences.items()
+            if row.get('vault') == live.vault_id and not row.get('alive')}
+
+
 def _directory(live, relative):
     path = live.vault / relative
     if not path.resolve().is_relative_to(live.vault):
@@ -80,8 +88,11 @@ def audit(live, cursor=None, limit=100):
         raise ValueError('Invalid location-audit cursor.')
     keys = {tuple(key) for key in state.get('keys', [])}
     keys.update(_dead_home_keys(live, registry))
+    keys.update(_dead_occurrence_keys(live, registry))
+    matches = {(identity, at): set(paths)
+               for identity, at, paths in state.get('matches', [])}
     result = {'phase': state['phase'], 'changedPaths': [], 'missingPaths': [],
-              'destinationPaths': [], 'unknownPaths': [], 'scanned': 0}
+              'destinationPaths': [], 'unknownPaths': [], 'ambiguousKeys': {}, 'scanned': 0}
 
     def unknown(path, error):
         result['unknownPaths'].append({'path': path, 'reason': str(error)})
@@ -156,11 +167,19 @@ def audit(live, cursor=None, limit=100):
                     if not stat.S_ISREG(mode) or child.suffix != '.md':
                         continue
                     text = _read(live, path)
-                    if text is not None and any(_key(row) in keys for row in components(text)):
+                    found = {key for row in components(text or '')
+                             if (key := _key(row)) in keys}
+                    if found:
                         result['destinationPaths'].append(path)
+                        for key in found:
+                            matches.setdefault(key, set()).add(path)
                 except (OSError, UnicodeError, ValueError) as error:
                     unknown(path, error)
         state = {'phase': 'search', 'stack': stack} if stack else None
     if state is not None:
         state['keys'] = [list(key) for key in sorted(keys)]
+        state['matches'] = [[identity, at, sorted(paths)]
+                            for (identity, at), paths in sorted(matches.items())]
+    result['ambiguousKeys'] = {at: sorted(paths) for (_, at), paths in matches.items()
+                               if len(paths) > 1}
     return {**result, 'cursor': state, 'done': state is None}

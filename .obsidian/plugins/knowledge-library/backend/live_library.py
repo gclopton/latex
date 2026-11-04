@@ -181,23 +181,155 @@ class LiveLibrary:
         return {**entry,**place,'line_start':place['line'],'line_end':place['endLine'],
                 'sourcePath':place['path'],'context_after':'','copies':1}
 
-    def component_plan(self,path,text,operation='edit',sync_at=None,ancestor=None,intent_kind=None,intent_data=None):
-        from component_scope import guard
-        guard(self.vault,path)
+    @staticmethod
+    def relocation_guard(guard):
+        if guard is None:return None
+        if not isinstance(guard,dict):raise ValueError('Invalid relocation guard context')
+        for key in ('heldPaths','candidatePaths'):
+            if not isinstance(guard.get(key),list) or any(not isinstance(p,str) for p in guard[key]):raise ValueError('Relocation guards require heldPaths and candidatePaths lists')
+        return {key:sorted(set(guard[key])) for key in ('heldPaths','candidatePaths')}
+
+    def relocation_classification(self,path,text,guard,rename_source=None):
+        """Classify exact foreign-path occurrences from bounded saved evidence.
+
+        This never observes another note or writes source bytes. A missing guard
+        cannot distinguish a saved copy from an unsaved cut, so every such row
+        waits. The caller uses the same classifier again at its commit boundary.
+        """
+        from collections import Counter
+        from component_identities import base,ENTITY,OCCURRENCE,NOTE,note_key
+        from component_scope import guard as scope_guard
+        from markdown_scan import components
+        import operations
+        registry=self.component_registry();registry.load();self.store.load()
+        rows=components(text);counts=Counter(r.get('at') for r in rows if r.get('at'))
+        candidates={r['at']:r for r in rows if r.get('at') and r.get('id') and
+                    (registry.occurrences.get(r['at']) or {}).get('vault')==self.vault_id and
+                    registry.occurrences[r['at']]['path']!=path}
+        if not candidates:return {},{}
+        if guard is None:return {},{at:'No current editor guard context.' for at in candidates}
+        held=set(guard['heldPaths']);proof={};waiting={};cache={};parsed={};registered_paths=None
+        pending=[]
+        for p in operations.unresolved(self.store.root)+operations.pending_prepared(self.store.root):
+            try:pending.append({**json.loads(p.read_text()),'_prepared':p.parent.name=='prepared'})
+            except (OSError,ValueError):return {},{at:'An operation intent is unreadable.' for at in candidates}
+        def read_saved(p):
+            if p not in cache:
+                self.path(p)
+                cache[p]=self.read(p) if self.exact_note_exists(p) else None
+            return cache[p]
+        # These caches live only for this classification; finish gets a fresh read.
+        def saved_rows(p):
+            if p not in parsed:
+                text=read_saved(p);parsed[p]=components(text) if text is not None else []
+            return parsed[p]
+        for at,row in sorted(candidates.items()):
+            occurrence=registry.occurrences[at];identity=base(row['id']);source=occurrence['path']
+            try:
+                if counts[at]!=1 or occurrence['id']!=identity:raise Conflict('The destination marker is duplicated or disagrees with its recorded identity.')
+                if source in held:raise Conflict('The original source has an unsaved or paused edit.')
+                scope_guard(self.vault,source)
+                if registry.owed(source) or registry.arrived(source):raise Conflict('The original source is awaiting peer operations.')
+                if any(i.get('vaultId')==self.vault_id and i.get('path')==source and not (source==rename_source and i.get('_prepared') and i.get('kind')=='admission') for i in pending):raise Conflict('The original source has an unfinished operation.')
+                objects={NOTE+note_key(self.vault_id,source),ENTITY+identity,OCCURRENCE+at,NOTE+note_key(self.vault_id,path)}
+                if any(registry.journal.conflicted(obj) for obj in objects) or self.store.journal.conflicted('entry:'+identity):raise Conflict('The source identity has competing journal heads.')
+                saved=read_saved(source)
+                source_rows=saved_rows(source)
+                source_matches=[r for r in source_rows if r.get('at')==at and r.get('id') and base(r['id'])==identity]
+                if len(source_matches)>1:raise Conflict('The original source has duplicate occurrence markers.')
+                if source_matches and not occurrence.get('alive'):raise Conflict('The saved source contains a tombstoned occurrence; observe the source first.')
+                classification='copy' if source_matches else 'move'
+                if classification=='move':
+                    paths=set(guard['candidatePaths'])-{path,source}
+                    # Registered stale membership is bounded evidence too; do
+                    # not silently ignore a second saved destination we know.
+                    if registered_paths is None:
+                        registered_paths={};prefix=self.vault_id+'\n'
+                        for key,note in registry.notes.items():
+                            if key.startswith(prefix):
+                                for registered in note['rows']:
+                                    registered_paths.setdefault(registered.get('at'),set()).add(key[len(prefix):])
+                    paths.update(registered_paths.get(at,()))
+                    for other in sorted(paths-{path,source}):
+                        if other in held:raise Conflict('A candidate destination has an unsaved or paused edit.')
+                        other_text=read_saved(other)
+                        if other_text is not None and any(r.get('at')==at and r.get('id') and base(r['id'])==identity for r in saved_rows(other)):
+                            raise Conflict('The occurrence has multiple saved candidate destinations.')
+                heads={obj:list(registry.journal.heads.get(obj,[])) for obj in sorted(objects)}
+                heads['entry:'+identity]=list(self.store.journal.heads.get('entry:'+identity,[]))
+                is_home=(registry.entities.get(identity) or {}).get('home')==at
+                proof[at]={'source':source,'sourceHash':hashlib.sha256(saved.encode()).hexdigest() if saved is not None else None,
+                           'wasHome':bool(is_home or (not occurrence.get('alive') and occurrence.get('wasHome'))),'classification':classification,'heads':heads}
+            except (OSError,UnicodeError,ValueError) as error:waiting[at]=str(error)
+        return proof,waiting
+
+    def guarded_whole_note_move(self,path,text,guard):
+        """Preserve the existing rename/review-plan path only for a proved full move.
+
+        This is a saved-file operation, completed under the lock now, not a
+        speculative editor plan. Partial moves use the per-occurrence group.
+        """
+        if guard is None:return []
+        from component_identities import base,note_key
+        from markdown_scan import components
+        def source():
+            registry=self.component_registry();registry.load()
+            rows=components(text)
+            keys=[(base(r['id']),r['at']) for r in rows if r.get('id') and r.get('at')]
+            if not keys or len(keys)!=len(rows) or len(set(keys))!=len(keys):return None
+            occurrences=[registry.occurrences.get(at,{}) for identity,at in keys]
+            if any(o.get('vault')!=self.vault_id or not o.get('alive') for o in occurrences):return None
+            paths={o.get('path') for o in occurrences}
+            if len(paths)!=1 or path in paths:return None
+            old=next(iter(paths))
+            previous=registry.notes.get(note_key(self.vault_id,old),{}).get('rows',[])
+            previous_keys=[(base(r['id']),r['at']) for r in previous if r.get('id') and r.get('at')]
+            if keys!=previous_keys:return None
+            if registry.notes.get(note_key(self.vault_id,path),{}).get('rows'):return None
+            if self.exact_note_exists(old) or not self.exact_note_exists(path) or self.read(path)!=text:return None
+            if registry.owed(path) or registry.arrived(path):return None
+            return old
+        with self.store.lock():
+            try:old=source()
+            except (OSError,UnicodeError,ValueError):return []
+            if old is None:return []
+            proof,waiting=self.relocation_classification(path,text,guard,rename_source=old)
+            if waiting or not proof or any(p['source']!=old or p['sourceHash'] is not None or p['classification']!='move' for p in proof.values()):return []
+            # Exact bytes/absence and all guard/causal evidence are sampled
+            # under the same writer lock immediately before rename journals.
+            try:
+                if source()!=old:return []
+            except (OSError,UnicodeError,ValueError):return []
+            signal=self.component_home_signal(self.rename_entry_changes({old:(path,text)}))
+            self.rename(old,path,relocation_guarded=True)
+            return signal['homePaths']
+
+    def component_plan(self,path,text,operation='edit',sync_at=None,ancestor=None,intent_kind=None,intent_data=None,guard=None):
+        from component_scope import guard as scope_guard
+        scope_guard(self.vault,path);guard=self.relocation_guard(guard)
         self.store.load()
         self.path(path)
         unsettled=self.settle(path) if not self.reader else ''
-        if unsettled:
+        proof={};waiting={};rename_paths=[]
+        if not unsettled and operation in ('edit','observe') and not sync_at:
+            rename_paths=self.guarded_whole_note_move(path,text,guard)
+            proof,waiting=self.relocation_classification(path,text,guard)
+            if waiting and guard is None and operation=='edit':
+                from operations import RelocationDeferred
+                raise RelocationDeferred('The note awaits relocation observation.')
+        if unsettled or waiting:
             # An interrupted operation of this note is still being recovered:
             # nothing is observed until it is (never a copy-version of its bytes).
             from library_store import digest
             plan={'sequence':self.store.sequence,'key':'awaiting-'+digest({'v':self.vault_id,'p':path,'t':digest(text)}),'text':text,'inputHash':digest(text),'resultHash':digest(text),
                   'changes':{'entities':{},'occurrences':{},'notes':{}},'sourceState':'awaiting',
-                  'issues':[{'kind':'awaiting-source','path':path,'rows':[],'reason':'an interrupted index operation of this note is being recovered: '+unsettled}]}
-            token=secrets.token_urlsafe(24);directory=self.plans/'components';directory.mkdir(exist_ok=True)
+                  'issues':[{'kind':'awaiting-source','path':path,'rows':[],**({'reason':'relocation-held','keys':sorted(waiting),'details':waiting,'relatedPaths':sorted({self.component_registry().occurrences[at]['path'] for at in waiting})} if waiting else {'reason':'an interrupted index operation of this note is being recovered: '+unsettled})}]}
+            # A held note may retry indefinitely; reuse its exact-content plan.
+            token=digest({'awaiting':plan['key']})[:32];directory=self.plans/'components';directory.mkdir(exist_ok=True)
             atomic_json(directory/(token+'.json'),{'path':path,'plan':plan,'before':text})
             return {'token':token,'text':text,'inputHash':plan['inputHash'],'issues':plan['issues'],'sourceState':'awaiting'}
-        if not self.reader and operation in ('edit','observe'):self.discover_moves(path,text)
+        # Ordinary observations use the guarded destination group. Explicit
+        # rename/move-tree operations retain their existing durable handlers.
         if sync_at:
             from markdown_scan import components
             from portability import portable
@@ -212,7 +344,10 @@ class LiveLibrary:
         from markdown_scan import components
         if operation=='paste':text=prepare_paste(self,path,text)
         from enrollment import context
-        plan=self.component_registry().plan(self.vault_id,path,text,operation=operation,image_rows=component_images(self,path,components(text)),enrollment=context(self,path,text))
+        plan=self.component_registry().plan(self.vault_id,path,text,operation=operation,image_rows=component_images(self,path,components(text)),enrollment=context(self,path,text),
+                                            relocated={at:p['wasHome'] for at,p in proof.items() if p['classification']=='move'})
+        if proof:plan.update(relocationProof=proof,relocationCandidates=guard['candidatePaths'])
+        if rename_paths:plan['relocationRenamePaths']=rename_paths
         if ancestor:
             from markdown_scan import components
             import copy
@@ -250,11 +385,11 @@ class LiveLibrary:
         # Return just the editor plan, never the entire ownership journal.
         return {'token':token,'text':plan['text'],'inputHash':plan['inputHash'],'issues':plan['issues'],'sourceState':plan.get('sourceState')}
 
-    def component_finish(self,token,text,kind=None,data=None):
+    def component_finish(self,token,text,kind=None,data=None,guard=None):
         if not re.fullmatch(r'[A-Za-z0-9_-]{32}',token):raise ValueError('Invalid component plan')
         plan_path=self.plans/'components'/(token+'.json');saved=json.loads(plan_path.read_text())
-        from component_scope import guard
-        guard(self.vault,saved['path'])
+        from component_scope import guard as scope_guard
+        scope_guard(self.vault,saved['path']);guard=self.relocation_guard(guard)
         if 'finished' in saved:
             from library_store import digest
             if digest(text)!=saved['resultHash']:raise Conflict('Component text differs from the completed plan')
@@ -276,7 +411,9 @@ class LiveLibrary:
             except FileNotFoundError:on_disk='' if text=='' else None
             if on_disk!=text:raise Conflict('The note has not finished saving; its index update will retry.')
             intent=operations.begin(self.store,token,intent)
-            result=self.finish_component_intent(token,intent,text,saved=saved)
+            try:result=self.finish_component_intent(token,intent,text,saved=saved,guard=guard)
+            except operations.RelocationDeferred as error:
+                operations.close_group(self.store,intent);operations.end(self.store,token,'superseded',str(error));raise
         for issue in result['issues']:
             if issue['kind']=='ambiguous-erased-id':
                 issue['affectedReferences']=self.reference_index().component_dependents(saved['path'],issue['ids'])
@@ -286,7 +423,7 @@ class LiveLibrary:
                               **{key:saved[key] for key in ('undo','propagation') if key in saved}})
         return {**result,'states':self.component_registry().state(self.vault_id,saved['path'])}
 
-    def finish_component_intent(self,token,intent,text,saved=None):
+    def finish_component_intent(self,token,intent,text,saved=None,guard=None):
         """Write the operation's events as one group: ownership, then entry homes.
 
         Called under the store lock, for a live finish and for crash recovery
@@ -296,6 +433,16 @@ class LiveLibrary:
         import operations
         if saved is None:saved=json.loads((self.plans/'components'/(token+'.json')).read_text())
         plan=saved['plan'];registry=self.component_registry();registry.load()
+        if plan.get('relocationProof'):
+            intended=saved.get('relocationIntended',[])
+            if intended and all(k['key'] in self.store.journals.journals[k['journal']].keys for k in intended):
+                operations.end(self.store,token,'completed')
+                return {'sequence':registry.sequence,'issues':plan['issues'],**saved.get('homeSignal',{'homeChanged':False,'homePaths':[]})}
+            guard=self.relocation_guard(guard)
+            if guard is None:raise operations.RelocationDeferred('Relocation requires a fresh guarded source observation.')
+            guard={**guard,'candidatePaths':sorted(set(guard['candidatePaths'])|set(plan.get('relocationCandidates',[])))}
+            proof,waiting=self.relocation_classification(intent['path'],saved['before'],guard)
+            if waiting or proof!=plan['relocationProof']:raise operations.RelocationDeferred('Saved relocation evidence or journal heads changed; observe the note again.')
         provenance={'vault':self.vault_id,'path':intent['path'],'inputHash':plan['inputHash'],'resultHash':plan['resultHash'],'operation':plan['key']}
         try:homes=self.entry_changes(plan,intent,text)
         except Conflict as error:
@@ -303,6 +450,8 @@ class LiveLibrary:
             operations.end(self.store,token,'needs-review',str(error))
             raise
         home_signal=saved.get('homeSignal') or self.component_home_signal(homes)
+        if plan.get('relocationRenamePaths'):
+            home_signal={'homeChanged':True,'homePaths':sorted(set(home_signal['homePaths'])|set(plan['relocationRenamePaths']))}
         if home_signal['homeChanged'] and 'homeSignal' not in saved:
             # Retain the result across a crash after the events but before the
             # caller's receipt: recomputing against committed homes is a no-op.
@@ -312,6 +461,9 @@ class LiveLibrary:
         group1={'operation':plan['key'],'parts':2,'part':1,'instance':instance} if grouped else None
         intended=([{'journal':'components','key':plan['key'],**({'part':1} if grouped else {})}] if any(plan['changes'].values()) else [])+\
                  ([{'journal':'entries','key':'component-home-'+plan['key'],**({'part':2} if grouped else {})}] if homes else [])
+        if plan.get('relocationProof'):
+            saved={**saved,'homeSignal':home_signal,'relocationIntended':intended}
+            atomic_json(self.plans/'components'/(token+'.json'),saved)
         if (operations.folder(self.store)/(token+'.json')).exists():operations.update(self.store,token,intended=intended,homeSignal=home_signal)
         intent={**intent,'intended':intended,'homeSignal':home_signal}
         try:
@@ -1244,10 +1396,10 @@ class LiveLibrary:
         receipt=self.store.commit(**self.metadata(),key='relocate-'+str(uuid.uuid4()),actor='tracked-move',changes=changes,operation='replace-source') if changes else None
         return {'receipt':receipt}
 
-    def rename(self, old_path, new_path):
+    def rename(self, old_path, new_path,relocation_guarded=False):
         if self.exact_note_exists(old_path):raise Conflict('The previous home still exists; ownership cannot be inferred.')
         if not self.exact_note_exists(new_path):raise Conflict('The destination note is unavailable at its exact path.')
-        result=self.record_moves({old_path:(new_path,self.read(new_path))})
+        result=self.record_moves({old_path:(new_path,self.read(new_path))},relocation_guarded=relocation_guarded)
         self.rehome_pending(old_path,new_path)
         return result
 
@@ -1313,7 +1465,7 @@ class LiveLibrary:
             changes.append({'id':e['id'],'expectedRevision':e['revision'],'entry':{**e,'home':{**home,'path':target}}})
         return changes
 
-    def record_moves(self,moves,tree=None):
+    def record_moves(self,moves,tree=None,relocation_guarded=False):
         """A rename or folder move as one operation: one durable intent and one event group.
 
         The note move itself was done by the vault (the source is already saved);
@@ -1338,7 +1490,7 @@ class LiveLibrary:
         with self.store.lock():
             operations.begin(self.store,token,{'kind':'rename','operation':operation,'vaultId':self.vault_id,'path':first[0],'token':token,
                                                'resultHash':digest(first[1]),'after':first[1],'intended':intended,
-                                               'data':{'moves':{k:[v[0],digest(v[1])] for k,v in moves.items()},'tree':list(tree) if tree else None},
+                                               'data':{'moves':{k:[v[0],digest(v[1])] for k,v in moves.items()},'tree':list(tree) if tree else None,**({'relocationGuarded':True} if relocation_guarded else {})},
                                                'affected':[c['id'] for c in changes]})
             intent=json.loads((operations.folder(self.store)/(token+'.json')).read_text())
             try:result=self.write_moves(operation,moves,tree,changes,components,grouped,intent)
@@ -1371,6 +1523,9 @@ class LiveLibrary:
         """Recovery: the moved notes still hold exactly the recorded bytes; write the missing parts."""
         from library_store import digest
         data=intent['data'];moves={}
+        if data.get('relocationGuarded'):
+            from operations import RelocationDeferred
+            raise RelocationDeferred('Automatic relocation recovery requires a fresh source guard.')
         for old,(new,hashed) in data['moves'].items():
             if self.exact_note_exists(old):raise Conflict('The previous home exists again; the rename is no longer verified.')
             if not self.exact_note_exists(new):raise Conflict('The moved note is unavailable at its exact path.')

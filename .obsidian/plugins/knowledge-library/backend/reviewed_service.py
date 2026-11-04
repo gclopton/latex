@@ -19,6 +19,10 @@ READER_OPS=frozenset(('live-status','live-preview','live-index-conflicts','live-
     'live-component-state','live-component-tags','live-component-ancestor-changes','live-component-remove-preview',
     'live-component-registered','live-component-location-audit'))
 
+def relocation_guard(request):
+    if not any(key in request for key in ('heldPaths','candidatePaths')):return None
+    return {key:request.get(key) for key in ('heldPaths','candidatePaths')}
+
 class ReviewedService:
     def __init__(self, root, vault, capability, production=False,enrollment=False,role=None):
         if not capability:raise ValueError('An editor review capability is required.')
@@ -66,8 +70,8 @@ class ReviewedService:
             elif op=='live-component-edit-prepare':data=component_entry_edit.prepare(live,request['key'],request['text'])
             elif op=='live-component-edit-finish':data=component_entry_edit.finish(live,request['key'],request['token'],request['text'])
             elif op=='live-component-edit-status':data=component_entry_edit.status(live,request['key'])
-            elif op=='live-component-plan':data=live.component_plan(request['path'],request['text'],request.get('operation','edit'),request.get('syncAt'),request.get('ancestor'))
-            elif op=='live-component-finish':data=live.component_finish(request['token'],request['text'])
+            elif op=='live-component-plan':data=live.component_plan(request['path'],request['text'],request.get('operation','edit'),request.get('syncAt'),request.get('ancestor'),guard=relocation_guard(request))
+            elif op=='live-component-finish':data=live.component_finish(request['token'],request['text'],guard=relocation_guard(request))
             elif op=='live-component-state':data=live.component_registry().state(live.vault_id,request['path'])
             elif op=='live-component-registered':
                 from component_identities import note_key
@@ -272,7 +276,7 @@ def main():
             request={}
             try:
                 request=json.loads(line);response={**service.handle(request),'requestId':request.get('requestId')}
-            except Exception as exc:response={'requestId':request.get('requestId'),'error':str(exc),'code':getattr(exc,'code',None),'retryable':not isinstance(exc,(ValueError,Conflict))}
+            except Exception as exc:response={'requestId':request.get('requestId'),'error':str(exc),'code':getattr(exc,'code',None),'retryable':getattr(exc,'retryable',not isinstance(exc,(ValueError,Conflict)))}
             print(json.dumps(response,ensure_ascii=False),flush=True)
     finally:
         if not reader:

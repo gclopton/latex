@@ -475,7 +475,7 @@ class ComponentIdentities:
         record=self.arrival(path)
         return sorted(op for op in record.get('operations',[]) if not self.store.journals.knows_operation(op))
 
-    def plan(self,vault,path,text,*,operation='edit',old_text=None,image_rows=None,enrollment=None):
+    def plan(self,vault,path,text,*,operation='edit',old_text=None,image_rows=None,enrollment=None,relocated=None):
         """No source writes. A finish call accepts only the exact resulting text."""
         details={}
         state,parents,waiting=self.source_state(vault,path,text,details)
@@ -483,7 +483,7 @@ class ComponentIdentities:
         # and membership; every other row of the note is observed (and new
         # callouts get identities) as usual.
         held={w['at'] for w in waiting} if state=='awaiting' and operation not in ('paste','sync','undo') else set()
-        result=self._plan_changes(vault,path,text,operation=operation,old_text=old_text,image_rows=image_rows,enrollment=enrollment,held=held)
+        result=self._plan_changes(vault,path,text,operation=operation,old_text=old_text,image_rows=image_rows,enrollment=enrollment,held=held,relocated=relocated)
         if waiting:result['issues'].append({'kind':'awaiting-source','path':path,'rows':waiting})
         if details.get('merges'):
             result['merges']=sorted(details['merges'])
@@ -513,9 +513,9 @@ class ComponentIdentities:
         result['key']=key
         return result
 
-    def _plan_changes(self,vault,path,text,*,operation='edit',old_text=None,image_rows=None,enrollment=None,held=frozenset()):
+    def _plan_changes(self,vault,path,text,*,operation='edit',old_text=None,image_rows=None,enrollment=None,held=frozenset(),relocated=None):
         if operation not in ('edit','paste','move','undo','observe','sync','presentation'):raise ValueError('Unknown component operation')
-        self.load();self.store.load();key=note_key(vault,path);previous=self.notes.get(key,{'rows':[]})
+        self.load();self.store.load();key=note_key(vault,path);previous=self.notes.get(key,{'rows':[]});relocated=relocated or {}
         rows=components(text)
         for n,data in (image_rows or {}).items():rows[n].update(data)
         old_rows=components(old_text) if old_text is not None else previous['rows']
@@ -576,7 +576,7 @@ class ComponentIdentities:
             entity_id=base(identity);known=occurrences.get(at)
             # A present occurrence at a different location means copy. A deleted
             # occurrence returning after cut means move and retains its key.
-            elsewhere=known and known.get('alive') and (known['vault']!=vault or known['path']!=path)
+            elsewhere=known and known.get('alive') and (known['vault']!=vault or known['path']!=path) and at not in relocated
             if at in seen or (operation=='paste' and elsewhere):at=new_id(ordinal,'copy-occurrence');known=None
             elif elsewhere:
                 # External duplicate files are copies too; ownership is never stolen.
@@ -588,7 +588,7 @@ class ComponentIdentities:
             if entity is None:
                 entity=entities[entity_id]={'id':entity_id,'home':at,'revision':1,'hash':row['hash'],'contentHash':row['contentHash'],'hashVersion':2,'type':row['type'],'raw':row['raw'],'admitted':identity.endswith('.library'),'origin':origin,**{k:row[k] for k in ('semanticHash','images') if k in row}}
                 if origin:entity['originSeen']=self.origin_snapshot(origin,entities)
-            elif known and known.get('wasHome') and not known.get('alive') and operation in ('paste','move','undo'):
+            elif relocated.get(at) or (known and known.get('wasHome') and not known.get('alive') and operation in ('paste','move','undo')):
                 entity['home']=at
             if entity.get('hashVersion')!=2:
                 canonical=components(entity['raw'])[0]
@@ -613,7 +613,7 @@ class ComponentIdentities:
             if not occ:continue
             if occ['vault']==vault and occ['path']==path and at not in seen and occ.get('alive'):
                 occ=occurrences[at]=dict(occ)
-                occ['alive']=False;entity=entities[occ['id']]
+                occ['alive']=False;entity=entities[occ['id']];occ['wasHome']=entity['home']==at
                 if occ['id'] not in entities.maps[0]:entity=entities[occ['id']]=copy.deepcopy(entity)
                 if entity['home']==at:
                     choices=sorted((o for o in occurrences.values() if o['id']==occ['id'] and o.get('alive')),key=lambda o:(o['created'],o['at']))

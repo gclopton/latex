@@ -40,6 +40,11 @@ from library_store import atomic_json,digest,Conflict
 
 SCHEMA='kl-intent/1'
 
+class RelocationDeferred(Conflict):
+    """Saved relocation evidence needs a fresh guarded observation, not review."""
+    code='relocation-deferred'
+    retryable=True
+
 
 def now():return datetime.now(timezone.utc).isoformat()
 
@@ -308,6 +313,8 @@ def resolve(live,token,intent,prepared=False):
     done={k['key']:written(journals,k,instance) for k in intended}
     state=lambda value,**extra:{'token':token,'kind':kind,'state':value,**extra}
     if intended and all(done.values()) and not open_group(journals,intent['operation'],instance):
+        if kind=='rename' and (intent.get('data') or {}).get('relocationGuarded'):
+            for old,(new,_) in intent['data']['moves'].items():live.rehome_pending(old,new)
         handler.completed(live,token,intent)
         finish_record(store,token,prepared,intent,'completed','recovered: every event was already durable');return state('completed')
     if intent.get('path') is None:
@@ -318,6 +325,10 @@ def resolve(live,token,intent,prepared=False):
         # Exact postimage: finish the missing events with the original identities.
         if prepared:begin(store,token,{**intent,'phase':'source-saved'})
         try:handler.finish(live,token,intent,current)
+        except RelocationDeferred as error:
+            close_group(store,intent)
+            finish_record(store,token,False,intent,'superseded','relocation observation deferred: '+str(error))
+            return state('superseded',reason=str(error))
         except Conflict as error:
             if kind in OBSERVATION_KINDS and prepared and not any(done.values()):
                 # The journal moved on since this observation plan: the next
