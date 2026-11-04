@@ -1056,7 +1056,7 @@ var isConsumed = (c) => !!(c.code?.consumed || c.study?.consumed);
 var isStudyMark = (c) => !!c.study || c.code?.purpose === "practice-blank" || c.code?.purpose === "question";
 var studyPalette = { question: { color: "#aa358e", darkColor: "#ed8bd7", intent: "General question" }, text: { color: "#078b9e", darkColor: "#64e7f4", intent: "Text / math blank" }, table: { color: "#bc650d", darkColor: "#ffae52", intent: "Table blank" } };
 
-// ../obsidian-study-studio/node_modules/@lezer/common/dist/index.js
+// node_modules/@lezer/common/dist/index.js
 var DefaultBufferLength = 1024;
 var nextPropID = 0;
 var Range2 = class {
@@ -3107,7 +3107,7 @@ function enterFragments(mounts, ranges) {
   return result;
 }
 
-// ../obsidian-study-studio/node_modules/@lezer/highlight/dist/index.js
+// node_modules/@lezer/highlight/dist/index.js
 var nextTagID = 0;
 var Tag = class _Tag {
   /**
@@ -3831,7 +3831,7 @@ var classHighlighter = tagHighlighter([
   { tag: tags.punctuation, class: "tok-punctuation" }
 ]);
 
-// ../obsidian-study-studio/node_modules/@lezer/markdown/dist/index.js
+// node_modules/@lezer/markdown/dist/index.js
 var CompositeBlock = class _CompositeBlock {
   static create(type, value, from, parentHash, end) {
     let hash5 = parentHash + (parentHash << 8) + type + (value << 4) | 0;
@@ -7369,7 +7369,7 @@ async function resolveNotationSelection(plugin2, path, saved) {
   return { from, to, expected: source.slice(from, to), source };
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/identity.js
+// node_modules/yaml/browser/dist/nodes/identity.js
 var ALIAS = Symbol.for("yaml.alias");
 var DOC = Symbol.for("yaml.document");
 var MAP = Symbol.for("yaml.map");
@@ -7405,7 +7405,7 @@ function isNode(node) {
 }
 var hasAnchor = (node) => (isScalar(node) || isCollection(node)) && !!node.anchor;
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/visit.js
+// node_modules/yaml/browser/dist/visit.js
 var BREAK = Symbol("break visit");
 var SKIP = Symbol("skip children");
 var REMOVE = Symbol("remove node");
@@ -7555,7 +7555,7 @@ function replaceNode(key3, path, node) {
   }
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/doc/directives.js
+// node_modules/yaml/browser/dist/doc/directives.js
 var escapeChars = {
   "!": "%21",
   ",": "%2C",
@@ -7718,7 +7718,7 @@ var Directives = class _Directives {
 Directives.defaultYaml = { explicit: false, version: "1.2" };
 Directives.defaultTags = { "!!": "tag:yaml.org,2002:" };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/doc/anchors.js
+// node_modules/yaml/browser/dist/doc/anchors.js
 function anchorIsValid(anchor2) {
   if (/[\x00-\x19\s,[\]{}]/.test(anchor2)) {
     const sa = JSON.stringify(anchor2);
@@ -7777,7 +7777,7 @@ function createNodeAnchors(doc2, prefix) {
   };
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/doc/applyReviver.js
+// node_modules/yaml/browser/dist/doc/applyReviver.js
 function applyReviver(reviver, obj, key3, val) {
   if (val && typeof val === "object") {
     if (Array.isArray(val)) {
@@ -7821,7 +7821,7 @@ function applyReviver(reviver, obj, key3, val) {
   return reviver.call(obj, key3, val);
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/toJS.js
+// node_modules/yaml/browser/dist/nodes/toJS.js
 function toJS(value, arg, ctx) {
   if (Array.isArray(value))
     return value.map((v, i) => toJS(v, String(i), ctx));
@@ -7844,7 +7844,7 @@ function toJS(value, arg, ctx) {
   return value;
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/Node.js
+// node_modules/yaml/browser/dist/nodes/Node.js
 var NodeBase = class {
   constructor(type) {
     Object.defineProperty(this, NODE_TYPE, { value: type });
@@ -7876,7 +7876,7 @@ var NodeBase = class {
   }
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/Alias.js
+// node_modules/yaml/browser/dist/nodes/Alias.js
 var Alias = class extends NodeBase {
   constructor(source) {
     super(ALIAS);
@@ -7983,7 +7983,7 @@ function getAliasCount(doc2, node, anchors) {
   return 1;
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/Scalar.js
+// node_modules/yaml/browser/dist/nodes/Scalar.js
 var isScalarValue = (value) => !value || typeof value !== "function" && typeof value !== "object";
 var Scalar = class extends NodeBase {
   constructor(value) {
@@ -8003,7 +8003,7 @@ Scalar.PLAIN = "PLAIN";
 Scalar.QUOTE_DOUBLE = "QUOTE_DOUBLE";
 Scalar.QUOTE_SINGLE = "QUOTE_SINGLE";
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/doc/createNode.js
+// node_modules/yaml/browser/dist/doc/createNode.js
 var defaultTagPrefix = "tag:yaml.org,2002:";
 function findTagObject(value, tagName, tags3) {
   if (tagName) {
@@ -8069,7 +8069,7 @@ function createNode(value, tagName, ctx) {
   return node;
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/Collection.js
+// node_modules/yaml/browser/dist/nodes/Collection.js
 function collectionFromPath(schema4, path, value) {
   let v = value;
   for (let i = path.length - 1; i >= 0; --i) {
@@ -8201,7 +8201,7 @@ var Collection = class extends NodeBase {
   }
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/stringifyComment.js
+// node_modules/yaml/browser/dist/stringify/stringifyComment.js
 var stringifyComment = (str) => str.replace(/^(?!$)(?: $)?/gm, "#");
 function indentComment(comment2, indent2) {
   if (/^\n+$/.test(comment2))
@@ -8210,7 +8210,7 @@ function indentComment(comment2, indent2) {
 }
 var lineComment = (str, indent2, comment2) => str.endsWith("\n") ? indentComment(comment2, indent2) : comment2.includes("\n") ? "\n" + indentComment(comment2, indent2) : (str.endsWith(" ") ? "" : " ") + comment2;
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/foldFlowLines.js
+// node_modules/yaml/browser/dist/stringify/foldFlowLines.js
 var FOLD_FLOW = "flow";
 var FOLD_BLOCK = "block";
 var FOLD_QUOTED = "quoted";
@@ -8337,7 +8337,7 @@ function consumeMoreIndentedLines(text4, i, indent2) {
   return end;
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/stringifyString.js
+// node_modules/yaml/browser/dist/stringify/stringifyString.js
 var getFoldOptions = (ctx, isBlock2) => ({
   indentAtStart: isBlock2 ? ctx.indent.length : ctx.indentAtStart,
   lineWidth: ctx.options.lineWidth,
@@ -8363,27 +8363,27 @@ function lineLengthOverLimit(str, lineWidth, indentLength) {
   return true;
 }
 function doubleQuotedString(value, ctx) {
-  const json = JSON.stringify(value);
+  const json2 = JSON.stringify(value);
   if (ctx.options.doubleQuotedAsJSON)
-    return json;
+    return json2;
   const { implicitKey } = ctx;
   const minMultiLineLength = ctx.options.doubleQuotedMinMultiLineLength;
   const indent2 = ctx.indent || (containsDocumentMarker(value) ? "  " : "");
   let str = "";
   let start = 0;
-  for (let i = 0, ch = json[i]; ch; ch = json[++i]) {
-    if (ch === " " && json[i + 1] === "\\" && json[i + 2] === "n") {
-      str += json.slice(start, i) + "\\ ";
+  for (let i = 0, ch = json2[i]; ch; ch = json2[++i]) {
+    if (ch === " " && json2[i + 1] === "\\" && json2[i + 2] === "n") {
+      str += json2.slice(start, i) + "\\ ";
       i += 1;
       start = i;
       ch = "\\";
     }
     if (ch === "\\")
-      switch (json[i + 1]) {
+      switch (json2[i + 1]) {
         case "u":
           {
-            str += json.slice(start, i);
-            const code = json.substr(i + 2, 4);
+            str += json2.slice(start, i);
+            const code = json2.substr(i + 2, 4);
             switch (code) {
               case "0000":
                 str += "\\0";
@@ -8413,23 +8413,23 @@ function doubleQuotedString(value, ctx) {
                 if (code.substr(0, 2) === "00")
                   str += "\\x" + code.substr(2);
                 else
-                  str += json.substr(i, 6);
+                  str += json2.substr(i, 6);
             }
             i += 5;
             start = i + 1;
           }
           break;
         case "n":
-          if (implicitKey || json[i + 2] === '"' || json.length < minMultiLineLength) {
+          if (implicitKey || json2[i + 2] === '"' || json2.length < minMultiLineLength) {
             i += 1;
           } else {
-            str += json.slice(start, i) + "\n\n";
-            while (json[i + 2] === "\\" && json[i + 3] === "n" && json[i + 4] !== '"') {
+            str += json2.slice(start, i) + "\n\n";
+            while (json2[i + 2] === "\\" && json2[i + 3] === "n" && json2[i + 4] !== '"') {
               str += "\n";
               i += 2;
             }
             str += indent2;
-            if (json[i + 2] === " ")
+            if (json2[i + 2] === " ")
               str += "\\";
             i += 1;
             start = i + 1;
@@ -8439,7 +8439,7 @@ function doubleQuotedString(value, ctx) {
           i += 1;
       }
   }
-  str = start ? str + json.slice(start) : json;
+  str = start ? str + json2.slice(start) : json2;
   return implicitKey ? str : foldFlowLines(str, indent2, FOLD_QUOTED, getFoldOptions(ctx, false));
 }
 function singleQuotedString(value, ctx) {
@@ -8612,7 +8612,7 @@ function stringifyString(item, ctx, onComment, onChompKeep) {
   return res;
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/stringify.js
+// node_modules/yaml/browser/dist/stringify/stringify.js
 function createStringifyContext(doc2, options) {
   const opt = Object.assign({
     blockQuote: true,
@@ -8725,7 +8725,7 @@ function stringify(item, ctx, onComment, onChompKeep) {
 ${ctx.indent}${str}`;
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/stringifyPair.js
+// node_modules/yaml/browser/dist/stringify/stringifyPair.js
 function stringifyPair({ key: key3, value }, ctx, onComment, onChompKeep) {
   const { allNullValues, doc: doc2, indent: indent2, indentStep, options: { commentString, indentSeq, simpleKeys } } = ctx;
   let keyComment = isNode(key3) && key3.comment || null;
@@ -8848,14 +8848,14 @@ ${ctx.indent}`;
   return str;
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/log.js
+// node_modules/yaml/browser/dist/log.js
 function warn(logLevel, warning) {
   if (logLevel === "debug" || logLevel === "warn") {
     console.warn(warning);
   }
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/merge.js
+// node_modules/yaml/browser/dist/schema/yaml-1.1/merge.js
 var MERGE_KEY = "<<";
 var merge = {
   identify: (value) => value === MERGE_KEY || typeof value === "symbol" && value.description === MERGE_KEY,
@@ -8905,7 +8905,7 @@ function resolveAliasValue(ctx, value) {
   return ctx && isAlias(value) ? value.resolve(ctx.doc, ctx) : value;
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/addPairToJSMap.js
+// node_modules/yaml/browser/dist/nodes/addPairToJSMap.js
 function addPairToJSMap(ctx, map2, { key: key3, value }) {
   if (isNode(key3) && key3.addToJSMap)
     key3.addToJSMap(ctx, map2, value);
@@ -8958,7 +8958,7 @@ function stringifyKey(key3, jsKey, ctx) {
   return JSON.stringify(jsKey);
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/Pair.js
+// node_modules/yaml/browser/dist/nodes/Pair.js
 function createPair(key3, value, ctx) {
   const k = createNode(key3, void 0, ctx);
   const v = createNode(value, void 0, ctx);
@@ -8987,7 +8987,7 @@ var Pair = class _Pair {
   }
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/stringifyCollection.js
+// node_modules/yaml/browser/dist/stringify/stringifyCollection.js
 function stringifyCollection(collection, ctx, options) {
   const flow = ctx.inFlow ?? collection.flow;
   const stringify4 = flow ? stringifyFlowCollection : stringifyBlockCollection;
@@ -9129,7 +9129,7 @@ function addCommentBefore({ indent: indent2, options: { commentString } }, lines
   }
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/YAMLMap.js
+// node_modules/yaml/browser/dist/nodes/YAMLMap.js
 function findPair(items, key3) {
   const k = isScalar(key3) ? key3.value : key3;
   for (const it of items) {
@@ -9260,7 +9260,7 @@ var YAMLMap = class extends Collection {
   }
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/common/map.js
+// node_modules/yaml/browser/dist/schema/common/map.js
 var map = {
   collection: "map",
   default: true,
@@ -9274,7 +9274,7 @@ var map = {
   createNode: (schema4, obj, ctx) => YAMLMap.from(schema4, obj, ctx)
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/YAMLSeq.js
+// node_modules/yaml/browser/dist/nodes/YAMLSeq.js
 var YAMLSeq = class extends Collection {
   static get tagName() {
     return "tag:yaml.org,2002:seq";
@@ -9378,7 +9378,7 @@ function asItemIndex(key3) {
   return typeof idx === "number" && Number.isInteger(idx) && idx >= 0 ? idx : null;
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/common/seq.js
+// node_modules/yaml/browser/dist/schema/common/seq.js
 var seq = {
   collection: "seq",
   default: true,
@@ -9392,7 +9392,7 @@ var seq = {
   createNode: (schema4, obj, ctx) => YAMLSeq.from(schema4, obj, ctx)
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/common/string.js
+// node_modules/yaml/browser/dist/schema/common/string.js
 var string3 = {
   identify: (value) => typeof value === "string",
   default: true,
@@ -9404,7 +9404,7 @@ var string3 = {
   }
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/common/null.js
+// node_modules/yaml/browser/dist/schema/common/null.js
 var nullTag = {
   identify: (value) => value == null,
   createNode: () => new Scalar(null),
@@ -9415,7 +9415,7 @@ var nullTag = {
   stringify: ({ source }, ctx) => typeof source === "string" && nullTag.test.test(source) ? source : ctx.options.nullStr
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/core/bool.js
+// node_modules/yaml/browser/dist/schema/core/bool.js
 var boolTag = {
   identify: (value) => typeof value === "boolean",
   default: true,
@@ -9432,7 +9432,7 @@ var boolTag = {
   }
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/stringifyNumber.js
+// node_modules/yaml/browser/dist/stringify/stringifyNumber.js
 function stringifyNumber({ format, minFractionDigits, tag, value }) {
   if (typeof value === "bigint")
     return String(value);
@@ -9453,7 +9453,7 @@ function stringifyNumber({ format, minFractionDigits, tag, value }) {
   return n;
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/core/float.js
+// node_modules/yaml/browser/dist/schema/core/float.js
 var floatNaN = {
   identify: (value) => typeof value === "number",
   default: true,
@@ -9489,7 +9489,7 @@ var float = {
   stringify: stringifyNumber
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/core/int.js
+// node_modules/yaml/browser/dist/schema/core/int.js
 var intIdentify = (value) => typeof value === "bigint" || Number.isInteger(value);
 var intResolve = (str, offset, radix, { intAsBigInt }) => intAsBigInt ? BigInt(str) : parseInt(str.substring(offset), radix);
 function intStringify(node, radix, prefix) {
@@ -9525,7 +9525,7 @@ var intHex = {
   stringify: (node) => intStringify(node, 16, "0x")
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/core/schema.js
+// node_modules/yaml/browser/dist/schema/core/schema.js
 var schema = [
   map,
   seq,
@@ -9540,7 +9540,7 @@ var schema = [
   float
 ];
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/json/schema.js
+// node_modules/yaml/browser/dist/schema/json/schema.js
 function intIdentify2(value) {
   return typeof value === "bigint" || Number.isInteger(value);
 }
@@ -9598,7 +9598,7 @@ var jsonError = {
 };
 var schema2 = [map, seq].concat(jsonScalars, jsonError);
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/binary.js
+// node_modules/yaml/browser/dist/schema/yaml-1.1/binary.js
 var binary = {
   identify: (value) => value instanceof Uint8Array,
   // Buffer inherits from Uint8Array
@@ -9651,7 +9651,7 @@ var binary = {
   }
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/pairs.js
+// node_modules/yaml/browser/dist/schema/yaml-1.1/pairs.js
 function resolvePairs(seq2, onError) {
   if (isSeq(seq2)) {
     for (let i = 0; i < seq2.items.length; ++i) {
@@ -9717,7 +9717,7 @@ var pairs = {
   createNode: createPairs
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/omap.js
+// node_modules/yaml/browser/dist/schema/yaml-1.1/omap.js
 var YAMLOMap = class _YAMLOMap extends YAMLSeq {
   constructor() {
     super();
@@ -9783,7 +9783,7 @@ var omap = {
   createNode: (schema4, iterable, ctx) => YAMLOMap.from(schema4, iterable, ctx)
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/bool.js
+// node_modules/yaml/browser/dist/schema/yaml-1.1/bool.js
 function boolStringify({ value, source }, ctx) {
   const boolObj = value ? trueTag : falseTag;
   if (source && boolObj.test.test(source))
@@ -9807,7 +9807,7 @@ var falseTag = {
   stringify: boolStringify
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/float.js
+// node_modules/yaml/browser/dist/schema/yaml-1.1/float.js
 var floatNaN2 = {
   identify: (value) => typeof value === "number",
   default: true,
@@ -9846,7 +9846,7 @@ var float2 = {
   stringify: stringifyNumber
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/int.js
+// node_modules/yaml/browser/dist/schema/yaml-1.1/int.js
 var intIdentify3 = (value) => typeof value === "bigint" || Number.isInteger(value);
 function intResolve2(str, offset, radix, { intAsBigInt }) {
   const sign = str[0];
@@ -9915,7 +9915,7 @@ var intHex2 = {
   stringify: (node) => intStringify2(node, 16, "0x")
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/set.js
+// node_modules/yaml/browser/dist/schema/yaml-1.1/set.js
 var YAMLSet = class _YAMLSet extends YAMLMap {
   constructor(schema4) {
     super(schema4);
@@ -9994,7 +9994,7 @@ var set = {
   }
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/timestamp.js
+// node_modules/yaml/browser/dist/schema/yaml-1.1/timestamp.js
 function parseSexagesimal(str, asBigInt) {
   const sign = str[0];
   const parts = sign === "-" || sign === "+" ? str.substring(1) : str;
@@ -10073,7 +10073,7 @@ var timestamp = {
   stringify: ({ value }) => value?.toISOString().replace(/(T00:00:00)?\.000Z$/, "") ?? ""
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/schema.js
+// node_modules/yaml/browser/dist/schema/yaml-1.1/schema.js
 var schema3 = [
   map,
   seq,
@@ -10098,7 +10098,7 @@ var schema3 = [
   timestamp
 ];
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/tags.js
+// node_modules/yaml/browser/dist/schema/tags.js
 var schemas = /* @__PURE__ */ new Map([
   ["core", schema],
   ["failsafe", [map, seq, string3]],
@@ -10169,7 +10169,7 @@ function getTags(customTags, schemaName, addMergeTag) {
   }, []);
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/Schema.js
+// node_modules/yaml/browser/dist/schema/Schema.js
 var sortMapEntriesByKey = (a2, b) => a2.key < b.key ? -1 : a2.key > b.key ? 1 : 0;
 var Schema = class _Schema {
   constructor({ compat, customTags, merge: merge2, resolveKnownTags, schema: schema4, sortMapEntries, toStringDefaults }) {
@@ -10190,7 +10190,7 @@ var Schema = class _Schema {
   }
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/stringifyDocument.js
+// node_modules/yaml/browser/dist/stringify/stringifyDocument.js
 function stringifyDocument(doc2, options) {
   const lines = [];
   let hasDirectives = options.directives === true;
@@ -10261,7 +10261,7 @@ function stringifyDocument(doc2, options) {
   return lines.join("\n") + "\n";
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/doc/Document.js
+// node_modules/yaml/browser/dist/doc/Document.js
 var Document = class _Document {
   constructor(value, replacer, options) {
     this.commentBefore = null;
@@ -10512,11 +10512,11 @@ var Document = class _Document {
       throw new Error(`With a null YAML version, the { schema: Schema } option is required`);
   }
   // json & jsonArg are only used from toJSON()
-  toJS({ json, jsonArg, mapAsMap, maxAliasCount, onAnchor, reviver } = {}) {
+  toJS({ json: json2, jsonArg, mapAsMap, maxAliasCount, onAnchor, reviver } = {}) {
     const ctx = {
       anchors: /* @__PURE__ */ new Map(),
       doc: this,
-      keep: !json,
+      keep: !json2,
       mapAsMap: mapAsMap === true,
       mapKeyWarned: false,
       maxAliasCount: typeof maxAliasCount === "number" ? maxAliasCount : 100
@@ -10553,7 +10553,7 @@ function assertCollection(contents) {
   throw new Error("Expected a YAML collection as document contents");
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/errors.js
+// node_modules/yaml/browser/dist/errors.js
 var YAMLError = class extends Error {
   constructor(name2, pos, code, message3) {
     super();
@@ -10609,7 +10609,7 @@ ${pointer}
   }
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/resolve-props.js
+// node_modules/yaml/browser/dist/compose/resolve-props.js
 function resolveProps(tokens, { flow, indicator, next, offset, onError, parentIndent, startOnNewline }) {
   let spaceBefore = false;
   let atNewline = startOnNewline;
@@ -10737,7 +10737,7 @@ function resolveProps(tokens, { flow, indicator, next, offset, onError, parentIn
   };
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/util-contains-newline.js
+// node_modules/yaml/browser/dist/compose/util-contains-newline.js
 function containsNewline(key3) {
   if (!key3)
     return null;
@@ -10773,7 +10773,7 @@ function containsNewline(key3) {
   }
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/util-flow-indent-check.js
+// node_modules/yaml/browser/dist/compose/util-flow-indent-check.js
 function flowIndentCheck(indent2, fc, onError) {
   if (fc?.type === "flow-collection") {
     const end = fc.end[0];
@@ -10784,7 +10784,7 @@ function flowIndentCheck(indent2, fc, onError) {
   }
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/util-map-includes.js
+// node_modules/yaml/browser/dist/compose/util-map-includes.js
 function mapIncludes(ctx, items, search) {
   const { uniqueKeys } = ctx.options;
   if (uniqueKeys === false)
@@ -10793,7 +10793,7 @@ function mapIncludes(ctx, items, search) {
   return items.some((pair2) => isEqual(pair2.key, search));
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/resolve-block-map.js
+// node_modules/yaml/browser/dist/compose/resolve-block-map.js
 var startColMsg = "All mapping items must start at the same column";
 function resolveBlockMap({ composeNode: composeNode2, composeEmptyNode: composeEmptyNode2 }, ctx, bm, onError, tag) {
   const NodeClass = tag?.nodeClass ?? YAMLMap;
@@ -10889,7 +10889,7 @@ function resolveBlockMap({ composeNode: composeNode2, composeEmptyNode: composeE
   return map2;
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/resolve-block-seq.js
+// node_modules/yaml/browser/dist/compose/resolve-block-seq.js
 function resolveBlockSeq({ composeNode: composeNode2, composeEmptyNode: composeEmptyNode2 }, ctx, bs, onError, tag) {
   const NodeClass = tag?.nodeClass ?? YAMLSeq;
   const seq2 = new NodeClass(ctx.schema);
@@ -10931,7 +10931,7 @@ function resolveBlockSeq({ composeNode: composeNode2, composeEmptyNode: composeE
   return seq2;
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/resolve-end.js
+// node_modules/yaml/browser/dist/compose/resolve-end.js
 function resolveEnd(end, offset, reqSpace, onError) {
   let comment2 = "";
   if (end) {
@@ -10968,7 +10968,7 @@ function resolveEnd(end, offset, reqSpace, onError) {
   return { comment: comment2, offset };
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/resolve-flow-collection.js
+// node_modules/yaml/browser/dist/compose/resolve-flow-collection.js
 var blockMsg = "Block collections are not allowed within flow collections";
 var isBlock = (token) => token && (token.type === "block-map" || token.type === "block-seq");
 function resolveFlowCollection({ composeNode: composeNode2, composeEmptyNode: composeEmptyNode2 }, ctx, fc, onError, tag) {
@@ -11148,7 +11148,7 @@ function resolveFlowCollection({ composeNode: composeNode2, composeEmptyNode: co
   return coll;
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/compose-collection.js
+// node_modules/yaml/browser/dist/compose/compose-collection.js
 function resolveCollection(CN2, ctx, token, onError, tagName, tag) {
   const coll = token.type === "block-map" ? resolveBlockMap(CN2, ctx, token, onError, tag) : token.type === "block-seq" ? resolveBlockSeq(CN2, ctx, token, onError, tag) : resolveFlowCollection(CN2, ctx, token, onError, tag);
   const Coll = coll.constructor;
@@ -11200,7 +11200,7 @@ function composeCollection(CN2, ctx, token, props, onError) {
   return node;
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/resolve-block-scalar.js
+// node_modules/yaml/browser/dist/compose/resolve-block-scalar.js
 function resolveBlockScalar(ctx, scalar, onError) {
   const start = scalar.offset;
   const header = parseBlockScalarHeader(scalar, ctx.options.strict, onError);
@@ -11376,7 +11376,7 @@ function splitLines(source) {
   return lines;
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/resolve-flow-scalar.js
+// node_modules/yaml/browser/dist/compose/resolve-flow-scalar.js
 function resolveFlowScalar(scalar, strict, onError) {
   const { offset, type, source, end } = scalar;
   let _type;
@@ -11589,7 +11589,7 @@ function parseCharCode(source, offset, length, onError) {
   }
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/compose-scalar.js
+// node_modules/yaml/browser/dist/compose/compose-scalar.js
 function composeScalar(ctx, token, tagToken, onError) {
   const { value, type, comment: comment2, range } = token.type === "block-scalar" ? resolveBlockScalar(ctx, token, onError) : resolveFlowScalar(token, ctx.options.strict, onError);
   const tagName = tagToken ? ctx.directives.tagName(tagToken.source, (msg) => onError(tagToken, "TAG_RESOLVE_FAILED", msg)) : null;
@@ -11660,7 +11660,7 @@ function findScalarTagByTest({ atKey, directives, schema: schema4 }, value, toke
   return tag;
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/util-empty-scalar-position.js
+// node_modules/yaml/browser/dist/compose/util-empty-scalar-position.js
 function emptyScalarPosition(offset, before, pos) {
   if (before) {
     pos ?? (pos = before.length);
@@ -11684,7 +11684,7 @@ function emptyScalarPosition(offset, before, pos) {
   return offset;
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/compose-node.js
+// node_modules/yaml/browser/dist/compose/compose-node.js
 var CN = { composeNode, composeEmptyNode };
 function composeNode(ctx, token, props, onError) {
   const atKey = ctx.atKey;
@@ -11777,7 +11777,7 @@ function composeAlias({ options }, { offset, source, end }, onError) {
   return alias;
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/compose-doc.js
+// node_modules/yaml/browser/dist/compose/compose-doc.js
 function composeDoc(options, directives, { offset, start, value, end }, onError) {
   const opts = Object.assign({ _directives: directives }, options);
   const doc2 = new Document(void 0, opts);
@@ -11810,7 +11810,7 @@ function composeDoc(options, directives, { offset, start, value, end }, onError)
   return doc2;
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/composer.js
+// node_modules/yaml/browser/dist/compose/composer.js
 function getErrorPos(src) {
   if (typeof src === "number")
     return [src, src + 1];
@@ -12003,7 +12003,7 @@ ${end.comment}` : end.comment;
   }
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/parse/cst-visit.js
+// node_modules/yaml/browser/dist/parse/cst-visit.js
 var BREAK2 = Symbol("break visit");
 var SKIP2 = Symbol("skip children");
 var REMOVE2 = Symbol("remove item");
@@ -12059,7 +12059,7 @@ function _visit(path, item, visitor) {
   return typeof ctrl === "function" ? ctrl(item, path) : ctrl;
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/parse/cst.js
+// node_modules/yaml/browser/dist/parse/cst.js
 var BOM = "\uFEFF";
 var DOCUMENT = "";
 var FLOW_END = "";
@@ -12124,7 +12124,7 @@ function tokenType(source) {
   return null;
 }
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/parse/lexer.js
+// node_modules/yaml/browser/dist/parse/lexer.js
 function isEmpty(ch) {
   switch (ch) {
     case void 0:
@@ -12706,7 +12706,7 @@ var Lexer = class {
   }
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/parse/line-counter.js
+// node_modules/yaml/browser/dist/parse/line-counter.js
 var LineCounter = class {
   constructor() {
     this.lineStarts = [];
@@ -12731,7 +12731,7 @@ var LineCounter = class {
   }
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/parse/parser.js
+// node_modules/yaml/browser/dist/parse/parser.js
 function includesToken(list, type) {
   for (let i = 0; i < list.length; ++i)
     if (list[i].type === type)
@@ -13594,7 +13594,7 @@ var Parser2 = class {
   }
 };
 
-// ../obsidian-study-studio/node_modules/yaml/browser/dist/public-api.js
+// node_modules/yaml/browser/dist/public-api.js
 function parseOptions(options) {
   const prettyErrors = options.prettyErrors !== false;
   const lineCounter = options.lineCounter || prettyErrors && new LineCounter() || null;
@@ -14217,7 +14217,7 @@ function bindNotation(plugin2, store, notes, system) {
   return history3;
 }
 
-// ../obsidian-study-studio/node_modules/@codemirror/commands/dist/index.js
+// node_modules/@codemirror/commands/dist/index.js
 var dist_exports4 = {};
 __export(dist_exports4, {
   blockComment: () => blockComment,
@@ -14332,7 +14332,7 @@ __export(dist_exports4, {
   undoSelection: () => undoSelection
 });
 
-// ../obsidian-study-studio/node_modules/@codemirror/state/dist/index.js
+// node_modules/@codemirror/state/dist/index.js
 var dist_exports2 = {};
 __export(dist_exports2, {
   Annotation: () => Annotation3,
@@ -14366,7 +14366,7 @@ __export(dist_exports2, {
   fromCodePoint: () => fromCodePoint
 });
 
-// ../obsidian-study-studio/node_modules/@marijn/find-cluster-break/src/index.js
+// node_modules/@marijn/find-cluster-break/src/index.js
 var rangeFrom = [];
 var rangeTo = [];
 (() => {
@@ -14440,7 +14440,7 @@ function codePointSize(code) {
   return code < 65536 ? 1 : 2;
 }
 
-// ../obsidian-study-studio/node_modules/@codemirror/state/dist/index.js
+// node_modules/@codemirror/state/dist/index.js
 var Text3 = class _Text {
   /**
   Get the line description around the given position.
@@ -15183,10 +15183,10 @@ var ChangeDesc = class _ChangeDesc {
   Create a change desc from its JSON representation (as produced
   by [`toJSON`](https://codemirror.net/6/docs/ref/#state.ChangeDesc.toJSON).
   */
-  static fromJSON(json) {
-    if (!Array.isArray(json) || json.length % 2 || json.some((a2) => typeof a2 != "number"))
+  static fromJSON(json2) {
+    if (!Array.isArray(json2) || json2.length % 2 || json2.some((a2) => typeof a2 != "number"))
       throw new RangeError("Invalid JSON representation of ChangeDesc");
-    return new _ChangeDesc(json);
+    return new _ChangeDesc(json2);
   }
   /**
   @internal
@@ -15389,12 +15389,12 @@ var ChangeSet2 = class _ChangeSet extends ChangeDesc {
   Create a changeset from its JSON representation (as produced by
   [`toJSON`](https://codemirror.net/6/docs/ref/#state.ChangeSet.toJSON).
   */
-  static fromJSON(json) {
-    if (!Array.isArray(json))
+  static fromJSON(json2) {
+    if (!Array.isArray(json2))
       throw new RangeError("Invalid JSON representation of ChangeSet");
     let sections = [], inserted = [];
-    for (let i = 0; i < json.length; i++) {
-      let part = json[i];
+    for (let i = 0; i < json2.length; i++) {
+      let part = json2[i];
       if (typeof part == "number") {
         sections.push(part, -1);
       } else if (!Array.isArray(part) || typeof part[0] != "number" || part.some((e, i2) => i2 && typeof e != "string")) {
@@ -15702,10 +15702,10 @@ var SelectionRange = class _SelectionRange {
   Convert a JSON representation of a range to a `SelectionRange`
   instance.
   */
-  static fromJSON(json) {
-    if (!json || typeof json.anchor != "number" || typeof json.head != "number")
+  static fromJSON(json2) {
+    if (!json2 || typeof json2.anchor != "number" || typeof json2.head != "number")
       throw new RangeError("Invalid JSON representation for SelectionRange");
-    return EditorSelection.range(json.anchor, json.head);
+    return EditorSelection.range(json2.anchor, json2.head);
   }
   /**
   @internal
@@ -15782,10 +15782,10 @@ var EditorSelection = class _EditorSelection {
   /**
   Create a selection from a JSON representation.
   */
-  static fromJSON(json) {
-    if (!json || !Array.isArray(json.ranges) || typeof json.main != "number" || json.main >= json.ranges.length)
+  static fromJSON(json2) {
+    if (!json2 || !Array.isArray(json2.ranges) || typeof json2.main != "number" || json2.main >= json2.ranges.length)
       throw new RangeError("Invalid JSON representation for EditorSelection");
-    return new _EditorSelection(json.ranges.map((r) => SelectionRange.fromJSON(r)), json.main);
+    return new _EditorSelection(json2.ranges.map((r) => SelectionRange.fromJSON(r)), json2.main);
   }
   /**
   Create a selection holding a single range.
@@ -16809,20 +16809,20 @@ var EditorState2 = class _EditorState {
   to [`toJSON`](https://codemirror.net/6/docs/ref/#state.EditorState.toJSON) when serializing as
   third argument.
   */
-  static fromJSON(json, config = {}, fields) {
-    if (!json || typeof json.doc != "string")
+  static fromJSON(json2, config = {}, fields) {
+    if (!json2 || typeof json2.doc != "string")
       throw new RangeError("Invalid JSON representation for EditorState");
     let fieldInit = [];
     if (fields)
       for (let prop in fields) {
-        if (Object.prototype.hasOwnProperty.call(json, prop)) {
-          let field = fields[prop], value = json[prop];
+        if (Object.prototype.hasOwnProperty.call(json2, prop)) {
+          let field = fields[prop], value = json2[prop];
           fieldInit.push(field.init((state) => field.spec.fromJSON(value, state)));
         }
       }
     return _EditorState.create({
-      doc: json.doc,
-      selection: EditorSelection.fromJSON(json.selection),
+      doc: json2.doc,
+      selection: EditorSelection.fromJSON(json2.selection),
       extensions: config.extensions ? fieldInit.concat([config.extensions]) : fieldInit
     });
   }
@@ -17777,7 +17777,7 @@ function findColumn(string4, col, tabSize, strict) {
   return strict === true ? -1 : string4.length;
 }
 
-// ../obsidian-study-studio/node_modules/@codemirror/view/dist/index.js
+// node_modules/@codemirror/view/dist/index.js
 var dist_exports3 = {};
 __export(dist_exports3, {
   BidiSpan: () => BidiSpan,
@@ -17830,7 +17830,7 @@ __export(dist_exports3, {
   tooltips: () => tooltips
 });
 
-// ../obsidian-study-studio/node_modules/style-mod/src/style-mod.js
+// node_modules/style-mod/src/style-mod.js
 var C = "\u037C";
 var COUNT = typeof Symbol == "undefined" ? "__" + C : Symbol.for(C);
 var SET = typeof Symbol == "undefined" ? "__styleSet" + Math.floor(Math.random() * 1e8) : Symbol("styleSet");
@@ -17966,7 +17966,7 @@ var StyleSet = class {
   }
 };
 
-// ../obsidian-study-studio/node_modules/w3c-keyname/index.js
+// node_modules/w3c-keyname/index.js
 var base = {
   8: "Backspace",
   9: "Tab",
@@ -18072,7 +18072,7 @@ function keyName(event) {
   return name2;
 }
 
-// ../obsidian-study-studio/node_modules/crelt/index.js
+// node_modules/crelt/index.js
 function crelt() {
   var elt2 = arguments[0];
   if (typeof elt2 == "string") elt2 = document.createElement(elt2);
@@ -18101,7 +18101,7 @@ function add(elt2, child) {
   }
 }
 
-// ../obsidian-study-studio/node_modules/@codemirror/view/dist/index.js
+// node_modules/@codemirror/view/dist/index.js
 var nav = typeof navigator != "undefined" ? navigator : { userAgent: "", vendor: "", platform: "" };
 var doc = typeof document != "undefined" ? document : { documentElement: { style: {} } };
 var ie_edge = /* @__PURE__ */ /Edge\/(\d+)/.exec(nav.userAgent);
@@ -28436,7 +28436,7 @@ var __test = {
   getHeightChangeFlag: () => heightChangeFlag
 };
 
-// ../obsidian-study-studio/node_modules/@codemirror/language/dist/index.js
+// node_modules/@codemirror/language/dist/index.js
 var _a;
 var languageDataProp = /* @__PURE__ */ new NodeProp();
 function defineLanguageFacet(baseData) {
@@ -30217,7 +30217,7 @@ var marks = {
   auto: /* @__PURE__ */ Decoration.mark({ class: "cm-iso", inclusive: true, attributes: { dir: "auto" }, bidiIsolate: null })
 };
 
-// ../obsidian-study-studio/node_modules/@codemirror/commands/dist/index.js
+// node_modules/@codemirror/commands/dist/index.js
 var toggleComment = (target) => {
   let { state } = target, line = state.doc.lineAt(state.selection.main.from), config = getConfig(target.state, line.from);
   return config.line ? toggleLineComment(target) : config.block ? toggleBlockCommentByLine(target) : false;
@@ -30443,8 +30443,8 @@ var historyField_ = /* @__PURE__ */ StateField2.define({
   toJSON(value) {
     return { done: value.done.map((e) => e.toJSON()), undone: value.undone.map((e) => e.toJSON()) };
   },
-  fromJSON(json) {
-    return new HistoryState(json.done.map(HistEvent.fromJSON), json.undone.map(HistEvent.fromJSON));
+  fromJSON(json2) {
+    return new HistoryState(json2.done.map(HistEvent.fromJSON), json2.undone.map(HistEvent.fromJSON));
   }
 });
 function history2(config = {}) {
@@ -30518,8 +30518,8 @@ var HistEvent = class _HistEvent {
       selectionsAfter: this.selectionsAfter.map((s) => s.toJSON())
     };
   }
-  static fromJSON(json) {
-    return new _HistEvent(json.changes && ChangeSet2.fromJSON(json.changes), [], json.mapped && ChangeDesc.fromJSON(json.mapped), json.startSelection && EditorSelection.fromJSON(json.startSelection), json.selectionsAfter.map(EditorSelection.fromJSON));
+  static fromJSON(json2) {
+    return new _HistEvent(json2.changes && ChangeSet2.fromJSON(json2.changes), [], json2.mapped && ChangeDesc.fromJSON(json2.mapped), json2.startSelection && EditorSelection.fromJSON(json2.startSelection), json2.selectionsAfter.map(EditorSelection.fromJSON));
   }
   // This does not check `addToHistory` and such, it assumes the
   // transaction needs to be converted to an item. Returns null when
@@ -31916,7 +31916,7 @@ function answerText(answer) {
   return answer.math ? (answer.math === "display" ? "$$" : "$") + value + (answer.math === "display" ? "$$" : "$") : value;
 }
 
-// ../obsidian-study-studio/node_modules/@lezer/lr/dist/index.js
+// node_modules/@lezer/lr/dist/index.js
 var Stack = class _Stack {
   /**
   @internal
@@ -33678,7 +33678,7 @@ function getSpecializer(spec) {
   return spec.get;
 }
 
-// ../obsidian-study-studio/node_modules/@lezer/python/dist/index.js
+// node_modules/@lezer/python/dist/index.js
 var printKeyword = 1;
 var indent = 194;
 var dedent = 195;
@@ -34014,7 +34014,7 @@ var parser3 = LRParser.deserialize({
   tokenPrec: 7668
 });
 
-// ../obsidian-study-studio/node_modules/@codemirror/autocomplete/dist/index.js
+// node_modules/@codemirror/autocomplete/dist/index.js
 var CompletionContext = class {
   /**
   Create a new completion context. (Mostly useful for testing
@@ -34479,7 +34479,7 @@ closedBracket.startSide = 1;
 closedBracket.endSide = -1;
 var android = typeof navigator == "object" && /* @__PURE__ */ /Android\b/.test(navigator.userAgent);
 
-// ../obsidian-study-studio/node_modules/@codemirror/lang-python/dist/index.js
+// node_modules/@codemirror/lang-python/dist/index.js
 var cache2 = /* @__PURE__ */ new NodeWeakMap();
 var ScopeNodes = /* @__PURE__ */ new Set([
   "Script",
@@ -34899,7 +34899,7 @@ function python() {
   ]);
 }
 
-// ../obsidian-study-studio/node_modules/@lezer/cpp/dist/index.js
+// node_modules/@lezer/cpp/dist/index.js
 var RawString = 1;
 var templateArgsEndFallback = 2;
 var MacroName = 3;
@@ -35038,7 +35038,7 @@ var parser4 = LRParser.deserialize({
   tokenPrec: 24852
 });
 
-// ../obsidian-study-studio/node_modules/@codemirror/lang-cpp/dist/index.js
+// node_modules/@codemirror/lang-cpp/dist/index.js
 var cppLanguage = /* @__PURE__ */ LRLanguage.define({
   name: "cpp",
   parser: /* @__PURE__ */ parser4.configure({
@@ -35070,7 +35070,7 @@ function cpp() {
   return new LanguageSupport(cppLanguage);
 }
 
-// ../obsidian-study-studio/node_modules/@codemirror/legacy-modes/mode/shell.js
+// node_modules/@codemirror/legacy-modes/mode/shell.js
 var words = {};
 function define(style, dict) {
   for (var i = 0; i < dict.length; i++) {
@@ -35291,7 +35291,7 @@ var shell = {
   }
 };
 
-// ../obsidian-study-studio/node_modules/@codemirror/legacy-modes/mode/mathematica.js
+// node_modules/@codemirror/legacy-modes/mode/mathematica.js
 var Identifier2 = "[a-zA-Z\\$][a-zA-Z0-9\\$]*";
 var pBase = "(?:\\d+)";
 var pFloat = "(?:\\.\\d+|\\d+\\.\\d*|\\d+)";
@@ -35400,11 +35400,1111 @@ var mathematica = {
   }
 };
 
-// src/written-languages.ts
-var languages = { python: python().language, py: python().language, cpp: cpp().language, "c++": cpp().language, c: cpp().language, bash: StreamLanguage.define(shell), sh: StreamLanguage.define(shell), shell: StreamLanguage.define(shell), mathematica: StreamLanguage.define(mathematica), wolfram: StreamLanguage.define(mathematica), wl: StreamLanguage.define(mathematica) };
-var writtenLanguage = (info) => languages[info.toLowerCase()] ?? null;
+// node_modules/@codemirror/legacy-modes/mode/javascript.js
+function mkJavaScript(parserConfig) {
+  var statementIndent = parserConfig.statementIndent;
+  var jsonldMode = parserConfig.jsonld;
+  var jsonMode = parserConfig.json || jsonldMode;
+  var isTS = parserConfig.typescript;
+  var wordRE = parserConfig.wordCharacters || /[\w$\xa1-\uffff]/;
+  var keywords2 = (function() {
+    function kw(type2) {
+      return { type: type2, style: "keyword" };
+    }
+    var A2 = kw("keyword a"), B = kw("keyword b"), C2 = kw("keyword c"), D = kw("keyword d");
+    var operator2 = kw("operator"), atom = { type: "atom", style: "atom" };
+    return {
+      "if": kw("if"),
+      "while": A2,
+      "with": A2,
+      "else": B,
+      "do": B,
+      "try": B,
+      "finally": B,
+      "return": D,
+      "break": D,
+      "continue": D,
+      "new": kw("new"),
+      "delete": C2,
+      "void": C2,
+      "throw": C2,
+      "debugger": kw("debugger"),
+      "var": kw("var"),
+      "const": kw("var"),
+      "let": kw("var"),
+      "function": kw("function"),
+      "catch": kw("catch"),
+      "for": kw("for"),
+      "switch": kw("switch"),
+      "case": kw("case"),
+      "default": kw("default"),
+      "in": operator2,
+      "typeof": operator2,
+      "instanceof": operator2,
+      "true": atom,
+      "false": atom,
+      "null": atom,
+      "undefined": atom,
+      "NaN": atom,
+      "Infinity": atom,
+      "this": kw("this"),
+      "class": kw("class"),
+      "super": kw("atom"),
+      "yield": C2,
+      "export": kw("export"),
+      "import": kw("import"),
+      "extends": C2,
+      "await": C2
+    };
+  })();
+  var isOperatorChar = /[+\-*&%=<>!?|~^@]/;
+  var isJsonldKeyword = /^@(context|id|value|language|type|container|list|set|reverse|index|base|vocab|graph)"/;
+  function readRegexp(stream) {
+    var escaped4 = false, next, inSet = false;
+    while ((next = stream.next()) != null) {
+      if (!escaped4) {
+        if (next == "/" && !inSet) return;
+        if (next == "[") inSet = true;
+        else if (inSet && next == "]") inSet = false;
+      }
+      escaped4 = !escaped4 && next == "\\";
+    }
+  }
+  var type, content2;
+  function ret(tp, style, cont2) {
+    type = tp;
+    content2 = cont2;
+    return style;
+  }
+  function tokenBase3(stream, state) {
+    var ch = stream.next();
+    if (ch == '"' || ch == "'") {
+      state.tokenize = tokenString3(ch);
+      return state.tokenize(stream, state);
+    } else if (ch == "." && stream.match(/^\d[\d_]*(?:[eE][+\-]?[\d_]+)?/)) {
+      return ret("number", "number");
+    } else if (ch == "." && stream.match("..")) {
+      return ret("spread", "meta");
+    } else if (/[\[\]{}\(\),;\:\.]/.test(ch)) {
+      return ret(ch);
+    } else if (ch == "=" && stream.eat(">")) {
+      return ret("=>", "operator");
+    } else if (ch == "0" && stream.match(/^(?:x[\dA-Fa-f_]+|o[0-7_]+|b[01_]+)n?/)) {
+      return ret("number", "number");
+    } else if (/\d/.test(ch)) {
+      stream.match(/^[\d_]*(?:n|(?:\.[\d_]*)?(?:[eE][+\-]?[\d_]+)?)?/);
+      return ret("number", "number");
+    } else if (ch == "/") {
+      if (stream.eat("*")) {
+        state.tokenize = tokenComment2;
+        return tokenComment2(stream, state);
+      } else if (stream.eat("/")) {
+        stream.skipToEnd();
+        return ret("comment", "comment");
+      } else if (expressionAllowed(stream, state, 1)) {
+        readRegexp(stream);
+        stream.match(/^\b(([gimyus])(?![gimyus]*\2))+\b/);
+        return ret("regexp", "string.special");
+      } else {
+        stream.eat("=");
+        return ret("operator", "operator", stream.current());
+      }
+    } else if (ch == "`") {
+      state.tokenize = tokenQuasi;
+      return tokenQuasi(stream, state);
+    } else if (ch == "#" && stream.peek() == "!") {
+      stream.skipToEnd();
+      return ret("meta", "meta");
+    } else if (ch == "#" && stream.eatWhile(wordRE)) {
+      return ret("variable", "property");
+    } else if (ch == "<" && stream.match("!--") || ch == "-" && stream.match("->") && !/\S/.test(stream.string.slice(0, stream.start))) {
+      stream.skipToEnd();
+      return ret("comment", "comment");
+    } else if (isOperatorChar.test(ch)) {
+      if (ch != ">" || !state.lexical || state.lexical.type != ">") {
+        if (stream.eat("=")) {
+          if (ch == "!" || ch == "=") stream.eat("=");
+        } else if (/[<>*+\-|&?]/.test(ch)) {
+          stream.eat(ch);
+          if (ch == ">") stream.eat(ch);
+        }
+      }
+      if (ch == "?" && stream.eat(".")) return ret(".");
+      return ret("operator", "operator", stream.current());
+    } else if (wordRE.test(ch)) {
+      stream.eatWhile(wordRE);
+      var word = stream.current();
+      if (state.lastType != ".") {
+        if (keywords2.propertyIsEnumerable(word)) {
+          var kw = keywords2[word];
+          return ret(kw.type, kw.style, word);
+        }
+        if (word == "async" && stream.match(/^(\s|\/\*([^*]|\*(?!\/))*?\*\/)*[\[\(\w]/, false))
+          return ret("async", "keyword", word);
+      }
+      return ret("variable", "variable", word);
+    }
+  }
+  function tokenString3(quote) {
+    return function(stream, state) {
+      var escaped4 = false, next;
+      if (jsonldMode && stream.peek() == "@" && stream.match(isJsonldKeyword)) {
+        state.tokenize = tokenBase3;
+        return ret("jsonld-keyword", "meta");
+      }
+      while ((next = stream.next()) != null) {
+        if (next == quote && !escaped4) break;
+        escaped4 = !escaped4 && next == "\\";
+      }
+      if (!escaped4) state.tokenize = tokenBase3;
+      return ret("string", "string");
+    };
+  }
+  function tokenComment2(stream, state) {
+    var maybeEnd = false, ch;
+    while (ch = stream.next()) {
+      if (ch == "/" && maybeEnd) {
+        state.tokenize = tokenBase3;
+        break;
+      }
+      maybeEnd = ch == "*";
+    }
+    return ret("comment", "comment");
+  }
+  function tokenQuasi(stream, state) {
+    var escaped4 = false, next;
+    while ((next = stream.next()) != null) {
+      if (!escaped4 && (next == "`" || next == "$" && stream.eat("{"))) {
+        state.tokenize = tokenBase3;
+        break;
+      }
+      escaped4 = !escaped4 && next == "\\";
+    }
+    return ret("quasi", "string.special", stream.current());
+  }
+  var brackets = "([{}])";
+  function findFatArrow(stream, state) {
+    if (state.fatArrowAt) state.fatArrowAt = null;
+    var arrow = stream.string.indexOf("=>", stream.start);
+    if (arrow < 0) return;
+    if (isTS) {
+      var m = /:\s*(?:\w+(?:<[^>]*>|\[\])?|\{[^}]*\})\s*$/.exec(stream.string.slice(stream.start, arrow));
+      if (m) arrow = m.index;
+    }
+    var depth2 = 0, sawSomething = false;
+    for (var pos = arrow - 1; pos >= 0; --pos) {
+      var ch = stream.string.charAt(pos);
+      var bracket2 = brackets.indexOf(ch);
+      if (bracket2 >= 0 && bracket2 < 3) {
+        if (!depth2) {
+          ++pos;
+          break;
+        }
+        if (--depth2 == 0) {
+          if (ch == "(") sawSomething = true;
+          break;
+        }
+      } else if (bracket2 >= 3 && bracket2 < 6) {
+        ++depth2;
+      } else if (wordRE.test(ch)) {
+        sawSomething = true;
+      } else if (/["'\/`]/.test(ch)) {
+        for (; ; --pos) {
+          if (pos == 0) return;
+          var next = stream.string.charAt(pos - 1);
+          if (next == ch && stream.string.charAt(pos - 2) != "\\") {
+            pos--;
+            break;
+          }
+        }
+      } else if (sawSomething && !depth2) {
+        ++pos;
+        break;
+      }
+    }
+    if (sawSomething && !depth2) state.fatArrowAt = pos;
+  }
+  var atomicTypes = {
+    "atom": true,
+    "number": true,
+    "variable": true,
+    "string": true,
+    "regexp": true,
+    "this": true,
+    "import": true,
+    "jsonld-keyword": true
+  };
+  function JSLexical(indented, column, type2, align, prev, info) {
+    this.indented = indented;
+    this.column = column;
+    this.type = type2;
+    this.prev = prev;
+    this.info = info;
+    if (align != null) this.align = align;
+  }
+  function inScope(state, varname) {
+    for (var v = state.localVars; v; v = v.next)
+      if (v.name == varname) return true;
+    for (var cx2 = state.context; cx2; cx2 = cx2.prev) {
+      for (var v = cx2.vars; v; v = v.next)
+        if (v.name == varname) return true;
+    }
+  }
+  function parseJS(state, style, type2, content3, stream) {
+    var cc = state.cc;
+    cx.state = state;
+    cx.stream = stream;
+    cx.marked = null;
+    cx.cc = cc;
+    cx.style = style;
+    if (!state.lexical.hasOwnProperty("align"))
+      state.lexical.align = true;
+    while (true) {
+      var combinator = cc.length ? cc.pop() : jsonMode ? expression : statement;
+      if (combinator(type2, content3)) {
+        while (cc.length && cc[cc.length - 1].lex)
+          cc.pop()();
+        if (cx.marked) return cx.marked;
+        if (type2 == "variable" && inScope(state, content3)) return "variableName.local";
+        return style;
+      }
+    }
+  }
+  var cx = { state: null, column: null, marked: null, cc: null };
+  function pass() {
+    for (var i = arguments.length - 1; i >= 0; i--) cx.cc.push(arguments[i]);
+  }
+  function cont() {
+    pass.apply(null, arguments);
+    return true;
+  }
+  function inList2(name2, list) {
+    for (var v = list; v; v = v.next) if (v.name == name2) return true;
+    return false;
+  }
+  function register(varname) {
+    var state = cx.state;
+    cx.marked = "def";
+    if (state.context) {
+      if (state.lexical.info == "var" && state.context && state.context.block) {
+        var newContext = registerVarScoped(varname, state.context);
+        if (newContext != null) {
+          state.context = newContext;
+          return;
+        }
+      } else if (!inList2(varname, state.localVars)) {
+        state.localVars = new Var(varname, state.localVars);
+        return;
+      }
+    }
+    if (parserConfig.globalVars && !inList2(varname, state.globalVars))
+      state.globalVars = new Var(varname, state.globalVars);
+  }
+  function registerVarScoped(varname, context2) {
+    if (!context2) {
+      return null;
+    } else if (context2.block) {
+      var inner = registerVarScoped(varname, context2.prev);
+      if (!inner) return null;
+      if (inner == context2.prev) return context2;
+      return new Context3(inner, context2.vars, true);
+    } else if (inList2(varname, context2.vars)) {
+      return context2;
+    } else {
+      return new Context3(context2.prev, new Var(varname, context2.vars), false);
+    }
+  }
+  function isModifier(name2) {
+    return name2 == "public" || name2 == "private" || name2 == "protected" || name2 == "abstract" || name2 == "readonly";
+  }
+  function Context3(prev, vars, block2) {
+    this.prev = prev;
+    this.vars = vars;
+    this.block = block2;
+  }
+  function Var(name2, next) {
+    this.name = name2;
+    this.next = next;
+  }
+  var defaultVars = new Var("this", new Var("arguments", null));
+  function pushcontext() {
+    cx.state.context = new Context3(cx.state.context, cx.state.localVars, false);
+    cx.state.localVars = defaultVars;
+  }
+  function pushblockcontext() {
+    cx.state.context = new Context3(cx.state.context, cx.state.localVars, true);
+    cx.state.localVars = null;
+  }
+  pushcontext.lex = pushblockcontext.lex = true;
+  function popcontext() {
+    cx.state.localVars = cx.state.context.vars;
+    cx.state.context = cx.state.context.prev;
+  }
+  popcontext.lex = true;
+  function pushlex(type2, info) {
+    var result = function() {
+      var state = cx.state, indent2 = state.indented;
+      if (state.lexical.type == "stat") indent2 = state.lexical.indented;
+      else for (var outer = state.lexical; outer && outer.type == ")" && outer.align; outer = outer.prev)
+        indent2 = outer.indented;
+      state.lexical = new JSLexical(indent2, cx.stream.column(), type2, null, state.lexical, info);
+    };
+    result.lex = true;
+    return result;
+  }
+  function poplex() {
+    var state = cx.state;
+    if (state.lexical.prev) {
+      if (state.lexical.type == ")")
+        state.indented = state.lexical.indented;
+      state.lexical = state.lexical.prev;
+    }
+  }
+  poplex.lex = true;
+  function expect(wanted) {
+    function exp(type2) {
+      if (type2 == wanted) return cont();
+      else if (wanted == ";" || type2 == "}" || type2 == ")" || type2 == "]") return pass();
+      else return cont(exp);
+    }
+    ;
+    return exp;
+  }
+  function statement(type2, value) {
+    if (type2 == "var") return cont(pushlex("vardef", value), vardef, expect(";"), poplex);
+    if (type2 == "keyword a") return cont(pushlex("form"), parenExpr, statement, poplex);
+    if (type2 == "keyword b") return cont(pushlex("form"), statement, poplex);
+    if (type2 == "keyword d") return cx.stream.match(/^\s*$/, false) ? cont() : cont(pushlex("stat"), maybeexpression, expect(";"), poplex);
+    if (type2 == "debugger") return cont(expect(";"));
+    if (type2 == "{") return cont(pushlex("}"), pushblockcontext, block, poplex, popcontext);
+    if (type2 == ";") return cont();
+    if (type2 == "if") {
+      if (cx.state.lexical.info == "else" && cx.state.cc[cx.state.cc.length - 1] == poplex)
+        cx.state.cc.pop()();
+      return cont(pushlex("form"), parenExpr, statement, poplex, maybeelse);
+    }
+    if (type2 == "function") return cont(functiondef);
+    if (type2 == "for") return cont(pushlex("form"), pushblockcontext, forspec, statement, popcontext, poplex);
+    if (type2 == "class" || isTS && value == "interface") {
+      cx.marked = "keyword";
+      return cont(pushlex("form", type2 == "class" ? type2 : value), className, poplex);
+    }
+    if (type2 == "variable") {
+      if (isTS && value == "declare") {
+        cx.marked = "keyword";
+        return cont(statement);
+      } else if (isTS && (value == "module" || value == "enum" || value == "type") && cx.stream.match(/^\s*\w/, false)) {
+        cx.marked = "keyword";
+        if (value == "enum") return cont(enumdef);
+        else if (value == "type") return cont(typename, expect("operator"), typeexpr, expect(";"));
+        else return cont(pushlex("form"), pattern, expect("{"), pushlex("}"), block, poplex, poplex);
+      } else if (isTS && value == "namespace") {
+        cx.marked = "keyword";
+        return cont(pushlex("form"), expression, statement, poplex);
+      } else if (isTS && value == "abstract") {
+        cx.marked = "keyword";
+        return cont(statement);
+      } else {
+        return cont(pushlex("stat"), maybelabel);
+      }
+    }
+    if (type2 == "switch") return cont(
+      pushlex("form"),
+      parenExpr,
+      expect("{"),
+      pushlex("}", "switch"),
+      pushblockcontext,
+      block,
+      poplex,
+      poplex,
+      popcontext
+    );
+    if (type2 == "case") return cont(expression, expect(":"));
+    if (type2 == "default") return cont(expect(":"));
+    if (type2 == "catch") return cont(pushlex("form"), pushcontext, maybeCatchBinding, statement, poplex, popcontext);
+    if (type2 == "export") return cont(pushlex("stat"), afterExport, poplex);
+    if (type2 == "import") return cont(pushlex("stat"), afterImport, poplex);
+    if (type2 == "async") return cont(statement);
+    if (value == "@") return cont(expression, statement);
+    return pass(pushlex("stat"), expression, expect(";"), poplex);
+  }
+  function maybeCatchBinding(type2) {
+    if (type2 == "(") return cont(funarg, expect(")"));
+  }
+  function expression(type2, value) {
+    return expressionInner(type2, value, false);
+  }
+  function expressionNoComma(type2, value) {
+    return expressionInner(type2, value, true);
+  }
+  function parenExpr(type2) {
+    if (type2 != "(") return pass();
+    return cont(pushlex(")"), maybeexpression, expect(")"), poplex);
+  }
+  function expressionInner(type2, value, noComma) {
+    if (cx.state.fatArrowAt == cx.stream.start) {
+      var body = noComma ? arrowBodyNoComma : arrowBody;
+      if (type2 == "(") return cont(pushcontext, pushlex(")"), commasep(funarg, ")"), poplex, expect("=>"), body, popcontext);
+      else if (type2 == "variable") return pass(pushcontext, pattern, expect("=>"), body, popcontext);
+    }
+    var maybeop = noComma ? maybeoperatorNoComma : maybeoperatorComma;
+    if (atomicTypes.hasOwnProperty(type2)) return cont(maybeop);
+    if (type2 == "function") return cont(functiondef, maybeop);
+    if (type2 == "class" || isTS && value == "interface") {
+      cx.marked = "keyword";
+      return cont(pushlex("form"), classExpression, poplex);
+    }
+    if (type2 == "keyword c" || type2 == "async") return cont(noComma ? expressionNoComma : expression);
+    if (type2 == "(") return cont(pushlex(")"), maybeexpression, expect(")"), poplex, maybeop);
+    if (type2 == "operator" || type2 == "spread") return cont(noComma ? expressionNoComma : expression);
+    if (type2 == "[") return cont(pushlex("]"), arrayLiteral, poplex, maybeop);
+    if (type2 == "{") return contCommasep(objprop, "}", null, maybeop);
+    if (type2 == "quasi") return pass(quasi, maybeop);
+    if (type2 == "new") return cont(maybeTarget(noComma));
+    return cont();
+  }
+  function maybeexpression(type2) {
+    if (type2.match(/[;\}\)\],]/)) return pass();
+    return pass(expression);
+  }
+  function maybeoperatorComma(type2, value) {
+    if (type2 == ",") return cont(maybeexpression);
+    return maybeoperatorNoComma(type2, value, false);
+  }
+  function maybeoperatorNoComma(type2, value, noComma) {
+    var me = noComma == false ? maybeoperatorComma : maybeoperatorNoComma;
+    var expr = noComma == false ? expression : expressionNoComma;
+    if (type2 == "=>") return cont(pushcontext, noComma ? arrowBodyNoComma : arrowBody, popcontext);
+    if (type2 == "operator") {
+      if (/\+\+|--/.test(value) || isTS && value == "!") return cont(me);
+      if (isTS && value == "<" && cx.stream.match(/^([^<>]|<[^<>]*>)*>\s*\(/, false))
+        return cont(pushlex(">"), commasep(typeexpr, ">"), poplex, me);
+      if (value == "?") return cont(expression, expect(":"), expr);
+      return cont(expr);
+    }
+    if (type2 == "quasi") {
+      return pass(quasi, me);
+    }
+    if (type2 == ";") return;
+    if (type2 == "(") return contCommasep(expressionNoComma, ")", "call", me);
+    if (type2 == ".") return cont(property, me);
+    if (type2 == "[") return cont(pushlex("]"), maybeexpression, expect("]"), poplex, me);
+    if (isTS && value == "as") {
+      cx.marked = "keyword";
+      return cont(typeexpr, me);
+    }
+    if (type2 == "regexp") {
+      cx.state.lastType = cx.marked = "operator";
+      cx.stream.backUp(cx.stream.pos - cx.stream.start - 1);
+      return cont(expr);
+    }
+  }
+  function quasi(type2, value) {
+    if (type2 != "quasi") return pass();
+    if (value.slice(value.length - 2) != "${") return cont(quasi);
+    return cont(maybeexpression, continueQuasi);
+  }
+  function continueQuasi(type2) {
+    if (type2 == "}") {
+      cx.marked = "string.special";
+      cx.state.tokenize = tokenQuasi;
+      return cont(quasi);
+    }
+  }
+  function arrowBody(type2) {
+    findFatArrow(cx.stream, cx.state);
+    return pass(type2 == "{" ? statement : expression);
+  }
+  function arrowBodyNoComma(type2) {
+    findFatArrow(cx.stream, cx.state);
+    return pass(type2 == "{" ? statement : expressionNoComma);
+  }
+  function maybeTarget(noComma) {
+    return function(type2) {
+      if (type2 == ".") return cont(noComma ? targetNoComma : target);
+      else if (type2 == "variable" && isTS) return cont(maybeTypeArgs, noComma ? maybeoperatorNoComma : maybeoperatorComma);
+      else return pass(noComma ? expressionNoComma : expression);
+    };
+  }
+  function target(_, value) {
+    if (value == "target") {
+      cx.marked = "keyword";
+      return cont(maybeoperatorComma);
+    }
+  }
+  function targetNoComma(_, value) {
+    if (value == "target") {
+      cx.marked = "keyword";
+      return cont(maybeoperatorNoComma);
+    }
+  }
+  function maybelabel(type2) {
+    if (type2 == ":") return cont(poplex, statement);
+    return pass(maybeoperatorComma, expect(";"), poplex);
+  }
+  function property(type2) {
+    if (type2 == "variable") {
+      cx.marked = "property";
+      return cont();
+    }
+  }
+  function objprop(type2, value) {
+    if (type2 == "async") {
+      cx.marked = "property";
+      return cont(objprop);
+    } else if (type2 == "variable" || cx.style == "keyword") {
+      cx.marked = "property";
+      if (value == "get" || value == "set") return cont(getterSetter);
+      var m;
+      if (isTS && cx.state.fatArrowAt == cx.stream.start && (m = cx.stream.match(/^\s*:\s*/, false)))
+        cx.state.fatArrowAt = cx.stream.pos + m[0].length;
+      return cont(afterprop);
+    } else if (type2 == "number" || type2 == "string") {
+      cx.marked = jsonldMode ? "property" : cx.style + " property";
+      return cont(afterprop);
+    } else if (type2 == "jsonld-keyword") {
+      return cont(afterprop);
+    } else if (isTS && isModifier(value)) {
+      cx.marked = "keyword";
+      return cont(objprop);
+    } else if (type2 == "[") {
+      return cont(expression, maybetype, expect("]"), afterprop);
+    } else if (type2 == "spread") {
+      return cont(expressionNoComma, afterprop);
+    } else if (value == "*") {
+      cx.marked = "keyword";
+      return cont(objprop);
+    } else if (type2 == ":") {
+      return pass(afterprop);
+    }
+  }
+  function getterSetter(type2) {
+    if (type2 != "variable") return pass(afterprop);
+    cx.marked = "property";
+    return cont(functiondef);
+  }
+  function afterprop(type2) {
+    if (type2 == ":") return cont(expressionNoComma);
+    if (type2 == "(") return pass(functiondef);
+  }
+  function commasep(what, end, sep) {
+    function proceed(type2, value) {
+      if (sep ? sep.indexOf(type2) > -1 : type2 == ",") {
+        var lex = cx.state.lexical;
+        if (lex.info == "call") lex.pos = (lex.pos || 0) + 1;
+        return cont(function(type3, value2) {
+          if (type3 == end || value2 == end) return pass();
+          return pass(what);
+        }, proceed);
+      }
+      if (type2 == end || value == end) return cont();
+      if (sep && sep.indexOf(";") > -1) return pass(what);
+      return cont(expect(end));
+    }
+    return function(type2, value) {
+      if (type2 == end || value == end) return cont();
+      return pass(what, proceed);
+    };
+  }
+  function contCommasep(what, end, info) {
+    for (var i = 3; i < arguments.length; i++)
+      cx.cc.push(arguments[i]);
+    return cont(pushlex(end, info), commasep(what, end), poplex);
+  }
+  function block(type2) {
+    if (type2 == "}") return cont();
+    return pass(statement, block);
+  }
+  function maybetype(type2, value) {
+    if (isTS) {
+      if (type2 == ":") return cont(typeexpr);
+      if (value == "?") return cont(maybetype);
+    }
+  }
+  function maybetypeOrIn(type2, value) {
+    if (isTS && (type2 == ":" || value == "in")) return cont(typeexpr);
+  }
+  function mayberettype(type2) {
+    if (isTS && type2 == ":") {
+      if (cx.stream.match(/^\s*\w+\s+is\b/, false)) return cont(expression, isKW, typeexpr);
+      else return cont(typeexpr);
+    }
+  }
+  function isKW(_, value) {
+    if (value == "is") {
+      cx.marked = "keyword";
+      return cont();
+    }
+  }
+  function typeexpr(type2, value) {
+    if (value == "keyof" || value == "typeof" || value == "infer" || value == "readonly") {
+      cx.marked = "keyword";
+      return cont(value == "typeof" ? expressionNoComma : typeexpr);
+    }
+    if (type2 == "variable" || value == "void") {
+      cx.marked = "type";
+      return cont(afterType);
+    }
+    if (value == "|" || value == "&") return cont(typeexpr);
+    if (type2 == "string" || type2 == "number" || type2 == "atom") return cont(afterType);
+    if (type2 == "[") return cont(pushlex("]"), commasep(typeexpr, "]", ","), poplex, afterType);
+    if (type2 == "{") return cont(pushlex("}"), typeprops, poplex, afterType);
+    if (type2 == "(") return cont(commasep(typearg, ")"), maybeReturnType, afterType);
+    if (type2 == "<") return cont(commasep(typeexpr, ">"), typeexpr);
+    if (type2 == "quasi") return pass(quasiType, afterType);
+  }
+  function maybeReturnType(type2) {
+    if (type2 == "=>") return cont(typeexpr);
+  }
+  function typeprops(type2) {
+    if (type2.match(/[\}\)\]]/)) return cont();
+    if (type2 == "," || type2 == ";") return cont(typeprops);
+    return pass(typeprop, typeprops);
+  }
+  function typeprop(type2, value) {
+    if (type2 == "variable" || cx.style == "keyword") {
+      cx.marked = "property";
+      return cont(typeprop);
+    } else if (value == "?" || type2 == "number" || type2 == "string") {
+      return cont(typeprop);
+    } else if (type2 == ":") {
+      return cont(typeexpr);
+    } else if (type2 == "[") {
+      return cont(expect("variable"), maybetypeOrIn, expect("]"), typeprop);
+    } else if (type2 == "(") {
+      return pass(functiondecl, typeprop);
+    } else if (!type2.match(/[;\}\)\],]/)) {
+      return cont();
+    }
+  }
+  function quasiType(type2, value) {
+    if (type2 != "quasi") return pass();
+    if (value.slice(value.length - 2) != "${") return cont(quasiType);
+    return cont(typeexpr, continueQuasiType);
+  }
+  function continueQuasiType(type2) {
+    if (type2 == "}") {
+      cx.marked = "string.special";
+      cx.state.tokenize = tokenQuasi;
+      return cont(quasiType);
+    }
+  }
+  function typearg(type2, value) {
+    if (type2 == "variable" && cx.stream.match(/^\s*[?:]/, false) || value == "?") return cont(typearg);
+    if (type2 == ":") return cont(typeexpr);
+    if (type2 == "spread") return cont(typearg);
+    return pass(typeexpr);
+  }
+  function afterType(type2, value) {
+    if (value == "<") return cont(pushlex(">"), commasep(typeexpr, ">"), poplex, afterType);
+    if (value == "|" || type2 == "." || value == "&") return cont(typeexpr);
+    if (type2 == "[") return cont(typeexpr, expect("]"), afterType);
+    if (value == "extends" || value == "implements") {
+      cx.marked = "keyword";
+      return cont(typeexpr);
+    }
+    if (value == "?") return cont(typeexpr, expect(":"), typeexpr);
+  }
+  function maybeTypeArgs(_, value) {
+    if (value == "<") return cont(pushlex(">"), commasep(typeexpr, ">"), poplex, afterType);
+  }
+  function typeparam() {
+    return pass(typeexpr, maybeTypeDefault);
+  }
+  function maybeTypeDefault(_, value) {
+    if (value == "=") return cont(typeexpr);
+  }
+  function vardef(_, value) {
+    if (value == "enum") {
+      cx.marked = "keyword";
+      return cont(enumdef);
+    }
+    return pass(pattern, maybetype, maybeAssign, vardefCont);
+  }
+  function pattern(type2, value) {
+    if (isTS && isModifier(value)) {
+      cx.marked = "keyword";
+      return cont(pattern);
+    }
+    if (type2 == "variable") {
+      register(value);
+      return cont();
+    }
+    if (type2 == "spread") return cont(pattern);
+    if (type2 == "[") return contCommasep(eltpattern, "]");
+    if (type2 == "{") return contCommasep(proppattern, "}");
+  }
+  function proppattern(type2, value) {
+    if (type2 == "variable" && !cx.stream.match(/^\s*:/, false)) {
+      register(value);
+      return cont(maybeAssign);
+    }
+    if (type2 == "variable") cx.marked = "property";
+    if (type2 == "spread") return cont(pattern);
+    if (type2 == "}") return pass();
+    if (type2 == "[") return cont(expression, expect("]"), expect(":"), proppattern);
+    return cont(expect(":"), pattern, maybeAssign);
+  }
+  function eltpattern() {
+    return pass(pattern, maybeAssign);
+  }
+  function maybeAssign(_type, value) {
+    if (value == "=") return cont(expressionNoComma);
+  }
+  function vardefCont(type2) {
+    if (type2 == ",") return cont(vardef);
+  }
+  function maybeelse(type2, value) {
+    if (type2 == "keyword b" && value == "else") return cont(pushlex("form", "else"), statement, poplex);
+  }
+  function forspec(type2, value) {
+    if (value == "await") return cont(forspec);
+    if (type2 == "(") return cont(pushlex(")"), forspec1, poplex);
+  }
+  function forspec1(type2) {
+    if (type2 == "var") return cont(vardef, forspec2);
+    if (type2 == "variable") return cont(forspec2);
+    return pass(forspec2);
+  }
+  function forspec2(type2, value) {
+    if (type2 == ")") return cont();
+    if (type2 == ";") return cont(forspec2);
+    if (value == "in" || value == "of") {
+      cx.marked = "keyword";
+      return cont(expression, forspec2);
+    }
+    return pass(expression, forspec2);
+  }
+  function functiondef(type2, value) {
+    if (value == "*") {
+      cx.marked = "keyword";
+      return cont(functiondef);
+    }
+    if (type2 == "variable") {
+      register(value);
+      return cont(functiondef);
+    }
+    if (type2 == "(") return cont(pushcontext, pushlex(")"), commasep(funarg, ")"), poplex, mayberettype, statement, popcontext);
+    if (isTS && value == "<") return cont(pushlex(">"), commasep(typeparam, ">"), poplex, functiondef);
+  }
+  function functiondecl(type2, value) {
+    if (value == "*") {
+      cx.marked = "keyword";
+      return cont(functiondecl);
+    }
+    if (type2 == "variable") {
+      register(value);
+      return cont(functiondecl);
+    }
+    if (type2 == "(") return cont(pushcontext, pushlex(")"), commasep(funarg, ")"), poplex, mayberettype, popcontext);
+    if (isTS && value == "<") return cont(pushlex(">"), commasep(typeparam, ">"), poplex, functiondecl);
+  }
+  function typename(type2, value) {
+    if (type2 == "keyword" || type2 == "variable") {
+      cx.marked = "type";
+      return cont(typename);
+    } else if (value == "<") {
+      return cont(pushlex(">"), commasep(typeparam, ">"), poplex);
+    }
+  }
+  function funarg(type2, value) {
+    if (value == "@") cont(expression, funarg);
+    if (type2 == "spread") return cont(funarg);
+    if (isTS && isModifier(value)) {
+      cx.marked = "keyword";
+      return cont(funarg);
+    }
+    if (isTS && type2 == "this") return cont(maybetype, maybeAssign);
+    return pass(pattern, maybetype, maybeAssign);
+  }
+  function classExpression(type2, value) {
+    if (type2 == "variable") return className(type2, value);
+    return classNameAfter(type2, value);
+  }
+  function className(type2, value) {
+    if (type2 == "variable") {
+      register(value);
+      return cont(classNameAfter);
+    }
+  }
+  function classNameAfter(type2, value) {
+    if (value == "<") return cont(pushlex(">"), commasep(typeparam, ">"), poplex, classNameAfter);
+    if (value == "extends" || value == "implements" || isTS && type2 == ",") {
+      if (value == "implements") cx.marked = "keyword";
+      return cont(isTS ? typeexpr : expression, classNameAfter);
+    }
+    if (type2 == "{") return cont(pushlex("}"), classBody, poplex);
+  }
+  function classBody(type2, value) {
+    if (type2 == "async" || type2 == "variable" && (value == "static" || value == "get" || value == "set" || isTS && isModifier(value)) && cx.stream.match(/^\s+#?[\w$\xa1-\uffff]/, false)) {
+      cx.marked = "keyword";
+      return cont(classBody);
+    }
+    if (type2 == "variable" || cx.style == "keyword") {
+      cx.marked = "property";
+      return cont(classfield, classBody);
+    }
+    if (type2 == "number" || type2 == "string") return cont(classfield, classBody);
+    if (type2 == "[")
+      return cont(expression, maybetype, expect("]"), classfield, classBody);
+    if (value == "*") {
+      cx.marked = "keyword";
+      return cont(classBody);
+    }
+    if (isTS && type2 == "(") return pass(functiondecl, classBody);
+    if (type2 == ";" || type2 == ",") return cont(classBody);
+    if (type2 == "}") return cont();
+    if (value == "@") return cont(expression, classBody);
+  }
+  function classfield(type2, value) {
+    if (value == "!" || value == "?") return cont(classfield);
+    if (type2 == ":") return cont(typeexpr, maybeAssign);
+    if (value == "=") return cont(expressionNoComma);
+    var context2 = cx.state.lexical.prev, isInterface = context2 && context2.info == "interface";
+    return pass(isInterface ? functiondecl : functiondef);
+  }
+  function afterExport(type2, value) {
+    if (value == "*") {
+      cx.marked = "keyword";
+      return cont(maybeFrom, expect(";"));
+    }
+    if (value == "default") {
+      cx.marked = "keyword";
+      return cont(expression, expect(";"));
+    }
+    if (type2 == "{") return cont(commasep(exportField, "}"), maybeFrom, expect(";"));
+    return pass(statement);
+  }
+  function exportField(type2, value) {
+    if (value == "as") {
+      cx.marked = "keyword";
+      return cont(expect("variable"));
+    }
+    if (type2 == "variable") return pass(expressionNoComma, exportField);
+  }
+  function afterImport(type2) {
+    if (type2 == "string") return cont();
+    if (type2 == "(") return pass(expression);
+    if (type2 == ".") return pass(maybeoperatorComma);
+    return pass(importSpec, maybeMoreImports, maybeFrom);
+  }
+  function importSpec(type2, value) {
+    if (type2 == "{") return contCommasep(importSpec, "}");
+    if (type2 == "variable") register(value);
+    if (value == "*") cx.marked = "keyword";
+    return cont(maybeAs);
+  }
+  function maybeMoreImports(type2) {
+    if (type2 == ",") return cont(importSpec, maybeMoreImports);
+  }
+  function maybeAs(_type, value) {
+    if (value == "as") {
+      cx.marked = "keyword";
+      return cont(importSpec);
+    }
+  }
+  function maybeFrom(_type, value) {
+    if (value == "from") {
+      cx.marked = "keyword";
+      return cont(expression);
+    }
+  }
+  function arrayLiteral(type2) {
+    if (type2 == "]") return cont();
+    return pass(commasep(expressionNoComma, "]"));
+  }
+  function enumdef() {
+    return pass(pushlex("form"), pattern, expect("{"), pushlex("}"), commasep(enummember, "}"), poplex, poplex);
+  }
+  function enummember() {
+    return pass(pattern, maybeAssign);
+  }
+  function isContinuedStatement(state, textAfter) {
+    return state.lastType == "operator" || state.lastType == "," || isOperatorChar.test(textAfter.charAt(0)) || /[,.]/.test(textAfter.charAt(0));
+  }
+  function expressionAllowed(stream, state, backUp) {
+    return state.tokenize == tokenBase3 && /^(?:operator|sof|keyword [bcd]|case|new|export|default|spread|[\[{}\(,;:]|=>)$/.test(state.lastType) || state.lastType == "quasi" && /\{\s*$/.test(stream.string.slice(0, stream.pos - (backUp || 0)));
+  }
+  return {
+    name: parserConfig.name,
+    startState: function(indentUnit2) {
+      var state = {
+        tokenize: tokenBase3,
+        lastType: "sof",
+        cc: [],
+        lexical: new JSLexical(-indentUnit2, 0, "block", false),
+        localVars: parserConfig.localVars,
+        context: parserConfig.localVars && new Context3(null, null, false),
+        indented: 0
+      };
+      if (parserConfig.globalVars && typeof parserConfig.globalVars == "object")
+        state.globalVars = parserConfig.globalVars;
+      return state;
+    },
+    token: function(stream, state) {
+      if (stream.sol()) {
+        if (!state.lexical.hasOwnProperty("align"))
+          state.lexical.align = false;
+        state.indented = stream.indentation();
+        findFatArrow(stream, state);
+      }
+      if (state.tokenize != tokenComment2 && stream.eatSpace()) return null;
+      var style = state.tokenize(stream, state);
+      if (type == "comment") return style;
+      state.lastType = type == "operator" && (content2 == "++" || content2 == "--") ? "incdec" : type;
+      return parseJS(state, style, type, content2, stream);
+    },
+    indent: function(state, textAfter, cx2) {
+      if (state.tokenize == tokenComment2 || state.tokenize == tokenQuasi) return null;
+      if (state.tokenize != tokenBase3) return 0;
+      var firstChar = textAfter && textAfter.charAt(0), lexical = state.lexical, top2;
+      if (!/^\s*else\b/.test(textAfter)) for (var i = state.cc.length - 1; i >= 0; --i) {
+        var c = state.cc[i];
+        if (c == poplex) lexical = lexical.prev;
+        else if (c != maybeelse && c != popcontext) break;
+      }
+      while ((lexical.type == "stat" || lexical.type == "form") && (firstChar == "}" || (top2 = state.cc[state.cc.length - 1]) && (top2 == maybeoperatorComma || top2 == maybeoperatorNoComma) && !/^[,\.=+\-*:?[\(]/.test(textAfter)))
+        lexical = lexical.prev;
+      if (statementIndent && lexical.type == ")" && lexical.prev.type == "stat")
+        lexical = lexical.prev;
+      var type2 = lexical.type, closing = firstChar == type2;
+      if (type2 == "vardef") return lexical.indented + (state.lastType == "operator" || state.lastType == "," ? lexical.info.length + 1 : 0);
+      else if (type2 == "form" && firstChar == "{") return lexical.indented;
+      else if (type2 == "form") return lexical.indented + cx2.unit;
+      else if (type2 == "stat")
+        return lexical.indented + (isContinuedStatement(state, textAfter) ? statementIndent || cx2.unit : 0);
+      else if (lexical.info == "switch" && !closing && parserConfig.doubleIndentSwitch != false)
+        return lexical.indented + (/^(?:case|default)\b/.test(textAfter) ? cx2.unit : 2 * cx2.unit);
+      else if (lexical.align) return lexical.column + (closing ? 0 : 1);
+      else return lexical.indented + (closing ? 0 : cx2.unit);
+    },
+    languageData: {
+      indentOnInput: /^\s*(?:case .*?:|default:|\{|\})$/,
+      commentTokens: jsonMode ? void 0 : { line: "//", block: { open: "/*", close: "*/" } },
+      closeBrackets: { brackets: ["(", "[", "{", "'", '"', "`"] },
+      wordChars: "$"
+    }
+  };
+}
+var javascript = mkJavaScript({ name: "javascript" });
+var json = mkJavaScript({ name: "json", json: true });
+var jsonld = mkJavaScript({ name: "json", jsonld: true });
+var typescript = mkJavaScript({ name: "typescript", typescript: true });
 
-// ../obsidian-study-studio/node_modules/@lezer/html/dist/index.js
+// src/code-model.ts
+var codeLanguages = { python: "Python", bash: "Linux shell (Bash)", mathematica: "Wolfram Language / Mathematica", cpp: "C++", c: "C", javascript: "JavaScript", pseudocode: "Pseudocode" };
+var UNSUPPORTED_CODE_LANGUAGE = "unsupported";
+var languageAliases = {
+  python: "python",
+  py: "python",
+  bash: "bash",
+  sh: "bash",
+  shell: "bash",
+  zsh: "bash",
+  mathematica: "mathematica",
+  wolfram: "mathematica",
+  wl: "mathematica",
+  cpp: "cpp",
+  "c++": "cpp",
+  cc: "cpp",
+  cxx: "cpp",
+  c: "c",
+  javascript: "javascript",
+  js: "javascript",
+  mjs: "javascript",
+  cjs: "javascript",
+  pseudocode: "pseudocode",
+  pseudo: "pseudocode"
+};
+var pathLanguages = {
+  py: "python",
+  sh: "bash",
+  bash: "bash",
+  zsh: "bash",
+  wl: "mathematica",
+  wls: "mathematica",
+  c: "c",
+  cpp: "cpp",
+  cc: "cpp",
+  cxx: "cpp",
+  h: "cpp",
+  hpp: "cpp",
+  js: "javascript",
+  mjs: "javascript",
+  cjs: "javascript",
+  pseudo: "pseudocode"
+};
+function normalizeCodeLanguage(value) {
+  if (typeof value !== "string") return void 0;
+  const key3 = value.trim().toLowerCase();
+  return Object.hasOwn(languageAliases, key3) ? languageAliases[key3] : void 0;
+}
+function codeLanguageFromPath(path) {
+  const extension = typeof path === "string" ? /\.([a-z0-9]+)$/i.exec(path)?.[1].toLowerCase() : void 0;
+  return extension && Object.hasOwn(pathLanguages, extension) ? pathLanguages[extension] : void 0;
+}
+function resolveCodeLanguage(path, metadata) {
+  return (metadata == null ? codeLanguageFromPath(path) : normalizeCodeLanguage(metadata)) ?? UNSUPPORTED_CODE_LANGUAGE;
+}
+function codeMarkers(source) {
+  return [...source.matchAll(/\{\{blank:([\w-]+)\}\}/g)].map((m) => ({ id: m[1], from: m.index, to: m.index + m[0].length }));
+}
+function makeCodeBlank(source, from, to, id3) {
+  if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to > source.length || from >= to || !source.slice(from, to).trim()) throw Error("Select some code first.");
+  if (!/^[\w-]+$/.test(id3) || codeMarkers(source).some((m) => m.id === id3)) throw Error("Blank ID must be new and valid.");
+  if (codeMarkers(source).some((m) => from < m.to && to > m.from)) throw Error("Select supplied code without overlapping an existing blank.");
+  return { source: source.slice(0, from) + `{{blank:${id3}}}` + source.slice(to), answer: source.slice(from, to) };
+}
+function fillCode(source, answers) {
+  return source.replace(/\{\{blank:([\w-]+)\}\}/g, (_, id3) => answers[id3] ?? `{{blank:${id3}}}`);
+}
+function normalizeCodeAnswer(value, policy = "exact") {
+  const normalized3 = value.replace(/\r\n?/g, "\n");
+  return policy === "trim-outer" ? normalized3.trim() : normalized3;
+}
+function codeFence(source, language2 = "") {
+  const n = Math.max(3, ...[...source.matchAll(/`+/g)].map((m) => m[0].length + 1));
+  const fence = "`".repeat(n);
+  return `${fence}${language2}
+${source}
+${fence}`;
+}
+function validateCodeGrading(g, answers, prepared = true) {
+  const check3 = (ok, message3) => {
+    if (!ok) throw Error(message3);
+  };
+  check3(g?.version === 1, "Unknown Python grading version.");
+  check3(!prepared || typeof g.seal === "string" && /^[a-f0-9]{64}$/.test(g.seal), "Prepare code grading rules before saving the question.");
+  check3(Array.isArray(g.constraints) && g.constraints.length <= 40 && Array.isArray(g.cases) && g.cases.length <= 12, "Invalid grading requirements.");
+  check3(Array.isArray(g.behaviorFields) && new Set(g.behaviorFields).size === g.behaviorFields.length && g.behaviorFields.every((id3) => answers.some((a2) => a2.id === id3)), "Invalid behavior fields.");
+  check3(!g.behaviorFields.length || g.cases.length > 0, "Yellow blanks require behavior tests.");
+  const range = (r, length) => Number.isSafeInteger(r.from) && Number.isSafeInteger(r.to) && r.from >= 0 && r.from < r.to && r.to <= length;
+  for (const c of g.constraints) {
+    const a2 = answers.find((a3) => a3.id === c.field);
+    check3(a2 && range(c, a2.accepted[0].length) && ["whole", "within"].includes(c.placement), "Invalid structural requirement.");
+    check3(!prepared || c.quote === a2.accepted[0].slice(c.from, c.to), "Required syntax moved or changed. Re-prepare its marked ranges before saving.");
+    check3(c.holes === void 0 || Array.isArray(c.holes) && c.holes.every((h) => range(h, a2.accepted[0].length) && h.from >= c.from && h.to <= c.to && (!prepared || h.quote === a2.accepted[0].slice(h.from, h.to))), "Invalid structural hole.");
+  }
+  check3(answers.every((a2) => g.behaviorFields.includes(a2.id) || g.constraints.some((c) => c.field === a2.id)), "Every field needs a grading rule.");
+  check3(g.timeoutMs === void 0 || Number.isInteger(g.timeoutMs) && g.timeoutMs >= 100 && g.timeoutMs <= 5e3, "Timeout must be 100\u20135000 ms.");
+  for (const c of g.cases) {
+    check3(["stdout", "value"].includes(c.mode), "Invalid behavior case.");
+    for (const k of ["setup", "expression"]) check3(c[k] === void 0 || typeof c[k] === "string" && c[k].length <= 1e5, "Invalid harness.");
+    check3(c.mode !== "value" || !!c.expression, "A value check needs an expression.");
+    check3(!prepared || Object.hasOwn(c, "expected"), "Behavior case has no expected result.");
+    check3(c.mode !== "stdout" || !prepared || typeof c.expected === "string", "Expected stdout must be text.");
+    for (const k of ["atol", "rtol"]) check3(c[k] === void 0 || Number.isFinite(c[k]) && c[k] >= 0 && c[k] <= 1, "Tolerances must be between 0 and 1.");
+  }
+}
+
+// src/written-languages.ts
+var languages = { python: python().language, cpp: cpp().language, c: cpp().language, bash: StreamLanguage.define(shell), mathematica: StreamLanguage.define(mathematica), javascript: StreamLanguage.define(javascript) };
+var writtenLanguage = (info) => {
+  const language2 = normalizeCodeLanguage(info);
+  return language2 ? languages[language2] ?? null : null;
+};
+
+// node_modules/@lezer/html/dist/index.js
 var scriptText = 55;
 var StartCloseScriptTag = 1;
 var styleText = 56;
@@ -35748,7 +36848,7 @@ function configureNesting(tags3 = [], attributes = []) {
   });
 }
 
-// ../obsidian-study-studio/node_modules/@lezer/css/dist/index.js
+// node_modules/@lezer/css/dist/index.js
 var descendantOp = 148;
 var Unit = 1;
 var identifier = 149;
@@ -35927,7 +37027,7 @@ var parser6 = LRParser.deserialize({
   tokenPrec: 2433
 });
 
-// ../obsidian-study-studio/node_modules/@codemirror/lang-css/dist/index.js
+// node_modules/@codemirror/lang-css/dist/index.js
 var _properties = null;
 function properties() {
   if (!_properties && typeof document == "object" && document.body) {
@@ -36788,7 +37888,7 @@ function css() {
   return new LanguageSupport(cssLanguage, cssLanguage.data.of({ autocomplete: cssCompletionSource }));
 }
 
-// ../obsidian-study-studio/node_modules/@lezer/javascript/dist/index.js
+// node_modules/@lezer/javascript/dist/index.js
 var noSemi = 317;
 var noSemiType = 318;
 var incdec = 1;
@@ -37000,7 +38100,7 @@ var parser7 = LRParser.deserialize({
   tokenPrec: 15178
 });
 
-// ../obsidian-study-studio/node_modules/@codemirror/lang-javascript/dist/index.js
+// node_modules/@codemirror/lang-javascript/dist/index.js
 var snippets2 = [
   /* @__PURE__ */ snippetCompletion("function ${name}(${params}) {\n	${}\n}", {
     label: "function",
@@ -37248,7 +38348,7 @@ var tsxLanguage = /* @__PURE__ */ javascriptLanguage.configure({
 var kwCompletion = (name2) => ({ label: name2, type: "keyword" });
 var keywords = /* @__PURE__ */ "break case const continue default delete export extends false finally in instanceof let new return static super switch this throw true typeof var yield".split(" ").map(kwCompletion);
 var typescriptKeywords = /* @__PURE__ */ keywords.concat(/* @__PURE__ */ ["declare", "implements", "private", "protected", "public"].map(kwCompletion));
-function javascript(config = {}) {
+function javascript2(config = {}) {
   let lang = config.jsx ? config.typescript ? tsxLanguage : jsxLanguage : config.typescript ? typescriptLanguage : javascriptLanguage;
   let completions = config.typescript ? typescriptSnippets.concat(typescriptKeywords) : snippets2.concat(keywords);
   return new LanguageSupport(lang, [
@@ -37312,7 +38412,7 @@ var autoCloseTags = /* @__PURE__ */ EditorView3.inputHandler.of((view, from, to,
   return true;
 });
 
-// ../obsidian-study-studio/node_modules/@codemirror/lang-html/dist/index.js
+// node_modules/@codemirror/lang-html/dist/index.js
 var Targets = ["_blank", "_self", "_top", "_parent"];
 var Charsets = ["ascii", "utf-8", "utf-16", "latin1", "latin1"];
 var Methods = ["get", "post", "put", "delete"];
@@ -37996,7 +39096,7 @@ function html(config = {}) {
   return new LanguageSupport(lang, [
     htmlLanguage.data.of({ autocomplete: htmlCompletionSourceWith(config) }),
     config.autoCloseTags !== false ? autoCloseTags2 : [],
-    javascript().support,
+    javascript2().support,
     css().support
   ]);
 }
@@ -38052,7 +39152,7 @@ var autoCloseTags2 = /* @__PURE__ */ EditorView3.inputHandler.of((view, from, to
   return true;
 });
 
-// ../obsidian-study-studio/node_modules/@codemirror/lang-markdown/dist/index.js
+// node_modules/@codemirror/lang-markdown/dist/index.js
 var data = /* @__PURE__ */ defineLanguageFacet({ commentTokens: { block: { open: "<!--", close: "-->" } } });
 var headingProp = /* @__PURE__ */ new NodeProp();
 var commonmark = /* @__PURE__ */ parser.configure({
@@ -38386,7 +39486,7 @@ var markdownKeymap = [
 ];
 var htmlNoMatch = /* @__PURE__ */ html({ matchClosingTags: false });
 function markdown(config = {}) {
-  let { codeLanguages: codeLanguages3, defaultCodeLanguage, addKeymap = true, base: { parser: parser8 } = commonmarkLanguage, completeHTMLTags = true, htmlTagLanguage = htmlNoMatch } = config;
+  let { codeLanguages: codeLanguages2, defaultCodeLanguage, addKeymap = true, base: { parser: parser8 } = commonmarkLanguage, completeHTMLTags = true, htmlTagLanguage = htmlNoMatch } = config;
   if (!(parser8 instanceof MarkdownParser))
     throw new RangeError("Base parser provided to `markdown` should be a Markdown parser");
   let extensions = config.extensions ? [config.extensions] : [];
@@ -38397,7 +39497,7 @@ function markdown(config = {}) {
   } else if (defaultCodeLanguage) {
     defaultCode = defaultCodeLanguage;
   }
-  let codeParser = codeLanguages3 || defaultCode ? getCodeParser(codeLanguages3, defaultCode) : void 0;
+  let codeParser = codeLanguages2 || defaultCode ? getCodeParser(codeLanguages2, defaultCode) : void 0;
   extensions.push(parseCode({ codeParser, htmlParser: htmlTagLanguage.language.parser }));
   if (addKeymap)
     support.push(Prec.high(keymap.of(markdownKeymap)));
@@ -39524,59 +40624,6 @@ function rankVersions(sequence) {
   return result;
 }
 
-// src/code-model.ts
-var codeLanguages = { python: "Python", bash: "Linux shell (Bash)", mathematica: "Wolfram Language / Mathematica", cpp: "C++" };
-function codeMarkers(source) {
-  return [...source.matchAll(/\{\{blank:([\w-]+)\}\}/g)].map((m) => ({ id: m[1], from: m.index, to: m.index + m[0].length }));
-}
-function makeCodeBlank(source, from, to, id3) {
-  if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to > source.length || from >= to || !source.slice(from, to).trim()) throw Error("Select some code first.");
-  if (!/^[\w-]+$/.test(id3) || codeMarkers(source).some((m) => m.id === id3)) throw Error("Blank ID must be new and valid.");
-  if (codeMarkers(source).some((m) => from < m.to && to > m.from)) throw Error("Select supplied code without overlapping an existing blank.");
-  return { source: source.slice(0, from) + `{{blank:${id3}}}` + source.slice(to), answer: source.slice(from, to) };
-}
-function fillCode(source, answers) {
-  return source.replace(/\{\{blank:([\w-]+)\}\}/g, (_, id3) => answers[id3] ?? `{{blank:${id3}}}`);
-}
-function normalizeCodeAnswer(value, policy = "exact") {
-  const normalized3 = value.replace(/\r\n?/g, "\n");
-  return policy === "trim-outer" ? normalized3.trim() : normalized3;
-}
-function codeFence(source, language2 = "") {
-  const n = Math.max(3, ...[...source.matchAll(/`+/g)].map((m) => m[0].length + 1));
-  const fence = "`".repeat(n);
-  return `${fence}${language2}
-${source}
-${fence}`;
-}
-function validateCodeGrading(g, answers, prepared = true) {
-  const check3 = (ok, message3) => {
-    if (!ok) throw Error(message3);
-  };
-  check3(g?.version === 1, "Unknown Python grading version.");
-  check3(!prepared || typeof g.seal === "string" && /^[a-f0-9]{64}$/.test(g.seal), "Prepare code grading rules before saving the question.");
-  check3(Array.isArray(g.constraints) && g.constraints.length <= 40 && Array.isArray(g.cases) && g.cases.length <= 12, "Invalid grading requirements.");
-  check3(Array.isArray(g.behaviorFields) && new Set(g.behaviorFields).size === g.behaviorFields.length && g.behaviorFields.every((id3) => answers.some((a2) => a2.id === id3)), "Invalid behavior fields.");
-  check3(!g.behaviorFields.length || g.cases.length > 0, "Yellow blanks require behavior tests.");
-  const range = (r, length) => Number.isSafeInteger(r.from) && Number.isSafeInteger(r.to) && r.from >= 0 && r.from < r.to && r.to <= length;
-  for (const c of g.constraints) {
-    const a2 = answers.find((a3) => a3.id === c.field);
-    check3(a2 && range(c, a2.accepted[0].length) && ["whole", "within"].includes(c.placement), "Invalid structural requirement.");
-    check3(!prepared || c.quote === a2.accepted[0].slice(c.from, c.to), "Required syntax moved or changed. Re-prepare its marked ranges before saving.");
-    check3(c.holes === void 0 || Array.isArray(c.holes) && c.holes.every((h) => range(h, a2.accepted[0].length) && h.from >= c.from && h.to <= c.to && (!prepared || h.quote === a2.accepted[0].slice(h.from, h.to))), "Invalid structural hole.");
-  }
-  check3(answers.every((a2) => g.behaviorFields.includes(a2.id) || g.constraints.some((c) => c.field === a2.id)), "Every field needs a grading rule.");
-  check3(g.timeoutMs === void 0 || Number.isInteger(g.timeoutMs) && g.timeoutMs >= 100 && g.timeoutMs <= 5e3, "Timeout must be 100\u20135000 ms.");
-  for (const c of g.cases) {
-    check3(["stdout", "value"].includes(c.mode), "Invalid behavior case.");
-    for (const k of ["setup", "expression"]) check3(c[k] === void 0 || typeof c[k] === "string" && c[k].length <= 1e5, "Invalid harness.");
-    check3(c.mode !== "value" || !!c.expression, "A value check needs an expression.");
-    check3(!prepared || Object.hasOwn(c, "expected"), "Behavior case has no expected result.");
-    check3(c.mode !== "stdout" || !prepared || typeof c.expected === "string", "Expected stdout must be text.");
-    for (const k of ["atol", "rtol"]) check3(c[k] === void 0 || Number.isFinite(c[k]) && c[k] >= 0 && c[k] <= 1, "Tolerances must be between 0 and 1.");
-  }
-}
-
 // src/reference-output.ts
 function validateReferenceOutput(value) {
   const v = value;
@@ -40203,6 +41250,15 @@ function answerHighlightContext(source, id3) {
   return marker ? { before: masked.slice(0, marker.from), after: masked.slice(marker.to) } : { before: "", after: "" };
 }
 
+// src/code-pseudocode.ts
+var pseudocodeGrammar = {
+  comment: { pattern: /\/\/[^\r\n]*/, greedy: true },
+  string: { pattern: /"(?:\\[^\r\n]|[^"\\\r\n])*"?|'(?:\\[^\r\n]|[^'\\\r\n])*'?/, greedy: true },
+  keyword: { pattern: /(^|[^\p{L}\p{N}_])(?:algorithm|begin|end|if|then|else|elseif|endif|for|each|in|to|downto|step|do|endfor|while|endwhile|repeat|until|return|break|continue|function|procedure|endfunction|endprocedure|input|output|print|read|write|and|or|not|true|false|null)(?![\p{L}\p{N}_])/iu, lookbehind: true },
+  number: { pattern: /(^|[^\p{L}\p{N}_])(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/u, lookbehind: true },
+  operator: /<-|:=|←|==|!=|<=|>=|[=+*/%<>!-]/
+};
+
 // src/code-render.ts
 async function renderCode(parent2, code, blank, options = {}) {
   const panel = parent2.ownerDocument.createElement("div");
@@ -40216,7 +41272,7 @@ async function renderCode(parent2, code, blank, options = {}) {
     pre.tabIndex = 0;
     pre.setAttribute("aria-label", options.label ?? "Code");
   }
-  const prism = await (0, import_obsidian11.loadPrism)(), grammar = prism.languages[code.language];
+  const prism = await (0, import_obsidian11.loadPrism)(), grammar = code.language === "pseudocode" ? pseudocodeGrammar : prism.languages[code.language];
   if (grammar) root.innerHTML = prism.highlight(options.static ? code.source : highlightSkeleton(code.source), grammar, code.language);
   else root.textContent = code.source;
   const split = (node) => {
@@ -40520,12 +41576,11 @@ function locateCode(a2, s, hash5) {
   }
   return hits.length === 1 ? hits[0] : void 0;
 }
-function codeLanguage(path) {
-  if (/\.py$/i.test(path)) return "python";
-  if (/\.(sh|bash)$/i.test(path)) return "bash";
-  if (/\.(wl|wls)$/i.test(path)) return "mathematica";
-  if (/\.(cpp|cc|cxx|c|h|hpp)$/i.test(path)) return "cpp";
-  throw Error("Practice questions currently support Python, Bash, Wolfram and C/C++ code. Comments support any text excerpt.");
+var codeSnapshotLanguage = (s) => resolveCodeLanguage(s.path || s.link.target.split("#")[0], s.language);
+function codeLanguage(s) {
+  const language2 = codeSnapshotLanguage(s);
+  if (language2 === UNSUPPORTED_CODE_LANGUAGE) throw Error("Practice questions currently support " + Object.values(codeLanguages).join(", ") + ". Comments support any text excerpt.");
+  return language2;
 }
 function buildCodeQuestion(s, hash5, marks2, context2) {
   const d = codeDocument(s);
@@ -40572,7 +41627,7 @@ function buildCodeQuestion(s, hash5, marks2, context2) {
   const answers = groups.map((r, i) => ({ id: `code-${i + 1}`, accepted: [d.text.slice(r.from, r.to)], whitespace: "exact", caseSensitive: true }));
   if (answers.some((a2) => a2.accepted[0].includes("	"))) throw Error("A practice blank contains a tab.");
   for (let i = groups.length - 1; i >= 0; i--) source = makeCodeBlank(source, groups[i].from - from, groups[i].to - from, answers[i].id).source;
-  const code = { language: codeLanguage(s.path), source };
+  const code = { language: codeLanguage(s), source };
   if (ranges.some((r) => r.rule)) {
     if (code.language !== "python") throw Error("Flexible and structural checks currently support Python.");
     if (ranges.some((r) => !r.rule)) throw Error("Replace legacy exact blanks before combining them with flexible blanks.");
@@ -45921,7 +46976,7 @@ async function sourceImpact(store, bridge, source) {
 // src/code-annotation-api.ts
 var import_obsidian30 = require("obsidian");
 var clone6 = (x) => JSON.parse(JSON.stringify(x));
-var snapshotKey = (s) => JSON.stringify([s.path, s.link.target, s.lines, s.line_numbers, s.signature]);
+var snapshotKey = (s) => JSON.stringify([s.path, s.link.target, s.lines, s.line_numbers, s.signature, codeSnapshotLanguage(s)]);
 var CodeAnnotationApi = class {
   constructor(store, index2, practice, findQuestion) {
     this.store = store;
@@ -46063,9 +47118,10 @@ var CodeAnnotationApi = class {
     if (!ranges.length || ranges.length > 128 || !["comment", "practice-blank", "question"].includes(purpose) || typeof comment2 !== "string") throw Error("Invalid code selections.");
     const { s } = await this.read(scope);
     if (snapshotKey(s) !== snapshotKey(expected)) throw Error("Source changed. Refresh the excerpt.");
-    const rule = purpose === "practice-blank" ? appearance?.rule ?? (codeLanguage(s.path) === "python" ? "behavior" : void 0) : void 0;
+    const language2 = purpose === "practice-blank" ? codeLanguage(s) : void 0;
+    const rule = purpose === "practice-blank" ? appearance?.rule ?? (language2 === "python" ? "behavior" : void 0) : void 0;
     if (rule && !["form", "behavior"].includes(rule)) throw Error("Invalid blank rule.");
-    if (rule && codeLanguage(s.path) !== "python") throw Error("Flexible and structural checks currently support Python.");
+    if (rule && language2 !== "python") throw Error("Flexible and structural checks currently support Python.");
     const fragments = await Promise.all(ranges.map((r) => makeCodeAnchor(s, scope.raw, r.from, r.to, purpose).then((a2) => ({ ...a2, ...rule ? { rule } : {} }))));
     fragments.sort((a2, b) => a2.offset - b.offset);
     for (let i = 1; i < fragments.length; i++) if (fragments[i].offset < fragments[i - 1].offset + fragments[i - 1].quote.length) throw Error("Group fragments must not overlap.");
@@ -46086,6 +47142,10 @@ var CodeAnnotationApi = class {
     await this.store.applyCodeEdits([before], [after], async (comments) => {
       const { s } = await this.read(scope), hash5 = await codeSnapshotHash(s), parts = codeFragments(after.code), ranges = parts.map((a2) => locateCode(a2, s, hash5));
       if (ranges.some((r) => !r)) throw Error("A code fragment moved. Refresh the source first.");
+      if (after.code.purpose === "practice-blank") {
+        const language2 = codeLanguage(s);
+        if (after.code.rule && language2 !== "python") throw Error("Flexible and structural checks currently support Python.");
+      }
       if (after.code.purpose === "practice-blank" && ranges.some((r, i) => ranges.slice(i + 1).some((t2) => directivesConflict({ ...r, rule: after.code.rule }, { ...t2, rule: after.code.rule })))) throw Error("Blank fragments in one group must not overlap.");
       if (after.code.purpose === "practice-blank" && comments.some((c) => c.id !== id3 && c.path === before.path && !c.deletedAt && !c.resolved && c.code?.target === before.code.target && c.code?.purpose === "practice-blank" && codeFragments(c.code).some((a2) => {
         const at = locateCode(a2, s, hash5);
@@ -46156,8 +47216,8 @@ var CodeAnnotationApi = class {
         const c = await this.create(scope, s, selection.from, selection.to, purpose, appearance);
         if (editing) await this.open(c.id, true);
       };
-      menu.addItem((i) => i.setTitle(/\.py$/i.test(s.path) ? "Blank \xB7 any working approach" : "Practice blank \xB7 exact answer").setIcon("highlighter").setDisabled(stale).onClick(() => run(() => create("practice-blank"))));
-      if (/\.py$/i.test(s.path)) menu.addItem((i) => i.setTitle("Blank \xB7 required syntax").setIcon("code").setDisabled(stale).onClick(() => run(() => create("practice-blank", { rule: "form" }))));
+      menu.addItem((i) => i.setTitle(codeSnapshotLanguage(s) === "python" ? "Blank \xB7 any working approach" : "Practice blank \xB7 exact answer").setIcon("highlighter").setDisabled(stale).onClick(() => run(() => create("practice-blank"))));
+      if (codeSnapshotLanguage(s) === "python") menu.addItem((i) => i.setTitle("Blank \xB7 required syntax").setIcon("code").setDisabled(stale).onClick(() => run(() => create("practice-blank", { rule: "form" }))));
       menu.addItem((i) => i.setTitle("Comment on code\u2026").setIcon("message-square").setDisabled(stale).onClick(() => run(() => create("comment", void 0, true))));
       if (!stale) for (const style of ["highlight", "underline", "text"]) {
         const child = menuGroup(menu, "code-" + style, style === "text" ? "Text color" : style === "underline" ? "Underline" : "Highlight", "highlighter");
@@ -58644,6 +59704,29 @@ function selectedTable(selection) {
   if (rows.some((row) => row.length !== columns.length)) throw Error("Select a complete rectangular Markdown table, including its header and separator.");
   return { columns, rows: rows.map((row) => row.map((text4) => ({ text: text4 }))) };
 }
+function selectedCode(selection) {
+  const selected = selection.trim();
+  const malformed = () => Error("Select one complete backtick code fence with matching delimiters.");
+  if (!/^`{3,}/.test(selected)) {
+    if (/(?:^|\n)[ \t]*`{3,}[ \t]*$/.test(selected)) throw malformed();
+    return { language: "python", source: selection };
+  }
+  const opening = /^(`{3,})([^\r\n]*)\r?\n/.exec(selected);
+  if (!opening || opening[2].includes("`")) throw malformed();
+  const rest = selected.slice(opening[0].length), length = opening[1].length;
+  let offset = 0;
+  for (const line of rest.split("\n")) {
+    const closing = /^[ \t]*(`{3,})[ \t]*\r?$/.exec(line);
+    if (closing && closing[1].length >= length) {
+      if (rest.slice(offset + line.length).trim()) throw malformed();
+      const tag = opening[2].trim(), language2 = tag ? normalizeCodeLanguage(tag) : "python";
+      if (!language2) throw Error(`Unsupported code-fence language "${tag}". Choose ${Object.keys(codeLanguages).join(", ")}.`);
+      return { language: language2, source: rest.slice(0, offset).replace(/\r?\n$/, "") };
+    }
+    offset += line.length + 1;
+  }
+  throw malformed();
+}
 function intakeDraft(kind, id3, title, selection, path) {
   const q = parseQuestion(template(kind, id3, title, selection), path);
   if (kind === "choice") {
@@ -58672,9 +59755,7 @@ function intakeDraft(kind, id3, title, selection, path) {
     }));
   }
   if (kind === "code" && selection.trim()) {
-    const fenced2 = /^```(python|bash|sh|mathematica|wolfram|cpp|c\+\+)?[ \t]*\r?\n([\s\S]*?)\r?\n```[ \t]*$/.exec(selection.trim());
-    const language2 = fenced2?.[1];
-    q.definition.code = { language: language2 === "sh" ? "bash" : language2 === "wolfram" ? "mathematica" : language2 === "c++" ? "cpp" : language2 || "python", source: fenced2 ? fenced2[2] : selection };
+    q.definition.code = selectedCode(selection);
     q.definition.answers = [];
     q.prompt = "Complete the missing code.";
   }

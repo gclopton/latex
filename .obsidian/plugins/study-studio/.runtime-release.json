@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "pluginId": "study-studio",
-  "sourceCommit": "029d2aaaa06a6e815fe1790e1995d81d12272a5c",
-  "release": "notation-compact-20261031-r3",
+  "sourceCommit": "e302e0c8f43f2117826c4424dbf73fa650454721",
+  "releaseIdentity": "code-question-languages-20261104-v1",
   "files": {
-    "main.js": "3b2f62af42d4973a889ba9181693dc0fc1bd9c7a4b712037ab1e7228ea0f35c9",
-    "styles.css": "7a31585a805c4371bbcfe4a4ec66cff8f16927772bc2ac09cdef2594258a6fbd",
-    "manifest.json": "e827d117574f453216d4f26a333a6be8b79004a73b85896d1d28a45d4627006e",
-    "evidence-export.lua": "01502ed558507f36104721a3d89d81b0af5d758f228aa089c33c1615aa6a7667"
+    "evidence-export.lua": "01502ed558507f36104721a3d89d81b0af5d758f228aa089c33c1615aa6a7667",
+    "main.js": "86cea444b00ee166576602ab30d10dc59a7ef2e6667c158c155e4a95c1c3c880",
+    "manifest.json": "66e4901ca4b3f7c9d8b9ca09222a86eb724eb8144cca60f611959e3ad07a447d",
+    "styles.css": "7a31585a805c4371bbcfe4a4ec66cff8f16927772bc2ac09cdef2594258a6fbd"
   }
 }
