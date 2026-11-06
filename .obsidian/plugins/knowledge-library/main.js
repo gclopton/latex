@@ -406,8 +406,11 @@ var require_entry_palette = __commonJS({
       proposition: "43,230,109",
       equation: "96,183,255",
       assumption: "255,183,94",
-      rule: "255,183,94",
-      convention: "255,183,94"
+      property: "43,230,109",
+      rule: "137,207,240",
+      convention: "137,207,240",
+      guideline: "255,153,204",
+      procedure: "255,153,204"
     };
   }
 });
@@ -423,7 +426,7 @@ var require_filter_bar = __commonJS({
       vault: "98,211,185",
       group: "98,211,185",
       type: "193,180,217",
-      algorithm: require_entry_palette().algorithm,
+      ...require_entry_palette(),
       definition: "238,255,0",
       notation: "166,139,255",
       theorem: "43,230,109",
@@ -1305,7 +1308,7 @@ var require_admission = __commonJS({
         });
       }
       typeLabel(kind) {
-        return { definition: "Definitions", notation: "Notation", algorithm: "Algorithms", equation: "Equations", theorem: "Theorems", result: "Results", lemma: "Lemmas", corollary: "Corollaries", proposition: "Propositions", assumption: "Assumptions", rule: "Rules", convention: "Conventions", table: "Tables", figure: "Figures", law: "Laws", principle: "Principles", postulate: "Postulates" }[kind] || kind;
+        return { definition: "Definitions", notation: "Notation", algorithm: "Algorithms", property: "Properties", guideline: "Guidelines", procedure: "Procedures", equation: "Equations", theorem: "Theorems", result: "Results", lemma: "Lemmas", corollary: "Corollaries", proposition: "Propositions", assumption: "Assumptions", rule: "Rules", convention: "Conventions", table: "Tables", figure: "Figures", law: "Laws", principle: "Principles", postulate: "Postulates" }[kind] || kind;
       }
       eligible(e) {
         return e.complete && !e.admitted && !e.issue;
@@ -2687,7 +2690,7 @@ var require_reference_session = __commonJS({
     var hash = (text) => require("crypto").createHash("sha256").update(text).digest("hex");
     function defaultFilters(settings, catalog, context, purpose) {
       const previous = settings.filters?.state?.tokens || [];
-      const tokens = purpose === "justification" ? catalogRows(catalog).filter((t) => t.kind === "type" && ["result", "definition", "theorem", "lemma", "corollary", "proposition", "algorithm", "equation", "notation"].includes(t.id)) : previous.filter((t) => t.kind === "type").map((t) => ({ ...t }));
+      const tokens = purpose === "justification" ? catalogRows(catalog).filter((t) => t.kind === "type" && ["result", "definition", "theorem", "lemma", "corollary", "proposition", "property", "convention", "rule", "guideline", "procedure", "algorithm", "equation", "notation"].includes(t.id)) : previous.filter((t) => t.kind === "type").map((t) => ({ ...t }));
       const source = catalogRows(catalog).find((r) => r.id === context?.defaultSource?.id);
       if (source) tokens.unshift(source);
       return { query: "", filters: { version: 2, state: { query: "", tokens, cursor: [0, 0], draft: null } } };
@@ -14165,7 +14168,7 @@ var require_component_actions = __commonJS({
     var { randomUUID } = require("node:crypto");
     var { insertion, expansionAt } = require_component_creation_model();
     var { NumberingControls } = require_callout_controls();
-    var TYPES = ["note", "definition", "notation", "theorem", "result", "lemma", "corollary", "proposition", "algorithm", "equation", "exercise", "example", "figure", "table", "proof", "warning", "tip"];
+    var TYPES = ["note", "definition", "notation", "theorem", "result", "lemma", "corollary", "proposition", "property", "convention", "rule", "guideline", "procedure", "algorithm", "equation", "exercise", "example", "figure", "table", "proof", "warning", "tip"];
     var ChooseType = class extends FuzzySuggestModal {
       constructor(plugin, choose) {
         super(plugin.app);

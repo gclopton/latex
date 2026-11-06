@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "pluginId": "knowledge-library",
-  "sourceCommit": "79220e51f0d59bfb7b08b21ed8e7468d4a2b1980",
-  "release": "dee12562a652b5866c22b7b168c3d0a8109695da042dc78118d7b9b0ea08f45a",
+  "sourceCommit": "cc2c42477e511e8d1595094c98f811426e211df4",
+  "release": "f2a9a232568d9a15f35aeb7e724f5969488594e50a6a4ea14c5e171664f23c58",
   "candidate": false,
   "uncommittedSource": false,
   "files": {
@@ -18,7 +18,7 @@
     "backend/component_reference_writes.py": "770d22eda0212f42ac5cdeecea5862772c38393ee3c76c57a7d3192fb885c4ed",
     "backend/component_references.py": "419754977a41eb589d659e6c40b763086a8329d462affc9f95076304a2a5a4c9",
     "backend/component_scope.py": "0a31a8c52d6906070a8b4fdca4c9b020c7077314129c199f1320416a75b2e1cb",
-    "backend/crawl.py": "77e07538f38333bb913449ab994d6a188a0e9f6f105d683d0a2127068ac7fa77",
+    "backend/crawl.py": "bb3c85d6317f2538c5d7d63297eedcca8461fab3d2fd74a7fbd83cf05d0a2c17",
     "backend/deploy.py": "66fe3289eb628ab285c089a6ef2072bab5d0f8fabef8ccfdd5215ac48fc09a9d",
     "backend/display_groups.py": "e3b102ddceac9edd9298ccfa52c965ac18aaf2527c3fe119bda38d58ccb152d4",
     "backend/document_numbers.py": "7d8eb8a3272f961b2c13266ad59cb8ed53f8c5b07ae747d18fb8f8f455017adc",
@@ -59,8 +59,8 @@
     "backend/source_catalog.py": "d64089d2cd6929fe7f2a3a6af45fa012e12f32a36a5ddada53de3ddbc8368ab9",
     "backend/tag_search.py": "f8f02470659595184c71a468af36d5017b63d825f412754790c7c893c8b39e43",
     "backend/vault_registry.py": "651d3ce2863c44689b63af9831642e6c07771288b4e19f845f34033faf9103aa",
-    "main.js": "3ee33bcf1523a615e04ced3479ad27d3c57a0e9585de53b22a4dcaec6ef77ec5",
+    "main.js": "f137d78a8932b4605a2fd05b32e9e962477467d452d1466ccf6045adb932e8cf",
     "manifest.json": "a8feebda0a75f4ba779ca84e741708ccfa9d1bf2fbb3845ed5d0c99aac9551e7",
-    "styles.css": "a934dcceb99e13037db6efb69736bb3ec774b494c9d659460d282dc2e1b97a27"
+    "styles.css": "d42c6114507205acd88e7e8aa5b32a5dc734c12cdb6aa0ea17efd1ff5a264628"
   }
 }

@@ -39,7 +39,11 @@
       "aside",
       "lemma",
       "verbalization",
-      "sketch"
+      "sketch",
+      "convention",
+      "rule",
+      "guideline",
+      "procedure"
     ],
     "settings": {
       "expansion": [
@@ -351,8 +355,8 @@
       "property": [
         {
           "changes": {
-            "icon": "lucide-divide",
-            "color": "251, 255, 0"
+            "color": "0, 255, 17",
+            "icon": "lucide-equal"
           }
         }
       ],
@@ -423,6 +427,38 @@
         {
           "changes": {
             "color": "65, 105, 225"
+          }
+        }
+      ],
+      "convention": [
+        {
+          "changes": {
+            "icon": "lucide-ruler",
+            "color": "137, 207, 240"
+          }
+        }
+      ],
+      "rule": [
+        {
+          "changes": {
+            "icon": "lucide-ruler",
+            "color": "137, 207, 240"
+          }
+        }
+      ],
+      "guideline": [
+        {
+          "changes": {
+            "icon": "lucide-list-ordered",
+            "color": "255, 153, 204"
+          }
+        }
+      ],
+      "procedure": [
+        {
+          "changes": {
+            "icon": "lucide-list-ordered",
+            "color": "255, 153, 204"
           }
         }
       ]

@@ -18,7 +18,7 @@ KINDS = {
     "definition", "theorem", "corollary", "lemma", "proposition", "algorithm", "equation",
     "identity", "relation", "assumption", "rule", "convention", "axiom",
     "postulate", "result", "key-point", "notation", "table", "law", "principle",
-    "property", "formula", "figure",
+    "property", "formula", "figure", "guideline", "procedure",
 }
 CALLOUT = re.compile(r"^\s*(?:>\s*)+\[!([\w-]+)(?:\|[^\]\n]*)?\][+-]?\s*(.*)$", re.I)
 BLOCK = re.compile(r"(?:^|\s)\^([A-Za-z0-9-]+)\s*$")

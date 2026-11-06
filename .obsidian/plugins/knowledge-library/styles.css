@@ -90,6 +90,10 @@
 .callout[data-callout="definition"] {--callout-color:rgb(238,255,0)}
 .callout[data-callout="notation"] {--callout-color:rgb(166,139,255)}
 .callout[data-callout="algorithm"] {--callout-color:rgb(190,160,230);--callout-icon:lucide-binary}
+/* Mathematics textbook families; Callout Manager can retain local theme choices. */
+.callout[data-callout="property"] {--callout-color:rgb(43,230,109);--callout-icon:lucide-equal}
+.callout:is([data-callout="convention"],[data-callout="rule"]) {--callout-color:rgb(137,207,240);--callout-icon:lucide-ruler}
+.callout:is([data-callout="guideline"],[data-callout="procedure"]) {--callout-color:rgb(255,153,204);--callout-icon:lucide-list-ordered}
 .callout[data-callout="prompt"] {--callout-color:rgb(140,140,140);--callout-icon:lucide-list}
 
 .kl-filter-summary{font-size:12px;color:var(--text-muted);padding:12px 4px 0;overflow-wrap:anywhere;max-height:72px;overflow:auto}
