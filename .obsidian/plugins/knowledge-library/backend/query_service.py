@@ -83,6 +83,30 @@ def search_expression(text):
     return " AND ".join(atoms)
 
 
+def title_priority(query, prefix=False):
+    """Rank displayed titles, not FTS expressions or corrected query guesses."""
+    normalized = normalize_words(query)
+    # Ignore prose punctuation for exact titles, but retain mathematical symbols.
+    signature = re.findall(r"\w+|[^\w\s,.:;!?\"'“”‘’]", normalized)
+    words = re.findall(r"\w+", math_search(normalized))
+    wanted = set(words)
+
+    def priority(title):
+        if not words or not title:
+            return 3
+        normalized_title = normalize_words(title)
+        if signature == re.findall(r"\w+|[^\w\s,.:;!?\"'“”‘’]", normalized_title):
+            return 0
+        tokens = re.findall(r"\w+", math_search(normalized_title))
+        for start in range(len(tokens) - len(words) + 1):
+            part = tokens[start:start + len(words)]
+            if part == words or (prefix and part[:-1] == words[:-1] and part[-1].startswith(words[-1])):
+                return 1
+        return 2 if wanted.issubset(tokens) else 3
+
+    return priority
+
+
 from display_groups import display_key
 from source_catalog import catalog as source_catalog
 
@@ -311,11 +335,11 @@ class Library:
             return where + " AND 0", params
         return where + f" AND {d}.vault IN (" + ",".join("?" for _ in scope) + ")", [*params,*scope]
 
-    def folded_rows(self, expression, where, scope_params, offset, size, other_where=None, selective=False):
+    def folded_rows(self, expression, where, scope_params, offset, size, other_where=None, selective=False, query='', prefix=False):
         if self.persisted and not expression:
             return self._browse_rows(where,scope_params,offset,size,other_where,selective)
         if self.persisted:
-            return self._search_rows(expression,where,scope_params,offset,size)
+            return self._search_rows(expression,where,scope_params,offset,size,query,prefix)
         # Folding is a display operation only. Every occurrence remains addressable.
         scope_where=where
         columns = "e.id,e.kind,e.title,e.body_sha256,d.vault,d.path,c.disposition,e.line_start,d.role,dg.display_key,"+("(e.parent IS NOT NULL)" if self.reviewed else "0")+" AS is_copy"
@@ -327,6 +351,8 @@ class Library:
             where += " AND search MATCH ?"
             params.append("{title body math} : (" + expression + ")")
             score = "bm25(search,0,8,3,0.1,1)"
+        self.db.create_function('kl_title_priority', 1, title_priority(query, prefix), deterministic=True)
+        title_order = 'kl_title_priority(title),' if expression else ''
         sql = """WITH matches AS MATERIALIZED (
             SELECT """ + columns + "," + score + " AS score " + source + " WHERE " + where + """
         ), ranked AS (
@@ -335,7 +361,7 @@ class Library:
                     ORDER BY is_copy,CASE role WHEN 'working' THEN 0 WHEN 'companion' THEN 1 WHEN 'source' THEN 2 ELSE 3 END,score,id) AS position
             FROM matches WINDOW family AS (PARTITION BY kind,display_key)
         ) SELECT id,kind,title,body_sha256,vault,path,disposition,line_start,copies,display_key
-          FROM ranked WHERE position=1 ORDER BY best_score,(title=''),title COLLATE NOCASE,id LIMIT ? OFFSET ?"""
+          FROM ranked WHERE position=1 ORDER BY """ + title_order + """best_score,(title=''),title COLLATE NOCASE,id LIMIT ? OFFSET ?"""
         rows=[dict(r) for r in self.db.execute(sql, [*params, size+1, offset])]
         if rows:
             keys=list({r['display_key'] for r in rows})
@@ -343,10 +369,10 @@ class Library:
             for row in rows:row['copies']=counts[row.pop('display_key')]
         return rows
 
-    def _search_rows(self, expression, where, params, offset, size):
-        # Keep exact old ranking, including every boundary tie. Stream matches
-        # once instead of materializing and sorting three SQL windows. Work is
-        # proportional to matches, not to all stored bodies; no top-K truncation.
+    def _search_rows(self, expression, where, params, offset, size, query='', prefix=False):
+        # Title priority precedes the existing relevance/tie order. Stream every
+        # match before paging: no top-K truncation or scan of unrelated bodies.
+        priority = title_priority(query, prefix)
         columns='e.id,e.kind,e.title,d.role,dg.display_key,'
         columns+=('(e.parent IS NOT NULL)' if self.reviewed else '0')+',bm25(search,0,8,3,0.1,1)'
         # FTS must drive this join. The bundled SQLite planner can otherwise start at
@@ -378,7 +404,7 @@ class Library:
         lower=str.maketrans('ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')
         def order(family):
             row=family[2];title=row[2]
-            return (family[0],-1 if title is None else int(title==''),'' if title is None else title.translate(lower),row[0])
+            return (priority(title),family[0],-1 if title is None else int(title==''),'' if title is None else title.translate(lower),row[0])
         page=heapq.nsmallest(offset+size+1,families.values(),key=order)[offset:]
         rows=[]
         for _,_,row in page:
@@ -516,9 +542,9 @@ class Library:
                     groups.append({"term": term, "rows": [], "more": False, "offset": offset})
                     continue
                 fetched={}
-                def fetch(expr, page_offset):
-                    key=(expr,page_offset)
-                    if key not in fetched:fetched[key]=self.folded_rows(expr, where, scope_params, page_offset, size, other_where,selective)
+                def fetch(expr, page_offset, prefix=False):
+                    key=(expr,page_offset,prefix)
+                    if key not in fetched:fetched[key]=self.folded_rows(expr, where, scope_params, page_offset, size, other_where,selective,term,prefix)
                     return fetched[key]
                 matched = []
                 prefix_used = False
@@ -530,9 +556,9 @@ class Library:
                     if not exact_exists and not any(c in term for c in '\\$"_^'):
                         tokens = re.findall(r"\w+", normalize_words(term))
                         if tokens and len(tokens[-1]) >= 3:
-                            prefix_rows = fetch(expression + "*", 0)
+                            prefix_rows = fetch(expression + "*", 0, prefix=True)
                             if prefix_rows:
-                                rows = fetch(expression + "*", offset) if offset else prefix_rows
+                                rows = fetch(expression + "*", offset, prefix=True) if offset else prefix_rows
                                 exact_exists = True
                                 prefix_used = True
                     if not exact_exists:

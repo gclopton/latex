@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "pluginId": "knowledge-library",
-  "sourceCommit": "c132ca83e603b4ad3004a20341839e28c19fb6de",
-  "release": "de8f8df3a43113a99e2f44159f0033012466066ffbd1937d8ce69feeee2b357a",
+  "sourceCommit": "cd5f09132a6260b719879211e1e8f5f3cc087d6d",
+  "release": "7decf18bad3505a0a9758167324ba1cd9edd0a9ba090e6f99b33b68d316eb683",
   "candidate": false,
   "uncommittedSource": false,
   "files": {
@@ -45,7 +45,7 @@
     "backend/operations.py": "3a71e7a493b5f4321b011fb944134e48c63574d0f517f899489fe02dc2369091",
     "backend/pilot_config.py": "eede4e3c3896919b6beea48111c4e08f0d9697d018e22a07f09cd96b3e835b32",
     "backend/portability.py": "a2169f1e211e414ad98d1212a9449b7823c69ce0a3faa1dbe5b360269cbcc227",
-    "backend/query_service.py": "91e5b0f821d8acdd1e468aeb2c9e0e8ed994e81cbfc0a05298a6b774f92e0b65",
+    "backend/query_service.py": "2faa0025b4b949b60e6ebe976334ee3d5b5cf02472c811dcf1420b3b2ccd2fba",
     "backend/reference_document.py": "95829198b4c8a7c2bea1200878f4cd891f5d678ba9943635114f377d82b82d90",
     "backend/reference_format.py": "a85692892a59aeaac5a9f4085e317f34d7e98672a7372db23bb8d102f9ba3be4",
     "backend/reference_index.py": "5f51f3f39fe809b27543234aea696c7576d76ae1d32288ed9bb59b7a26510f6e",
