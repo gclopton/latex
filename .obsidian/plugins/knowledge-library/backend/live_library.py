@@ -11,6 +11,10 @@ from library_store import PortableLibrary, Conflict, atomic_json
 
 MARKER=re.compile(r'^\s*<!-- knowledge-library:([0-9a-f-]{36}) -->\s*$')
 START_MARKER=re.compile(r'^\s*<!-- knowledge-library-start:([0-9a-f-]{36}) -->\s*$')
+UNRESOLVED_COMPONENT_IDENTITY='This callout has an unresolved identity. Resolve it before admission.'
+
+def complete_component_identity(component):
+    return bool(component and component.get('id') and component.get('at'))
 
 def source_hash(text):return hashlib.sha256(text.replace('\r\n','\n').replace('\r','\n').encode()).hexdigest()
 
@@ -1103,7 +1107,7 @@ class LiveLibrary:
         owners={e['home']['occurrenceId']:e for e in self.store.entries.values()}
         for e in entries:
             owner=owners.get(e['occurrenceId'])
-            e['issue']='Repeated identity marker; resolve the copied marker first' if e['occurrenceId'] and counts[e['occurrenceId']]>1 else 'Copied identity belongs to another note' if owner and (not self.owns(owner) or owner['home']['path']!=path) else None
+            e['issue']=UNRESOLVED_COMPONENT_IDENTITY if e.get('component') is not None and not complete_component_identity(e['component']) else 'Repeated identity marker; resolve the copied marker first' if e['occurrenceId'] and counts[e['occurrenceId']]>1 else 'Copied identity belongs to another note' if owner and (not self.owns(owner) or owner['home']['path']!=path) else None
             e['admitted']=bool(owner and not e['issue'] and owner.get('admission')!='pending-variant') or any(self.owns(old) and old['home'].get('mode')=='snapshot' and old['home']['path']==path and old['home'].get('line')==e['line_start'] and old['body']==e['body'].replace('\r\n','\n').replace('\r','\n') for old in self.store.entries.values())
         return {'path':path,'sourceHash':expected_hash,'entries':[e for e in entries if e['kind']!='key-point'],**self.metadata()}
 
@@ -1111,20 +1115,23 @@ class LiveLibrary:
         if not secrets.compare_digest(capability,self.review_capability):raise Conflict('Admission requires the live review action.')
         text=self.read(path)
         if source_hash(text)!=expected_hash:raise Conflict('The reviewed note changed. Review the current text.')
-        self.recover();self.store.load();all_entries=candidates(text,path)
-        reserved={c['entry']['home']['occurrenceId'] for p in self.plans.glob('*.json') for plan in [json.loads(p.read_text())] if plan['state']=='reviewed' for c in plan['changes']}
-        occurrence_counts={}
-        for e in all_entries:
-            if e['occurrenceId']:occurrence_counts[e['occurrenceId']]=occurrence_counts.get(e['occurrenceId'],0)+1
+        all_entries=candidates(text,path)
         # Each selection includes reviewed range and exact body hash, never a guessed title.
         chosen=[]
         for selection in selected:
             matches=[e for e in all_entries if e['line_start']==selection['line_start'] and e['body_sha256']==selection['body_sha256']]
             if len(matches)!=1 or not matches[0]['complete']:raise Conflict('Selected entry changed or is incomplete.')
+            if matches[0].get('component') is not None and not complete_component_identity(matches[0]['component']):raise Conflict(UNRESOLVED_COMPONENT_IDENTITY)
             if matches[0]['kind']=='key-point':raise Conflict('Classify this key point as a supported index type before adding it.')
             if matches[0] in chosen:raise Conflict('An entry was selected twice.')
             chosen.append(matches[0])
         if not chosen:raise ValueError('Select at least one entry.')
+        # Refuse unresolved components before recovery or any admission writes.
+        self.recover();self.store.load()
+        reserved={c['entry']['home']['occurrenceId'] for p in self.plans.glob('*.json') for plan in [json.loads(p.read_text())] if plan['state']=='reviewed' for c in plan['changes']}
+        occurrence_counts={}
+        for e in all_entries:
+            if e['occurrenceId']:occurrence_counts[e['occurrenceId']]=occurrence_counts.get(e['occurrenceId'],0)+1
         owned={e['home']['occurrenceId']:e for e in self.store.entries.values()}
         documents={e['home']['documentId'] for e in self.store.entries.values() if self.owns(e) and e['home']['path']==path}
         if len(documents)>1:raise Conflict('Document identity needs reconciliation.')

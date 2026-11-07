@@ -559,7 +559,7 @@ class ComponentIdentities:
                     identity=prior['id'];issues.append({'kind':'restored-id','id':identity,'line':row['line']})
                 elif len(matches)==1 and old_rows.index(matches[0])==ordinal:
                     prior=matches[0];identity=prior['id'];at=prior.get('at');issues.append({'kind':'restored-id','id':identity,'line':row['line']})
-                elif matches or (ordinal<len(old_rows) and old_rows[ordinal].get('id') and old_rows[ordinal]['type']==row['type']):
+                elif matches or (ordinal<len(old_rows) and old_rows[ordinal].get('id') and old_rows[ordinal].get('at') not in occupied_ats and old_rows[ordinal]['type']==row['type']):
                     affected=matches or [old_rows[ordinal]]
                     issues.append({'kind':'ambiguous-erased-id','ids':list({r['id'] for r in affected}),'line':row['line']})
                     seen.update(r['at'] for r in affected if r.get('at'));continue

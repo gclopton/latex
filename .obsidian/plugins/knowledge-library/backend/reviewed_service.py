@@ -5,7 +5,7 @@ import os
 import sys
 import sqlite3
 from pathlib import Path
-from live_library import LiveLibrary
+from live_library import LiveLibrary,complete_component_identity,UNRESOLVED_COMPONENT_IDENTITY
 from library_store import Conflict
 from query_service import Library
 import reuse
@@ -162,6 +162,8 @@ class ReviewedService:
                 selected={(e['line_start'],e['body_sha256']) for e in request['selected']}
                 if any((e['line_start'],e['body_sha256']) in selected and not e.get('component') for e in preview['entries']):
                     raise Conflict('Open or convert these legacy callouts to components before admission. Detached markers are retired.')
+                if any((e['line_start'],e['body_sha256']) in selected and not complete_component_identity(e.get('component')) for e in preview['entries']):
+                    raise Conflict(UNRESOLVED_COMPONENT_IDENTITY)
                 data=live.prepare_admission(path=request['path'],expected_hash=request['sourceHash'],selected=request['selected'],capability=request.get('capability',''),actor='human-note-review')
             elif op=='live-finish':data=live.finish_admission(request['token'])
             elif op=='live-sync':
