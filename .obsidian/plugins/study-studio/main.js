@@ -34,1029 +34,7 @@ __export(main_exports, {
 });
 module.exports = __toCommonJS(main_exports);
 
-// src/notation-integration.ts
-var import_obsidian5 = require("obsidian");
-
-// src/annotation-history-native.ts
-var import_state = require("@codemirror/state");
-var import_commands = require("@codemirror/commands");
-var nativeNotationWrite = import_state.Annotation.define();
-var nativeNotationSession = import_state.Annotation.define();
-var nativeHistoryGrouping = (0, import_commands.history)({ joinToEvent: (tr, isAdjacent2) => isAdjacent2 || !!tr.annotation(nativeNotationSession) });
-function nativeSourceTransaction(cm, preflight, options = {}) {
-  if (cm.state !== preflight.startState) throw Error("The note changed after source preflight. Retry with the current source.");
-  if (options.sessionId && !options.first && preflight.annotation(import_commands.isolateHistory) !== void 0) throw Error("Session preflight must leave history isolation to nativeSourceTransaction.");
-  const annotations = [import_state.Transaction.addToHistory.of(true), nativeNotationWrite.of(true), import_state.Transaction.userEvent.of(options.sessionId ? "input.type.symbols.card" : "input.symbols.action")];
-  if (options.time !== void 0) annotations.push(import_state.Transaction.time.of(options.time));
-  if (options.sessionId) {
-    annotations.push(nativeNotationSession.of(options.sessionId));
-    if (options.first) annotations.push(import_commands.isolateHistory.of("before"));
-  } else annotations.push(import_commands.isolateHistory.of("full"));
-  return cm.state.update({ annotations, filter: false }, preflight, { effects: options.effects ?? [], sequential: true });
-}
-
-// src/annotation-history-source.ts
-var import_state2 = require("@codemirror/state");
-var import_node_crypto = require("node:crypto");
-var import_node_buffer = require("node:buffer");
-var SOURCE_RECEIPT_MAX_BYTES = 16 * 1024 * 1024;
-var hash = (source) => (0, import_node_crypto.createHash)("sha256").update(source).digest("hex");
-var text = (source) => import_state2.Text.of(source.split("\n"));
-function sourceReceiptBytes(receipt) {
-  return import_node_buffer.Buffer.byteLength(JSON.stringify(receipt), "utf8");
-}
-function bounded(receipt) {
-  if (sourceReceiptBytes(receipt) > SOURCE_RECEIPT_MAX_BYTES) throw Error("The source history patch exceeds the supported size. Keep the draft and split this operation.");
-  return receipt;
-}
-function changes(source, edits) {
-  let end = 0;
-  for (const edit of [...edits].sort((a2, b) => a2.from - b.from || a2.to - b.to)) {
-    if (!Number.isSafeInteger(edit.from) || !Number.isSafeInteger(edit.to) || edit.from < end || edit.to < edit.from || edit.to > source.length || typeof edit.insert !== "string") throw Error("Invalid or overlapping source history edits.");
-    end = edit.to;
-  }
-  return import_state2.ChangeSet.of(edits, source.length, "\n");
-}
-function decode(receipt) {
-  if (receipt.version !== 1 || !Number.isSafeInteger(receipt.beforeLength) || !Number.isSafeInteger(receipt.afterLength) || receipt.beforeLength < 0 || receipt.afterLength < 0 || !/^[0-9a-f]{64}$/.test(receipt.beforeHash) || !/^[0-9a-f]{64}$/.test(receipt.afterHash)) throw Error("Invalid source history receipt.");
-  const forward = import_state2.ChangeSet.fromJSON(receipt.forward), inverse = import_state2.ChangeSet.fromJSON(receipt.inverse);
-  if (forward.length !== receipt.beforeLength || forward.newLength !== receipt.afterLength || inverse.length !== receipt.afterLength || inverse.newLength !== receipt.beforeLength) throw Error("Source history dimensions do not match.");
-  return { forward, inverse };
-}
-function createSourceReceipt(before, edits) {
-  const forward = changes(before, edits), inverse = forward.invert(text(before)), after = forward.apply(text(before)).toString();
-  return bounded({ version: 1, beforeHash: hash(before), afterHash: hash(after), beforeLength: before.length, afterLength: after.length, forward: forward.toJSON(), inverse: inverse.toJSON() });
-}
-function appendSourceReceipt(receipt, currentBefore, edits) {
-  if (currentBefore.length !== receipt.afterLength || hash(currentBefore) !== receipt.afterHash) throw Error("Source changed between notation saves. End the earlier session and retain the current draft.");
-  const prior = decode(receipt), next = changes(currentBefore, edits), after = next.apply(text(currentBefore)).toString();
-  return bounded({ ...receipt, afterHash: hash(after), afterLength: after.length, forward: prior.forward.compose(next).toJSON(), inverse: next.invert(text(currentBefore)).compose(prior.inverse).toJSON() });
-}
-function restoreSourceReceipt(receipt, current, direction) {
-  const undo3 = direction === "undo", length = undo3 ? receipt.afterLength : receipt.beforeLength, expected = undo3 ? receipt.afterHash : receipt.beforeHash;
-  if (current.length !== length || hash(current) !== expected) throw Error("The source changed after this annotation operation. History was not applied.");
-  const decoded = decode(receipt), change = undo3 ? decoded.inverse : decoded.forward, target = change.apply(text(current)).toString();
-  if (hash(target) !== (undo3 ? receipt.beforeHash : receipt.afterHash)) throw Error("Source history verification failed. Nothing was changed.");
-  const edits = [];
-  change.iterChanges((from, to, _fromB, _toB, insert2) => edits.push({ from, to, insert: insert2.toString() }));
-  return edits;
-}
-
-// src/symbols/model.ts
-var REGISTRY_OPEN = "%% study-symbols v2\n";
-var LEGACY_REGISTRY_OPEN = "%% study-symbols v1\n";
-var ID = /^[0-9a-z]{10}$/;
-var DEF_ID = /^d-[0-9a-z]{10}$/;
-var ROW_ID = /^[A-Za-z0-9_-]{1,80}$/;
-var REGISTRY_LIMIT = 2e6;
-var emptyRegistry = () => ({ entries: {} });
-var emptyEntry = (symbol = "") => ({ symbol, definitionMarkdown: "", units: [], code: [], notesMarkdown: "" });
-var newNotationEntry = (symbol = "") => ({ ...emptyEntry(symbol), units: [{ id: "units0", value: "", units: "" }] });
-var clone = (value) => JSON.parse(JSON.stringify(value));
-function object(v) {
-  return !!v && typeof v === "object" && !Array.isArray(v);
-}
-function string(v, max, name2) {
-  if (typeof v !== "string" || v.length > max) throw Error(`Invalid notation ${name2}.`);
-}
-function validateDefinition(value) {
-  if (!object(value)) throw Error("Invalid legacy symbol definition.");
-  string(value.tex, 16e3, "TeX");
-  string(value.meaning, 4e3, "meaning");
-  string(value.units, 1e3, "units");
-  if (!value.meaning.trim()) throw Error("Legacy symbol meaning is empty.");
-  if (value.concept !== void 0) string(value.concept, 200, "concept key");
-  if (!Array.isArray(value.code) || value.code.length > 100) throw Error("Invalid legacy code names.");
-  for (const c of value.code) {
-    if (!object(c)) throw Error("Invalid legacy code representation.");
-    string(c.lang, 60, "language");
-    string(c.name, 200, "code name");
-    if (!c.lang.trim() || !c.name.trim()) throw Error("Legacy language and code name are required.");
-    if (c.scope !== void 0) string(c.scope, 1e3, "scope");
-  }
-}
-function validateLegacyRegistry(value) {
-  if (!object(value) || !object(value.defs) || !object(value.occ)) throw Error("Invalid legacy symbol registry; source has been left intact.");
-  if (Object.keys(value.defs).length > 1e4 || Object.keys(value.occ).length > 5e4) throw Error("Symbol registry exceeds the supported size.");
-  for (const [id3, d] of Object.entries(value.defs)) {
-    if (!DEF_ID.test(id3)) throw Error("Invalid legacy definition ID.");
-    validateDefinition(d);
-  }
-  for (const [id3, o] of Object.entries(value.occ)) {
-    if (!ID.test(id3) || !object(o) || typeof o.def !== "string" || !Object.hasOwn(value.defs, o.def)) throw Error("Occurrence has no valid definition.");
-    string(o.glyph, 16e3, "occurrence glyph");
-    string(o.equation, 16e3, "equation reference");
-  }
-}
-function validateLanguages(value) {
-  if (!Array.isArray(value) || value.length > 100) throw Error("Use at most 100 notation languages.");
-  const seen = /* @__PURE__ */ new Set();
-  for (const language2 of value) {
-    string(language2, 100, "language");
-    if (!language2.trim() || seen.has(language2)) throw Error("Notation languages must be nonempty and unique.");
-    seen.add(language2);
-  }
-}
-function validateEntry(value) {
-  if (!object(value)) throw Error("Invalid notation entry.");
-  string(value.symbol, 16e3, "symbol");
-  string(value.definitionMarkdown, 64e3, "definition");
-  string(value.notesMarkdown, 128e3, "notes");
-  if (value.equation !== void 0) string(value.equation, 16e3, "equation reference");
-  if (value.languageOverride !== void 0) validateLanguages(value.languageOverride);
-  if (value.notesHidden !== void 0 && typeof value.notesHidden !== "boolean") throw Error("Invalid notation notes visibility.");
-  const rows = (items, label, fields) => {
-    if (!Array.isArray(items) || items.length > 100) throw Error(`Invalid notation ${label} rows.`);
-    const ids = /* @__PURE__ */ new Set();
-    for (const r of items) {
-      if (!object(r) || typeof r.id !== "string" || !ROW_ID.test(r.id) || ids.has(r.id)) throw Error(`Invalid or duplicate notation ${label} row ID.`);
-      ids.add(r.id);
-      for (const field of fields) string(r[field], field === "language" ? 100 : field === "code" ? 4e3 : 16e3, field);
-    }
-  };
-  rows(value.units, "value/unit", ["value", "units"]);
-  rows(value.code, "language/code", ["language", "code"]);
-  if (value.legacy !== void 0) {
-    const old = value.legacy;
-    if (!object(old) || typeof old.definitionId !== "string" || !DEF_ID.test(old.definitionId)) throw Error("Invalid legacy notation metadata.");
-    if (old.concept !== void 0) string(old.concept, 200, "legacy concept");
-    if (old.definition !== void 0) validateDefinition(old.definition);
-    if (old.occurrence !== void 0) {
-      if (!object(old.occurrence) || old.occurrence.def !== old.definitionId) throw Error("Invalid legacy occurrence.");
-      string(old.occurrence.glyph, 16e3, "legacy glyph");
-      string(old.occurrence.equation, 16e3, "legacy equation");
-    }
-    if (old.codeScopes !== void 0) {
-      if (!Array.isArray(old.codeScopes) || old.codeScopes.length > 100) throw Error("Invalid legacy code scopes.");
-      for (const c of old.codeScopes) {
-        if (!object(c)) throw Error("Invalid legacy code scope.");
-        string(c.rowId, 80, "legacy row ID");
-        string(c.scope, 1e3, "legacy scope");
-      }
-    }
-  }
-}
-function validateNotationEntry(value) {
-  validateEntry(value);
-}
-function validateRegistry(value) {
-  if (!object(value) || !object(value.entries) || Object.hasOwn(value, "defs") || Object.hasOwn(value, "occ")) throw Error("Invalid v2 notation registry; source has been left intact.");
-  if (Object.keys(value.entries).length > 5e4) throw Error("Notation registry exceeds the supported size.");
-  for (const [id3, entry] of Object.entries(value.entries)) {
-    if (!ID.test(id3)) throw Error("Invalid notation entry ID.");
-    validateEntry(entry);
-  }
-}
-function convertLegacyRegistry(legacy) {
-  validateLegacyRegistry(legacy);
-  const entries = {}, used = new Set(Object.keys(legacy.occ)), referenced = /* @__PURE__ */ new Set();
-  const record = (definitionId, occurrence) => {
-    const d = legacy.defs[definitionId], code = d.code.map((c, i) => ({ id: "code" + i, language: c.lang, code: c.name }));
-    return { symbol: occurrence?.glyph ?? d.tex, definitionMarkdown: d.meaning, units: d.units ? [{ id: "units0", value: "", units: d.units }] : [], code, notesMarkdown: "", ...occurrence ? { equation: occurrence.equation } : {}, legacy: { definitionId, ...d.concept === void 0 ? {} : { concept: d.concept }, codeScopes: d.code.flatMap((c, i) => c.scope === void 0 ? [] : [{ rowId: code[i].id, scope: c.scope }]), definition: clone(d), ...occurrence ? { occurrence: clone(occurrence) } : {} } };
-  };
-  for (const [id3, o] of Object.entries(legacy.occ)) {
-    entries[id3] = record(o.def, o);
-    referenced.add(o.def);
-  }
-  for (const id3 of Object.keys(legacy.defs)) if (!referenced.has(id3)) {
-    let next = id3.slice(2);
-    for (let n = 0; used.has(next); n++) next = n.toString(36).padStart(10, "0");
-    used.add(next);
-    entries[next] = record(id3);
-  }
-  const result = { entries };
-  validateRegistry(result);
-  return result;
-}
-function registryBlock(source, excluded2 = []) {
-  const starts = [...source.matchAll(/^%% study-symbols[^\n]*\n/gm)].filter((m2) => !excluded2.some((r) => m2.index >= r.from && m2.index < r.to));
-  if (starts.length > 1) throw Error("Multiple symbol registries found. Resolve them before editing notation.");
-  if (!starts.length) return null;
-  const m = starts[0], from = m.index, header = m[0].replace(/\r\n/g, "\n");
-  const version = header === REGISTRY_OPEN ? 2 : header === LEGACY_REGISTRY_OPEN ? 1 : null;
-  if (!version) throw Error("Unsupported symbol registry version.");
-  const bodyFrom = from + m[0].length, end = /^%%[ \t]*(?:\r?$)/m.exec(source.slice(bodyFrom));
-  if (!end) throw Error("Unclosed symbol registry; source has been left intact.");
-  const to = bodyFrom + end.index + end[0].length, raw = source.slice(bodyFrom, bodyFrom + end.index);
-  if (raw.length > REGISTRY_LIMIT) throw Error("Symbol registry exceeds the supported size.");
-  let data2;
-  try {
-    data2 = JSON.parse(raw);
-  } catch {
-    throw Error("Invalid symbol registry JSON; source has been left intact.");
-  }
-  if (version === 1) {
-    validateLegacyRegistry(data2);
-    return { from, to, version, data: convertLegacyRegistry(data2), legacyData: data2 };
-  }
-  validateRegistry(data2);
-  return { from, to, version, data: data2 };
-}
-function serializeRegistry(data2) {
-  validateRegistry(data2);
-  const lines = Object.entries(data2.entries).map(([id3, entry]) => JSON.stringify(id3) + ":" + JSON.stringify(entry));
-  const raw = '{"entries":{\n' + lines.join(",\n") + "\n}}";
-  const safe = raw.replace(/\$/g, "\\u0024").replace(/%/g, "\\u0025");
-  if (safe.length > REGISTRY_LIMIT) throw Error("Notation registry exceeds the supported size.");
-  return REGISTRY_OPEN + safe + "\n%%";
-}
-function registryEdit(source, block, data2) {
-  if (block?.version === 1) throw Error("Legacy notation is read-only until an explicitly authorized v2 conversion.");
-  return block ? { from: block.from, to: block.to, insert: serializeRegistry(data2) } : { from: source.length, to: source.length, insert: (source.endsWith("\n\n") ? "" : source.endsWith("\n") ? "\n" : "\n\n") + serializeRegistry(data2) + "\n" };
-}
-function escaped(s, i) {
-  let n = 0;
-  while (i > 0 && s[--i] === "\\") n++;
-  return n % 2 === 1;
-}
-function group(s, at) {
-  if (s[at] !== "{") return null;
-  let depth2 = 1;
-  for (let i = at + 1; i < s.length; i++) {
-    if (escaped(s, i)) continue;
-    if (s[i] === "%") {
-      const next = s.indexOf("\n", i);
-      if (next < 0) return null;
-      i = next;
-      continue;
-    }
-    if (s[i] === "{") depth2++;
-    if (s[i] === "}" && !--depth2) return { from: at, to: i + 1, body: s.slice(at + 1, i) };
-  }
-  return null;
-}
-function markers(tex) {
-  const out = [];
-  const command2 = /\\class\b/g;
-  let match;
-  while (match = command2.exec(tex)) {
-    const from = match.index;
-    if (escaped(tex, from)) continue;
-    const line = tex.lastIndexOf("\n", from) + 1;
-    let commented = false;
-    for (let k = line; k < from; k++) if (tex[k] === "%" && !escaped(tex, k)) {
-      commented = true;
-      break;
-    }
-    if (commented) continue;
-    let at = command2.lastIndex;
-    while (/\s/.test(tex[at] ?? "") && at < tex.length) at++;
-    const cls = group(tex, at);
-    if (!cls) {
-      if (/^\{[^}]*\bmjx-ss(?:\s|$)/.test(tex.slice(at))) throw Error("Unclosed symbol marker class.");
-      continue;
-    }
-    const tokens = cls.body.trim().split(/\s+/);
-    if (!tokens.some((t2) => t2 === "mjx-ss" || t2.startsWith("mjx-ss-o-"))) continue;
-    const id3 = /^mjx-ss mjx-ss-o-([0-9a-z]{10})$/.exec(cls.body)?.[1];
-    if (!id3) throw Error("Malformed symbol marker. Keep its source intact and repair the ID.");
-    at = cls.to;
-    while (/\s/.test(tex[at] ?? "") && at < tex.length) at++;
-    const body = group(tex, at);
-    if (!body) throw Error("Unclosed symbol marker.");
-    if (out.some((m) => from > m.from && from < m.to)) throw Error("Nested symbol tags are not supported.");
-    out.push({ id: id3, from, to: body.to, bodyFrom: at + 1, bodyTo: body.to - 1, body: body.body });
-  }
-  return out;
-}
-function wrapSymbol(id3, tex) {
-  if (!ID.test(id3)) throw Error("Invalid occurrence ID.");
-  if (!tex.trim()) throw Error("Select a symbol first.");
-  if (markers(tex).length) throw Error("This selection already contains a symbol tag.");
-  return `\\class{mjx-ss mjx-ss-o-${id3}}{${tex}}`;
-}
-function untag(tex, id3) {
-  const hits = markers(tex).filter((m) => m.id === id3);
-  return applyEdits(tex, hits.map((m) => ({ from: m.from, to: m.to, insert: m.body })));
-}
-function applyEdits(source, edits) {
-  const sorted = [...edits].sort((a2, b) => a2.from - b.from || a2.to - b.to);
-  let last = 0, out = "";
-  for (const edit of sorted) {
-    if (edit.from < last || edit.to < edit.from || edit.to > source.length) throw Error("Overlapping or invalid symbol edits.");
-    out += source.slice(last, edit.from) + edit.insert;
-    last = edit.to;
-  }
-  return out + source.slice(last);
-}
-function freshId(existing) {
-  const used = new Set(existing);
-  for (let i = 0; i < 100; i++) {
-    const bytes = crypto.getRandomValues(new Uint8Array(10));
-    const id3 = Array.from(bytes, (n) => (n % 36).toString(36)).join("");
-    if (!used.has(id3)) return id3;
-  }
-  throw Error("Unable to allocate a unique symbol ID.");
-}
-function equationReference(tex) {
-  const plain2 = applyEdits(tex, markers(tex).map((m) => ({ from: m.from, to: m.to, insert: m.body }))).trim();
-  let hash5 = 2166136261;
-  for (let i = 0; i < plain2.length; i++) hash5 = Math.imul(hash5 ^ plain2.charCodeAt(i), 16777619);
-  return "fnv1a:" + (hash5 >>> 0).toString(16).padStart(8, "0") + " " + plain2.slice(0, 100);
-}
-
-// src/annotation-history.ts
-var import_obsidian = require("obsidian");
-var import_state3 = require("@codemirror/state");
-var import_view = require("@codemirror/view");
-var import_commands2 = require("@codemirror/commands");
-var copy = (v) => JSON.parse(JSON.stringify(v));
-var same = (a2, b) => JSON.stringify(a2) === JSON.stringify(b);
-var annotationReceipt = import_state3.StateEffect.define();
-var AnnotationHistory = class {
-  constructor(plugin2, store, api) {
-    this.plugin = plugin2;
-    this.store = store;
-    this.api = api;
-    const manager = this;
-    plugin2.registerEditorExtension([nativeHistoryGrouping, import_state3.EditorState.transactionFilter.of((tr) => {
-      if (manager.transferring || tr.annotation(nativeNotationWrite) || tr.isUserEvent("input.symbols") || tr.isUserEvent("input.type.symbols") || !tr.docChanged && !tr.selection && tr.annotation(import_state3.Transaction.userEvent) === void 0 && tr.annotation(import_state3.Transaction.addToHistory) !== true && tr.annotation(import_commands2.isolateHistory) === void 0) return tr;
-      const path = tr.startState.field(import_obsidian.editorInfoField, false)?.file?.path;
-      if (!path) return tr;
-      const open = [...manager.sessions.values()].filter((s) => s.path === path && s.nativeSource);
-      if (!open.length) return tr;
-      for (const session of open) manager.end(session.id, false);
-      return [{ annotations: import_commands2.isolateHistory.of("before") }, tr];
-    }), import_commands2.invertedEffects.of((tr) => tr.effects.filter((e) => e.is(annotationReceipt)).map((e) => annotationReceipt.of({ id: e.value.id, direction: e.value.direction === "undo" ? "redo" : "undo" }))), import_view.ViewPlugin.fromClass(class {
-      constructor(view) {
-        this.view = view;
-        manager.mount(view);
-      }
-      destroy() {
-        manager.release(this.view);
-      }
-      update(update) {
-        if (manager.viewPaths.get(this.view) !== update.state.field(import_obsidian.editorInfoField, false)?.file?.path) manager.mount(this.view);
-        if (update.docChanged) {
-          if (!manager.transferring && update.transactions.some((tr) => !tr.annotation(nativeNotationWrite) && !tr.isUserEvent("input.symbols") && !tr.isUserEvent("input.type.symbols") && !tr.isUserEvent("undo") && !tr.isUserEvent("redo"))) {
-            const path = this.view.state.field(import_obsidian.editorInfoField, false)?.file?.path;
-            if (path) manager.foreignRevisions.set(path, (manager.foreignRevisions.get(path) ?? 0) + 1);
-          }
-        }
-        for (const tr of update.transactions) for (const effect of tr.effects) if (!manager.transferring && effect.is(annotationReceipt) && effect.value.direction !== "stamp") {
-          const r = manager.receipts.get(effect.value.id);
-          if (r?.source && r.nativeSource) r.sourceApplied = effect.value.direction === "redo";
-          manager.receive(effect.value.id, effect.value.direction);
-        }
-      }
-    }), import_view.EditorView.domEventHandlers({ focus: (_event, view) => {
-      manager.beforeSourceInput?.();
-    }, drop: (_event, view) => {
-      manager.beforeSourceInput?.();
-    } })]);
-    store.onAnnotationCommitted = (before, after) => this.records(before, after);
-    store.beginAnnotationSession = (path, id3) => this.begin(path, id3);
-    store.endAnnotationSession = async (_path, _id, id3) => {
-      this.end(id3);
-    };
-    store.endAnnotationSessionSync = (_path, _id, id3, detail) => this.reserveEnd(id3, detail);
-    if (api) {
-      api.managedHistory = true;
-      plugin2.register(() => {
-        api.managedHistory = false;
-        api.nativeCommit = void 0;
-      });
-      api.nativeCommit = (cm, tr, p, options) => this.commitNative(cm, tr, p, options);
-      api.onBeforeCommit = (p, options) => {
-        if (this.replaying || !this.native(p.path)) return;
-        this.closePathSessions(p.path, options.sessionId);
-        if (options.replay || this.suspended) return;
-        const session = options.sessionId ? this.sessions.get(options.sessionId) : void 0;
-        if (session?.source) appendSourceReceipt(session.source, p.before, p.edits);
-        else createSourceReceipt(p.before, p.edits);
-      };
-      api.onCommitted = (p, options) => {
-        if (options.replay || this.replaying || this.suspended || p.sourceHistory || !this.native(p.path)) return;
-        const edits = p.edits ?? this.minimal(p.before, p.after);
-        if (options.sessionId) {
-          const s = this.sessions.get(options.sessionId);
-          if (s?.nativeSource) this.end(s.id);
-          else if (s) {
-            s.source = s.source ? appendSourceReceipt(s.source, p.before, edits) : createSourceReceipt(p.before, edits);
-            return;
-          }
-        }
-        if (!p.sourceHistory) this.record({ path: p.path, source: createSourceReceipt(p.before, edits), recordsBefore: [], recordsAfter: [] }, options.historyEffects);
-      };
-    }
-    const attach = () => {
-      const leaves = plugin2.app.workspace.getLeavesOfType("markdown"), views = new Set(leaves.map((l) => l.view)), editors = new Set(leaves.map((l) => l.view.editor));
-      for (const [path, stack] of this.reading) if (!views.has(stack.view) || stack.view.file?.path !== path || stack.view.editor?.cm) this.discardReading(path);
-      for (const session of [...this.sessions.values()]) if (session.view && (!views.has(session.view) || session.view.file?.path !== session.path)) this.discardSession(session);
-      for (const [view, { scope, refs }] of this.scopes) if (!views.has(view)) {
-        for (const ref of refs) scope.unregister(ref);
-        this.scopes.delete(view);
-        const cm = view.editor?.cm;
-        if (cm) this.release(cm);
-      }
-      for (const [editor, commands] of this.editorCommands) if (!editors.has(editor)) {
-        if (editor.undo === commands.wrappedUndo) editor.undo = commands.undo;
-        if (editor.redo === commands.wrappedRedo) editor.redo = commands.redo;
-        this.editorCommands.delete(editor);
-      }
-      for (const leaf of leaves) {
-        const view = leaf.view;
-        if (!(view instanceof import_obsidian.MarkdownView)) continue;
-        const editor = view.editor;
-        if (editor && !this.editorCommands.has(editor) && typeof editor.undo === "function" && typeof editor.redo === "function") {
-          const originalUndo = editor.undo, originalRedo = editor.redo;
-          const wrappedUndo = (...args) => {
-            this.beforeSourceInput?.();
-            if (!view.file || !editor.cm && !this.reading.has(view.file.path)) return originalUndo.apply(editor, args);
-            this.readingAction(view, "undo");
-          }, wrappedRedo = (...args) => {
-            this.beforeSourceInput?.();
-            if (!view.file || !editor.cm && !this.reading.has(view.file.path)) return originalRedo.apply(editor, args);
-            this.readingAction(view, "redo");
-          };
-          editor.undo = wrappedUndo;
-          editor.redo = wrappedRedo;
-          this.editorCommands.set(editor, { undo: originalUndo, redo: originalRedo, wrappedUndo, wrappedRedo });
-        }
-        if (this.scopes.has(view)) continue;
-        const scope = view.scope ?? new import_obsidian.Scope(plugin2.app.scope);
-        const refs = [];
-        this.scopes.set(view, { scope, refs });
-        for (const [mods, key3, direction] of [[["Mod"], "z", "undo"], [["Mod", "Shift"], "z", "redo"]]) {
-          const ref = scope.register([...mods], key3, () => {
-            if (!view.file) return true;
-            const active = view.containerEl.ownerDocument.activeElement;
-            if (active?.closest(".study-margin-pane,.math-studio-host") || active?.closest('input,textarea,[contenteditable="true"]') && !active?.closest(".markdown-source-view")) return true;
-            this.readingAction(view, direction);
-            return false;
-          });
-          refs.push(ref);
-        }
-      }
-    };
-    plugin2.registerEvent(plugin2.app.workspace.on("layout-change", attach));
-    plugin2.registerEvent(plugin2.app.workspace.on("active-leaf-change", attach));
-    plugin2.app.workspace.onLayoutReady(attach);
-    plugin2.register(() => {
-      this.receipts.clear();
-      this.sessions.clear();
-      this.reading.clear();
-      for (const { scope, refs } of this.scopes.values()) for (const ref of refs) scope.unregister(ref);
-      this.scopes.clear();
-      for (const [editor, commands] of this.editorCommands) {
-        if (editor.undo === commands.wrappedUndo) editor.undo = commands.undo;
-        if (editor.redo === commands.wrappedRedo) editor.redo = commands.redo;
-      }
-      this.editorCommands.clear();
-      store.onAnnotationCommitted = void 0;
-    });
-  }
-  receipts = /* @__PURE__ */ new Map();
-  sessions = /* @__PURE__ */ new Map();
-  reading = /* @__PURE__ */ new Map();
-  liveViews = /* @__PURE__ */ new WeakSet();
-  viewPaths = /* @__PURE__ */ new WeakMap();
-  queue = Promise.resolve();
-  transferring = false;
-  commandEffects;
-  beforeSourceInput;
-  beforeHistoryCommand;
-  foreignRevisions = /* @__PURE__ */ new Map();
-  onSessionClosed;
-  replaying = false;
-  suspended = 0;
-  scopes = /* @__PURE__ */ new Map();
-  editorCommands = /* @__PURE__ */ new Map();
-  receive(id3, direction) {
-    if (this.commandEffects) this.commandEffects.push({ id: id3, direction });
-    else queueMicrotask(() => this.enqueue(id3, direction));
-  }
-  minimal(before, after) {
-    let from = 0;
-    while (from < before.length && from < after.length && before[from] === after[from]) from++;
-    let to = before.length, end = after.length;
-    while (to > from && end > from && before[to - 1] === after[end - 1]) {
-      to--;
-      end--;
-    }
-    return before === after ? [] : [{ from, to, insert: after.slice(from, end) }];
-  }
-  begin(path, recordId) {
-    const id3 = crypto.randomUUID();
-    this.sessions.set(id3, { id: id3, path, recordId, view: this.native(path), recordsBefore: [], recordsAfter: [] });
-    return id3;
-  }
-  end(id3, isolate = true) {
-    const s = this.sessions.get(id3);
-    if (!s || s.receiptId && !s.nativeSource) return;
-    this.sessions.delete(id3);
-    if (s.nativeSource) {
-      if (isolate && s.nativeView) s.nativeView.dispatch({ annotations: import_commands2.isolateHistory.of("after") });
-    } else if (s.source || s.recordsAfter.length) this.record(s);
-    this.onSessionClosed?.(s.path, s.recordId, id3);
-  }
-  closePathSessions(path, except) {
-    for (const s of [...this.sessions.values()]) if (s.path === path && s.id !== except && s.source) this.end(s.id);
-  }
-  reserveEnd(id3, detail) {
-    const s = this.sessions.get(id3);
-    if (!s || s.receiptId && !s.nativeSource) return;
-    if (!s.recordsAfter.length && detail.base) s.recordsBefore = copy([detail.base]);
-    const desired = detail.next ? [detail.next] : s.recordsAfter;
-    if (!desired.length || same(s.recordsBefore, desired)) {
-      if (s.nativeSource) this.end(id3);
-      else void detail.pending.finally(() => this.sessions.delete(id3)).catch(() => {
-      });
-      return;
-    }
-    const receiptId = s.receiptId ?? this.record({ ...s, recordsAfter: desired });
-    if (!receiptId) return;
-    s.receiptId = receiptId;
-    const receipt = this.receipts.get(receiptId);
-    receipt.recordsBefore = copy(s.recordsBefore);
-    receipt.recordsAfter = copy(desired);
-    receipt.pending = detail.pending.then(() => {
-      if (s.recordsAfter.length) receipt.recordsAfter = copy(s.recordsAfter);
-    }).catch(() => {
-      if (s.recordsAfter.length) receipt.recordsAfter = copy(s.recordsAfter);
-      else {
-        receipt.recordsBefore = [];
-        receipt.recordsAfter = [];
-      }
-    }).finally(() => this.sessions.delete(id3));
-    if (s.nativeSource) {
-      s.nativeView?.dispatch({ annotations: [import_commands2.isolateHistory.of("after"), nativeNotationWrite.of(true)] });
-      s.nativeSource = false;
-      s.nativeView = void 0;
-      this.onSessionClosed?.(s.path, s.recordId, id3);
-    }
-  }
-  records(before, after) {
-    if (this.replaying || this.suspended) return;
-    const paths = [...new Set(after.map((c) => c.path))];
-    for (const path of paths) {
-      const next = after.filter((c) => c.path === path), old = before.filter((c) => next.some((n) => n.id === c.id));
-      const s = next.length === 1 ? [...this.sessions.values()].find((s2) => s2.path === path && s2.recordId === next[0].id) : void 0;
-      if (s) {
-        if (!s.recordsAfter.length) s.recordsBefore = copy(old);
-        s.recordsAfter = copy(next);
-        if (s.receiptId) {
-          const receipt = this.receipts.get(s.receiptId);
-          if (receipt) {
-            receipt.recordsBefore = copy(s.recordsBefore);
-            receipt.recordsAfter = copy(next);
-          }
-        }
-      } else this.record({ path, recordsBefore: old, recordsAfter: next });
-    }
-  }
-  native(path) {
-    return this.plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian.MarkdownView && v.file?.path === path);
-  }
-  bound() {
-    while (this.receipts.size > 100 || [...this.receipts.values()].reduce((n, r) => n + (r.source ? sourceReceiptBytes(r.source) : 0) + JSON.stringify([r.recordsBefore, r.recordsAfter]).length * 2, 0) > 16 * 1024 * 1024) this.receipts.delete(this.receipts.keys().next().value);
-  }
-  commitNative(cm, tr, p, options) {
-    const session = options.sessionId ? this.sessions.get(options.sessionId) : void 0;
-    const patch = session?.source ? appendSourceReceipt(session.source, p.before, p.edits) : createSourceReceipt(p.before, p.edits);
-    const existing = session?.receiptId ? this.receipts.get(session.receiptId) : void 0;
-    const r = existing ?? { id: crypto.randomUUID(), path: p.path, recordsBefore: [], recordsAfter: [], sourceApplied: true, recordsApplied: true, nativeView: cm, nativeSource: true };
-    const first = !existing, time = session ? session.logicalTime = (session.logicalTime ?? Date.now()) - 1 : void 0;
-    const native = nativeSourceTransaction(cm, tr, { sessionId: session?.id, time, first, effects: [...first ? [annotationReceipt.of({ id: r.id, direction: "stamp" })] : [], ...options.historyEffects ?? []] });
-    if (native.newDoc.toString() !== p.after) throw Error("The native editor refused the notation history transaction.");
-    const prior = r.source, originalState = cm.state, priorSession = session ? { ...session } : void 0;
-    r.source = patch;
-    this.receipts.set(r.id, r);
-    try {
-      cm.dispatch(native);
-    } catch (error) {
-      if (first) this.receipts.delete(r.id);
-      else r.source = prior;
-      throw error;
-    }
-    if (session) {
-      session.source = patch;
-      session.receiptId = r.id;
-      session.nativeSource = true;
-      session.nativeView = cm;
-    }
-    this.bound();
-    return () => {
-      if (cm.state !== native.state) return false;
-      this.transferring = true;
-      try {
-        cm.setState(originalState);
-      } finally {
-        this.transferring = false;
-      }
-      if (first) this.receipts.delete(r.id);
-      else r.source = prior;
-      if (session && priorSession) {
-        Object.assign(session, priorSession);
-        if (!priorSession.receiptId) delete session.receiptId;
-        if (!priorSession.nativeSource) delete session.nativeSource;
-        if (!priorSession.source) delete session.source;
-        this.sessions.set(session.id, session);
-      }
-      return true;
-    };
-  }
-  record(input, historyEffects = []) {
-    if (!input.source && !input.recordsAfter.length) return;
-    const view = input.view ?? this.native(input.path);
-    if (!view || view.file?.path !== input.path || !this.plugin.app.workspace.getLeavesOfType("markdown").some((l) => l.view === view)) return;
-    this.closePathSessions(input.path);
-    const cm = view.editor?.cm;
-    if (cm && input.source) return;
-    const r = { path: input.path, source: input.source, recordsBefore: copy(input.recordsBefore), recordsAfter: copy(input.recordsAfter), id: crypto.randomUUID(), sourceApplied: true, recordsApplied: true };
-    this.receipts.set(r.id, r);
-    while (this.receipts.size > 100 || [...this.receipts.values()].reduce((n, r2) => n + (r2.source ? sourceReceiptBytes(r2.source) : 0) + JSON.stringify([r2.recordsBefore, r2.recordsAfter]).length * 2, 0) > 16 * 1024 * 1024) this.receipts.delete(this.receipts.keys().next().value);
-    if (cm) {
-      r.nativeView = cm;
-      cm.dispatch({ effects: [annotationReceipt.of({ id: r.id, direction: "stamp" }), ...historyEffects], annotations: import_commands2.isolateHistory.of("full"), userEvent: "input.annotation-receipt" });
-    } else {
-      if (this.reading.get(r.path)?.view !== view) this.discardReading(r.path);
-      const stack = this.reading.get(r.path) ?? { view, ids: [], cursor: 0 };
-      stack.ids = stack.ids.slice(0, stack.cursor);
-      stack.ids.push(r.id);
-      if (stack.ids.length > 100) stack.ids.shift();
-      stack.cursor = stack.ids.length;
-      this.reading.set(r.path, stack);
-    }
-    return r.id;
-  }
-  discardSession(session) {
-    this.sessions.delete(session.id);
-    this.onSessionClosed?.(session.path, session.recordId, session.id);
-  }
-  discardReading(path) {
-    const stack = this.reading.get(path);
-    if (!stack) return;
-    for (const id3 of stack.ids) this.receipts.delete(id3);
-    this.reading.delete(path);
-  }
-  discardNative(view) {
-    const ids = /* @__PURE__ */ new Set();
-    for (const [id3, r] of this.receipts) if (r.nativeView === view) {
-      ids.add(id3);
-      this.receipts.delete(id3);
-    }
-    for (const session of [...this.sessions.values()]) if (session.nativeView === view || session.receiptId && ids.has(session.receiptId)) this.discardSession(session);
-  }
-  mount(view) {
-    const path = view.state.field(import_obsidian.editorInfoField, false)?.file?.path;
-    if (this.viewPaths.has(view) && this.viewPaths.get(view) !== path) this.discardNative(view);
-    this.viewPaths.set(view, path);
-    this.liveViews.add(view);
-    if (path) {
-      const stack = this.reading.get(path);
-      if (stack && (stack.view.editor?.cm === view || stack.view.file?.path !== path || !this.plugin.app.workspace.getLeavesOfType("markdown").some((l) => l.view === stack.view))) this.discardReading(path);
-    }
-  }
-  release(view) {
-    if (this.transferring) return;
-    this.liveViews.delete(view);
-    queueMicrotask(() => {
-      if (this.liveViews.has(view)) return;
-      this.discardNative(view);
-      this.viewPaths.delete(view);
-    });
-  }
-  readingAction(view, direction) {
-    const path = view.file.path, cm = view.editor?.cm, mode = view.getMode(), revision = this.foreignRevisions.get(path) ?? 0;
-    let gate;
-    try {
-      gate = this.beforeHistoryCommand?.() ?? Promise.resolve(this.beforeSourceInput?.());
-    } catch (error) {
-      new import_obsidian.Notice("Annotation history could not start: " + String(error));
-      return;
-    }
-    void gate.catch(() => {
-    });
-    const ready = async () => {
-      await gate;
-      if (!this.plugin.app.workspace.getLeavesOfType("markdown").some((l) => l.view === view) || view.file?.path !== path || view.getMode() !== mode || view.editor?.cm !== cm || (this.foreignRevisions.get(path) ?? 0) !== revision) throw Error("The editor changed while the annotation save finished. Undo was not applied; your typing is preserved.");
-    };
-    if (this.reading.get(path)?.view === view && !cm) {
-      this.queue = this.queue.catch(() => {
-      }).then(async () => {
-        await ready();
-        const stack = this.reading.get(path);
-        if (!stack || stack.view !== view) return;
-        const index2 = direction === "undo" ? stack.cursor - 1 : stack.cursor, id3 = stack.ids[index2];
-        if (!id3) return;
-        await this.apply(id3, direction);
-        stack.cursor += direction === "undo" ? -1 : 1;
-      }).catch((e) => new import_obsidian.Notice("Annotation " + direction + " could not finish: " + String(e)));
-      return;
-    }
-    if (cm) this.queue = this.queue.catch(() => {
-    }).then(async () => {
-      await ready();
-      if (view.file?.path !== path || view.editor?.cm !== cm) throw Error("The note changed before the history command could run.");
-      if (this.reading.get(path)?.view === view) this.discardReading(path);
-      const before = cm.state.doc.toString();
-      let prepared;
-      (direction === "undo" ? import_commands2.undo : import_commands2.redo)({ state: cm.state, dispatch: (tr) => {
-        prepared = tr;
-      } });
-      if (!prepared) return;
-      const effects = prepared.effects.filter((e) => e.is(annotationReceipt) && e.value.direction !== "stamp").map((e) => e.value);
-      for (const effect of effects) {
-        const r = this.receipts.get(effect.id);
-        if (!r) {
-          if (!prepared.changes.empty) throw Error("This annotation action is too old to undo safely.");
-          continue;
-        }
-        if (!r.source || r.sourceApplied === (effect.direction === "redo")) continue;
-        const expected = applyEdits(before, restoreSourceReceipt(r.source, before, effect.direction));
-        if (prepared.newDoc.toString() !== expected) throw Error("Native source history no longer matches this annotation action. Nothing was changed.");
-      }
-      const after = prepared.newDoc.toString(), captured = prepared;
-      this.commandEffects = [];
-      let dispatched = false;
-      const commit = () => {
-        if (!this.plugin.app.workspace.getLeavesOfType("markdown").some((l) => l.view === view) || view.file?.path !== path || view.editor?.cm !== cm || cm.state !== captured.startState) throw Error("The editor changed while Undo was waiting. Nothing was changed.");
-        cm.dispatch(captured);
-        dispatched = true;
-      };
-      try {
-        if (before !== after && view.getMode() === "preview") {
-          if (!this.api) throw Error("Source history is unavailable.");
-          if (this.api.commitNativeHistory) await this.api.commitNativeHistory(path, before, after, commit);
-          else {
-            await this.api.restoreSource(path, before, after, this.minimal(before, after));
-            commit();
-          }
-        } else commit();
-        for (const effect of effects) await this.apply(effect.id, effect.direction);
-      } catch (error) {
-        if (dispatched) {
-          let restored = false;
-          if (cm.state === captured.state) {
-            let rollback;
-            (direction === "undo" ? import_commands2.redo : import_commands2.undo)({ state: cm.state, dispatch: (tr) => {
-              rollback = tr;
-            } });
-            if (rollback) {
-              const restore = () => {
-                if (!this.plugin.app.workspace.getLeavesOfType("markdown").some((l) => l.view === view) || view.file?.path !== path || view.editor?.cm !== cm || cm.state !== rollback.startState) throw Error("The editor changed before rollback.");
-                this.transferring = true;
-                try {
-                  cm.dispatch(rollback);
-                } finally {
-                  this.transferring = false;
-                }
-                restored = true;
-              };
-              try {
-                if (view.getMode() === "preview" && before !== after && this.api) {
-                  const current = await this.api.source(path);
-                  if (current === before) restore();
-                  else if (current === after && this.api.commitNativeHistory) await this.api.commitNativeHistory(path, after, before, restore);
-                } else restore();
-              } catch {
-              }
-            }
-          }
-          if (restored) {
-            for (const effect of effects) {
-              const r = this.receipts.get(effect.id);
-              if (r?.source && r.nativeSource) r.sourceApplied = direction === "undo";
-            }
-          } else if (effects.length) {
-            let retry = false;
-            for (const effect of effects) {
-              const r = this.receipts.get(effect.id);
-              if (!r) continue;
-              const desired = effect.direction === "redo";
-              if (r.recordsAfter.length && r.recordsApplied !== desired) retry = !!this.record({ path: r.path, recordsBefore: desired ? r.recordsAfter : r.recordsBefore, recordsAfter: desired ? r.recordsBefore : r.recordsAfter }) || retry;
-            }
-            new import_obsidian.Notice(retry ? "The completed text change was preserved. The remaining annotation change is available to retry with Undo." : "The completed text change was preserved. The note closed before its remaining annotation change could finish.");
-          }
-        }
-        throw error;
-      } finally {
-        this.commandEffects = void 0;
-      }
-    }).catch((e) => new import_obsidian.Notice("Annotation " + direction + " could not finish: " + String(e)));
-  }
-  enqueue(id3, direction) {
-    this.queue = this.queue.catch(() => {
-    }).then(() => this.apply(id3, direction)).catch((e) => {
-      new import_obsidian.Notice("Annotation " + direction + " could not finish: " + String(e));
-    });
-    return this.queue;
-  }
-  async settled() {
-    await this.queue;
-  }
-  async apply(id3, direction) {
-    const r = this.receipts.get(id3);
-    if (!r) {
-      new import_obsidian.Notice("This annotation action is too old to undo.");
-      return;
-    }
-    const stack = this.reading.get(r.path);
-    if (!r.nativeView && (!stack || !stack.ids.includes(id3) || stack.view.editor?.cm || stack.view.file?.path !== r.path || !this.plugin.app.workspace.getLeavesOfType("markdown").some((l) => l.view === stack.view))) {
-      this.discardReading(r.path);
-      throw Error("The note is no longer open in its original view.");
-    }
-    if (r.pending) await r.pending;
-    if (this.receipts.get(id3) !== r) throw Error("The note editor closed before annotation history could finish.");
-    const apply2 = direction === "redo";
-    this.replaying = true;
-    const errors = [];
-    try {
-      if (r.source && !r.nativeSource && r.sourceApplied !== apply2) {
-        try {
-          if (!this.api) throw Error("Notation history is unavailable.");
-          const sourceView = this.api.view?.(r.path);
-          if (sourceView && this.api.restoreSourceSync) {
-            const current = sourceView.editor.getValue(), edits = restoreSourceReceipt(r.source, current, direction);
-            this.api.restoreSourceSync(r.path, current, applyEdits(current, edits), edits);
-          } else {
-            const current = await this.api.source(r.path), edits = restoreSourceReceipt(r.source, current, direction);
-            await this.api.restoreSource(r.path, current, applyEdits(current, edits), edits);
-          }
-          r.sourceApplied = apply2;
-        } catch (e) {
-          errors.push(String(e));
-        }
-      }
-      if (r.recordsAfter.length && r.recordsApplied !== apply2) {
-        try {
-          const actual = await this.store.applyHistoryRecords(apply2 ? r.recordsBefore : r.recordsAfter, apply2 ? r.recordsAfter : r.recordsBefore);
-          if (apply2) r.recordsAfter = actual;
-          else r.recordsBefore = actual;
-          r.recordsApplied = apply2;
-        } catch (e) {
-          errors.push(String(e));
-        }
-      }
-      if (errors.length) throw Error(errors.join(" "));
-    } finally {
-      this.replaying = false;
-    }
-  }
-  async mixedCleanup(path) {
-    this.closePathSessions(path);
-    await this.store.refresh();
-    const ordinaryBefore = copy(this.store.data.comments), sessionId = this.begin(path, "cleanup"), session = this.sessions.get(sessionId);
-    let sourcePatch, removed = [], notationCount = 0;
-    let actualBefore, actualAfter, receiptId, finish = () => {
-    };
-    const pending = new Promise((resolve) => {
-      finish = resolve;
-    }), errors = [];
-    this.suspended++;
-    try {
-      if (this.api) try {
-        const plan2 = await this.api.preview(path, [{ type: "clearEmpty" }]);
-        const applied = await this.api.apply(plan2.token, { history: false, sessionId });
-        notationCount = applied.ids.length;
-        const before = applied.sourceBefore ?? plan2.sourceBefore ?? plan2.source, after = applied.sourceAfter;
-        if (before !== after) sourcePatch = createSourceReceipt(before, applied.edits ?? this.minimal(before, after));
-        receiptId = session.receiptId;
-        if (receiptId) {
-          this.receipts.get(receiptId).pending = pending;
-          this.end(sessionId);
-        }
-      } catch (e) {
-        errors.push(String(e));
-      }
-      try {
-        removed = await this.store.emptyAnnotationTransaction(path, void 0, (before, after) => {
-          actualBefore = before;
-          actualAfter = after;
-        });
-      } catch (e) {
-        errors.push(String(e));
-      }
-    } finally {
-      this.suspended--;
-    }
-    const recordsBefore = actualBefore ?? ordinaryBefore.filter((c) => removed.some((n) => n.id === c.id)), recordsAfter = actualAfter ?? copy(this.store.data.comments.filter((c) => removed.some((n) => n.id === c.id)));
-    if (receiptId) {
-      const r = this.receipts.get(receiptId);
-      if (r) {
-        r.recordsBefore = copy(recordsBefore);
-        r.recordsAfter = copy(recordsAfter);
-      }
-    } else receiptId = this.record({ path, ...sourcePatch ? { source: sourcePatch } : {}, recordsBefore, recordsAfter });
-    this.sessions.delete(sessionId);
-    finish();
-    const count2 = notationCount + removed.length;
-    if (!count2) {
-      new import_obsidian.Notice(errors.length ? "Nothing cleared: " + errors.join(" ") : "No empty annotations to clear.");
-      return 0;
-    }
-    const fragment = document.createDocumentFragment();
-    fragment.append(`Cleared ${count2} empty annotations. `);
-    const link = fragment.createEl("a", { text: "Undo", href: "#" });
-    link.onclick = (e) => {
-      e.preventDefault();
-      if (!receiptId) return;
-      const view = this.native(path), cm = view?.editor?.cm;
-      if (view && cm) {
-        let next;
-        (0, import_commands2.undo)({ state: cm.state, dispatch: (tr) => {
-          next = tr;
-        } });
-        if (!next?.effects.some((effect) => effect.is(annotationReceipt) && effect.value.id === receiptId)) {
-          new import_obsidian.Notice("Use Undo to reach this cleanup action; newer edits are preserved.");
-          return;
-        }
-        this.readingAction(view, "undo");
-      } else {
-        void this.enqueue(receiptId, "undo").then(() => {
-          const stack = this.reading.get(path);
-          if (stack?.ids[stack.cursor - 1] === receiptId) stack.cursor--;
-        });
-      }
-    };
-    new import_obsidian.Notice(fragment, 15e3);
-    if (errors.length) new import_obsidian.Notice("Cleanup completed partly: " + errors.join(" "));
-    return count2;
-  }
-};
-
-// src/diagram-model.ts
-function validateDiagram(d) {
-  const check3 = (ok, message3) => {
-    if (!ok) throw Error(message3);
-  };
-  const unit2 = (v) => typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 1;
-  const rect = (r) => {
-    check3(r && unit2(r.x) && unit2(r.y) && unit2(r.width) && unit2(r.height) && r.width > 0 && r.height > 0 && r.x + r.width <= 1.000001 && r.y + r.height <= 1.000001, "Diagram rectangles must fit inside the image (coordinates 0\u20131).");
-  };
-  check3(d && typeof d.image === "string" && d.image.trim() && !/^(?:[a-z]+:|\/)|(?:^|\/)\.\.(?:\/|$)/i.test(d.image), "Choose an image inside the vault.");
-  check3(d.minWidth === void 0 || Number.isFinite(d.minWidth) && d.minWidth >= 760 && d.minWidth <= 2400, "Diagram minimum width must be between 760 and 2400 pixels.");
-  if (d.crop !== void 0) {
-    check3(Array.isArray(d.crop) && d.crop.length === 4, "Invalid diagram crop.");
-    rect({ x: d.crop[0], y: d.crop[1], width: d.crop[2], height: d.crop[3] });
-  }
-  check3(typeof d.alt === "string" && d.alt.trim(), "Provide an image description.");
-  check3(Array.isArray(d.covers) && Array.isArray(d.labels) && d.labels.length > 0, "Add at least one diagram label.");
-  d.covers.forEach((r) => {
-    rect(r);
-    check3(/^#[0-9a-f]{6}$/i.test(r.color), "Covers require an opaque six-digit hex color.");
-  });
-  return d.labels.map((r) => {
-    rect(r);
-    check3(typeof r.id === "string" && /^[\w-]{1,100}$/.test(r.id), "Invalid diagram label ID.");
-    check3(r.reference === void 0 || typeof r.reference === "string" && /^[a-z]{1,3}$/.test(r.reference), "Invalid diagram reference label.");
-    check3(r.math === void 0 || typeof r.math === "boolean", "Invalid label math mode.");
-    check3(r.target === void 0 || r.target && unit2(r.target.x) && unit2(r.target.y), "Leader endpoints must be inside the image.");
-    return r.id;
-  });
-}
-function moveRect(r, x, y) {
-  r.x = Math.max(0, Math.min(1 - r.width, x));
-  r.y = Math.max(0, Math.min(1 - r.height, y));
-}
-function blankReference(index2) {
-  if (!Number.isSafeInteger(index2) || index2 < 0) throw Error("Invalid blank index.");
-  let s = "";
-  for (let n = index2 + 1; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(97 + (n - 1) % 26) + s;
-  return s;
-}
-function diagramReference(d, index2) {
-  return d.labels.length > 1 ? d.labels[index2].reference ?? blankReference(index2) : "";
-}
-
-// src/figure-study-model.ts
-var unit = (n) => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 1;
-function validRect(r) {
-  return !!r && [r.x, r.y, r.width, r.height].every(unit) && r.width > 0 && r.height > 0 && r.x + r.width <= 1.000001 && r.y + r.height <= 1.000001;
-}
-function validFigureStudy(f) {
-  return !!f && ["figureId", "panelPath", "imagePath", "imageHash"].every((k) => typeof f[k] === "string" && f[k].length > 0) && /^[a-f0-9]{64}$/.test(f.imageHash) && Number.isSafeInteger(f.panelOccurrence) && f.panelOccurrence >= 0 && [f.naturalWidth, f.naturalHeight].every((n) => Number.isFinite(n) && n > 0) && Array.isArray(f.regions) && f.regions.length > 0 && f.regions.length <= 128 && new Set(f.regions.map((r) => r?.id)).size === f.regions.length && f.regions.every((r) => !!r && typeof r.id === "string" && /^[\w-]{1,100}$/.test(r.id) && /^#[a-f0-9]{6}$/i.test(r.color) && (!r.target || unit(r.target.x) && unit(r.target.y)) && validRect(r));
-}
-var figureKey = (r) => JSON.stringify([r.figureId, r.panelPath, r.panelOccurrence]);
-function cropRect(r, c) {
-  return { x: (r.x - c[0]) / c[2], y: (r.y - c[1]) / c[3], width: r.width / c[2], height: r.height / c[3] };
-}
-var edge = (n) => Math.abs(n) < 1e-9 ? 0 : Math.abs(n - 1) < 1e-9 ? 1 : n;
-function cropPoint(p, c) {
-  return { x: edge((p.x - c[0]) / c[2]), y: edge((p.y - c[1]) / c[3]) };
-}
-function regionInCrop(r, c) {
-  const q = cropRect(r, c), p = r.target && cropPoint(r.target, c);
-  return validRect(q) && (!p || unit(p.x) && unit(p.y));
-}
-function buildFigureDiagram(f, crop, image, alt, mathIds = [], referenceIds = f.regions.map((r) => r.id)) {
-  if (!validFigureStudy(f) || f.regions.some((r) => !regionInCrop(r, crop))) throw Error("A blank or arrow is outside the current crop. Adjust the crop or the study regions.");
-  return { image, alt, crop, covers: f.regions.map((r) => ({ ...cropRect(r, crop), color: r.color })), labels: f.regions.map((r) => ({ ...cropRect(r, crop), id: r.id, reference: blankReference(referenceIds.indexOf(r.id)), ...r.target ? { target: cropPoint(r.target, crop) } : {}, ...mathIds.includes(r.id) ? { math: true } : {} })) };
-}
-function drawnRect(a2, b) {
-  return { x: Math.min(a2.x, b.x), y: Math.min(a2.y, b.y), width: Math.abs(a2.x - b.x), height: Math.abs(a2.y - b.y) };
-}
-
-// src/study-directive-model.ts
-function validStudyDirective(x) {
-  return !!x && x.version === 1 && ["text", "table", "question", "figure"].includes(x.rule) && (x.rule === "figure" ? validFigureStudy(x.figure) : x.figure === void 0) && (!x.consumed || Array.isArray(x.consumed.questionIds) && x.consumed.questionIds.length > 0 && x.consumed.questionIds.every((id3) => typeof id3 === "string") && typeof x.consumed.at === "string");
-}
-var isConsumed = (c) => !!(c.code?.consumed || c.study?.consumed);
-var isStudyMark = (c) => !!c.study || c.code?.purpose === "practice-blank" || c.code?.purpose === "question";
-var studyPalette = { question: { color: "#aa358e", darkColor: "#ed8bd7", intent: "General question" }, text: { color: "#078b9e", darkColor: "#64e7f4", intent: "Text / math blank" }, table: { color: "#bc650d", darkColor: "#ffae52", intent: "Table blank" } };
-
-// node_modules/@lezer/common/dist/index.js
+// ../obsidian-study-studio/node_modules/@lezer/common/dist/index.js
 var DefaultBufferLength = 1024;
 var nextPropID = 0;
 var Range2 = class {
@@ -2216,10 +1194,10 @@ var TreeCursor = class {
   get node() {
     if (!this.buffer)
       return this._tree;
-    let cache6 = this.bufferNode, result = null, depth2 = 0;
-    if (cache6 && cache6.context == this.buffer) {
+    let cache7 = this.bufferNode, result = null, depth2 = 0;
+    if (cache7 && cache7.context == this.buffer) {
       scan: for (let index2 = this.index, d = this.stack.length; d >= 0; ) {
-        for (let c = cache6; c; c = c._parent)
+        for (let c = cache7; c; c = c._parent)
           if (c.index == index2) {
             if (index2 == this.index)
               return c;
@@ -2708,8 +1686,8 @@ var Parser = class {
   }
 };
 var StringInput = class {
-  constructor(string4) {
-    this.string = string4;
+  constructor(string5) {
+    this.string = string5;
   }
   get length() {
     return this.string.length;
@@ -3107,7 +2085,7 @@ function enterFragments(mounts, ranges) {
   return result;
 }
 
-// node_modules/@lezer/highlight/dist/index.js
+// ../obsidian-study-studio/node_modules/@lezer/highlight/dist/index.js
 var nextTagID = 0;
 var Tag = class _Tag {
   /**
@@ -3418,7 +2396,7 @@ var name = t();
 var typeName = t(name);
 var propertyName = t(name);
 var literal = t();
-var string2 = t(literal);
+var string = t(literal);
 var number = t(literal);
 var content = t();
 var heading = t(content);
@@ -3491,19 +2469,19 @@ var tags = {
   /**
   A string [literal](#highlight.tags.literal).
   */
-  string: string2,
+  string,
   /**
   A documentation [string](#highlight.tags.string).
   */
-  docString: t(string2),
+  docString: t(string),
   /**
   A character literal (subtag of [string](#highlight.tags.string)).
   */
-  character: t(string2),
+  character: t(string),
   /**
   An attribute value (subtag of [string](#highlight.tags.string)).
   */
-  attributeValue: t(string2),
+  attributeValue: t(string),
   /**
   A number [literal](#highlight.tags.literal).
   */
@@ -3831,7 +2809,7 @@ var classHighlighter = tagHighlighter([
   { tag: tags.punctuation, class: "tok-punctuation" }
 ]);
 
-// node_modules/@lezer/markdown/dist/index.js
+// ../obsidian-study-studio/node_modules/@lezer/markdown/dist/index.js
 var CompositeBlock = class _CompositeBlock {
   static create(type, value, from, parentHash, end) {
     let hash5 = parentHash + (parentHash << 8) + type + (value << 4) | 0;
@@ -4700,10 +3678,10 @@ var BlockContext = class {
   /**
   @internal
   */
-  addNode(block, from, to) {
-    if (typeof block == "number")
-      block = new Tree(this.parser.nodeSet.types[block], none, none, (to !== null && to !== void 0 ? to : this.prevLineEnd()) - from);
-    this.block.addChild(block, from - this.block.from);
+  addNode(block2, from, to) {
+    if (typeof block2 == "number")
+      block2 = new Tree(this.parser.nodeSet.types[block2], none, none, (to !== null && to !== void 0 ? to : this.prevLineEnd()) - from);
+    this.block.addChild(block2, from - this.block.from);
   }
   /**
   Add a block element. Can be called by [block
@@ -4756,7 +3734,7 @@ var BlockContext = class {
   @internal
   */
   get buffer() {
-    return new Buffer3(this.parser.nodeSet);
+    return new Buffer2(this.parser.nodeSet);
   }
 };
 function injectGaps(ranges, rangeI, tree2, offset, dummies) {
@@ -4826,13 +3804,13 @@ var MarkdownParser = class _MarkdownParser extends Parser {
       skipContextMarkup = Object.assign({}, skipContextMarkup);
       let nodeTypes2 = nodeSet2.types.slice(), styles;
       for (let s of config.defineNodes) {
-        let { name: name2, block, composite, style } = typeof s == "string" ? { name: s } : s;
+        let { name: name2, block: block2, composite, style } = typeof s == "string" ? { name: s } : s;
         if (nodeTypes2.some((t2) => t2.name == name2))
           continue;
         if (composite)
           skipContextMarkup[nodeTypes2.length] = (bl, cx, line) => composite(cx, line, bl.value);
         let id3 = nodeTypes2.length;
-        let group2 = composite ? ["Block", "BlockContext"] : !block ? void 0 : id3 >= Type.ATXHeading1 && id3 <= Type.SetextHeading2 ? ["Block", "LeafBlock", "Heading"] : ["Block", "LeafBlock"];
+        let group2 = composite ? ["Block", "BlockContext"] : !block2 ? void 0 : id3 >= Type.ATXHeading1 && id3 <= Type.SetextHeading2 ? ["Block", "LeafBlock", "Heading"] : ["Block", "LeafBlock"];
         nodeTypes2.push(NodeType.define({
           id: id3,
           name: name2,
@@ -4855,9 +3833,9 @@ var MarkdownParser = class _MarkdownParser extends Parser {
       nodeSet2 = nodeSet2.extend(...config.props);
     if (nonEmpty(config.remove)) {
       for (let rm2 of config.remove) {
-        let block = this.blockNames.indexOf(rm2), inline = this.inlineNames.indexOf(rm2);
-        if (block > -1)
-          blockParsers[block] = leafBlockParsers[block] = void 0;
+        let block2 = this.blockNames.indexOf(rm2), inline = this.inlineNames.indexOf(rm2);
+        if (block2 > -1)
+          blockParsers[block2] = leafBlockParsers[block2] = void 0;
         if (inline > -1)
           inlineParsers[inline] = void 0;
       }
@@ -4966,7 +3944,7 @@ for (let i = 1, name2; name2 = Type[i]; i++) {
   });
 }
 var none = [];
-var Buffer3 = class {
+var Buffer2 = class {
   constructor(nodeSet2) {
     this.nodeSet = nodeSet2;
     this.content = [];
@@ -5013,7 +3991,7 @@ var Element2 = class {
   @internal
   */
   toTree(nodeSet2) {
-    return new Buffer3(nodeSet2).writeElements(this.children, -this.from).finish(this.type, this.to - this.from);
+    return new Buffer2(nodeSet2).writeElements(this.children, -this.from).finish(this.type, this.to - this.from);
   }
 };
 var TreeElement = class {
@@ -5900,15 +4878,15 @@ var parser2 = parser.configure(Strikethrough);
 var largeCache = /* @__PURE__ */ new Map();
 var smallCache = /* @__PURE__ */ new Map();
 function markdownContext(source) {
-  const cache6 = source.length < 4096 ? smallCache : largeCache;
-  const old = cache6.get(source);
+  const cache7 = source.length < 4096 ? smallCache : largeCache;
+  const old = cache7.get(source);
   if (old) {
-    cache6.delete(source);
-    cache6.set(source, old);
+    cache7.delete(source);
+    cache7.set(source, old);
     return old;
   }
   let fragments = [];
-  const previous = source.length < 4096 ? void 0 : [...cache6.entries()].sort((a2, b) => Math.abs(a2[0].length - source.length) - Math.abs(b[0].length - source.length))[0];
+  const previous = source.length < 4096 ? void 0 : [...cache7.entries()].sort((a2, b) => Math.abs(a2[0].length - source.length) - Math.abs(b[0].length - source.length))[0];
   if (previous) {
     const [before, context2] = previous;
     let from = 0, toA = before.length, toB = source.length;
@@ -5930,13 +4908,13 @@ function markdownContext(source) {
   if (front) excluded2.push({ from: 0, to: front[0].length });
   excluded2.sort((a2, b) => a2.from - b.from);
   const result = { tree: tree2, excluded: excluded2, reusedFragments: fragments.length };
-  cache6.set(source, result);
-  if (cache6.size > 4) cache6.delete(cache6.keys().next().value);
+  cache7.set(source, result);
+  if (cache7.size > 4) cache7.delete(cache7.keys().next().value);
   return result;
 }
 
 // src/math-model.ts
-var escaped2 = (s, i) => {
+var escaped = (s, i) => {
   let n = 0;
   while (i > 0 && s[--i] === "\\") n++;
   return n % 2 === 1;
@@ -5952,7 +4930,7 @@ function equations(s) {
       i = blocked.to;
       continue;
     }
-    if (s[i] !== "$" || escaped2(s, i)) {
+    if (s[i] !== "$" || escaped(s, i)) {
       i++;
       continue;
     }
@@ -5970,7 +4948,7 @@ function equations(s) {
       if (!display && s[j] === "\n") break;
       if (display && s[j] === "\n" && /^[ \t]*\r?\n/.test(s.slice(j + 1))) break;
       if (display && s[j] === "\n" && /^ {0,3}(?:`{3,}|~{3,})/.test(s.slice(j + 1))) break;
-      if (s[j] === "$" && !escaped2(s, j)) {
+      if (s[j] === "$" && !escaped(s, j)) {
         if (!display && s[j + 1] === "$") break;
         if (display && s[j + 1] !== "$") break;
         end = j;
@@ -6052,6 +5030,1083 @@ $$` : `$${latex}$` : q.raw.slice(0, q.bodyFrom - q.from) + latex + q.raw.slice(q
   return source.slice(0, q.from) + replacement + source.slice(q.to);
 }
 
+// src/answer-preview.ts
+function answerPreview(value, mathMode) {
+  const trimmed = value.trim();
+  if (!trimmed) return void 0;
+  const math2 = equations(trimmed).filter((e) => e.body.trim());
+  if (math2.length) {
+    const whole = math2.length === 1 && math2[0].from === 0 && math2[0].to === trimmed.length;
+    return { source: whole ? math2[0].raw : value, wholeMath: whole };
+  }
+  return mathMode ? { source: `$${value}$`, wholeMath: true } : void 0;
+}
+
+// src/notation-integration.ts
+var import_obsidian5 = require("obsidian");
+
+// src/annotation-history-native.ts
+var import_state = require("@codemirror/state");
+var import_commands = require("@codemirror/commands");
+var nativeNotationWrite = import_state.Annotation.define();
+var nativeNotationSession = import_state.Annotation.define();
+var nativeHistoryGrouping = (0, import_commands.history)({ joinToEvent: (tr, isAdjacent2) => isAdjacent2 || !!tr.annotation(nativeNotationSession) });
+function nativeSourceTransaction(cm, preflight, options = {}) {
+  if (cm.state !== preflight.startState) throw Error("The note changed after source preflight. Retry with the current source.");
+  if (options.sessionId && !options.first && preflight.annotation(import_commands.isolateHistory) !== void 0) throw Error("Session preflight must leave history isolation to nativeSourceTransaction.");
+  const annotations = [import_state.Transaction.addToHistory.of(true), nativeNotationWrite.of(true), import_state.Transaction.userEvent.of(options.sessionId ? "input.type.symbols.card" : "input.symbols.action")];
+  if (options.time !== void 0) annotations.push(import_state.Transaction.time.of(options.time));
+  if (options.sessionId) {
+    annotations.push(nativeNotationSession.of(options.sessionId));
+    if (options.first) annotations.push(import_commands.isolateHistory.of("before"));
+  } else annotations.push(import_commands.isolateHistory.of("full"));
+  return cm.state.update({ annotations, filter: false }, preflight, { effects: options.effects ?? [], sequential: true });
+}
+
+// src/annotation-history-source.ts
+var import_state2 = require("@codemirror/state");
+var import_node_crypto = require("node:crypto");
+var import_node_buffer = require("node:buffer");
+var SOURCE_RECEIPT_MAX_BYTES = 16 * 1024 * 1024;
+var hash = (source) => (0, import_node_crypto.createHash)("sha256").update(source).digest("hex");
+var text = (source) => import_state2.Text.of(source.split("\n"));
+function sourceReceiptBytes(receipt) {
+  return import_node_buffer.Buffer.byteLength(JSON.stringify(receipt), "utf8");
+}
+function bounded(receipt) {
+  if (sourceReceiptBytes(receipt) > SOURCE_RECEIPT_MAX_BYTES) throw Error("The source history patch exceeds the supported size. Keep the draft and split this operation.");
+  return receipt;
+}
+function changes(source, edits) {
+  let end = 0;
+  for (const edit of [...edits].sort((a2, b) => a2.from - b.from || a2.to - b.to)) {
+    if (!Number.isSafeInteger(edit.from) || !Number.isSafeInteger(edit.to) || edit.from < end || edit.to < edit.from || edit.to > source.length || typeof edit.insert !== "string") throw Error("Invalid or overlapping source history edits.");
+    end = edit.to;
+  }
+  return import_state2.ChangeSet.of(edits, source.length, "\n");
+}
+function decode(receipt) {
+  if (receipt.version !== 1 || !Number.isSafeInteger(receipt.beforeLength) || !Number.isSafeInteger(receipt.afterLength) || receipt.beforeLength < 0 || receipt.afterLength < 0 || !/^[0-9a-f]{64}$/.test(receipt.beforeHash) || !/^[0-9a-f]{64}$/.test(receipt.afterHash)) throw Error("Invalid source history receipt.");
+  const forward = import_state2.ChangeSet.fromJSON(receipt.forward), inverse = import_state2.ChangeSet.fromJSON(receipt.inverse);
+  if (forward.length !== receipt.beforeLength || forward.newLength !== receipt.afterLength || inverse.length !== receipt.afterLength || inverse.newLength !== receipt.beforeLength) throw Error("Source history dimensions do not match.");
+  return { forward, inverse };
+}
+function createSourceReceipt(before, edits) {
+  const forward = changes(before, edits), inverse = forward.invert(text(before)), after = forward.apply(text(before)).toString();
+  return bounded({ version: 1, beforeHash: hash(before), afterHash: hash(after), beforeLength: before.length, afterLength: after.length, forward: forward.toJSON(), inverse: inverse.toJSON() });
+}
+function appendSourceReceipt(receipt, currentBefore, edits) {
+  if (currentBefore.length !== receipt.afterLength || hash(currentBefore) !== receipt.afterHash) throw Error("Source changed between notation saves. End the earlier session and retain the current draft.");
+  const prior = decode(receipt), next = changes(currentBefore, edits), after = next.apply(text(currentBefore)).toString();
+  return bounded({ ...receipt, afterHash: hash(after), afterLength: after.length, forward: prior.forward.compose(next).toJSON(), inverse: next.invert(text(currentBefore)).compose(prior.inverse).toJSON() });
+}
+function restoreSourceReceipt(receipt, current, direction) {
+  const undo3 = direction === "undo", length = undo3 ? receipt.afterLength : receipt.beforeLength, expected = undo3 ? receipt.afterHash : receipt.beforeHash;
+  if (current.length !== length || hash(current) !== expected) throw Error("The source changed after this annotation operation. History was not applied.");
+  const decoded = decode(receipt), change = undo3 ? decoded.inverse : decoded.forward, target = change.apply(text(current)).toString();
+  if (hash(target) !== (undo3 ? receipt.beforeHash : receipt.afterHash)) throw Error("Source history verification failed. Nothing was changed.");
+  const edits = [];
+  change.iterChanges((from, to, _fromB, _toB, insert2) => edits.push({ from, to, insert: insert2.toString() }));
+  return edits;
+}
+
+// src/symbols/model.ts
+var REGISTRY_OPEN = "%% study-symbols v2\n";
+var LEGACY_REGISTRY_OPEN = "%% study-symbols v1\n";
+var ID = /^[0-9a-z]{10}$/;
+var DEF_ID = /^d-[0-9a-z]{10}$/;
+var ROW_ID = /^[A-Za-z0-9_-]{1,80}$/;
+var REGISTRY_LIMIT = 2e6;
+var emptyRegistry = () => ({ entries: {} });
+var emptyEntry = (symbol = "") => ({ symbol, definitionMarkdown: "", units: [], code: [], notesMarkdown: "" });
+var newNotationEntry = (symbol = "") => ({ ...emptyEntry(symbol), units: [{ id: "units0", value: "", units: "" }] });
+var clone = (value) => JSON.parse(JSON.stringify(value));
+function object(v) {
+  return !!v && typeof v === "object" && !Array.isArray(v);
+}
+function string2(v, max, name2) {
+  if (typeof v !== "string" || v.length > max) throw Error(`Invalid notation ${name2}.`);
+}
+function validateDefinition(value) {
+  if (!object(value)) throw Error("Invalid legacy symbol definition.");
+  string2(value.tex, 16e3, "TeX");
+  string2(value.meaning, 4e3, "meaning");
+  string2(value.units, 1e3, "units");
+  if (!value.meaning.trim()) throw Error("Legacy symbol meaning is empty.");
+  if (value.concept !== void 0) string2(value.concept, 200, "concept key");
+  if (!Array.isArray(value.code) || value.code.length > 100) throw Error("Invalid legacy code names.");
+  for (const c of value.code) {
+    if (!object(c)) throw Error("Invalid legacy code representation.");
+    string2(c.lang, 60, "language");
+    string2(c.name, 200, "code name");
+    if (!c.lang.trim() || !c.name.trim()) throw Error("Legacy language and code name are required.");
+    if (c.scope !== void 0) string2(c.scope, 1e3, "scope");
+  }
+}
+function validateLegacyRegistry(value) {
+  if (!object(value) || !object(value.defs) || !object(value.occ)) throw Error("Invalid legacy symbol registry; source has been left intact.");
+  if (Object.keys(value.defs).length > 1e4 || Object.keys(value.occ).length > 5e4) throw Error("Symbol registry exceeds the supported size.");
+  for (const [id3, d] of Object.entries(value.defs)) {
+    if (!DEF_ID.test(id3)) throw Error("Invalid legacy definition ID.");
+    validateDefinition(d);
+  }
+  for (const [id3, o] of Object.entries(value.occ)) {
+    if (!ID.test(id3) || !object(o) || typeof o.def !== "string" || !Object.hasOwn(value.defs, o.def)) throw Error("Occurrence has no valid definition.");
+    string2(o.glyph, 16e3, "occurrence glyph");
+    string2(o.equation, 16e3, "equation reference");
+  }
+}
+function validateLanguages(value) {
+  if (!Array.isArray(value) || value.length > 100) throw Error("Use at most 100 notation languages.");
+  const seen = /* @__PURE__ */ new Set();
+  for (const language2 of value) {
+    string2(language2, 100, "language");
+    if (!language2.trim() || seen.has(language2)) throw Error("Notation languages must be nonempty and unique.");
+    seen.add(language2);
+  }
+}
+function validateEntry(value) {
+  if (!object(value)) throw Error("Invalid notation entry.");
+  string2(value.symbol, 16e3, "symbol");
+  string2(value.definitionMarkdown, 64e3, "definition");
+  string2(value.notesMarkdown, 128e3, "notes");
+  if (value.equation !== void 0) string2(value.equation, 16e3, "equation reference");
+  if (value.languageOverride !== void 0) validateLanguages(value.languageOverride);
+  if (value.notesHidden !== void 0 && typeof value.notesHidden !== "boolean") throw Error("Invalid notation notes visibility.");
+  const rows = (items, label, fields) => {
+    if (!Array.isArray(items) || items.length > 100) throw Error(`Invalid notation ${label} rows.`);
+    const ids = /* @__PURE__ */ new Set();
+    for (const r of items) {
+      if (!object(r) || typeof r.id !== "string" || !ROW_ID.test(r.id) || ids.has(r.id)) throw Error(`Invalid or duplicate notation ${label} row ID.`);
+      ids.add(r.id);
+      for (const field of fields) string2(r[field], field === "language" ? 100 : field === "code" ? 4e3 : 16e3, field);
+    }
+  };
+  rows(value.units, "value/unit", ["value", "units"]);
+  rows(value.code, "language/code", ["language", "code"]);
+  if (value.legacy !== void 0) {
+    const old = value.legacy;
+    if (!object(old) || typeof old.definitionId !== "string" || !DEF_ID.test(old.definitionId)) throw Error("Invalid legacy notation metadata.");
+    if (old.concept !== void 0) string2(old.concept, 200, "legacy concept");
+    if (old.definition !== void 0) validateDefinition(old.definition);
+    if (old.occurrence !== void 0) {
+      if (!object(old.occurrence) || old.occurrence.def !== old.definitionId) throw Error("Invalid legacy occurrence.");
+      string2(old.occurrence.glyph, 16e3, "legacy glyph");
+      string2(old.occurrence.equation, 16e3, "legacy equation");
+    }
+    if (old.codeScopes !== void 0) {
+      if (!Array.isArray(old.codeScopes) || old.codeScopes.length > 100) throw Error("Invalid legacy code scopes.");
+      for (const c of old.codeScopes) {
+        if (!object(c)) throw Error("Invalid legacy code scope.");
+        string2(c.rowId, 80, "legacy row ID");
+        string2(c.scope, 1e3, "legacy scope");
+      }
+    }
+  }
+}
+function validateNotationEntry(value) {
+  validateEntry(value);
+}
+function validateRegistry(value) {
+  if (!object(value) || !object(value.entries) || Object.hasOwn(value, "defs") || Object.hasOwn(value, "occ")) throw Error("Invalid v2 notation registry; source has been left intact.");
+  if (Object.keys(value.entries).length > 5e4) throw Error("Notation registry exceeds the supported size.");
+  for (const [id3, entry] of Object.entries(value.entries)) {
+    if (!ID.test(id3)) throw Error("Invalid notation entry ID.");
+    validateEntry(entry);
+  }
+}
+function convertLegacyRegistry(legacy) {
+  validateLegacyRegistry(legacy);
+  const entries = {}, used = new Set(Object.keys(legacy.occ)), referenced = /* @__PURE__ */ new Set();
+  const record = (definitionId, occurrence) => {
+    const d = legacy.defs[definitionId], code = d.code.map((c, i) => ({ id: "code" + i, language: c.lang, code: c.name }));
+    return { symbol: occurrence?.glyph ?? d.tex, definitionMarkdown: d.meaning, units: d.units ? [{ id: "units0", value: "", units: d.units }] : [], code, notesMarkdown: "", ...occurrence ? { equation: occurrence.equation } : {}, legacy: { definitionId, ...d.concept === void 0 ? {} : { concept: d.concept }, codeScopes: d.code.flatMap((c, i) => c.scope === void 0 ? [] : [{ rowId: code[i].id, scope: c.scope }]), definition: clone(d), ...occurrence ? { occurrence: clone(occurrence) } : {} } };
+  };
+  for (const [id3, o] of Object.entries(legacy.occ)) {
+    entries[id3] = record(o.def, o);
+    referenced.add(o.def);
+  }
+  for (const id3 of Object.keys(legacy.defs)) if (!referenced.has(id3)) {
+    let next = id3.slice(2);
+    for (let n = 0; used.has(next); n++) next = n.toString(36).padStart(10, "0");
+    used.add(next);
+    entries[next] = record(id3);
+  }
+  const result = { entries };
+  validateRegistry(result);
+  return result;
+}
+function registryBlock(source, excluded2 = []) {
+  const starts = [...source.matchAll(/^%% study-symbols[^\n]*\n/gm)].filter((m2) => !excluded2.some((r) => m2.index >= r.from && m2.index < r.to));
+  if (starts.length > 1) throw Error("Multiple symbol registries found. Resolve them before editing notation.");
+  if (!starts.length) return null;
+  const m = starts[0], from = m.index, header = m[0].replace(/\r\n/g, "\n");
+  const version = header === REGISTRY_OPEN ? 2 : header === LEGACY_REGISTRY_OPEN ? 1 : null;
+  if (!version) throw Error("Unsupported symbol registry version.");
+  const bodyFrom = from + m[0].length, end = /^%%[ \t]*(?:\r?$)/m.exec(source.slice(bodyFrom));
+  if (!end) throw Error("Unclosed symbol registry; source has been left intact.");
+  const to = bodyFrom + end.index + end[0].length, raw = source.slice(bodyFrom, bodyFrom + end.index);
+  if (raw.length > REGISTRY_LIMIT) throw Error("Symbol registry exceeds the supported size.");
+  let data2;
+  try {
+    data2 = JSON.parse(raw);
+  } catch {
+    throw Error("Invalid symbol registry JSON; source has been left intact.");
+  }
+  if (version === 1) {
+    validateLegacyRegistry(data2);
+    return { from, to, version, data: convertLegacyRegistry(data2), legacyData: data2 };
+  }
+  validateRegistry(data2);
+  return { from, to, version, data: data2 };
+}
+function serializeRegistry(data2) {
+  validateRegistry(data2);
+  const lines = Object.entries(data2.entries).map(([id3, entry]) => JSON.stringify(id3) + ":" + JSON.stringify(entry));
+  const raw = '{"entries":{\n' + lines.join(",\n") + "\n}}";
+  const safe = raw.replace(/\$/g, "\\u0024").replace(/%/g, "\\u0025");
+  if (safe.length > REGISTRY_LIMIT) throw Error("Notation registry exceeds the supported size.");
+  return REGISTRY_OPEN + safe + "\n%%";
+}
+function registryEdit(source, block2, data2) {
+  if (block2?.version === 1) throw Error("Legacy notation is read-only until an explicitly authorized v2 conversion.");
+  return block2 ? { from: block2.from, to: block2.to, insert: serializeRegistry(data2) } : { from: source.length, to: source.length, insert: (source.endsWith("\n\n") ? "" : source.endsWith("\n") ? "\n" : "\n\n") + serializeRegistry(data2) + "\n" };
+}
+function escaped2(s, i) {
+  let n = 0;
+  while (i > 0 && s[--i] === "\\") n++;
+  return n % 2 === 1;
+}
+function group(s, at) {
+  if (s[at] !== "{") return null;
+  let depth2 = 1;
+  for (let i = at + 1; i < s.length; i++) {
+    if (escaped2(s, i)) continue;
+    if (s[i] === "%") {
+      const next = s.indexOf("\n", i);
+      if (next < 0) return null;
+      i = next;
+      continue;
+    }
+    if (s[i] === "{") depth2++;
+    if (s[i] === "}" && !--depth2) return { from: at, to: i + 1, body: s.slice(at + 1, i) };
+  }
+  return null;
+}
+function markers(tex) {
+  const out = [];
+  const command2 = /\\class\b/g;
+  let match;
+  while (match = command2.exec(tex)) {
+    const from = match.index;
+    if (escaped2(tex, from)) continue;
+    const line = tex.lastIndexOf("\n", from) + 1;
+    let commented = false;
+    for (let k = line; k < from; k++) if (tex[k] === "%" && !escaped2(tex, k)) {
+      commented = true;
+      break;
+    }
+    if (commented) continue;
+    let at = command2.lastIndex;
+    while (/\s/.test(tex[at] ?? "") && at < tex.length) at++;
+    const cls = group(tex, at);
+    if (!cls) {
+      if (/^\{[^}]*\bmjx-ss(?:\s|$)/.test(tex.slice(at))) throw Error("Unclosed symbol marker class.");
+      continue;
+    }
+    const tokens = cls.body.trim().split(/\s+/);
+    if (!tokens.some((t2) => t2 === "mjx-ss" || t2.startsWith("mjx-ss-o-"))) continue;
+    const id3 = /^mjx-ss mjx-ss-o-([0-9a-z]{10})$/.exec(cls.body)?.[1];
+    if (!id3) throw Error("Malformed symbol marker. Keep its source intact and repair the ID.");
+    at = cls.to;
+    while (/\s/.test(tex[at] ?? "") && at < tex.length) at++;
+    const body = group(tex, at);
+    if (!body) throw Error("Unclosed symbol marker.");
+    if (out.some((m) => from > m.from && from < m.to)) throw Error("Nested symbol tags are not supported.");
+    out.push({ id: id3, from, to: body.to, bodyFrom: at + 1, bodyTo: body.to - 1, body: body.body });
+  }
+  return out;
+}
+function wrapSymbol(id3, tex) {
+  if (!ID.test(id3)) throw Error("Invalid occurrence ID.");
+  if (!tex.trim()) throw Error("Select a symbol first.");
+  if (markers(tex).length) throw Error("This selection already contains a symbol tag.");
+  return `\\class{mjx-ss mjx-ss-o-${id3}}{${tex}}`;
+}
+function untag(tex, id3) {
+  const hits = markers(tex).filter((m) => m.id === id3);
+  return applyEdits(tex, hits.map((m) => ({ from: m.from, to: m.to, insert: m.body })));
+}
+function applyEdits(source, edits) {
+  const sorted = [...edits].sort((a2, b) => a2.from - b.from || a2.to - b.to);
+  let last = 0, out = "";
+  for (const edit of sorted) {
+    if (edit.from < last || edit.to < edit.from || edit.to > source.length) throw Error("Overlapping or invalid symbol edits.");
+    out += source.slice(last, edit.from) + edit.insert;
+    last = edit.to;
+  }
+  return out + source.slice(last);
+}
+function semanticGlyph(tex) {
+  let out = "";
+  for (let i = 0; i < tex.length; ) {
+    const color = /^\\(textcolor|color)(?![A-Za-z])/.exec(tex.slice(i));
+    if (color) {
+      let at = i + color[0].length;
+      while (/\s/.test(tex[at] ?? "") && at < tex.length) at++;
+      if (tex[at] === "[") {
+        const end = tex.indexOf("]", at);
+        if (end < 0) return tex;
+        at = end + 1;
+      }
+      const name2 = group(tex, at);
+      if (name2) {
+        if (color[1] === "color") {
+          i = name2.to;
+          continue;
+        }
+        let bodyAt = name2.to;
+        while (/\s/.test(tex[bodyAt] ?? "") && bodyAt < tex.length) bodyAt++;
+        const body = group(tex, bodyAt);
+        if (body) {
+          out += semanticGlyph(body.body);
+          i = body.to;
+          continue;
+        }
+      }
+    }
+    out += tex[i++];
+  }
+  const normalize = (s) => s.replace(/\s+/g, "").replace(/\\(?:left|right|displaystyle|textstyle|scriptstyle|scriptscriptstyle)\b/g, "").replace(/\\[,;!:]/g, "").replace(/([_^])\{([A-Za-z0-9])\}/g, "$1$2").replace(/\^\{\\prime\}|\^\\prime\b/g, "'");
+  let normalized3 = "", last = 0;
+  const text4 = /\\(?:text|mbox|operatorname)\b\s*/g;
+  let hit;
+  while (hit = text4.exec(out)) {
+    const body = group(out, text4.lastIndex);
+    if (!body) continue;
+    normalized3 += normalize(out.slice(last, hit.index)) + out.slice(hit.index, body.to);
+    last = body.to;
+    text4.lastIndex = body.to;
+  }
+  return normalized3 + normalize(out.slice(last));
+}
+function freshId(existing) {
+  const used = new Set(existing);
+  for (let i = 0; i < 100; i++) {
+    const bytes = crypto.getRandomValues(new Uint8Array(10));
+    const id3 = Array.from(bytes, (n) => (n % 36).toString(36)).join("");
+    if (!used.has(id3)) return id3;
+  }
+  throw Error("Unable to allocate a unique symbol ID.");
+}
+function equationReference(tex) {
+  const plain2 = applyEdits(tex, markers(tex).map((m) => ({ from: m.from, to: m.to, insert: m.body }))).trim();
+  let hash5 = 2166136261;
+  for (let i = 0; i < plain2.length; i++) hash5 = Math.imul(hash5 ^ plain2.charCodeAt(i), 16777619);
+  return "fnv1a:" + (hash5 >>> 0).toString(16).padStart(8, "0") + " " + plain2.slice(0, 100);
+}
+
+// src/annotation-history.ts
+var import_obsidian = require("obsidian");
+var import_state3 = require("@codemirror/state");
+var import_view = require("@codemirror/view");
+var import_commands2 = require("@codemirror/commands");
+var copy = (v) => JSON.parse(JSON.stringify(v));
+var same = (a2, b) => JSON.stringify(a2) === JSON.stringify(b);
+var annotationReceipt = import_state3.StateEffect.define();
+var AnnotationHistory = class {
+  constructor(plugin2, store, api) {
+    this.plugin = plugin2;
+    this.store = store;
+    this.api = api;
+    const manager = this;
+    plugin2.registerEditorExtension([nativeHistoryGrouping, import_state3.EditorState.transactionFilter.of((tr) => {
+      if (manager.transferring || tr.annotation(nativeNotationWrite) || tr.isUserEvent("input.symbols") || tr.isUserEvent("input.type.symbols") || !tr.docChanged && !tr.selection && tr.annotation(import_state3.Transaction.userEvent) === void 0 && tr.annotation(import_state3.Transaction.addToHistory) !== true && tr.annotation(import_commands2.isolateHistory) === void 0) return tr;
+      const path = tr.startState.field(import_obsidian.editorInfoField, false)?.file?.path;
+      if (!path) return tr;
+      const open = [...manager.sessions.values()].filter((s) => s.path === path && s.nativeSource);
+      if (!open.length) return tr;
+      for (const session of open) manager.end(session.id, false);
+      return [{ annotations: import_commands2.isolateHistory.of("before") }, tr];
+    }), import_commands2.invertedEffects.of((tr) => tr.effects.filter((e) => e.is(annotationReceipt)).map((e) => annotationReceipt.of({ id: e.value.id, direction: e.value.direction === "undo" ? "redo" : "undo" }))), import_view.ViewPlugin.fromClass(class {
+      constructor(view) {
+        this.view = view;
+        manager.mount(view);
+      }
+      destroy() {
+        manager.release(this.view);
+      }
+      update(update) {
+        if (manager.viewPaths.get(this.view) !== update.state.field(import_obsidian.editorInfoField, false)?.file?.path) manager.mount(this.view);
+        if (update.docChanged) {
+          if (!manager.transferring && update.transactions.some((tr) => !tr.annotation(nativeNotationWrite) && !tr.isUserEvent("input.symbols") && !tr.isUserEvent("input.type.symbols") && !tr.isUserEvent("undo") && !tr.isUserEvent("redo"))) {
+            const path = this.view.state.field(import_obsidian.editorInfoField, false)?.file?.path;
+            if (path) manager.foreignRevisions.set(path, (manager.foreignRevisions.get(path) ?? 0) + 1);
+          }
+        }
+        for (const tr of update.transactions) for (const effect of tr.effects) if (!manager.transferring && effect.is(annotationReceipt) && effect.value.direction !== "stamp") {
+          const r = manager.receipts.get(effect.value.id);
+          if (r?.source && r.nativeSource) r.sourceApplied = effect.value.direction === "redo";
+          manager.receive(effect.value.id, effect.value.direction);
+        }
+      }
+    }), import_view.EditorView.domEventHandlers({ focus: (_event, view) => {
+      manager.beforeSourceInput?.();
+    }, drop: (_event, view) => {
+      manager.beforeSourceInput?.();
+    } })]);
+    store.onAnnotationCommitted = (before, after) => this.records(before, after);
+    store.beginAnnotationSession = (path, id3) => this.begin(path, id3);
+    store.endAnnotationSession = async (_path, _id, id3) => {
+      this.end(id3);
+    };
+    store.endAnnotationSessionSync = (_path, _id, id3, detail) => this.reserveEnd(id3, detail);
+    if (api) {
+      api.managedHistory = true;
+      plugin2.register(() => {
+        api.managedHistory = false;
+        api.nativeCommit = void 0;
+      });
+      api.nativeCommit = (cm, tr, p, options) => this.commitNative(cm, tr, p, options);
+      api.onBeforeCommit = (p, options) => {
+        if (this.replaying || !this.native(p.path)) return;
+        this.closePathSessions(p.path, options.sessionId);
+        if (options.replay || this.suspended) return;
+        const session = options.sessionId ? this.sessions.get(options.sessionId) : void 0;
+        if (session?.source) appendSourceReceipt(session.source, p.before, p.edits);
+        else createSourceReceipt(p.before, p.edits);
+      };
+      api.onCommitted = (p, options) => {
+        if (options.replay || this.replaying || this.suspended || p.sourceHistory || !this.native(p.path)) return;
+        const edits = p.edits ?? this.minimal(p.before, p.after);
+        if (options.sessionId) {
+          const s = this.sessions.get(options.sessionId);
+          if (s?.nativeSource) this.end(s.id);
+          else if (s) {
+            s.source = s.source ? appendSourceReceipt(s.source, p.before, edits) : createSourceReceipt(p.before, edits);
+            return;
+          }
+        }
+        if (!p.sourceHistory) this.record({ path: p.path, source: createSourceReceipt(p.before, edits), recordsBefore: [], recordsAfter: [] }, options.historyEffects);
+      };
+    }
+    const attach = () => {
+      const leaves = plugin2.app.workspace.getLeavesOfType("markdown"), views = new Set(leaves.map((l) => l.view)), editors = new Set(leaves.map((l) => l.view.editor));
+      for (const [path, stack] of this.reading) if (!views.has(stack.view) || stack.view.file?.path !== path || stack.view.editor?.cm) this.discardReading(path);
+      for (const session of [...this.sessions.values()]) if (session.view && (!views.has(session.view) || session.view.file?.path !== session.path)) this.discardSession(session);
+      for (const [view, { scope, refs }] of this.scopes) if (!views.has(view)) {
+        for (const ref of refs) scope.unregister(ref);
+        this.scopes.delete(view);
+        const cm = view.editor?.cm;
+        if (cm) this.release(cm);
+      }
+      for (const [editor, commands] of this.editorCommands) if (!editors.has(editor)) {
+        if (editor.undo === commands.wrappedUndo) editor.undo = commands.undo;
+        if (editor.redo === commands.wrappedRedo) editor.redo = commands.redo;
+        this.editorCommands.delete(editor);
+      }
+      for (const leaf of leaves) {
+        const view = leaf.view;
+        if (!(view instanceof import_obsidian.MarkdownView)) continue;
+        const editor = view.editor;
+        if (editor && !this.editorCommands.has(editor) && typeof editor.undo === "function" && typeof editor.redo === "function") {
+          const originalUndo = editor.undo, originalRedo = editor.redo;
+          const wrappedUndo = (...args) => {
+            this.beforeSourceInput?.();
+            if (!view.file || !editor.cm && !this.reading.has(view.file.path)) return originalUndo.apply(editor, args);
+            this.readingAction(view, "undo");
+          }, wrappedRedo = (...args) => {
+            this.beforeSourceInput?.();
+            if (!view.file || !editor.cm && !this.reading.has(view.file.path)) return originalRedo.apply(editor, args);
+            this.readingAction(view, "redo");
+          };
+          editor.undo = wrappedUndo;
+          editor.redo = wrappedRedo;
+          this.editorCommands.set(editor, { undo: originalUndo, redo: originalRedo, wrappedUndo, wrappedRedo });
+        }
+        if (this.scopes.has(view)) continue;
+        const scope = view.scope ?? new import_obsidian.Scope(plugin2.app.scope);
+        const refs = [];
+        this.scopes.set(view, { scope, refs });
+        for (const [mods, key3, direction] of [[["Mod"], "z", "undo"], [["Mod", "Shift"], "z", "redo"]]) {
+          const ref = scope.register([...mods], key3, () => {
+            if (!view.file) return true;
+            const active = view.containerEl.ownerDocument.activeElement;
+            if (active?.closest(".study-margin-pane,.math-studio-host") || active?.closest('input,textarea,[contenteditable="true"]') && !active?.closest(".markdown-source-view")) return true;
+            this.readingAction(view, direction);
+            return false;
+          });
+          refs.push(ref);
+        }
+      }
+    };
+    plugin2.registerEvent(plugin2.app.workspace.on("layout-change", attach));
+    plugin2.registerEvent(plugin2.app.workspace.on("active-leaf-change", attach));
+    plugin2.app.workspace.onLayoutReady(attach);
+    plugin2.register(() => {
+      this.receipts.clear();
+      this.sessions.clear();
+      this.reading.clear();
+      for (const { scope, refs } of this.scopes.values()) for (const ref of refs) scope.unregister(ref);
+      this.scopes.clear();
+      for (const [editor, commands] of this.editorCommands) {
+        if (editor.undo === commands.wrappedUndo) editor.undo = commands.undo;
+        if (editor.redo === commands.wrappedRedo) editor.redo = commands.redo;
+      }
+      this.editorCommands.clear();
+      store.onAnnotationCommitted = void 0;
+    });
+  }
+  receipts = /* @__PURE__ */ new Map();
+  sessions = /* @__PURE__ */ new Map();
+  reading = /* @__PURE__ */ new Map();
+  liveViews = /* @__PURE__ */ new WeakSet();
+  viewPaths = /* @__PURE__ */ new WeakMap();
+  queue = Promise.resolve();
+  transferring = false;
+  commandEffects;
+  beforeSourceInput;
+  beforeHistoryCommand;
+  foreignRevisions = /* @__PURE__ */ new Map();
+  onSessionClosed;
+  replaying = false;
+  suspended = 0;
+  scopes = /* @__PURE__ */ new Map();
+  editorCommands = /* @__PURE__ */ new Map();
+  receive(id3, direction) {
+    if (this.commandEffects) this.commandEffects.push({ id: id3, direction });
+    else queueMicrotask(() => this.enqueue(id3, direction));
+  }
+  minimal(before, after) {
+    let from = 0;
+    while (from < before.length && from < after.length && before[from] === after[from]) from++;
+    let to = before.length, end = after.length;
+    while (to > from && end > from && before[to - 1] === after[end - 1]) {
+      to--;
+      end--;
+    }
+    return before === after ? [] : [{ from, to, insert: after.slice(from, end) }];
+  }
+  begin(path, recordId) {
+    const id3 = crypto.randomUUID();
+    this.sessions.set(id3, { id: id3, path, recordId, view: this.native(path), recordsBefore: [], recordsAfter: [] });
+    return id3;
+  }
+  end(id3, isolate = true) {
+    const s = this.sessions.get(id3);
+    if (!s || s.receiptId && !s.nativeSource) return;
+    this.sessions.delete(id3);
+    if (s.nativeSource) {
+      if (isolate && s.nativeView) s.nativeView.dispatch({ annotations: import_commands2.isolateHistory.of("after") });
+    } else if (s.source || s.recordsAfter.length) this.record(s);
+    this.onSessionClosed?.(s.path, s.recordId, id3);
+  }
+  closePathSessions(path, except) {
+    for (const s of [...this.sessions.values()]) if (s.path === path && s.id !== except && s.source) this.end(s.id);
+  }
+  reserveEnd(id3, detail) {
+    const s = this.sessions.get(id3);
+    if (!s || s.receiptId && !s.nativeSource) return;
+    if (!s.recordsAfter.length && detail.base) s.recordsBefore = copy([detail.base]);
+    const desired = detail.next ? [detail.next] : s.recordsAfter;
+    if (!desired.length || same(s.recordsBefore, desired)) {
+      if (s.nativeSource) this.end(id3);
+      else void detail.pending.finally(() => this.sessions.delete(id3)).catch(() => {
+      });
+      return;
+    }
+    const receiptId = s.receiptId ?? this.record({ ...s, recordsAfter: desired });
+    if (!receiptId) return;
+    s.receiptId = receiptId;
+    const receipt = this.receipts.get(receiptId);
+    receipt.recordsBefore = copy(s.recordsBefore);
+    receipt.recordsAfter = copy(desired);
+    receipt.pending = detail.pending.then(() => {
+      if (s.recordsAfter.length) receipt.recordsAfter = copy(s.recordsAfter);
+    }).catch(() => {
+      if (s.recordsAfter.length) receipt.recordsAfter = copy(s.recordsAfter);
+      else {
+        receipt.recordsBefore = [];
+        receipt.recordsAfter = [];
+      }
+    }).finally(() => this.sessions.delete(id3));
+    if (s.nativeSource) {
+      s.nativeView?.dispatch({ annotations: [import_commands2.isolateHistory.of("after"), nativeNotationWrite.of(true)] });
+      s.nativeSource = false;
+      s.nativeView = void 0;
+      this.onSessionClosed?.(s.path, s.recordId, id3);
+    }
+  }
+  records(before, after) {
+    if (this.replaying || this.suspended) return;
+    const paths = [...new Set(after.map((c) => c.path))];
+    for (const path of paths) {
+      const next = after.filter((c) => c.path === path), old = before.filter((c) => next.some((n) => n.id === c.id));
+      const s = next.length === 1 ? [...this.sessions.values()].find((s2) => s2.path === path && s2.recordId === next[0].id) : void 0;
+      if (s) {
+        if (!s.recordsAfter.length) s.recordsBefore = copy(old);
+        s.recordsAfter = copy(next);
+        if (s.receiptId) {
+          const receipt = this.receipts.get(s.receiptId);
+          if (receipt) {
+            receipt.recordsBefore = copy(s.recordsBefore);
+            receipt.recordsAfter = copy(next);
+          }
+        }
+      } else this.record({ path, recordsBefore: old, recordsAfter: next });
+    }
+  }
+  native(path) {
+    return this.plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian.MarkdownView && v.file?.path === path);
+  }
+  bound() {
+    while (this.receipts.size > 100 || [...this.receipts.values()].reduce((n, r) => n + (r.source ? sourceReceiptBytes(r.source) : 0) + JSON.stringify([r.recordsBefore, r.recordsAfter]).length * 2, 0) > 16 * 1024 * 1024) this.receipts.delete(this.receipts.keys().next().value);
+  }
+  commitNative(cm, tr, p, options) {
+    const session = options.sessionId ? this.sessions.get(options.sessionId) : void 0;
+    const patch = session?.source ? appendSourceReceipt(session.source, p.before, p.edits) : createSourceReceipt(p.before, p.edits);
+    const existing = session?.receiptId ? this.receipts.get(session.receiptId) : void 0;
+    const r = existing ?? { id: crypto.randomUUID(), path: p.path, recordsBefore: [], recordsAfter: [], sourceApplied: true, recordsApplied: true, nativeView: cm, nativeSource: true };
+    const first = !existing, time = session ? session.logicalTime = (session.logicalTime ?? Date.now()) - 1 : void 0;
+    const native = nativeSourceTransaction(cm, tr, { sessionId: session?.id, time, first, effects: [...first ? [annotationReceipt.of({ id: r.id, direction: "stamp" })] : [], ...options.historyEffects ?? []] });
+    if (native.newDoc.toString() !== p.after) throw Error("The native editor refused the notation history transaction.");
+    const prior = r.source, originalState = cm.state, priorSession = session ? { ...session } : void 0;
+    r.source = patch;
+    this.receipts.set(r.id, r);
+    try {
+      cm.dispatch(native);
+    } catch (error) {
+      if (first) this.receipts.delete(r.id);
+      else r.source = prior;
+      throw error;
+    }
+    if (session) {
+      session.source = patch;
+      session.receiptId = r.id;
+      session.nativeSource = true;
+      session.nativeView = cm;
+    }
+    this.bound();
+    return () => {
+      if (cm.state !== native.state) return false;
+      this.transferring = true;
+      try {
+        cm.setState(originalState);
+      } finally {
+        this.transferring = false;
+      }
+      if (first) this.receipts.delete(r.id);
+      else r.source = prior;
+      if (session && priorSession) {
+        Object.assign(session, priorSession);
+        if (!priorSession.receiptId) delete session.receiptId;
+        if (!priorSession.nativeSource) delete session.nativeSource;
+        if (!priorSession.source) delete session.source;
+        this.sessions.set(session.id, session);
+      }
+      return true;
+    };
+  }
+  record(input, historyEffects = []) {
+    if (!input.source && !input.recordsAfter.length) return;
+    const view = input.view ?? this.native(input.path);
+    if (!view || view.file?.path !== input.path || !this.plugin.app.workspace.getLeavesOfType("markdown").some((l) => l.view === view)) return;
+    this.closePathSessions(input.path);
+    const cm = view.editor?.cm;
+    if (cm && input.source) return;
+    const r = { path: input.path, source: input.source, recordsBefore: copy(input.recordsBefore), recordsAfter: copy(input.recordsAfter), id: crypto.randomUUID(), sourceApplied: true, recordsApplied: true };
+    this.receipts.set(r.id, r);
+    while (this.receipts.size > 100 || [...this.receipts.values()].reduce((n, r2) => n + (r2.source ? sourceReceiptBytes(r2.source) : 0) + JSON.stringify([r2.recordsBefore, r2.recordsAfter]).length * 2, 0) > 16 * 1024 * 1024) this.receipts.delete(this.receipts.keys().next().value);
+    if (cm) {
+      r.nativeView = cm;
+      cm.dispatch({ effects: [annotationReceipt.of({ id: r.id, direction: "stamp" }), ...historyEffects], annotations: import_commands2.isolateHistory.of("full"), userEvent: "input.annotation-receipt" });
+    } else {
+      if (this.reading.get(r.path)?.view !== view) this.discardReading(r.path);
+      const stack = this.reading.get(r.path) ?? { view, ids: [], cursor: 0 };
+      stack.ids = stack.ids.slice(0, stack.cursor);
+      stack.ids.push(r.id);
+      if (stack.ids.length > 100) stack.ids.shift();
+      stack.cursor = stack.ids.length;
+      this.reading.set(r.path, stack);
+    }
+    return r.id;
+  }
+  discardSession(session) {
+    this.sessions.delete(session.id);
+    this.onSessionClosed?.(session.path, session.recordId, session.id);
+  }
+  discardReading(path) {
+    const stack = this.reading.get(path);
+    if (!stack) return;
+    for (const id3 of stack.ids) this.receipts.delete(id3);
+    this.reading.delete(path);
+  }
+  discardNative(view) {
+    const ids = /* @__PURE__ */ new Set();
+    for (const [id3, r] of this.receipts) if (r.nativeView === view) {
+      ids.add(id3);
+      this.receipts.delete(id3);
+    }
+    for (const session of [...this.sessions.values()]) if (session.nativeView === view || session.receiptId && ids.has(session.receiptId)) this.discardSession(session);
+  }
+  mount(view) {
+    const path = view.state.field(import_obsidian.editorInfoField, false)?.file?.path;
+    if (this.viewPaths.has(view) && this.viewPaths.get(view) !== path) this.discardNative(view);
+    this.viewPaths.set(view, path);
+    this.liveViews.add(view);
+    if (path) {
+      const stack = this.reading.get(path);
+      if (stack && (stack.view.editor?.cm === view || stack.view.file?.path !== path || !this.plugin.app.workspace.getLeavesOfType("markdown").some((l) => l.view === stack.view))) this.discardReading(path);
+    }
+  }
+  release(view) {
+    if (this.transferring) return;
+    this.liveViews.delete(view);
+    queueMicrotask(() => {
+      if (this.liveViews.has(view)) return;
+      this.discardNative(view);
+      this.viewPaths.delete(view);
+    });
+  }
+  readingAction(view, direction) {
+    const path = view.file.path, cm = view.editor?.cm, mode = view.getMode(), revision = this.foreignRevisions.get(path) ?? 0;
+    let gate;
+    try {
+      gate = this.beforeHistoryCommand?.() ?? Promise.resolve(this.beforeSourceInput?.());
+    } catch (error) {
+      new import_obsidian.Notice("Annotation history could not start: " + String(error));
+      return;
+    }
+    void gate.catch(() => {
+    });
+    const ready = async () => {
+      await gate;
+      if (!this.plugin.app.workspace.getLeavesOfType("markdown").some((l) => l.view === view) || view.file?.path !== path || view.getMode() !== mode || view.editor?.cm !== cm || (this.foreignRevisions.get(path) ?? 0) !== revision) throw Error("The editor changed while the annotation save finished. Undo was not applied; your typing is preserved.");
+    };
+    if (this.reading.get(path)?.view === view && !cm) {
+      this.queue = this.queue.catch(() => {
+      }).then(async () => {
+        await ready();
+        const stack = this.reading.get(path);
+        if (!stack || stack.view !== view) return;
+        const index2 = direction === "undo" ? stack.cursor - 1 : stack.cursor, id3 = stack.ids[index2];
+        if (!id3) return;
+        await this.apply(id3, direction);
+        stack.cursor += direction === "undo" ? -1 : 1;
+      }).catch((e) => new import_obsidian.Notice("Annotation " + direction + " could not finish: " + String(e)));
+      return;
+    }
+    if (cm) this.queue = this.queue.catch(() => {
+    }).then(async () => {
+      await ready();
+      if (view.file?.path !== path || view.editor?.cm !== cm) throw Error("The note changed before the history command could run.");
+      if (this.reading.get(path)?.view === view) this.discardReading(path);
+      const before = cm.state.doc.toString();
+      let prepared;
+      (direction === "undo" ? import_commands2.undo : import_commands2.redo)({ state: cm.state, dispatch: (tr) => {
+        prepared = tr;
+      } });
+      if (!prepared) return;
+      const effects = prepared.effects.filter((e) => e.is(annotationReceipt) && e.value.direction !== "stamp").map((e) => e.value);
+      for (const effect of effects) {
+        const r = this.receipts.get(effect.id);
+        if (!r) {
+          if (!prepared.changes.empty) throw Error("This annotation action is too old to undo safely.");
+          continue;
+        }
+        if (!r.source || r.sourceApplied === (effect.direction === "redo")) continue;
+        const expected = applyEdits(before, restoreSourceReceipt(r.source, before, effect.direction));
+        if (prepared.newDoc.toString() !== expected) throw Error("Native source history no longer matches this annotation action. Nothing was changed.");
+      }
+      const after = prepared.newDoc.toString(), captured = prepared;
+      this.commandEffects = [];
+      let dispatched = false;
+      const commit = () => {
+        if (!this.plugin.app.workspace.getLeavesOfType("markdown").some((l) => l.view === view) || view.file?.path !== path || view.editor?.cm !== cm || cm.state !== captured.startState) throw Error("The editor changed while Undo was waiting. Nothing was changed.");
+        cm.dispatch(captured);
+        dispatched = true;
+      };
+      try {
+        if (before !== after && view.getMode() === "preview") {
+          if (!this.api) throw Error("Source history is unavailable.");
+          if (this.api.commitNativeHistory) await this.api.commitNativeHistory(path, before, after, commit);
+          else {
+            await this.api.restoreSource(path, before, after, this.minimal(before, after));
+            commit();
+          }
+        } else commit();
+        for (const effect of effects) await this.apply(effect.id, effect.direction);
+      } catch (error) {
+        if (dispatched) {
+          let restored = false;
+          if (cm.state === captured.state) {
+            let rollback;
+            (direction === "undo" ? import_commands2.redo : import_commands2.undo)({ state: cm.state, dispatch: (tr) => {
+              rollback = tr;
+            } });
+            if (rollback) {
+              const restore = () => {
+                if (!this.plugin.app.workspace.getLeavesOfType("markdown").some((l) => l.view === view) || view.file?.path !== path || view.editor?.cm !== cm || cm.state !== rollback.startState) throw Error("The editor changed before rollback.");
+                this.transferring = true;
+                try {
+                  cm.dispatch(rollback);
+                } finally {
+                  this.transferring = false;
+                }
+                restored = true;
+              };
+              try {
+                if (view.getMode() === "preview" && before !== after && this.api) {
+                  const current = await this.api.source(path);
+                  if (current === before) restore();
+                  else if (current === after && this.api.commitNativeHistory) await this.api.commitNativeHistory(path, after, before, restore);
+                } else restore();
+              } catch {
+              }
+            }
+          }
+          if (restored) {
+            for (const effect of effects) {
+              const r = this.receipts.get(effect.id);
+              if (r?.source && r.nativeSource) r.sourceApplied = direction === "undo";
+            }
+          } else if (effects.length) {
+            let retry = false;
+            for (const effect of effects) {
+              const r = this.receipts.get(effect.id);
+              if (!r) continue;
+              const desired = effect.direction === "redo";
+              if (r.recordsAfter.length && r.recordsApplied !== desired) retry = !!this.record({ path: r.path, recordsBefore: desired ? r.recordsAfter : r.recordsBefore, recordsAfter: desired ? r.recordsBefore : r.recordsAfter }) || retry;
+            }
+            new import_obsidian.Notice(retry ? "The completed text change was preserved. The remaining annotation change is available to retry with Undo." : "The completed text change was preserved. The note closed before its remaining annotation change could finish.");
+          }
+        }
+        throw error;
+      } finally {
+        this.commandEffects = void 0;
+      }
+    }).catch((e) => new import_obsidian.Notice("Annotation " + direction + " could not finish: " + String(e)));
+  }
+  enqueue(id3, direction) {
+    this.queue = this.queue.catch(() => {
+    }).then(() => this.apply(id3, direction)).catch((e) => {
+      new import_obsidian.Notice("Annotation " + direction + " could not finish: " + String(e));
+    });
+    return this.queue;
+  }
+  async settled() {
+    await this.queue;
+  }
+  async apply(id3, direction) {
+    const r = this.receipts.get(id3);
+    if (!r) {
+      new import_obsidian.Notice("This annotation action is too old to undo.");
+      return;
+    }
+    const stack = this.reading.get(r.path);
+    if (!r.nativeView && (!stack || !stack.ids.includes(id3) || stack.view.editor?.cm || stack.view.file?.path !== r.path || !this.plugin.app.workspace.getLeavesOfType("markdown").some((l) => l.view === stack.view))) {
+      this.discardReading(r.path);
+      throw Error("The note is no longer open in its original view.");
+    }
+    if (r.pending) await r.pending;
+    if (this.receipts.get(id3) !== r) throw Error("The note editor closed before annotation history could finish.");
+    const apply2 = direction === "redo";
+    this.replaying = true;
+    const errors = [];
+    try {
+      if (r.source && !r.nativeSource && r.sourceApplied !== apply2) {
+        try {
+          if (!this.api) throw Error("Notation history is unavailable.");
+          const sourceView = this.api.view?.(r.path);
+          if (sourceView && this.api.restoreSourceSync) {
+            const current = sourceView.editor.getValue(), edits = restoreSourceReceipt(r.source, current, direction);
+            this.api.restoreSourceSync(r.path, current, applyEdits(current, edits), edits);
+          } else {
+            const current = await this.api.source(r.path), edits = restoreSourceReceipt(r.source, current, direction);
+            await this.api.restoreSource(r.path, current, applyEdits(current, edits), edits);
+          }
+          r.sourceApplied = apply2;
+        } catch (e) {
+          errors.push(String(e));
+        }
+      }
+      if (r.recordsAfter.length && r.recordsApplied !== apply2) {
+        try {
+          const actual = await this.store.applyHistoryRecords(apply2 ? r.recordsBefore : r.recordsAfter, apply2 ? r.recordsAfter : r.recordsBefore);
+          if (apply2) r.recordsAfter = actual;
+          else r.recordsBefore = actual;
+          r.recordsApplied = apply2;
+        } catch (e) {
+          errors.push(String(e));
+        }
+      }
+      if (errors.length) throw Error(errors.join(" "));
+    } finally {
+      this.replaying = false;
+    }
+  }
+  async mixedCleanup(path) {
+    this.closePathSessions(path);
+    await this.store.refresh();
+    const ordinaryBefore = copy(this.store.data.comments), sessionId = this.begin(path, "cleanup"), session = this.sessions.get(sessionId);
+    let sourcePatch, removed = [], notationCount = 0;
+    let actualBefore, actualAfter, receiptId, finish = () => {
+    };
+    const pending = new Promise((resolve) => {
+      finish = resolve;
+    }), errors = [];
+    this.suspended++;
+    try {
+      if (this.api) try {
+        const plan2 = await this.api.preview(path, [{ type: "clearEmpty" }]);
+        const applied = await this.api.apply(plan2.token, { history: false, sessionId });
+        notationCount = applied.ids.length;
+        const before = applied.sourceBefore ?? plan2.sourceBefore ?? plan2.source, after = applied.sourceAfter;
+        if (before !== after) sourcePatch = createSourceReceipt(before, applied.edits ?? this.minimal(before, after));
+        receiptId = session.receiptId;
+        if (receiptId) {
+          this.receipts.get(receiptId).pending = pending;
+          this.end(sessionId);
+        }
+      } catch (e) {
+        errors.push(String(e));
+      }
+      try {
+        removed = await this.store.emptyAnnotationTransaction(path, void 0, (before, after) => {
+          actualBefore = before;
+          actualAfter = after;
+        });
+      } catch (e) {
+        errors.push(String(e));
+      }
+    } finally {
+      this.suspended--;
+    }
+    const recordsBefore = actualBefore ?? ordinaryBefore.filter((c) => removed.some((n) => n.id === c.id)), recordsAfter = actualAfter ?? copy(this.store.data.comments.filter((c) => removed.some((n) => n.id === c.id)));
+    if (receiptId) {
+      const r = this.receipts.get(receiptId);
+      if (r) {
+        r.recordsBefore = copy(recordsBefore);
+        r.recordsAfter = copy(recordsAfter);
+      }
+    } else receiptId = this.record({ path, ...sourcePatch ? { source: sourcePatch } : {}, recordsBefore, recordsAfter });
+    this.sessions.delete(sessionId);
+    finish();
+    const count2 = notationCount + removed.length;
+    if (!count2) {
+      new import_obsidian.Notice(errors.length ? "Nothing cleared: " + errors.join(" ") : "No empty annotations to clear.");
+      return 0;
+    }
+    const fragment = document.createDocumentFragment();
+    fragment.append(`Cleared ${count2} empty annotations. `);
+    const link = fragment.createEl("a", { text: "Undo", href: "#" });
+    link.onclick = (e) => {
+      e.preventDefault();
+      if (!receiptId) return;
+      const view = this.native(path), cm = view?.editor?.cm;
+      if (view && cm) {
+        let next;
+        (0, import_commands2.undo)({ state: cm.state, dispatch: (tr) => {
+          next = tr;
+        } });
+        if (!next?.effects.some((effect) => effect.is(annotationReceipt) && effect.value.id === receiptId)) {
+          new import_obsidian.Notice("Use Undo to reach this cleanup action; newer edits are preserved.");
+          return;
+        }
+        this.readingAction(view, "undo");
+      } else {
+        void this.enqueue(receiptId, "undo").then(() => {
+          const stack = this.reading.get(path);
+          if (stack?.ids[stack.cursor - 1] === receiptId) stack.cursor--;
+        });
+      }
+    };
+    new import_obsidian.Notice(fragment, 15e3);
+    if (errors.length) new import_obsidian.Notice("Cleanup completed partly: " + errors.join(" "));
+    return count2;
+  }
+};
+
+// src/diagram-model.ts
+function validateDiagram(d) {
+  const check3 = (ok, message3) => {
+    if (!ok) throw Error(message3);
+  };
+  const unit2 = (v) => typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 1;
+  const rect = (r) => {
+    check3(r && unit2(r.x) && unit2(r.y) && unit2(r.width) && unit2(r.height) && r.width > 0 && r.height > 0 && r.x + r.width <= 1.000001 && r.y + r.height <= 1.000001, "Diagram rectangles must fit inside the image (coordinates 0\u20131).");
+  };
+  check3(d && typeof d.image === "string" && d.image.trim() && !/^(?:[a-z]+:|\/)|(?:^|\/)\.\.(?:\/|$)/i.test(d.image), "Choose an image inside the vault.");
+  check3(d.minWidth === void 0 || Number.isFinite(d.minWidth) && d.minWidth >= 760 && d.minWidth <= 2400, "Diagram minimum width must be between 760 and 2400 pixels.");
+  if (d.crop !== void 0) {
+    check3(Array.isArray(d.crop) && d.crop.length === 4, "Invalid diagram crop.");
+    rect({ x: d.crop[0], y: d.crop[1], width: d.crop[2], height: d.crop[3] });
+  }
+  check3(typeof d.alt === "string" && d.alt.trim(), "Provide an image description.");
+  check3(Array.isArray(d.covers) && Array.isArray(d.labels) && d.labels.length > 0, "Add at least one diagram label.");
+  d.covers.forEach((r) => {
+    rect(r);
+    check3(/^#[0-9a-f]{6}$/i.test(r.color), "Covers require an opaque six-digit hex color.");
+  });
+  return d.labels.map((r) => {
+    rect(r);
+    check3(typeof r.id === "string" && /^[\w-]{1,100}$/.test(r.id), "Invalid diagram label ID.");
+    check3(r.reference === void 0 || typeof r.reference === "string" && /^[a-z]{1,3}$/.test(r.reference), "Invalid diagram reference label.");
+    check3(r.math === void 0 || typeof r.math === "boolean", "Invalid label math mode.");
+    check3(r.target === void 0 || r.target && unit2(r.target.x) && unit2(r.target.y), "Leader endpoints must be inside the image.");
+    return r.id;
+  });
+}
+function moveRect(r, x, y) {
+  r.x = Math.max(0, Math.min(1 - r.width, x));
+  r.y = Math.max(0, Math.min(1 - r.height, y));
+}
+function blankReference(index2) {
+  if (!Number.isSafeInteger(index2) || index2 < 0) throw Error("Invalid blank index.");
+  let s = "";
+  for (let n = index2 + 1; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(97 + (n - 1) % 26) + s;
+  return s;
+}
+function diagramReference(d, index2) {
+  return d.labels.length > 1 ? d.labels[index2].reference ?? blankReference(index2) : "";
+}
+
+// src/figure-study-model.ts
+var unit = (n) => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 1;
+function validRect(r) {
+  return !!r && [r.x, r.y, r.width, r.height].every(unit) && r.width > 0 && r.height > 0 && r.x + r.width <= 1.000001 && r.y + r.height <= 1.000001;
+}
+function validFigureStudy(f) {
+  return !!f && ["figureId", "panelPath", "imagePath", "imageHash"].every((k) => typeof f[k] === "string" && f[k].length > 0) && /^[a-f0-9]{64}$/.test(f.imageHash) && Number.isSafeInteger(f.panelOccurrence) && f.panelOccurrence >= 0 && [f.naturalWidth, f.naturalHeight].every((n) => Number.isFinite(n) && n > 0) && Array.isArray(f.regions) && f.regions.length > 0 && f.regions.length <= 128 && new Set(f.regions.map((r) => r?.id)).size === f.regions.length && f.regions.every((r) => !!r && typeof r.id === "string" && /^[\w-]{1,100}$/.test(r.id) && /^#[a-f0-9]{6}$/i.test(r.color) && (!r.target || unit(r.target.x) && unit(r.target.y)) && validRect(r));
+}
+var figureKey = (r) => JSON.stringify([r.figureId, r.panelPath, r.panelOccurrence]);
+function cropRect(r, c) {
+  return { x: (r.x - c[0]) / c[2], y: (r.y - c[1]) / c[3], width: r.width / c[2], height: r.height / c[3] };
+}
+var edge = (n) => Math.abs(n) < 1e-9 ? 0 : Math.abs(n - 1) < 1e-9 ? 1 : n;
+function cropPoint(p, c) {
+  return { x: edge((p.x - c[0]) / c[2]), y: edge((p.y - c[1]) / c[3]) };
+}
+function regionInCrop(r, c) {
+  const q = cropRect(r, c), p = r.target && cropPoint(r.target, c);
+  return validRect(q) && (!p || unit(p.x) && unit(p.y));
+}
+function buildFigureDiagram(f, crop, image, alt, mathIds = [], referenceIds = f.regions.map((r) => r.id)) {
+  if (!validFigureStudy(f) || f.regions.some((r) => !regionInCrop(r, crop))) throw Error("A blank or arrow is outside the current crop. Adjust the crop or the study regions.");
+  return { image, alt, crop, covers: f.regions.map((r) => ({ ...cropRect(r, crop), color: r.color })), labels: f.regions.map((r) => ({ ...cropRect(r, crop), id: r.id, reference: blankReference(referenceIds.indexOf(r.id)), ...r.target ? { target: cropPoint(r.target, crop) } : {}, ...mathIds.includes(r.id) ? { math: true } : {} })) };
+}
+function drawnRect(a2, b) {
+  return { x: Math.min(a2.x, b.x), y: Math.min(a2.y, b.y), width: Math.abs(a2.x - b.x), height: Math.abs(a2.y - b.y) };
+}
+
+// src/study-directive-model.ts
+function validStudyDirective(x) {
+  return !!x && x.version === 1 && ["text", "table", "question", "figure"].includes(x.rule) && (x.rule === "figure" ? validFigureStudy(x.figure) : x.figure === void 0) && (!x.consumed || Array.isArray(x.consumed.questionIds) && x.consumed.questionIds.length > 0 && x.consumed.questionIds.every((id3) => typeof id3 === "string") && typeof x.consumed.at === "string");
+}
+var isConsumed = (c) => !!(c.code?.consumed || c.study?.consumed);
+var isStudyMark = (c) => !!c.study || c.code?.purpose === "practice-blank" || c.code?.purpose === "question";
+var studyPalette = { question: { color: "#aa358e", darkColor: "#ed8bd7", intent: "General question" }, text: { color: "#078b9e", darkColor: "#64e7f4", intent: "Text / math blank" }, table: { color: "#bc650d", darkColor: "#ffae52", intent: "Table blank" } };
+
 // src/symbols/source-projection.ts
 var largeCache2 = /* @__PURE__ */ new Map();
 var smallCache2 = /* @__PURE__ */ new Map();
@@ -6093,11 +6148,11 @@ function tagCuts(tex, offset = 0) {
   }
 }
 function symbolTextProjection(source) {
-  const cache6 = source.length > 4096 ? largeCache2 : smallCache2;
-  if (cache6.has(source)) {
-    const hit = cache6.get(source);
-    cache6.delete(source);
-    cache6.set(source, hit);
+  const cache7 = source.length > 4096 ? largeCache2 : smallCache2;
+  if (cache7.has(source)) {
+    const hit = cache7.get(source);
+    cache7.delete(source);
+    cache7.set(source, hit);
     return hit;
   }
   const cuts = [];
@@ -6105,13 +6160,13 @@ function symbolTextProjection(source) {
     for (const q of equations(source)) if (q.body.includes("mjx-ss-o-")) cuts.push(...tagCuts(q.body, q.bodyFrom));
   }
   if (source.includes("%% study-symbols")) try {
-    const block = registryBlock(source, markdownContext(source).excluded);
-    if (block) cuts.push({ from: block.from, to: block.to, kind: "registry" });
+    const block2 = registryBlock(source, markdownContext(source).excluded);
+    if (block2) cuts.push({ from: block2.from, to: block2.to, kind: "registry" });
   } catch {
   }
   const result = project(source, cuts);
-  cache6.set(source, result);
-  if (cache6.size > (source.length > 4096 ? 8 : 16)) cache6.delete(cache6.keys().next().value);
+  cache7.set(source, result);
+  if (cache7.size > (source.length > 4096 ? 8 : 16)) cache7.delete(cache7.keys().next().value);
   return result;
 }
 function symbolLatexProjection(tex) {
@@ -6138,8 +6193,8 @@ function isSymbolRegistrySection(source) {
   const text4 = source.trim();
   if (!text4.startsWith("%% study-symbols")) return false;
   try {
-    const block = registryBlock(text4);
-    return !!block && block.from === 0 && block.to === text4.length;
+    const block2 = registryBlock(text4);
+    return !!block2 && block2.from === 0 && block2.to === text4.length;
   } catch {
     return false;
   }
@@ -6277,1099 +6332,7 @@ function visibilityShowing(c, v, catalog = []) {
 // src/symbols/selection.ts
 var import_obsidian4 = require("obsidian");
 
-// src/margin-anchors.ts
-var import_view2 = require("@codemirror/view");
-var import_obsidian2 = require("obsidian");
-
-// src/live-callout-section.ts
-function calloutSection(view, widget) {
-  try {
-    const pos = view.posAtDOM(widget), block = view.lineBlockAt(pos), doc2 = view.state.doc;
-    if (block.from !== pos || block.to <= pos || block.to > doc2.length) return null;
-    const first = doc2.lineAt(pos), last = doc2.lineAt(block.to);
-    if (first.from !== pos || last.to !== block.to || !/^ {0,3}>\s*\[![^\]\n]+\]/.test(first.text)) return null;
-    return { text: doc2.toString(), lineStart: first.number - 1, lineEnd: last.number - 1 };
-  } catch {
-    return null;
-  }
-}
-
-// src/study-table-model.ts
-function tableKey(source) {
-  let h = 2166136261;
-  for (const c of source.replace(/\s+/g, " ").trim()) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
-  return "table-" + (h >>> 0).toString(16);
-}
-function tableCells(line, offset = 0) {
-  let start = 0, ticks = 0, math2 = 0;
-  const parts = [];
-  const add2 = (end) => {
-    const value = line.slice(start, end), left = value.length - value.trimStart().length, right = value.trimEnd().length;
-    parts.push({ text: value.trim(), from: offset + start + left, to: offset + start + Math.max(left, right) });
-  };
-  const prefix = /^\s*(?:>\s*)*/.exec(line)[0].length;
-  start = prefix;
-  for (let i = prefix; i < line.length; i++) {
-    if (line[i] === "\\") {
-      i++;
-      continue;
-    }
-    if (line[i] === "`") {
-      let n = 1;
-      while (line[i + n] === "`") n++;
-      ticks = ticks === n ? 0 : ticks || n;
-      i += n - 1;
-      continue;
-    }
-    if (!ticks && line[i] === "$") {
-      const n = line[i + 1] === "$" ? 2 : 1;
-      math2 = math2 === n ? 0 : math2 || n;
-      i += n - 1;
-    }
-    if (!ticks && !math2 && line[i] === "|") {
-      add2(i);
-      start = i + 1;
-    }
-  }
-  add2(line.length);
-  if (parts[0]?.text === "" && line.slice(prefix).trimStart().startsWith("|")) parts.shift();
-  if (parts.at(-1)?.text === "" && line.trimEnd().endsWith("|")) parts.pop();
-  return parts;
-}
-function sourceTables(source) {
-  const lines = source.split("\n"), offsets = [];
-  let n = 0;
-  for (const l of lines) {
-    offsets.push(n);
-    n += l.length + 1;
-  }
-  const result = [];
-  let fence = "";
-  for (let i = 0; i + 1 < lines.length; i++) {
-    const f = /^\s*(?:>\s*)*(`{3,}|~{3,})/.exec(lines[i]);
-    if (f) {
-      if (!fence) fence = f[1];
-      else if (f[1][0] === fence[0] && f[1].length >= fence.length && /^\s*$/.test(lines[i].slice(f[0].length))) fence = "";
-      continue;
-    }
-    if (fence || !lines[i].includes("|")) continue;
-    const header = tableCells(lines[i], offsets[i]), divider = tableCells(lines[i + 1]);
-    if (header.length < 1 || divider.length !== header.length || !divider.every((c) => /^:?-{3,}:?$/.test(c.text))) continue;
-    const rows = [header], start = i;
-    i += 2;
-    while (i < lines.length && lines[i].includes("|") && !/^\s*(?:>\s*)*(?:#{1,6}\s|`{3,}|~{3,})/.test(lines[i])) {
-      const row = tableCells(lines[i], offsets[i]).slice(0, header.length), end = offsets[i] + lines[i].length;
-      while (row.length < header.length) row.push({ text: "", from: end, to: end });
-      rows.push(row);
-      i++;
-    }
-    const from = offsets[start], to = i < lines.length ? offsets[i] - 1 : source.length, raw = source.slice(from, to);
-    result.push({ source: raw, from, to, rows, key: tableKey(raw) });
-    i--;
-  }
-  return result;
-}
-
-// src/math-anchor-location.ts
-var equationCache = /* @__PURE__ */ new Map();
-function indexedEquations(text4) {
-  let qs = equationCache.get(text4);
-  if (!qs) {
-    qs = equations(text4);
-    equationCache.set(text4, qs);
-    if (equationCache.size > 2) equationCache.delete(equationCache.keys().next().value);
-  }
-  return qs;
-}
-function locateMarginAnchor(text4, a2) {
-  const p = symbolTextProjection(text4);
-  if (!p) return locateRawMarginAnchor(text4, a2);
-  const hit = locateRawMarginAnchor(p.text, a2);
-  return hit && { from: p.toRaw(hit.from, -1), to: p.toRaw(hit.to, 1) };
-}
-function locateRawMarginAnchor(text4, a2) {
-  const exact = locateRawQuote(text4, a2);
-  if (exact || a2.kind !== "math") return exact;
-  const before = a2.before.trimEnd(), after = a2.after.trimStart();
-  if (!before && !after) return;
-  const candidates = indexedEquations(text4).filter((q) => {
-    const left = text4.slice(0, q.from).trimEnd(), right = text4.slice(q.to).trimStart();
-    return (before ? left.endsWith(before) : left === "") && (after ? right.startsWith(after) : right === "");
-  });
-  if (candidates.length === 1) return { from: candidates[0].from, to: candidates[0].to };
-}
-
-// src/symbols/stats.ts
-var symbolStats = { initialScans: 0, registryParses: 0, markerParses: 0, fullTextReads: 0, writes: 0, apiCalls: 0, layoutChecks: 0, rowConversions: 0 };
-
-// src/math-semantic.ts
-function signatureItems(node) {
-  const tag = node.tagName.toLowerCase();
-  if (tag === "mjx-break") return [];
-  if (["mjx-math", "mjx-mrow", "mjx-mstyle", "mjx-texatom", "mjx-script"].includes(tag)) return Array.from(node.children).flatMap(signatureItems);
-  if (["mjx-mi", "mjx-mn", "mjx-mo", "mjx-mtext"].includes(tag)) return [[tag, node.textContent]];
-  return [[tag, Array.from(node.children).map(signatureItems)]];
-}
-var symbolRowShapes = /* @__PURE__ */ new WeakMap();
-var symbolRowNodes = /* @__PURE__ */ new WeakMap();
-function symbolOnlyRow(node) {
-  const tex = node.getAttribute("data-latex") ?? "", cached = symbolRowNodes.get(node);
-  if (cached?.tex === tex) return cached.result;
-  const result = classifySymbolRow(node);
-  if (node.classList.contains("mjx-ss")) symbolRowNodes.set(node, { tex, result });
-  return result;
-}
-function classifySymbolRow(node) {
-  if (node.tagName.toLowerCase() !== "mjx-mrow") return false;
-  const classes = Array.from(node.classList);
-  if (!classes.includes("mjx-ss") || !classes.some((c) => /^mjx-ss-o-[0-9a-z]{10}$/.test(c))) return false;
-  const tex = node.getAttribute("data-latex") ?? "";
-  try {
-    const tags3 = markers(tex);
-    if (tags3.length !== 1) return false;
-    const body = tags3[0].body, doc2 = node.ownerDocument;
-    let cache6 = symbolRowShapes.get(doc2);
-    if (!cache6) {
-      cache6 = /* @__PURE__ */ new Map();
-      symbolRowShapes.set(doc2, cache6);
-    }
-    const display = node.closest("mjx-container")?.getAttribute("display") === "true", key3 = JSON.stringify([body, display]);
-    if (!cache6.has(key3)) {
-      const mj = doc2.defaultView?.MathJax;
-      if (!mj?.tex2chtml) return false;
-      symbolStats.rowConversions++;
-      const rendered = mj.tex2chtml(body, { display }), math2 = rendered.querySelector("mjx-math");
-      if (!math2 || math2.querySelector("mjx-merror")) return false;
-      const children = Array.from(math2.children).filter((n) => n.tagName.toLowerCase() !== "mjx-break");
-      cache6.set(key3, children.length > 1 ? children.map(mathSignature) : null);
-      if (cache6.size > 256) cache6.delete(cache6.keys().next().value);
-    }
-    const expected = cache6.get(key3);
-    if (!expected) return false;
-    const actual = Array.from(node.children).filter((n) => n.tagName.toLowerCase() !== "mjx-break");
-    return actual.length === expected.length && actual.every((n, i) => mathSignature(n) === expected[i]);
-  } catch {
-    return false;
-  }
-}
-function mathSignature(node) {
-  return JSON.stringify(signatureItems(node));
-}
-function mathParentSignature(node) {
-  const own = mathSignature(node);
-  let parent2 = node.parentElement;
-  while (parent2 && parent2.tagName.toLowerCase().startsWith("mjx-")) {
-    const key3 = mathSignature(parent2);
-    if (!symbolOnlyRow(parent2) && key3 !== own) return key3;
-    parent2 = parent2.parentElement;
-  }
-  return "";
-}
-function semanticMatches(math2, key3, parent2) {
-  const all = Array.from(math2.querySelectorAll("[data-latex]")).filter((n) => !symbolOnlyRow(n));
-  return all.filter((n) => mathSignature(n) === key3 && mathParentSignature(n) === parent2).filter((n) => !all.some((p) => p !== n && p.contains(n) && mathSignature(p) === key3 && mathParentSignature(p) === parent2));
-}
-var renderedKeys = /* @__PURE__ */ new Map();
-function latexSignature(latex, doc2) {
-  if (renderedKeys.has(latex)) return renderedKeys.get(latex);
-  const mj = doc2.defaultView?.MathJax;
-  if (!mj?.tex2chtml) return;
-  let key3;
-  try {
-    const rendered = mj.tex2chtml(latex, { display: false });
-    const math2 = rendered.querySelector("mjx-math");
-    if (math2 && !math2.querySelector("mjx-merror")) key3 = mathSignature(math2);
-  } catch {
-  }
-  renderedKeys.set(latex, key3);
-  if (renderedKeys.size > 64) renderedKeys.delete(renderedKeys.keys().next().value);
-  return key3;
-}
-
-// src/math-parts.ts
-function validSemantic(s) {
-  return s === void 0 || !!s && typeof s.key === "string" && typeof s.parent === "string" && Number.isSafeInteger(s.occurrence) && Number.isSafeInteger(s.count) && s.occurrence >= 0 && s.count > s.occurrence;
-}
-function validMathPart(p) {
-  return !!p && Array.isArray(p.nodes) && p.nodes.length > 0 && p.nodes.length <= 128 && p.nodes.every((n) => n && typeof n.latex === "string" && typeof n.parentLatex === "string" && Number.isSafeInteger(n.occurrence) && n.occurrence >= 0 && validSemantic(n.semantic));
-}
-function semanticNodes(math2) {
-  return Array.from(math2.querySelectorAll("[data-latex]")).filter((n) => !symbolOnlyRow(n));
-}
-function semanticParent(node) {
-  let parent2 = node.parentElement?.closest("[data-latex]") ?? null;
-  while (parent2 && symbolOnlyRow(parent2)) parent2 = parent2.parentElement?.closest("[data-latex]") ?? null;
-  return parent2;
-}
-function parentLatex(node) {
-  return plainSymbolLatex(semanticParent(node)?.getAttribute("data-latex")?.trim() ?? "");
-}
-function nodeLatex(node) {
-  return plainSymbolLatex(node.getAttribute("data-latex")?.trim() ?? "");
-}
-function describePart(math2, nodes) {
-  const all = semanticNodes(math2);
-  return { nodes: nodes.map((n) => {
-    const latex = nodeLatex(n), parent2 = parentLatex(n), key3 = mathSignature(n), parentKey = mathParentSignature(n), matches = semanticMatches(math2, key3, parentKey), ordinal = matches.findIndex((x) => x === n || x.contains(n));
-    return { latex, parentLatex: parent2, occurrence: all.filter((x) => nodeLatex(x) === latex && parentLatex(x) === parent2).indexOf(n), ...ordinal >= 0 ? { semantic: { key: key3, parent: parentKey, occurrence: ordinal, count: matches.length } } : {} };
-  }) };
-}
-function resolvePart(math2, part) {
-  const all = semanticNodes(math2);
-  const found = part.nodes.map((n) => {
-    const exact = all.filter((x) => nodeLatex(x) === plainSymbolLatex(n.latex.trim()) && parentLatex(x) === plainSymbolLatex(n.parentLatex.trim()))[n.occurrence];
-    if (exact) return exact;
-    const key3 = n.semantic?.key ?? latexSignature(n.latex, math2.ownerDocument), parent2 = n.semantic?.parent ?? latexSignature(n.parentLatex, math2.ownerDocument);
-    if (!key3 || parent2 === void 0) return;
-    const matches = semanticMatches(math2, key3, parent2);
-    if (n.semantic) return matches.length === n.semantic.count ? matches[n.semantic.occurrence] : void 0;
-    return matches.length === 1 && n.occurrence === 0 ? matches[0] : void 0;
-  });
-  if (!found.every(Boolean)) return [];
-  const nodes = found;
-  return nodes.every((n, i) => !i || !!(nodes[i - 1].compareDocumentPosition(n) & 4)) ? nodes : [];
-}
-function selectedGlyphs(math2, range) {
-  return Array.from(math2.querySelectorAll("mjx-c")).filter((n) => {
-    const r = n.ownerDocument.createRange();
-    r.selectNodeContents(n);
-    return range.compareBoundaryPoints(Range.END_TO_START, r) < 0 && range.compareBoundaryPoints(Range.START_TO_END, r) > 0;
-  });
-}
-function partFromRange(math2, range) {
-  const glyphs = selectedGlyphs(math2, range);
-  if (!glyphs.length) return;
-  const selected = new Set(glyphs);
-  const covered = (n) => {
-    const g = [...n.querySelectorAll("mjx-c")];
-    return g.length > 0 && g.every((x) => selected.has(x));
-  };
-  const picked = /* @__PURE__ */ new Set();
-  for (const glyph of glyphs) {
-    let n = glyph.closest("[data-latex]");
-    if (!n || n === math2) continue;
-    let p = semanticParent(n);
-    while (p && p !== math2 && math2.contains(p) && covered(p)) {
-      n = p;
-      p = semanticParent(n);
-    }
-    picked.add(n);
-  }
-  const nodes = [...picked].filter((n) => ![...picked].some((p) => p !== n && p.contains(n)));
-  if (covered(math2)) return;
-  return nodes.length ? describePart(math2, nodes) : void 0;
-}
-function partAtTarget(math2, target) {
-  const n = target.closest("[data-latex]");
-  if (!n || n === math2 || !math2.contains(n)) return;
-  if (symbolOnlyRow(n)) {
-    const children = semanticNodes(n).filter((child) => semanticParent(child) === semanticParent(n));
-    return children.length ? describePart(math2, children) : void 0;
-  }
-  return describePart(math2, [n]);
-}
-function partFromSource(math2, body, from, to) {
-  const projection = symbolLatexProjection(body);
-  if (projection) {
-    from = projection.toProjected(from);
-    to = projection.toProjected(to);
-    body = projection.text;
-  }
-  let failed = false;
-  const ranges = /* @__PURE__ */ new Map();
-  const canon = (s) => {
-    let text4 = "", positions = [];
-    for (let i = 0; i < s.length; i++) if (!/[\s{}]/.test(s[i])) {
-      text4 += s[i];
-      positions.push(i);
-    }
-    return { text: text4, positions };
-  };
-  const visit3 = (parent2, start, end) => {
-    const children = semanticNodes(parent2).filter((n) => semanticParent(n) === parent2);
-    let cursor = start;
-    for (const n of children) {
-      const value = canon(nodeLatex(n)).text, available = canon(body.slice(cursor, end));
-      if (!value) continue;
-      const at = available.text.indexOf(value);
-      if (at < 0) {
-        failed = true;
-        return;
-      }
-      const a2 = cursor + available.positions[at], b = cursor + available.positions[at + value.length - 1] + 1;
-      ranges.set(n, { from: a2, to: b });
-      visit3(n, a2, b);
-      cursor = b;
-    }
-  };
-  visit3(math2, 0, body.length);
-  if (failed) return;
-  const chosen = [...ranges].filter(([n, r]) => r.from < to && r.to > from && !semanticNodes(n).some((child) => {
-    const c = ranges.get(child);
-    return c && c.from < to && c.to > from;
-  })).map(([n]) => n);
-  if (!chosen.length) return;
-  const picked = new Set(chosen);
-  for (const n of chosen) {
-    let p = semanticParent(n);
-    while (p && p !== math2) {
-      const r = ranges.get(p);
-      if (!r || r.from < from || r.to > to) break;
-      picked.add(p);
-      p = semanticParent(p);
-    }
-  }
-  const nodes = [...picked].filter((n) => ![...picked].some((p) => p !== n && p.contains(n)));
-  const selected = canon(body.slice(from, to)).text;
-  const valid = nodes.every((n) => {
-    const v = canon(nodeLatex(n)).text;
-    return selected.includes(v) || v.includes(selected);
-  });
-  return nodes.length && valid ? describePart(math2, nodes) : void 0;
-}
-function notationSourceCandidates(body, latex) {
-  if (body.length > 16e3 || !latex.trim() || /(^|[^\\])%/.test(body)) return [];
-  const canonical2 = (s) => {
-    let text4 = "", positions = [];
-    for (let i = 0; i < s.length; i++) if (!/[\s{}]/.test(s[i])) {
-      text4 += s[i];
-      positions.push(i);
-    }
-    return { text: text4, positions };
-  };
-  const hay = canonical2(body), needle = canonical2(latex).text;
-  if (!needle) return [];
-  const out = [];
-  for (let at = hay.text.indexOf(needle); at >= 0; at = hay.text.indexOf(needle, at + 1)) {
-    const from = hay.positions[at];
-    let to = hay.positions[at + needle.length - 1] + 1, depth2 = 0, invalid = false;
-    for (let i = from; i < to; i++) {
-      if (body[i] === "\\") {
-        i++;
-        continue;
-      }
-      if (body[i] === "{") depth2++;
-      if (body[i] === "}" && --depth2 < 0) {
-        invalid = true;
-        break;
-      }
-    }
-    while (depth2 > 0 && body[to] === "}") {
-      to++;
-      depth2--;
-    }
-    if (!invalid && !depth2) out.push({ from, to });
-    if (out.length > 64) return [];
-  }
-  return out;
-}
-function notationMathFingerprint(node) {
-  const visit3 = (n) => {
-    const tag = n.tagName.toLowerCase();
-    if (tag === "mjx-break") return [];
-    if (["mjx-math", "mjx-mrow", "mjx-mstyle", "mjx-texatom", "mjx-script"].includes(tag)) return Array.from(n.children).flatMap(visit3);
-    if (["mjx-mi", "mjx-mn", "mjx-mo", "mjx-mtext"].includes(tag)) return [[tag, n.textContent, Array.from(n.querySelectorAll("mjx-c")).map((g) => [g.getAttribute("class"), g.getAttribute("data-c"), g.textContent])]];
-    return [[tag, Array.from(n.children).map(visit3)]];
-  };
-  return JSON.stringify(visit3(node));
-}
-function notationGlyphSelection(math2, range) {
-  const chosen = new Set(selectedGlyphs(math2, range));
-  return Array.from(math2.querySelectorAll("mjx-c")).flatMap((g, i) => chosen.has(g) ? [i] : []);
-}
-function exactNotationPartRange(math2, body, latex, glyphs, render) {
-  if (!glyphs.length || glyphs.some((n, i) => i > 0 && n !== glyphs[i - 1] + 1)) return;
-  const fingerprint = notationMathFingerprint(math2), fresh = render(body);
-  if (fresh.querySelector("mjx-merror") || notationMathFingerprint(fresh) !== fingerprint) return;
-  const candidates = notationSourceCandidates(body, latex), matches = [];
-  for (const candidate of candidates) {
-    try {
-      const probe = render(body.slice(0, candidate.from) + "\\class{mjx-ss mjx-ss-o-sproof0000}{" + body.slice(candidate.from, candidate.to) + "}" + body.slice(candidate.to));
-      if (probe.querySelector("mjx-merror") || notationMathFingerprint(probe) !== fingerprint) continue;
-      const tagged = probe.querySelectorAll(".mjx-ss-o-sproof0000");
-      if (tagged.length !== 1) continue;
-      const actual = Array.from(probe.querySelectorAll("mjx-c")).flatMap((g, i) => tagged[0].contains(g) ? [i] : []);
-      if (actual.length === glyphs.length && actual.every((n, i) => n === glyphs[i])) matches.push(candidate);
-    } catch {
-    }
-  }
-  return matches.length === 1 ? matches[0] : void 0;
-}
-
-// src/margin-anchors.ts
-var import_obsidian3 = require("obsidian");
-
-// src/resize-dom.ts
-function resizeDOM(p, postit = false) {
-  const points = [], aliases = /* @__PURE__ */ new Map(), mathOffsets = /* @__PURE__ */ new Map(), formulas = [];
-  let text4 = "", afterBreak = false;
-  const alias = (node, offset) => {
-    let map2 = aliases.get(node);
-    if (!map2) aliases.set(node, map2 = /* @__PURE__ */ new Map());
-    map2.set(offset, text4.length);
-  };
-  const point = (node, offset) => {
-    alias(node, offset);
-    points[text4.length] = { node, offset };
-  };
-  const walk = (node) => {
-    if (node.nodeType === 1) {
-      const el = node;
-      if (el.matches(".study-math-lines,.study-sticky-anchor")) return;
-      if (postit && el.matches(".study-reference-gutter,.collapse-indicator,.callout-title,button,input,textarea,script,style,pre,.code-links-panel,.study-practice-link")) return;
-      if (postit && el.matches("a,code,img,.internal-embed")) {
-        const parent2 = node.parentNode, index2 = [...parent2.childNodes].indexOf(node);
-        point(parent2, index2);
-        text4 += el.matches("a") ? "\uFFF9" : el.matches("code") ? "\uFFFA" : "\uFFFB";
-        point(parent2, index2 + 1);
-        return;
-      }
-      if (el.matches("br,.math")) {
-        alias(el, 0);
-        const parent2 = node.parentNode, index2 = [...parent2.childNodes].indexOf(node);
-        point(parent2, index2);
-        if (el.matches(".math")) {
-          afterBreak = false;
-          mathOffsets.set(el, text4.length);
-          formulas.push(el.querySelector("mjx-math")?.getAttribute("data-latex") ?? el.textContent ?? "");
-          text4 += "\uFFFC";
-        } else {
-          text4 += "\n";
-          afterBreak = true;
-        }
-        point(parent2, index2 + 1);
-        return;
-      }
-    }
-    if (node.nodeType === 3) {
-      const t2 = node, skip = afterBreak && t2.data.startsWith("\n") ? 1 : 0;
-      alias(t2, 0);
-      if (t2.length) afterBreak = false;
-      for (let i = 0; i < skip; i++) alias(t2, i + 1);
-      for (let i = skip; i < t2.length; i++) {
-        point(t2, i);
-        text4 += t2.data[i];
-      }
-      point(t2, t2.length);
-      return;
-    }
-    const children = [...node.childNodes];
-    alias(node, 0);
-    for (let i = 0; i < children.length; i++) {
-      walk(children[i]);
-      alias(node, i + 1);
-    }
-  };
-  walk(p);
-  return { text: text4, points, mathOffsets, fingerprint: JSON.stringify(formulas), offset: (node, offset) => aliases.get(node)?.get(offset) };
-}
-
-// src/resize-projection.ts
-function resizeProjection(source) {
-  let text4 = "", at = 0;
-  const boundaries = [0];
-  for (const q of equations(source)) {
-    for (; at < q.from; at++) {
-      text4 += source[at];
-      boundaries.push(at + 1);
-    }
-    text4 += "\uFFFC";
-    boundaries.push(q.to);
-    at = q.to;
-  }
-  for (; at < source.length; at++) {
-    text4 += source[at];
-    boundaries.push(at + 1);
-  }
-  return { text: text4, boundaries };
-}
-var inlineParser = parser.configure([Strikethrough, Table, TaskList, Autolink]);
-var inlineCache = /* @__PURE__ */ new Map();
-var cacheSize = 0;
-var inlineAtoms = { math: "\uFFFC", link: "\uFFF9", code: "\uFFFA", image: "\uFFFB" };
-function inlineProjection(source) {
-  const old = inlineCache.get(source);
-  if (old) {
-    inlineCache.delete(source);
-    inlineCache.set(source, old);
-    return old;
-  }
-  const hidden = new Uint8Array(source.length), atoms = /* @__PURE__ */ new Map(), blocked = [], prefixes = [];
-  const hide = (from, to) => hidden.fill(1, from, to);
-  const atom = (from, to, kind) => {
-    hide(from, to);
-    atoms.set(from, { to, kind });
-    blocked.push({ from, to, reason: kind });
-  };
-  const block = (from, to, reason) => {
-    hide(from, to);
-    for (const [at] of atoms) if (at >= from && at < to) atoms.delete(at);
-    blocked.push({ from, to, reason });
-  };
-  const tree2 = inlineParser.parse(source);
-  tree2.iterate({ enter(n) {
-    if (["FencedCode", "CodeBlock", "HTMLBlock", "LinkReference", "HorizontalRule"].includes(n.name)) {
-      block(n.from, n.to, "code or unsupported block");
-      return false;
-    }
-    if (n.name === "Table") {
-      block(n.from, n.to, "table");
-      return false;
-    }
-    if (n.name === "HeaderMark" && source.slice(source.lastIndexOf("\n", n.from - 1) + 1, n.from).trim()) {
-      block(n.from, n.to, "formatting delimiter");
-      return false;
-    }
-    if (n.name === "InlineCode") {
-      atom(n.from, n.to, "code");
-      return false;
-    }
-    if (n.name === "Image") {
-      atom(n.from, n.to, "image");
-      return false;
-    }
-    if (n.name === "Link" || n.name === "Autolink" || n.name === "URL") {
-      atom(n.from, n.to, "link");
-      return false;
-    }
-    if (["HeaderMark", "QuoteMark", "ListMark", "TaskMarker"].includes(n.name)) {
-      let to = n.to;
-      while (to < source.length && /[ \t]/.test(source[to])) to++;
-      const line = source.lastIndexOf("\n", n.from - 1) + 1, from = source.slice(line, n.from).trim() ? n.from : line;
-      hide(from, to);
-      prefixes.push({ from, to });
-      return false;
-    }
-    if (n.name === "HardBreak") {
-      block(n.from, n.to, "hard break");
-      return false;
-    }
-    if (["EmphasisMark", "StrikethroughMark", "CodeMark", "TableMark", "TableDelimiter"].includes(n.name)) {
-      block(n.from, n.to, "formatting delimiter");
-      return false;
-    }
-    if (n.name === "Escape") {
-      block(n.from, n.from + 1, "escape");
-      return false;
-    }
-    if (n.name === "HTMLTag" || n.name === "Comment" || n.name === "CommentBlock") {
-      block(n.from, n.to, "HTML");
-      return false;
-    }
-  } });
-  const front = /^---\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)(?:\r?\n|$)/.exec(source);
-  if (front) block(0, front[0].length, "frontmatter");
-  for (const m of source.matchAll(/!?\[\[[^\]\n]+\]\]/g)) {
-    if (blocked.some((b) => b.from <= m.index && b.to >= m.index + m[0].length)) continue;
-    for (const [at] of atoms) if (at >= m.index && at < m.index + m[0].length) atoms.delete(at);
-    atom(m.index, m.index + m[0].length, m[0][0] === "!" ? "image" : "link");
-  }
-  for (const q of equations(source)) {
-    if (blocked.some((b) => b.from <= q.from && b.to >= q.to)) continue;
-    for (const [at] of atoms) if (at >= q.from && at < q.to) atoms.delete(at);
-    atom(q.from, q.to, "math");
-  }
-  for (const m of source.matchAll(/%%[\s\S]*?%%/g)) if (!blocked.some((b) => b.from <= m.index && b.to >= m.index + m[0].length)) block(m.index, m.index + m[0].length, "comment");
-  for (const m of source.matchAll(/^[ \t]*(?:>[ \t]*)+\[![^\]\n]+\][+-]?[^\n]*/gm)) block(m.index, m.index + m[0].length, "callout title");
-  for (const m of source.matchAll(/(?:^|[ \t])\^[A-Za-z0-9-]+[ \t]*(?=\r?$)/gm)) block(m.index, m.index + m[0].length, "block identifier");
-  for (const m of source.matchAll(/==(?=\S)([^\n]*?\S)==/g)) {
-    if (!hidden[m.index]) {
-      block(m.index, m.index + 2, "formatting delimiter");
-      block(m.index + m[0].length - 2, m.index + m[0].length, "formatting delimiter");
-    }
-  }
-  for (const m of source.matchAll(/(?<![\w])#[\p{L}_][\p{L}\p{N}_\/-]*/gu)) if (!hidden[m.index]) atom(m.index, m.index + m[0].length, "link");
-  const units = [];
-  for (let i = 0; i < source.length; ) {
-    const a2 = atoms.get(i);
-    if (a2) {
-      units.push({ char: inlineAtoms[a2.kind], from: i, to: a2.to, atom: a2.kind });
-      i = a2.to;
-    } else if (hidden[i]) i++;
-    else {
-      units.push({ char: source[i], from: i, to: i + 1 });
-      i++;
-    }
-  }
-  const result = { text: units.map((u2) => u2.char).join(""), units, blocked, prefixes };
-  if (source.length <= 25e4) {
-    inlineCache.set(source, result);
-    cacheSize += source.length;
-    while (inlineCache.size > 64 || cacheSize > 5e5) {
-      const key3 = inlineCache.keys().next().value;
-      cacheSize -= key3.length;
-      inlineCache.delete(key3);
-    }
-  }
-  return result;
-}
-function alignInline(source, rendered) {
-  const su = source.units.filter((u2) => !/\s/.test(u2.char));
-  const di = [];
-  let compact = "";
-  for (let i = 0; i < rendered.length; i++) if (!/\s/.test(rendered[i])) {
-    compact += rendered[i];
-    di.push(i);
-  }
-  if (su.map((u2) => u2.char).join("") !== compact) return;
-  const lower = (value, values2) => {
-    let lo = 0, hi = values2.length;
-    while (lo < hi) {
-      const mid = lo + hi >>> 1;
-      if (values2[mid] < value) lo = mid + 1;
-      else hi = mid;
-    }
-    return lo;
-  };
-  const ends = su.map((u2) => u2.to), starts = source.units.map((u2) => u2.from);
-  return {
-    toDOM(offset) {
-      const i = lower(offset, ends), left = su[i];
-      if (left && offset > left.from && offset < left.to) return;
-      if (left && offset === left.to) return di[i] + 1;
-      if (left && offset === left.from) return di[i];
-      if (i === 0) return di[0];
-      if (i >= su.length) return di.at(-1) === void 0 ? void 0 : di.at(-1) + 1;
-      const nextUnit = source.units[lower(su[i - 1].to, starts)];
-      return !nextUnit || offset <= nextUnit.from ? di[i - 1] + 1 : di[i];
-    },
-    toSource(offset) {
-      const i = lower(offset, di);
-      if (i < di.length && di[i] === offset) return su[i].from;
-      if (i === 0) return su[0]?.from;
-      if (offset === di[i - 1] + 1) {
-        const next = source.units[lower(su[i - 1].to, starts)];
-        return next?.from ?? su[i - 1].to;
-      }
-      return su[i]?.from ?? su.at(-1)?.to;
-    }
-  };
-}
-
-// src/margin-anchors.ts
-var contexts = /* @__PURE__ */ new WeakMap();
-var sourceIndexes = /* @__PURE__ */ new Map();
-function index(path, text4) {
-  let value = sourceIndexes.get(path);
-  if (value?.text !== text4) {
-    const lines = [0];
-    let at = -1;
-    while ((at = text4.indexOf("\n", at + 1)) >= 0) lines.push(at + 1);
-    value = { text: text4, lines, hits: /* @__PURE__ */ new Map() };
-    sourceIndexes.set(path, value);
-    if (sourceIndexes.size > 4) sourceIndexes.delete(sourceIndexes.keys().next().value);
-  }
-  return value;
-}
-function liveCalloutContext(root) {
-  const widget = root.closest(".cm-callout"), editor = widget?.closest(".cm-editor");
-  if (!widget || !editor || root.closest('.markdown-embed,.canvas-node,.study-card,.study-margin-pane,[data-code-links-host]:not([data-code-links-host="protected"])')) return;
-  const view = import_view2.EditorView.findFromDOM(editor), path = view?.state.field(import_obsidian2.editorInfoField, false)?.file?.path;
-  if (!view || !path) return;
-  const info = calloutSection(view, widget);
-  if (info) return { path, info };
-}
-function readingSectionInfo(el, ctx) {
-  const live = liveCalloutContext(el);
-  return live ? live.path === ctx.sourcePath ? live.info : null : ctx.getSectionInfo(el);
-}
-function registerReadingContext(el, path, ctx) {
-  contexts.set(el, { path, info: () => readingSectionInfo(el, ctx) });
-}
-function sectionContext(root) {
-  let el = root;
-  while (el) {
-    const context2 = contexts.get(el), info = context2?.info();
-    if (context2 && info) return { context: context2, info, el };
-    const live = liveCalloutContext(el);
-    if (live && (!context2 || context2.path() === live.path)) return { context: { path: () => live.path, info: () => live.info }, info: live.info, el };
-    el = el.parentElement?.closest("[data-study-comment-section]") ?? null;
-  }
-}
-function ownedText(root) {
-  const walker = root.ownerDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  let n, text4 = "";
-  while (n = walker.nextNode()) if (n.parentElement?.closest("[data-study-comment-section]") === root && !n.parentElement.closest('.code-links-panel,[data-code-links-host]:not([data-code-links-host="protected"]),code,pre,mjx-container,.math,.study-reference-gutter,button,input,textarea')) text4 += n.textContent ?? "";
-  return text4;
-}
-function readingAnchorApplies(root, a2, knownInfo) {
-  const registered = contexts.get(root), found = knownInfo && registered ? { context: registered, info: knownInfo, el: root } : sectionContext(root);
-  if (!found) return false;
-  const { context: context2, info, el } = found;
-  if (el !== root && !a2.sectionSource) return false;
-  const entry = index(context2.path(), info.text), from = entry.lines[info.lineStart] ?? 0, to = entry.lines[info.lineEnd + 1] ?? info.text.length;
-  if (a2.sectionSource) {
-    const section = info.text.slice(from, to);
-    return (symbolTextProjection(section)?.text ?? section).trimEnd() === a2.sectionSource.trimEnd() && (!a2.renderedRoot || a2.renderedRoot === ownedText(root));
-  }
-  const key3 = JSON.stringify([a2.quote, a2.before, a2.after]);
-  if (!entry.hits.has(key3)) entry.hits.set(key3, locateMarginAnchor(info.text, a2));
-  const hit = entry.hits.get(key3);
-  return !!hit && hit.from >= from && hit.to <= to;
-}
-function editorExcerpts(raw, from, to, path) {
-  const projected = symbolTextProjection(raw);
-  if (projected) return editorExcerpts(projected.text, projected.toProjected(from), projected.toProjected(to), path);
-  const inside2 = equations(raw).find((q) => from >= q.bodyFrom && to <= q.bodyTo);
-  if (inside2) {
-    const mj = window.MathJax;
-    try {
-      const rendered = mj?.tex2chtml(inside2.body, { display: inside2.display });
-      const math2 = rendered?.querySelector("mjx-math");
-      const part = math2 && partFromSource(math2, inside2.body, from - inside2.bodyFrom, to - inside2.bodyFrom);
-      if (part) return [{ id: crypto.randomUUID(), path, quote: inside2.raw, before: raw.slice(Math.max(0, inside2.from - 48), inside2.from), after: raw.slice(inside2.to, inside2.to + 48), kind: "math", part, renderedQuote: "$" + part.nodes.map((n) => n.latex).join(" ") + "$" }];
-    } catch {
-    }
-    new import_obsidian3.Notice("Select this part in rendered math, then right-click to add a note.");
-    return [];
-  }
-  const result = [];
-  const selection = raw.slice(from, to);
-  let start = 0;
-  const add2 = (end) => {
-    const part = selection.slice(start, end);
-    if (part.trim()) {
-      const a2 = from + start, b = from + end;
-      result.push({ id: crypto.randomUUID(), path, quote: part, before: raw.slice(Math.max(0, a2 - 48), a2), after: raw.slice(b, b + 48), kind: equations(part).some((q) => q.raw.trim() === part.trim()) ? "math" : "text" });
-    }
-  };
-  for (const match of selection.matchAll(/\n\s*\n/g)) {
-    add2(match.index);
-    start = match.index + match[0].length;
-  }
-  add2(selection.length);
-  return result;
-}
-function sourceAnchor(path, info, quote, before, after, pieces) {
-  const entry = index(path, info.text), from = entry.lines[info.lineStart] ?? 0, to = entry.lines[info.lineEnd + 1] ?? info.text.length, section = info.text.slice(from, to);
-  let hit = locateQuote(section, { quote, before, after });
-  if (!hit && pieces.length > 1) {
-    const first = locateQuote(section, { quote: pieces[0], before, after: "" }), last = locateQuote(section, { quote: pieces.at(-1), before: "", after });
-    if (first && last && first.from <= last.from) hit = { from: first.from, to: last.to };
-  }
-  const a2 = { id: crypto.randomUUID(), path, quote: hit ? section.slice(hit.from, hit.to) : quote, before: hit ? info.text.slice(Math.max(0, from + hit.from - 48), from + hit.from) : before, after: hit ? info.text.slice(from + hit.to, from + hit.to + 48) : after, renderedQuote: quote, renderedBefore: before, renderedAfter: after, kind: "text" };
-  if (!hit) a2.sectionSource = section;
-  return ordinaryAnchor(info.text, a2, hit ? { from: from + hit.from, to: from + hit.to } : void 0);
-}
-function readingExcerpts(selection, path) {
-  if (!selection.rangeCount || selection.isCollapsed) return [];
-  const range = selection.getRangeAt(0), doc2 = range.startContainer.ownerDocument;
-  const preview = (range.startContainer.parentElement ?? doc2.body).closest(".markdown-preview-view") ?? doc2.body, result = [];
-  for (const root of Array.from(preview.querySelectorAll("[data-study-comment-section]"))) {
-    if (!range.intersectsNode(root)) continue;
-    const found = sectionContext(root);
-    if (!found || found.context.path() !== path) continue;
-    const { info } = found;
-    const walker = doc2.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    let node, raw = "", selected = "", first = -1, last = 0;
-    const pieces = [];
-    while (node = walker.nextNode()) {
-      const parent2 = node.parentElement;
-      if (parent2?.closest("[data-study-comment-section]") !== root || parent2.closest('.code-links-panel,[data-code-links-host]:not([data-code-links-host="protected"]),code,pre,mjx-container,.math,.study-reference-gutter,button,input,textarea')) continue;
-      const text4 = node.textContent ?? "";
-      if (range.intersectsNode(node)) {
-        const start = node === range.startContainer ? range.startOffset : 0, end = node === range.endContainer ? range.endOffset : text4.length;
-        const piece = text4.slice(start, end);
-        if (piece) {
-          if (first < 0) first = raw.length + start;
-          last = raw.length + end;
-          selected += piece;
-          pieces.push(piece);
-        }
-      }
-      raw += text4;
-    }
-    if (selected.trim()) {
-      const anchor2 = sourceAnchor(path, info, selected, raw.slice(Math.max(0, first - 48), first), raw.slice(last, last + 48), pieces);
-      if (found.el !== root) {
-        const ix = index(path, info.text);
-        anchor2.sectionSource = info.text.slice(ix.lines[info.lineStart] ?? 0, ix.lines[info.lineEnd + 1] ?? info.text.length);
-        anchor2.renderedRoot = raw;
-      }
-      result.push(ordinaryAnchor(info.text, anchor2));
-    }
-    const math2 = Array.from(root.querySelectorAll(".math")).filter((el) => el.closest("[data-study-comment-section]") === root);
-    const entry = index(path, info.text), offset = entry.lines[info.lineStart] ?? 0, section = info.text.slice(offset, entry.lines[info.lineEnd + 1] ?? info.text.length), qs = equations(section);
-    math2.forEach((el, i) => {
-      if (range.intersectsNode(el) && qs[i]) {
-        const q = qs[i], from = offset + q.from, to = offset + q.to;
-        result.push(ordinaryAnchor(info.text, { id: crypto.randomUUID(), path, quote: q.raw, before: info.text.slice(Math.max(0, from - 48), from), after: info.text.slice(to, to + 48), kind: "math", ...el.contains(range.startContainer) && el.contains(range.endContainer) ? { part: partFromRange(el.querySelector("mjx-math"), range) } : {} }, { from, to }));
-      }
-    });
-  }
-  return result;
-}
-function readingMathTargets(root, a2) {
-  const context2 = contexts.get(root), info = context2?.info();
-  if (!info) return [];
-  const entry = index(a2.path, info.text), offset = entry.lines[info.lineStart] ?? 0, qs = equations(info.text.slice(offset, entry.lines[info.lineEnd + 1] ?? info.text.length));
-  const elements = Array.from(root.querySelectorAll(".math")).filter((el) => el.closest("[data-study-comment-section]") === root);
-  const hit = locateMarginAnchor(info.text, a2);
-  return qs.flatMap((q, i) => hit && offset + q.from === hit.from && elements[i] ? [elements[i]] : []);
-}
-function readingTableTarget(root, a2) {
-  if (!a2.table) return;
-  const found = sectionContext(root);
-  if (!found || found.context.path() !== a2.path) return;
-  const { info } = found, entry = index(a2.path, info.text), from = entry.lines[info.lineStart] ?? 0, to = entry.lines[info.lineEnd + 1] ?? info.text.length;
-  const sources = (entry.tables ??= sourceTables(info.text)).filter((t2) => t2.from >= from && t2.to <= to), tables = Array.from(root.querySelectorAll("table")).filter((t2) => t2.closest("[data-study-comment-section]") === root);
-  if (sources.length !== tables.length) return;
-  const hit = locateMarginAnchor(info.text, a2);
-  if (!hit) return;
-  for (let i = 0; i < sources.length; i++) {
-    const source = sources[i], table = tables[i];
-    if (hit.from < source.from || hit.to > source.to || table.rows.length !== source.rows.length) continue;
-    for (let row = 0; row < source.rows.length; row++) for (let column = 0; column < source.rows[row].length; column++) {
-      const cell = source.rows[row][column], dom = table.rows[row]?.cells[column];
-      if (hit.from >= cell.from && hit.to <= cell.to && dom?.colSpan === 1 && dom.rowSpan === 1 && table.rows[row].cells.length === source.rows[row].length) return dom;
-    }
-  }
-}
-function readingEquationAnchor(math2, path) {
-  const root = math2.closest("[data-study-comment-section]");
-  if (!root) return;
-  const found = sectionContext(root);
-  if (!found || found.context.path() !== path) return;
-  const { info } = found, entry = index(path, info.text), offset = entry.lines[info.lineStart] ?? 0, qs = equations(info.text.slice(offset, entry.lines[info.lineEnd + 1] ?? info.text.length));
-  const elements = Array.from(root.querySelectorAll(".math")).filter((el) => el.closest("[data-study-comment-section]") === root);
-  const q = qs[elements.indexOf(math2)];
-  if (!q) return;
-  const from = offset + q.from, to = offset + q.to;
-  return ordinaryAnchor(info.text, { id: crypto.randomUUID(), path, quote: q.raw, before: info.text.slice(Math.max(0, from - 48), from), after: info.text.slice(to, to + 48), kind: "math" }, { from, to });
-}
-function readingTableExcerpts(range, path) {
-  const doc2 = range.startContainer.ownerDocument, result = [];
-  for (const table of Array.from(doc2.querySelectorAll(".markdown-preview-view table,.cm-embed-block table"))) {
-    if (!range.intersectsNode(table)) continue;
-    const root = table.closest("[data-study-comment-section]");
-    if (!root) continue;
-    const found = sectionContext(root);
-    if (!found || found.context.path() !== path) continue;
-    const { info } = found, entry = index(path, info.text), base2 = entry.lines[info.lineStart] ?? 0, end = entry.lines[info.lineEnd + 1] ?? info.text.length;
-    const sources = sourceTables(info.text.slice(base2, end)), tables = Array.from(found.el.querySelectorAll("table"));
-    if (sources.length !== tables.length) continue;
-    const source = sources[tables.indexOf(table)];
-    if (!source || source.rows.length !== table.rows.length) continue;
-    for (let row = 0; row < table.rows.length; row++) for (let col = 0; col < table.rows[row].cells.length; col++) {
-      const cell = table.rows[row].cells[col], raw = source.rows[row]?.[col];
-      if (!raw || !range.intersectsNode(cell)) continue;
-      const clipped = range.cloneRange();
-      if (!cell.contains(range.startContainer)) clipped.setStart(cell, 0);
-      if (!cell.contains(range.endContainer)) clipped.setEnd(cell, cell.childNodes.length);
-      const quote = clipped.toString().trim();
-      if (!quote) continue;
-      let from = base2 + raw.from, to = base2 + raw.to;
-      const at = raw.text.indexOf(quote);
-      if (at >= 0 && raw.text.indexOf(quote, at + 1) < 0) {
-        from += at;
-        to = from + quote.length;
-      } else if (!cell.querySelector(".math") && quote !== (cell.textContent ?? "").trim()) continue;
-      result.push(ordinaryAnchor(info.text, { id: crypto.randomUUID(), path, quote: info.text.slice(from, to), before: info.text.slice(Math.max(0, from - 96), from), after: info.text.slice(to, to + 96), kind: equations(info.text.slice(from, to)).some((q) => q.raw === info.text.slice(from, to)) ? "math" : "text", ...cell.querySelector("mjx-math")?.contains(range.startContainer) && cell.querySelector("mjx-math")?.contains(range.endContainer) ? { part: partFromRange(cell.querySelector("mjx-math"), range) } : {}, ...cell.querySelector(".math") ? {} : { renderedQuote: quote }, table: { key: source.key, source: source.source, row, column: col, cellText: raw.text } }, { from, to }));
-    }
-  }
-  return result;
-}
-function readingSectionBounds(info, path) {
-  const entry = index(path, info.text);
-  return { from: entry.lines[info.lineStart] ?? 0, to: entry.lines[info.lineEnd + 1] === void 0 ? info.text.length : entry.lines[info.lineEnd + 1] - 1 };
-}
-function readingStickyMap(root, info, path) {
-  const { from, to } = readingSectionBounds(info, path);
-  const projection = inlineProjection(info.text.slice(from, to)), dom = resizeDOM(root, true), alignment = alignInline(projection, dom.text);
-  if (!alignment) return;
-  return { from, to, dom, point(offset) {
-    const at = alignment.toDOM(offset - from);
-    return at === void 0 ? void 0 : dom.points[at];
-  }, source(node, offset) {
-    const at = dom.offset(node, offset);
-    if (at === void 0) return;
-    const local = alignment.toSource(at);
-    return local === void 0 ? void 0 : from + local;
-  } };
-}
-function readingStickyInsertion(selection, path, pointer) {
-  const doc2 = pointer ? pointer.target.ownerDocument : selection?.anchorNode?.ownerDocument;
-  if (!doc2) return;
-  let range, selectedRange;
-  if (pointer) {
-    const d = doc2;
-    const caret = d.caretPositionFromPoint?.(pointer.clientX, pointer.clientY);
-    if (caret) {
-      range = doc2.createRange();
-      range.setStart(caret.offsetNode, caret.offset);
-      range.collapse(true);
-    } else range = d.caretRangeFromPoint?.(pointer.clientX, pointer.clientY) ?? void 0;
-    if (range && selection?.rangeCount && !selection.isCollapsed) {
-      const selected = selection.getRangeAt(0);
-      if (selected.isPointInRange(range.startContainer, range.startOffset)) {
-        selectedRange = selected.cloneRange();
-        range = selected.cloneRange();
-        range.collapse(false);
-      }
-    }
-  } else if (selection?.rangeCount) {
-    selectedRange = selection.getRangeAt(0).cloneRange();
-    range = selectedRange.cloneRange();
-    range.collapse(false);
-  }
-  if (!range) return;
-  const node = range.startContainer, parent2 = node.nodeType === 1 ? node : node.parentElement;
-  if (parent2?.closest("a,code,pre,.math,.internal-embed,.study-sticky-anchor,.study-reference-gutter,button,input,textarea")) return;
-  const root = parent2?.closest("[data-study-comment-section]");
-  if (!root) return;
-  const found = sectionContext(root);
-  if (!found || found.context.path() !== path) return;
-  const mapping = readingStickyMap(found.el, found.info, path), offset = mapping?.source(node, range.startOffset);
-  if (offset === void 0) return;
-  if (selectedRange && !selectedRange.collapsed && (!found.el.contains(selectedRange.startContainer) || found.info.text[offset - 1] === "\n")) return;
-  return { text: found.info.text, offset };
-}
-function notationReadingSection(math2, path) {
-  const root = math2.closest("[data-study-comment-section]"), found = root && sectionContext(root);
-  if (!found || found.context.path() !== path) return;
-  const { info, el } = found, entry = index(path, info.text), from = entry.lines[info.lineStart], to = entry.lines[info.lineEnd + 1] ?? info.text.length;
-  if (from === void 0 || to < from) return;
-  const elements = Array.from(el.querySelectorAll(".math")).filter((n) => !n.closest(".markdown-embed,.canvas-node,.study-card,.study-margin-pane,code,pre"));
-  if (!elements.includes(math2)) return;
-  return { source: info.text, from, to, root: el, elements };
-}
-
-// src/symbols/selection-source.ts
-function projectNotationEquation(source, q) {
-  if (source.slice(q.bodyFrom, q.bodyTo) !== q.body) return;
-  const opening = source.slice(source.lastIndexOf("\n", q.from - 1) + 1, q.from), quote = q.display && /^[ \t]*(?:>[ \t]*)+$/.test(opening) ? opening : "";
-  if (!quote) return { body: q.body, rawRange: (from, to) => Number.isInteger(from) && Number.isInteger(to) && from >= 0 && to > from && to <= q.body.length ? { from: q.bodyFrom + from, to: q.bodyFrom + to } : void 0, projectedRange: (from, to) => Number.isInteger(from) && Number.isInteger(to) && from >= q.bodyFrom && to > from && to <= q.bodyTo ? { from: from - q.bodyFrom, to: to - q.bodyFrom } : void 0 };
-  const closingLine = source.lastIndexOf("\n", q.bodyTo - 1) + 1;
-  if (closingLine > q.from && /^[ \t]*(?:>[ \t]*)+/.exec(source.slice(closingLine, q.bodyTo))?.[0] !== quote) return;
-  const depth2 = (quote.match(/>/g) ?? []).length, offsets = [];
-  let body = "", at = 0, line = 0;
-  for (const segment of q.body.matchAll(/[^\n]*(?:\n|$)/g)) {
-    const raw = segment[0];
-    if (!raw) continue;
-    let content2 = raw, start = at;
-    if (line > 0) {
-      const prefix = /^[ \t]*(?:>[ \t]*)+/.exec(raw)?.[0];
-      if (!prefix || prefix !== quote || (prefix.match(/>/g) ?? []).length !== depth2) return;
-      content2 = raw.slice(prefix.length);
-      start += prefix.length;
-    }
-    for (let i = 0; i < content2.length; i++) {
-      if (content2[i] === "\r" && content2[i + 1] === "\n") continue;
-      body += content2[i];
-      offsets.push(q.bodyFrom + start + i);
-    }
-    at += raw.length;
-    line++;
-  }
-  const rawRange = (from, to) => {
-    if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to <= from || to > offsets.length) return;
-    for (let i = from + 1; i < to; i++) if (offsets[i] !== offsets[i - 1] + 1) return;
-    const range = { from: offsets[from], to: offsets[to - 1] + 1 };
-    return source.slice(range.from, range.to) === body.slice(from, to) ? range : void 0;
-  };
-  return { body, rawRange, projectedRange: (from, to) => {
-    if (!Number.isInteger(from) || !Number.isInteger(to) || to <= from) return;
-    const start = offsets.indexOf(from), end = offsets.indexOf(to - 1);
-    if (start < 0 || end < start) return;
-    const raw = rawRange(start, end + 1);
-    return raw?.from === from && raw.to === to ? { from: start, to: end + 1 } : void 0;
-  } };
-}
-
-// src/symbols/selection.ts
-var captures = /* @__PURE__ */ new WeakMap();
-var message = "Select one exact symbol in the current note again. This rendered selection could not be proved against its source.";
-var excluded = ".markdown-embed,.canvas-node,.study-card,.study-margin-pane,.code-links-panel,[data-code-links-host],code,pre,input,textarea";
-function anchor(c) {
-  const a2 = { id: crypto.randomUUID(), path: c.path, quote: c.from === void 0 ? "" : c.source.slice(c.from, c.to), before: "", after: "", kind: "math" };
-  captures.set(a2, c);
-  return a2;
-}
-function captureNotationSelection(plugin2, path, range) {
-  const view = plugin2.app.workspace.getActiveViewOfType(import_obsidian4.MarkdownView);
-  if (!view || view.file?.path !== path) return;
-  const doc2 = view.containerEl.ownerDocument, selection = doc2.getSelection();
-  range ??= selection?.rangeCount && !selection.isCollapsed ? selection.getRangeAt(0) : void 0;
-  if (range && (!view.containerEl.contains(range.startContainer) || !view.containerEl.contains(range.endContainer))) return;
-  const start = range?.startContainer.nodeType === 1 ? range.startContainer : range?.startContainer.parentElement;
-  const end = range?.endContainer.nodeType === 1 ? range.endContainer : range?.endContainer.parentElement;
-  if (start?.closest(excluded) || end?.closest(excluded)) return;
-  if (view.getMode() === "source" && (!range || start?.closest(".cm-content") && !start.closest(".math,.cm-embed-block,.cm-callout"))) {
-    const editor = view.editor, from = editor.posToOffset(editor.getCursor("from")), to = editor.posToOffset(editor.getCursor("to")), source = editor.getValue();
-    const ranges = editor.cm?.state?.selection?.ranges;
-    if (ranges && ranges.length !== 1) return;
-    const q2 = equations(source).find((q3) => from >= q3.bodyFrom && to <= q3.bodyTo), projection = q2 && projectNotationEquation(source, q2);
-    if (!projection?.projectedRange(from, to)) return;
-    return anchor({ path, source, from, to });
-  }
-  if (!range || range.collapsed) return;
-  const mathHost = start?.closest(".math");
-  if (!mathHost || !mathHost.contains(range.endContainer)) return;
-  const math2 = mathHost.querySelector("mjx-math"), section = notationReadingSection(mathHost, path);
-  if (!math2 || !section) return;
-  const local = section.source.slice(section.from, section.to), qs = equations(local), projected = qs.map((q2) => projectNotationEquation(local, q2));
-  if (qs.length > 64 || qs.length !== section.elements.length || projected.some((p) => !p || unsupported(plainSymbolLatex(p.body)))) return;
-  const ordinal = section.elements.indexOf(mathHost), q = qs[ordinal];
-  if (!q) return;
-  const glyphs = notationGlyphSelection(math2, range);
-  if (!glyphs.length) return;
-  const part = partFromRange(math2, range), latex = part ? part.nodes.map((n) => n.latex).join(" ") : glyphs.length === math2.querySelectorAll("mjx-c").length ? projected[ordinal].body : "";
-  if (!latex) return;
-  const fingerprints = section.elements.map((el) => {
-    const m = el.querySelector("mjx-math");
-    return m ? notationMathFingerprint(m) : "";
-  });
-  if (fingerprints.some((s) => !s)) return;
-  const latexSources = section.elements.map((el) => el.querySelector("mjx-math")?.getAttribute("data-latex")?.trim() ?? "");
-  if (latexSources.some((s) => !s)) return;
-  const token = anchor({ path, source: section.source, math: mathHost, range: range.cloneRange(), section, fingerprints, latexSources, glyphs, latex });
-  token.quote = q.raw;
-  token.part = part;
-  return token;
-}
-async function resolveNotationSelection(plugin2, path, saved) {
-  const token = saved ?? captureNotationSelection(plugin2, path), capture = token && captures.get(token);
-  if (!capture || capture.path !== path) throw Error(message);
-  const file = plugin2.app.vault.getAbstractFileByPath(path);
-  if (!(file instanceof import_obsidian4.TFile)) throw Error("Source note is missing.");
-  const source = await plugin2.app.vault.read(file);
-  if (source !== capture.source) throw Error("The note changed after selection. Select the symbol again.");
-  for (const leaf of plugin2.app.workspace.getLeavesOfType("markdown")) {
-    const v = leaf.view;
-    if (v instanceof import_obsidian4.MarkdownView && v.file?.path === path && v.getMode() === "source" && v.editor.getValue() !== source) throw Error("Wait for the note to finish saving, then select again.");
-  }
-  let from = capture.from, to = capture.to;
-  if (from === void 0 || to === void 0) {
-    const old = capture.section, host = capture.math, range = capture.range;
-    if (!old || !host?.isConnected || !range) throw Error(message);
-    const section = notationReadingSection(host, path), math2 = host.querySelector("mjx-math");
-    if (!section || !math2 || section.source !== source || section.from !== old.from || section.to !== old.to || section.root !== old.root || section.elements.length !== old.elements.length || section.elements.some((el, i2) => el !== old.elements[i2])) throw Error(message);
-    const local = source.slice(section.from, section.to), qs = equations(local), projected = qs.map((q3) => projectNotationEquation(local, q3)), mj = math2.ownerDocument.defaultView?.MathJax;
-    if (!mj?.tex2chtml || qs.length > 64 || qs.length !== section.elements.length || projected.some((p) => !p || unsupported(plainSymbolLatex(p.body)))) throw Error(message);
-    const render = (tex, display) => {
-      const root = mj.tex2chtml(tex, { display }), m = root.querySelector("mjx-math");
-      if (!m || root.querySelector("mjx-merror")) throw Error(message);
-      return m;
-    };
-    for (let i2 = 0; i2 < qs.length; i2++) {
-      const current = section.elements[i2].querySelector("mjx-math"), fresh = render(projected[i2].body, qs[i2].display);
-      if (!current || current.getAttribute("data-latex")?.trim() !== capture.latexSources[i2] || fresh.getAttribute("data-latex")?.trim() !== capture.latexSources[i2] || notationMathFingerprint(current) !== capture.fingerprints[i2] || notationMathFingerprint(fresh) !== capture.fingerprints[i2]) throw Error(message);
-    }
-    const i = section.elements.indexOf(host), q2 = qs[i];
-    if (!q2) throw Error(message);
-    if (JSON.stringify(notationGlyphSelection(math2, range)) !== JSON.stringify(capture.glyphs)) throw Error(message);
-    const projection = projected[i], hit = exactNotationPartRange(math2, projection.body, capture.latex, capture.glyphs, (tex) => render(tex, q2.display)), raw = hit && projection.rawRange(hit.from, hit.to);
-    if (!raw) throw Error(message);
-    from = section.from + raw.from;
-    to = section.from + raw.to;
-  }
-  const q = equations(source).find((q2) => from >= q2.bodyFrom && to <= q2.bodyTo);
-  if (!q || !projectNotationEquation(source, q)?.projectedRange(from, to)) throw Error(message);
-  if (markers(q.body).some((m) => from < q.bodyFrom + m.to && to > q.bodyFrom + m.from)) throw Error("This selection is already tagged. Open its notation card instead.");
-  return { from, to, expected: source.slice(from, to), source };
-}
-
-// node_modules/yaml/browser/dist/nodes/identity.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/identity.js
 var ALIAS = Symbol.for("yaml.alias");
 var DOC = Symbol.for("yaml.document");
 var MAP = Symbol.for("yaml.map");
@@ -7405,7 +6368,7 @@ function isNode(node) {
 }
 var hasAnchor = (node) => (isScalar(node) || isCollection(node)) && !!node.anchor;
 
-// node_modules/yaml/browser/dist/visit.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/visit.js
 var BREAK = Symbol("break visit");
 var SKIP = Symbol("skip children");
 var REMOVE = Symbol("remove node");
@@ -7555,7 +6518,7 @@ function replaceNode(key3, path, node) {
   }
 }
 
-// node_modules/yaml/browser/dist/doc/directives.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/doc/directives.js
 var escapeChars = {
   "!": "%21",
   ",": "%2C",
@@ -7718,7 +6681,7 @@ var Directives = class _Directives {
 Directives.defaultYaml = { explicit: false, version: "1.2" };
 Directives.defaultTags = { "!!": "tag:yaml.org,2002:" };
 
-// node_modules/yaml/browser/dist/doc/anchors.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/doc/anchors.js
 function anchorIsValid(anchor2) {
   if (/[\x00-\x19\s,[\]{}]/.test(anchor2)) {
     const sa = JSON.stringify(anchor2);
@@ -7777,7 +6740,7 @@ function createNodeAnchors(doc2, prefix) {
   };
 }
 
-// node_modules/yaml/browser/dist/doc/applyReviver.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/doc/applyReviver.js
 function applyReviver(reviver, obj, key3, val) {
   if (val && typeof val === "object") {
     if (Array.isArray(val)) {
@@ -7821,7 +6784,7 @@ function applyReviver(reviver, obj, key3, val) {
   return reviver.call(obj, key3, val);
 }
 
-// node_modules/yaml/browser/dist/nodes/toJS.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/toJS.js
 function toJS(value, arg, ctx) {
   if (Array.isArray(value))
     return value.map((v, i) => toJS(v, String(i), ctx));
@@ -7844,7 +6807,7 @@ function toJS(value, arg, ctx) {
   return value;
 }
 
-// node_modules/yaml/browser/dist/nodes/Node.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/Node.js
 var NodeBase = class {
   constructor(type) {
     Object.defineProperty(this, NODE_TYPE, { value: type });
@@ -7876,7 +6839,7 @@ var NodeBase = class {
   }
 };
 
-// node_modules/yaml/browser/dist/nodes/Alias.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/Alias.js
 var Alias = class extends NodeBase {
   constructor(source) {
     super(ALIAS);
@@ -7983,7 +6946,7 @@ function getAliasCount(doc2, node, anchors) {
   return 1;
 }
 
-// node_modules/yaml/browser/dist/nodes/Scalar.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/Scalar.js
 var isScalarValue = (value) => !value || typeof value !== "function" && typeof value !== "object";
 var Scalar = class extends NodeBase {
   constructor(value) {
@@ -8003,7 +6966,7 @@ Scalar.PLAIN = "PLAIN";
 Scalar.QUOTE_DOUBLE = "QUOTE_DOUBLE";
 Scalar.QUOTE_SINGLE = "QUOTE_SINGLE";
 
-// node_modules/yaml/browser/dist/doc/createNode.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/doc/createNode.js
 var defaultTagPrefix = "tag:yaml.org,2002:";
 function findTagObject(value, tagName, tags3) {
   if (tagName) {
@@ -8069,7 +7032,7 @@ function createNode(value, tagName, ctx) {
   return node;
 }
 
-// node_modules/yaml/browser/dist/nodes/Collection.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/Collection.js
 function collectionFromPath(schema4, path, value) {
   let v = value;
   for (let i = path.length - 1; i >= 0; --i) {
@@ -8201,7 +7164,7 @@ var Collection = class extends NodeBase {
   }
 };
 
-// node_modules/yaml/browser/dist/stringify/stringifyComment.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/stringifyComment.js
 var stringifyComment = (str) => str.replace(/^(?!$)(?: $)?/gm, "#");
 function indentComment(comment2, indent2) {
   if (/^\n+$/.test(comment2))
@@ -8210,7 +7173,7 @@ function indentComment(comment2, indent2) {
 }
 var lineComment = (str, indent2, comment2) => str.endsWith("\n") ? indentComment(comment2, indent2) : comment2.includes("\n") ? "\n" + indentComment(comment2, indent2) : (str.endsWith(" ") ? "" : " ") + comment2;
 
-// node_modules/yaml/browser/dist/stringify/foldFlowLines.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/foldFlowLines.js
 var FOLD_FLOW = "flow";
 var FOLD_BLOCK = "block";
 var FOLD_QUOTED = "quoted";
@@ -8337,7 +7300,7 @@ function consumeMoreIndentedLines(text4, i, indent2) {
   return end;
 }
 
-// node_modules/yaml/browser/dist/stringify/stringifyString.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/stringifyString.js
 var getFoldOptions = (ctx, isBlock2) => ({
   indentAtStart: isBlock2 ? ctx.indent.length : ctx.indentAtStart,
   lineWidth: ctx.options.lineWidth,
@@ -8612,7 +7575,7 @@ function stringifyString(item, ctx, onComment, onChompKeep) {
   return res;
 }
 
-// node_modules/yaml/browser/dist/stringify/stringify.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/stringify.js
 function createStringifyContext(doc2, options) {
   const opt = Object.assign({
     blockQuote: true,
@@ -8725,7 +7688,7 @@ function stringify(item, ctx, onComment, onChompKeep) {
 ${ctx.indent}${str}`;
 }
 
-// node_modules/yaml/browser/dist/stringify/stringifyPair.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/stringifyPair.js
 function stringifyPair({ key: key3, value }, ctx, onComment, onChompKeep) {
   const { allNullValues, doc: doc2, indent: indent2, indentStep, options: { commentString, indentSeq, simpleKeys } } = ctx;
   let keyComment = isNode(key3) && key3.comment || null;
@@ -8848,14 +7811,14 @@ ${ctx.indent}`;
   return str;
 }
 
-// node_modules/yaml/browser/dist/log.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/log.js
 function warn(logLevel, warning) {
   if (logLevel === "debug" || logLevel === "warn") {
     console.warn(warning);
   }
 }
 
-// node_modules/yaml/browser/dist/schema/yaml-1.1/merge.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/merge.js
 var MERGE_KEY = "<<";
 var merge = {
   identify: (value) => value === MERGE_KEY || typeof value === "symbol" && value.description === MERGE_KEY,
@@ -8905,7 +7868,7 @@ function resolveAliasValue(ctx, value) {
   return ctx && isAlias(value) ? value.resolve(ctx.doc, ctx) : value;
 }
 
-// node_modules/yaml/browser/dist/nodes/addPairToJSMap.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/addPairToJSMap.js
 function addPairToJSMap(ctx, map2, { key: key3, value }) {
   if (isNode(key3) && key3.addToJSMap)
     key3.addToJSMap(ctx, map2, value);
@@ -8958,7 +7921,7 @@ function stringifyKey(key3, jsKey, ctx) {
   return JSON.stringify(jsKey);
 }
 
-// node_modules/yaml/browser/dist/nodes/Pair.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/Pair.js
 function createPair(key3, value, ctx) {
   const k = createNode(key3, void 0, ctx);
   const v = createNode(value, void 0, ctx);
@@ -8987,7 +7950,7 @@ var Pair = class _Pair {
   }
 };
 
-// node_modules/yaml/browser/dist/stringify/stringifyCollection.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/stringifyCollection.js
 function stringifyCollection(collection, ctx, options) {
   const flow = ctx.inFlow ?? collection.flow;
   const stringify4 = flow ? stringifyFlowCollection : stringifyBlockCollection;
@@ -9129,7 +8092,7 @@ function addCommentBefore({ indent: indent2, options: { commentString } }, lines
   }
 }
 
-// node_modules/yaml/browser/dist/nodes/YAMLMap.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/YAMLMap.js
 function findPair(items, key3) {
   const k = isScalar(key3) ? key3.value : key3;
   for (const it of items) {
@@ -9260,7 +8223,7 @@ var YAMLMap = class extends Collection {
   }
 };
 
-// node_modules/yaml/browser/dist/schema/common/map.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/common/map.js
 var map = {
   collection: "map",
   default: true,
@@ -9274,7 +8237,7 @@ var map = {
   createNode: (schema4, obj, ctx) => YAMLMap.from(schema4, obj, ctx)
 };
 
-// node_modules/yaml/browser/dist/nodes/YAMLSeq.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/nodes/YAMLSeq.js
 var YAMLSeq = class extends Collection {
   static get tagName() {
     return "tag:yaml.org,2002:seq";
@@ -9378,7 +8341,7 @@ function asItemIndex(key3) {
   return typeof idx === "number" && Number.isInteger(idx) && idx >= 0 ? idx : null;
 }
 
-// node_modules/yaml/browser/dist/schema/common/seq.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/common/seq.js
 var seq = {
   collection: "seq",
   default: true,
@@ -9392,7 +8355,7 @@ var seq = {
   createNode: (schema4, obj, ctx) => YAMLSeq.from(schema4, obj, ctx)
 };
 
-// node_modules/yaml/browser/dist/schema/common/string.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/common/string.js
 var string3 = {
   identify: (value) => typeof value === "string",
   default: true,
@@ -9404,7 +8367,7 @@ var string3 = {
   }
 };
 
-// node_modules/yaml/browser/dist/schema/common/null.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/common/null.js
 var nullTag = {
   identify: (value) => value == null,
   createNode: () => new Scalar(null),
@@ -9415,7 +8378,7 @@ var nullTag = {
   stringify: ({ source }, ctx) => typeof source === "string" && nullTag.test.test(source) ? source : ctx.options.nullStr
 };
 
-// node_modules/yaml/browser/dist/schema/core/bool.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/core/bool.js
 var boolTag = {
   identify: (value) => typeof value === "boolean",
   default: true,
@@ -9432,7 +8395,7 @@ var boolTag = {
   }
 };
 
-// node_modules/yaml/browser/dist/stringify/stringifyNumber.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/stringifyNumber.js
 function stringifyNumber({ format, minFractionDigits, tag, value }) {
   if (typeof value === "bigint")
     return String(value);
@@ -9453,7 +8416,7 @@ function stringifyNumber({ format, minFractionDigits, tag, value }) {
   return n;
 }
 
-// node_modules/yaml/browser/dist/schema/core/float.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/core/float.js
 var floatNaN = {
   identify: (value) => typeof value === "number",
   default: true,
@@ -9489,7 +8452,7 @@ var float = {
   stringify: stringifyNumber
 };
 
-// node_modules/yaml/browser/dist/schema/core/int.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/core/int.js
 var intIdentify = (value) => typeof value === "bigint" || Number.isInteger(value);
 var intResolve = (str, offset, radix, { intAsBigInt }) => intAsBigInt ? BigInt(str) : parseInt(str.substring(offset), radix);
 function intStringify(node, radix, prefix) {
@@ -9525,7 +8488,7 @@ var intHex = {
   stringify: (node) => intStringify(node, 16, "0x")
 };
 
-// node_modules/yaml/browser/dist/schema/core/schema.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/core/schema.js
 var schema = [
   map,
   seq,
@@ -9540,7 +8503,7 @@ var schema = [
   float
 ];
 
-// node_modules/yaml/browser/dist/schema/json/schema.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/json/schema.js
 function intIdentify2(value) {
   return typeof value === "bigint" || Number.isInteger(value);
 }
@@ -9598,7 +8561,7 @@ var jsonError = {
 };
 var schema2 = [map, seq].concat(jsonScalars, jsonError);
 
-// node_modules/yaml/browser/dist/schema/yaml-1.1/binary.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/binary.js
 var binary = {
   identify: (value) => value instanceof Uint8Array,
   // Buffer inherits from Uint8Array
@@ -9651,7 +8614,7 @@ var binary = {
   }
 };
 
-// node_modules/yaml/browser/dist/schema/yaml-1.1/pairs.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/pairs.js
 function resolvePairs(seq2, onError) {
   if (isSeq(seq2)) {
     for (let i = 0; i < seq2.items.length; ++i) {
@@ -9717,7 +8680,7 @@ var pairs = {
   createNode: createPairs
 };
 
-// node_modules/yaml/browser/dist/schema/yaml-1.1/omap.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/omap.js
 var YAMLOMap = class _YAMLOMap extends YAMLSeq {
   constructor() {
     super();
@@ -9783,7 +8746,7 @@ var omap = {
   createNode: (schema4, iterable, ctx) => YAMLOMap.from(schema4, iterable, ctx)
 };
 
-// node_modules/yaml/browser/dist/schema/yaml-1.1/bool.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/bool.js
 function boolStringify({ value, source }, ctx) {
   const boolObj = value ? trueTag : falseTag;
   if (source && boolObj.test.test(source))
@@ -9807,7 +8770,7 @@ var falseTag = {
   stringify: boolStringify
 };
 
-// node_modules/yaml/browser/dist/schema/yaml-1.1/float.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/float.js
 var floatNaN2 = {
   identify: (value) => typeof value === "number",
   default: true,
@@ -9846,7 +8809,7 @@ var float2 = {
   stringify: stringifyNumber
 };
 
-// node_modules/yaml/browser/dist/schema/yaml-1.1/int.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/int.js
 var intIdentify3 = (value) => typeof value === "bigint" || Number.isInteger(value);
 function intResolve2(str, offset, radix, { intAsBigInt }) {
   const sign = str[0];
@@ -9915,7 +8878,7 @@ var intHex2 = {
   stringify: (node) => intStringify2(node, 16, "0x")
 };
 
-// node_modules/yaml/browser/dist/schema/yaml-1.1/set.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/set.js
 var YAMLSet = class _YAMLSet extends YAMLMap {
   constructor(schema4) {
     super(schema4);
@@ -9994,7 +8957,7 @@ var set = {
   }
 };
 
-// node_modules/yaml/browser/dist/schema/yaml-1.1/timestamp.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/timestamp.js
 function parseSexagesimal(str, asBigInt) {
   const sign = str[0];
   const parts = sign === "-" || sign === "+" ? str.substring(1) : str;
@@ -10073,7 +9036,7 @@ var timestamp = {
   stringify: ({ value }) => value?.toISOString().replace(/(T00:00:00)?\.000Z$/, "") ?? ""
 };
 
-// node_modules/yaml/browser/dist/schema/yaml-1.1/schema.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/yaml-1.1/schema.js
 var schema3 = [
   map,
   seq,
@@ -10098,7 +9061,7 @@ var schema3 = [
   timestamp
 ];
 
-// node_modules/yaml/browser/dist/schema/tags.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/tags.js
 var schemas = /* @__PURE__ */ new Map([
   ["core", schema],
   ["failsafe", [map, seq, string3]],
@@ -10169,7 +9132,7 @@ function getTags(customTags, schemaName, addMergeTag) {
   }, []);
 }
 
-// node_modules/yaml/browser/dist/schema/Schema.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/schema/Schema.js
 var sortMapEntriesByKey = (a2, b) => a2.key < b.key ? -1 : a2.key > b.key ? 1 : 0;
 var Schema = class _Schema {
   constructor({ compat, customTags, merge: merge2, resolveKnownTags, schema: schema4, sortMapEntries, toStringDefaults }) {
@@ -10190,7 +9153,7 @@ var Schema = class _Schema {
   }
 };
 
-// node_modules/yaml/browser/dist/stringify/stringifyDocument.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/stringify/stringifyDocument.js
 function stringifyDocument(doc2, options) {
   const lines = [];
   let hasDirectives = options.directives === true;
@@ -10261,7 +9224,7 @@ function stringifyDocument(doc2, options) {
   return lines.join("\n") + "\n";
 }
 
-// node_modules/yaml/browser/dist/doc/Document.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/doc/Document.js
 var Document = class _Document {
   constructor(value, replacer, options) {
     this.commentBefore = null;
@@ -10553,7 +9516,7 @@ function assertCollection(contents) {
   throw new Error("Expected a YAML collection as document contents");
 }
 
-// node_modules/yaml/browser/dist/errors.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/errors.js
 var YAMLError = class extends Error {
   constructor(name2, pos, code, message3) {
     super();
@@ -10609,7 +9572,7 @@ ${pointer}
   }
 };
 
-// node_modules/yaml/browser/dist/compose/resolve-props.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/resolve-props.js
 function resolveProps(tokens, { flow, indicator, next, offset, onError, parentIndent, startOnNewline }) {
   let spaceBefore = false;
   let atNewline = startOnNewline;
@@ -10737,7 +9700,7 @@ function resolveProps(tokens, { flow, indicator, next, offset, onError, parentIn
   };
 }
 
-// node_modules/yaml/browser/dist/compose/util-contains-newline.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/util-contains-newline.js
 function containsNewline(key3) {
   if (!key3)
     return null;
@@ -10773,7 +9736,7 @@ function containsNewline(key3) {
   }
 }
 
-// node_modules/yaml/browser/dist/compose/util-flow-indent-check.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/util-flow-indent-check.js
 function flowIndentCheck(indent2, fc, onError) {
   if (fc?.type === "flow-collection") {
     const end = fc.end[0];
@@ -10784,7 +9747,7 @@ function flowIndentCheck(indent2, fc, onError) {
   }
 }
 
-// node_modules/yaml/browser/dist/compose/util-map-includes.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/util-map-includes.js
 function mapIncludes(ctx, items, search) {
   const { uniqueKeys } = ctx.options;
   if (uniqueKeys === false)
@@ -10793,7 +9756,7 @@ function mapIncludes(ctx, items, search) {
   return items.some((pair2) => isEqual(pair2.key, search));
 }
 
-// node_modules/yaml/browser/dist/compose/resolve-block-map.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/resolve-block-map.js
 var startColMsg = "All mapping items must start at the same column";
 function resolveBlockMap({ composeNode: composeNode2, composeEmptyNode: composeEmptyNode2 }, ctx, bm, onError, tag) {
   const NodeClass = tag?.nodeClass ?? YAMLMap;
@@ -10889,7 +9852,7 @@ function resolveBlockMap({ composeNode: composeNode2, composeEmptyNode: composeE
   return map2;
 }
 
-// node_modules/yaml/browser/dist/compose/resolve-block-seq.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/resolve-block-seq.js
 function resolveBlockSeq({ composeNode: composeNode2, composeEmptyNode: composeEmptyNode2 }, ctx, bs, onError, tag) {
   const NodeClass = tag?.nodeClass ?? YAMLSeq;
   const seq2 = new NodeClass(ctx.schema);
@@ -10931,7 +9894,7 @@ function resolveBlockSeq({ composeNode: composeNode2, composeEmptyNode: composeE
   return seq2;
 }
 
-// node_modules/yaml/browser/dist/compose/resolve-end.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/resolve-end.js
 function resolveEnd(end, offset, reqSpace, onError) {
   let comment2 = "";
   if (end) {
@@ -10968,7 +9931,7 @@ function resolveEnd(end, offset, reqSpace, onError) {
   return { comment: comment2, offset };
 }
 
-// node_modules/yaml/browser/dist/compose/resolve-flow-collection.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/resolve-flow-collection.js
 var blockMsg = "Block collections are not allowed within flow collections";
 var isBlock = (token) => token && (token.type === "block-map" || token.type === "block-seq");
 function resolveFlowCollection({ composeNode: composeNode2, composeEmptyNode: composeEmptyNode2 }, ctx, fc, onError, tag) {
@@ -11148,7 +10111,7 @@ function resolveFlowCollection({ composeNode: composeNode2, composeEmptyNode: co
   return coll;
 }
 
-// node_modules/yaml/browser/dist/compose/compose-collection.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/compose-collection.js
 function resolveCollection(CN2, ctx, token, onError, tagName, tag) {
   const coll = token.type === "block-map" ? resolveBlockMap(CN2, ctx, token, onError, tag) : token.type === "block-seq" ? resolveBlockSeq(CN2, ctx, token, onError, tag) : resolveFlowCollection(CN2, ctx, token, onError, tag);
   const Coll = coll.constructor;
@@ -11200,7 +10163,7 @@ function composeCollection(CN2, ctx, token, props, onError) {
   return node;
 }
 
-// node_modules/yaml/browser/dist/compose/resolve-block-scalar.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/resolve-block-scalar.js
 function resolveBlockScalar(ctx, scalar, onError) {
   const start = scalar.offset;
   const header = parseBlockScalarHeader(scalar, ctx.options.strict, onError);
@@ -11376,7 +10339,7 @@ function splitLines(source) {
   return lines;
 }
 
-// node_modules/yaml/browser/dist/compose/resolve-flow-scalar.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/resolve-flow-scalar.js
 function resolveFlowScalar(scalar, strict, onError) {
   const { offset, type, source, end } = scalar;
   let _type;
@@ -11589,7 +10552,7 @@ function parseCharCode(source, offset, length, onError) {
   }
 }
 
-// node_modules/yaml/browser/dist/compose/compose-scalar.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/compose-scalar.js
 function composeScalar(ctx, token, tagToken, onError) {
   const { value, type, comment: comment2, range } = token.type === "block-scalar" ? resolveBlockScalar(ctx, token, onError) : resolveFlowScalar(token, ctx.options.strict, onError);
   const tagName = tagToken ? ctx.directives.tagName(tagToken.source, (msg) => onError(tagToken, "TAG_RESOLVE_FAILED", msg)) : null;
@@ -11660,7 +10623,7 @@ function findScalarTagByTest({ atKey, directives, schema: schema4 }, value, toke
   return tag;
 }
 
-// node_modules/yaml/browser/dist/compose/util-empty-scalar-position.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/util-empty-scalar-position.js
 function emptyScalarPosition(offset, before, pos) {
   if (before) {
     pos ?? (pos = before.length);
@@ -11684,7 +10647,7 @@ function emptyScalarPosition(offset, before, pos) {
   return offset;
 }
 
-// node_modules/yaml/browser/dist/compose/compose-node.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/compose-node.js
 var CN = { composeNode, composeEmptyNode };
 function composeNode(ctx, token, props, onError) {
   const atKey = ctx.atKey;
@@ -11777,7 +10740,7 @@ function composeAlias({ options }, { offset, source, end }, onError) {
   return alias;
 }
 
-// node_modules/yaml/browser/dist/compose/compose-doc.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/compose-doc.js
 function composeDoc(options, directives, { offset, start, value, end }, onError) {
   const opts = Object.assign({ _directives: directives }, options);
   const doc2 = new Document(void 0, opts);
@@ -11810,7 +10773,7 @@ function composeDoc(options, directives, { offset, start, value, end }, onError)
   return doc2;
 }
 
-// node_modules/yaml/browser/dist/compose/composer.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/compose/composer.js
 function getErrorPos(src) {
   if (typeof src === "number")
     return [src, src + 1];
@@ -12003,7 +10966,7 @@ ${end.comment}` : end.comment;
   }
 };
 
-// node_modules/yaml/browser/dist/parse/cst-visit.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/parse/cst-visit.js
 var BREAK2 = Symbol("break visit");
 var SKIP2 = Symbol("skip children");
 var REMOVE2 = Symbol("remove item");
@@ -12059,7 +11022,7 @@ function _visit(path, item, visitor) {
   return typeof ctrl === "function" ? ctrl(item, path) : ctrl;
 }
 
-// node_modules/yaml/browser/dist/parse/cst.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/parse/cst.js
 var BOM = "\uFEFF";
 var DOCUMENT = "";
 var FLOW_END = "";
@@ -12124,7 +11087,7 @@ function tokenType(source) {
   return null;
 }
 
-// node_modules/yaml/browser/dist/parse/lexer.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/parse/lexer.js
 function isEmpty(ch) {
   switch (ch) {
     case void 0:
@@ -12706,7 +11669,7 @@ var Lexer = class {
   }
 };
 
-// node_modules/yaml/browser/dist/parse/line-counter.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/parse/line-counter.js
 var LineCounter = class {
   constructor() {
     this.lineStarts = [];
@@ -12731,7 +11694,7 @@ var LineCounter = class {
   }
 };
 
-// node_modules/yaml/browser/dist/parse/parser.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/parse/parser.js
 function includesToken(list, type) {
   for (let i = 0; i < list.length; ++i)
     if (list[i].type === type)
@@ -13594,7 +12557,7 @@ var Parser2 = class {
   }
 };
 
-// node_modules/yaml/browser/dist/public-api.js
+// ../obsidian-study-studio/node_modules/yaml/browser/dist/public-api.js
 function parseOptions(options) {
   const prettyErrors = options.prettyErrors !== false;
   const lineCounter = options.lineCounter || prettyErrors && new LineCounter() || null;
@@ -13661,6 +12624,1684 @@ function stringify3(value, replacer, options) {
   return new Document(value, _replacer, options).toString(options);
 }
 
+// src/yaml-scalar-map.ts
+var chars = (text4, from) => Array.from({ length: text4.length }, (_, i) => ({ char: text4[i], from: from + i, to: from + i + 1 }));
+var emit = (out, text4, from, to) => {
+  for (let i = 0; i < text4.length; i++) out.push({ char: text4[i], from, to });
+};
+var string4 = (units) => units.map((u2) => u2.char).join("");
+var escapes = { "0": "\0", a: "\x07", b: "\b", e: "\x1B", f: "\f", n: "\n", r: "\r", t: "	", v: "\v", N: "\x85", _: "\xA0", L: "\u2028", P: "\u2029", " ": " ", '"': '"', "/": "/", "\\": "\\", "	": "	" };
+function scalarMap(node, base2 = 0) {
+  if (typeof node.value !== "string" || !node.srcToken) return;
+  const token = node.srcToken, out = [];
+  if (token.type === "block-scalar") block(token, out);
+  else if (token.type === "double-quoted-scalar") double(token.source, token.offset, out);
+  else if (token.type === "scalar" || token.type === "single-quoted-scalar") {
+    const quoted = token.type === "single-quoted-scalar", raw = quoted ? token.source.slice(1, -1) : token.source;
+    const units = unfold(chars(raw, token.offset + (quoted ? 1 : 0)));
+    for (let i = 0; i < units.length; i++) {
+      const u2 = units[i];
+      if (quoted && u2.char === "'" && units[i + 1]?.char === "'") emit(out, "'", u2.from, units[++i].to);
+      else out.push(u2);
+    }
+  } else return;
+  if (string4(out) !== node.value) return;
+  return { text: node.value, units: out.map((u2) => ({ ...u2, from: u2.from + base2, to: u2.to + base2 })) };
+}
+function unfold(units) {
+  const raw = string4(units);
+  if (!raw.includes("\n")) return units;
+  const lines = [];
+  let start = 0;
+  for (let i = 0; i < units.length; i++) if (units[i].char === "\n") {
+    let end = i;
+    if (units[end - 1]?.char === "\r") end--;
+    lines.push({ units: units.slice(start, end), from: units[start]?.from ?? units[i].from, to: units[i].to });
+    start = i + 1;
+  }
+  lines.push({ units: units.slice(start), from: units[start]?.from ?? units.at(-1).to, to: units.at(-1).to });
+  const trim = (a2, left, right) => {
+    let s = 0, e = a2.length;
+    if (left) while (s < e && /[ \t]/.test(a2[s].char)) s++;
+    if (right) while (e > s && /[ \t]/.test(a2[e - 1].char)) e--;
+    return a2.slice(s, e);
+  };
+  const out = trim(lines[0].units, false, true);
+  let sep = " ", sepFrom = out.at(-1)?.to ?? lines[0].from;
+  for (let i = 1; i < lines.length - 1; i++) {
+    const line = lines[i], part = trim(line.units, true, true);
+    if (!part.length) {
+      if (sep === "\n") {
+        emit(out, sep, sepFrom, line.from);
+        sepFrom = line.from;
+      } else sep = "\n";
+    } else {
+      emit(out, sep, sepFrom, part[0].from);
+      out.push(...part);
+      sep = " ";
+      sepFrom = part.at(-1).to;
+    }
+  }
+  const last = trim(lines.at(-1).units, true, false);
+  emit(out, sep, sepFrom, last[0]?.from ?? lines.at(-1).to);
+  out.push(...last);
+  return out;
+}
+function double(raw, base2, out) {
+  for (let i = 1; i < raw.length - 1; i++) {
+    const ch = raw[i], start = i;
+    if (ch === "\r" && raw[i + 1] === "\n") continue;
+    if (ch === "\n") {
+      let fold = "";
+      while (/[ \t\n\r]/.test(raw[i + 1] ?? "!")) {
+        if (raw[i + 1] === "\r" && raw[i + 2] !== "\n") break;
+        if (raw[++i] === "\n") fold += "\n";
+      }
+      emit(out, fold || " ", base2 + start, base2 + i + 1);
+    } else if (ch === "\\") {
+      const next = raw[++i];
+      if (Object.hasOwn(escapes, next)) emit(out, escapes[next], base2 + start, base2 + i + 1);
+      else if (next === "\n" || next === "\r" && raw[i + 1] === "\n") {
+        if (next === "\r") i++;
+        while (/[ \t]/.test(raw[i + 1] ?? "!")) i++;
+      } else if ("xuU".includes(next)) {
+        const length = next === "x" ? 2 : next === "u" ? 4 : 8;
+        const n = parseInt(raw.slice(i + 1, i + 1 + length), 16);
+        try {
+          emit(out, String.fromCodePoint(n), base2 + start, base2 + i + length + 1);
+        } catch {
+          return;
+        }
+        i += length;
+      } else return;
+    } else if (ch === " " || ch === "	") {
+      while (/[ \t]/.test(raw[i + 1] ?? "!")) i++;
+      if (raw[i + 1] !== "\n" && !(raw[i + 1] === "\r" && raw[i + 2] === "\n")) out.push(...chars(raw.slice(start, i + 1), base2 + start));
+    } else out.push(...chars(ch, base2 + i));
+  }
+}
+function block(token, out) {
+  const header = token.props[0].source, headerLength = token.props.reduce((n, p) => n + p.source.length, 0), base2 = token.offset + headerLength;
+  const indentDigit = Number(/[1-9]/.exec(header)?.[0] ?? 0), chomp = header.includes("+") ? "+" : header.includes("-") ? "-" : "";
+  let offset = base2;
+  const lines = token.source.split("\n").map((raw) => {
+    const indent2 = /^ */.exec(raw)[0].length;
+    const line = { raw, indent: indent2, from: offset, content: raw.slice(indent2).replace(/\r$/, "") };
+    offset += raw.length + 1;
+    return line;
+  });
+  let end = lines.length;
+  while (end > 0 && !lines[end - 1].content) end--;
+  if (!end) {
+    if (chomp === "+") for (let i = 0; i < Math.max(1, lines.length - 1); i++) emit(out, "\n", lines[i].from, Math.min(offset - 1, lines[i].from + lines[i].raw.length + 1));
+    return;
+  }
+  const first = lines.findIndex((l) => l.content !== ""), trim = indentDigit ? token.indent + indentDigit : lines[first].indent;
+  for (let i = lines.length - 1; i >= end; i--) if (lines[i].indent > trim) {
+    end = i + 1;
+    break;
+  }
+  for (let i = 0; i < first; i++) {
+    const l = lines[i];
+    out.push(...chars(l.raw.slice(trim), l.from + trim));
+    emit(out, "\n", l.from + l.raw.length, l.from + l.raw.length + 1);
+  }
+  let sep = "", sepFrom = lines[first].from, more = false;
+  for (let i = first; i < end; i++) {
+    const l = lines[i], part = l.raw.slice(Math.min(trim, l.indent)).replace(/\r$/, ""), partFrom = l.from + Math.min(trim, l.indent);
+    if (header[0] === "|") {
+      emit(out, sep, sepFrom, partFrom);
+      out.push(...chars(part, partFrom));
+      sep = "\n";
+      sepFrom = l.from + l.raw.length;
+    } else if (l.indent > trim || l.content[0] === "	") {
+      if (sep === " ") sep = "\n";
+      else if (!more && sep === "\n") sep = "\n\n";
+      emit(out, sep, sepFrom, partFrom);
+      out.push(...chars(part, partFrom));
+      sep = "\n";
+      sepFrom = l.from + l.raw.length;
+      more = true;
+    } else if (!l.content) {
+      if (sep === "\n") {
+        emit(out, "\n", sepFrom, l.from + l.raw.length + 1);
+        sepFrom = l.from + l.raw.length + 1;
+      } else sep = "\n";
+    } else {
+      emit(out, sep, sepFrom, partFrom);
+      out.push(...chars(l.content, partFrom));
+      sep = " ";
+      sepFrom = l.from + l.raw.length;
+      more = false;
+    }
+  }
+  if (chomp === "+") {
+    for (let i = end; i < lines.length; i++) {
+      const l = lines[i];
+      emit(out, "\n", sepFrom, l.from);
+      out.push(...chars(l.raw.slice(trim), l.from + trim));
+      sepFrom = l.from + l.raw.length;
+    }
+    if (out.at(-1)?.char !== "\n") emit(out, "\n", sepFrom, Math.min(offset - 1, sepFrom + 1));
+  } else if (chomp !== "-") emit(out, "\n", sepFrom, Math.min(offset - 1, sepFrom + 1));
+}
+function scalarRawRange(map2, from, to) {
+  if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to > map2.units.length || from >= to) return;
+  const first = map2.units[from], last = map2.units[to - 1];
+  if (from && map2.units[from - 1].to > first.from || to < map2.units.length && map2.units[to].from < last.to) return;
+  return { from: first.from, to: last.to };
+}
+function scalarDecodedRange(map2, from, to) {
+  const start = map2.units.findIndex((u2) => u2.from === from);
+  if (start < 0) return;
+  let end = start;
+  while (end < map2.units.length && map2.units[end].to <= to) end++;
+  if (!end || map2.units[end - 1].to !== to) return;
+  const raw = scalarRawRange(map2, start, end);
+  return raw?.from === from && raw.to === to ? { from: start, to: end } : void 0;
+}
+
+// src/scientific-table-source.ts
+var cache = /* @__PURE__ */ new Map();
+function scientificSourceTables(source) {
+  const previous = cache.get(source);
+  if (previous) return previous;
+  const result = [];
+  let offset = 0, start = 0, bodyStart = 0, fence = "", scientific = false;
+  for (const line of source.split("\n")) {
+    const mark = /^ {0,3}(`{3,}|~{3,})([^\r]*)\r?$/.exec(line);
+    if (!fence && mark) {
+      fence = mark[1];
+      start = offset;
+      bodyStart = offset + line.length + 1;
+      scientific = /^scientific-table\s*$/.test(mark[2]);
+    } else if (fence && mark && mark[1][0] === fence[0] && mark[1].length >= fence.length && !mark[2].trim()) {
+      if (scientific) {
+        const table = parseTable(source, start, offset + line.length, bodyStart, offset);
+        if (table) result.push(table);
+      }
+      fence = "";
+      scientific = false;
+    }
+    offset += line.length + 1;
+  }
+  const counts = /* @__PURE__ */ new Map();
+  for (const t2 of result) counts.set(t2.key, (counts.get(t2.key) ?? 0) + 1);
+  for (const t2 of result) if (counts.get(t2.key) !== 1) t2.ambiguous = true;
+  cache.set(source, result);
+  if (cache.size > 4) cache.delete(cache.keys().next().value);
+  return result;
+}
+function parseTable(source, from, to, bodyStart, bodyEnd) {
+  try {
+    const doc2 = parseDocument(source.slice(bodyStart, bodyEnd), { keepSourceTokens: true, uniqueKeys: true });
+    if (doc2.errors.length || !isMap(doc2.contents)) return;
+    const v = doc2.toJS({ maxAliasCount: 0 });
+    if (!v || typeof v.id !== "string" || !/^[\w-]+$/.test(v.id) || typeof v.numbered !== "boolean" || typeof v.captionVisible !== "boolean" || typeof v.title !== "string" || typeof v.caption !== "string" || !["above", "below", "left", "right"].includes(v.captionPosition)) return;
+    if (!Array.isArray(v.rows) || !v.rows.length || v.rows.length > 100 || !Array.isArray(v.rows[0]) || !v.rows[0].length || v.rows[0].length > 30 || !Number.isInteger(v.headerRows) || v.headerRows < 0 || v.headerRows > v.rows.length || typeof v.rowHeaders !== "boolean" || !["scientific", "grid", "striped"].includes(v.style)) return;
+    const width = v.rows[0].length, rowNodes = doc2.contents.get("rows", true);
+    if (!isSeq(rowNodes)) return;
+    const occupied = /* @__PURE__ */ new Map(), rows = [];
+    for (let r = 0; r < v.rows.length; r++) {
+      if (!Array.isArray(v.rows[r]) || v.rows[r].length !== width) return;
+      const rowNode = rowNodes.items[r];
+      if (!isSeq(rowNode)) return;
+      const row = [];
+      rows.push(row);
+      for (let c = 0; c < width; c++) {
+        const cell = v.rows[r][c], owner = occupied.get(r + ":" + c);
+        if (owner) {
+          if (cell !== null) return;
+          row.push({ text: "", from: bodyStart, to: bodyStart, covered: owner });
+          continue;
+        }
+        if (!cell || typeof cell.text !== "string") return;
+        if (cell.background !== void 0 && (typeof cell.background !== "string" || !/^#[a-f0-9]{6}$/i.test(cell.background)) || cell.backgroundOpacity !== void 0 && (!Number.isFinite(cell.backgroundOpacity) || cell.backgroundOpacity < 0 || cell.backgroundOpacity > 1) || cell.align && !["left", "center", "right"].includes(cell.align)) return;
+        const h = cell.rowspan ?? 1, w = cell.colspan ?? 1;
+        if (!Number.isInteger(h) || !Number.isInteger(w) || h < 1 || w < 1 || r + h > v.rows.length || c + w > width || r < v.headerRows && r + h > v.headerRows) return;
+        for (let y = r; y < r + h; y++) for (let x = c; x < c + w; x++) {
+          const k = y + ":" + x;
+          if (occupied.has(k)) return;
+          occupied.set(k, { row: r, column: c });
+        }
+        const cellNode = rowNode.items[c];
+        if (!isMap(cellNode)) return;
+        const textNode = cellNode.get("text", true);
+        if (!isScalar(textNode) || !textNode.range) return;
+        const value = { text: cell.text, from: bodyStart + textNode.range[0], to: bodyStart + textNode.range[1], rowspan: h, colspan: w };
+        let mapped, mappedOnce = false;
+        Object.defineProperty(value, "scalar", { get: () => {
+          if (!mappedOnce) {
+            mapped = scalarMap(textNode, bodyStart);
+            mappedOnce = true;
+          }
+          return mapped;
+        }, enumerable: false });
+        row.push(value);
+      }
+    }
+    return { source: source.slice(from, to), from, to, rows, key: v.id, kind: "scientific" };
+  } catch {
+    return;
+  }
+}
+
+// src/scientific-table-anchor.ts
+function validScientificCellAnchor(a2) {
+  return !!a2 && a2.version === 1 && Number.isSafeInteger(a2.from) && Number.isSafeInteger(a2.to) && a2.from >= 0 && a2.to > a2.from && typeof a2.quote === "string" && a2.quote.length === a2.to - a2.from && (a2.equation === void 0 || Number.isSafeInteger(a2.equation) && a2.equation >= 0);
+}
+function scientificAnchor(source, table, row, column, from, to, equation) {
+  const cell = table.rows[row]?.[column];
+  if (table.kind !== "scientific" || table.ambiguous || !cell?.scalar || cell.covered) return;
+  const range = scalarRawRange(cell.scalar, from, to);
+  if (!range) return;
+  if (equation !== void 0) {
+    const eq = equations(cell.text)[equation];
+    if (!eq || eq.from !== from || eq.to !== to) return;
+  }
+  return { quote: source.slice(range.from, range.to), before: source.slice(Math.max(0, range.from - 48), range.from), after: source.slice(range.to, range.to + 48), table: { key: table.key, source: table.source, row, column, cellText: cell.text, scientific: { version: 1, from, to, quote: cell.text.slice(from, to), ...equation === void 0 ? {} : { equation } } } };
+}
+function locateScientificAnchor(source, a2) {
+  const meta2 = a2.table, guard = meta2?.scientific;
+  if (!meta2 || !validScientificCellAnchor(guard) || !a2.quote) return;
+  const candidates = scientificSourceTables(source).filter((t2) => t2.kind === "scientific" && t2.key === meta2.key);
+  if (candidates.length !== 1 || candidates[0].ambiguous) return;
+  const table = candidates[0], cells2 = table.rows.flatMap((cells3, row2) => cells3.flatMap((cell2, column2) => cell2.covered ? [] : [{ cell: cell2, row: row2, column: column2 }])).sort((a3, b) => a3.cell.from - b.cell.from);
+  const hits = [];
+  let at = table.from, cellIndex = 0;
+  while ((at = source.indexOf(a2.quote, at)) >= 0 && at + a2.quote.length <= table.to) {
+    const to2 = at + a2.quote.length;
+    while (cellIndex < cells2.length && cells2[cellIndex].cell.to <= at) cellIndex++;
+    const candidate = cells2[cellIndex], owner = candidate && at >= candidate.cell.from && to2 <= candidate.cell.to ? candidate : void 0;
+    if (owner) hits.push({ from: at, to: to2, ...owner });
+    at += 1;
+  }
+  const contextual = hits.filter(({ from: from2, to: to2 }) => (!a2.before || source.slice(Math.max(0, from2 - a2.before.length), from2) === a2.before) && (!a2.after || source.slice(to2, to2 + a2.after.length) === a2.after));
+  let matches = contextual.length ? contextual : hits;
+  if (matches.length > 1 && table.source === meta2.source) {
+    const stored = matches.filter((h) => h.row === meta2.row && h.column === meta2.column);
+    if (stored.length === 1) matches = stored;
+  }
+  if (matches.length !== 1) return;
+  const { from, to, cell, row, column } = matches[0];
+  if (!cell.scalar) return;
+  const decoded = scalarDecodedRange(cell.scalar, from, to);
+  if (!decoded || decoded.from !== guard.from || decoded.to !== guard.to || cell.text.slice(decoded.from, decoded.to) !== guard.quote) return;
+  if (guard.equation !== void 0) {
+    const eq = equations(cell.text)[guard.equation];
+    if (!eq || eq.from !== decoded.from || eq.to !== decoded.to) return;
+  }
+  return { from, to, decoded, table, cell, row, column };
+}
+
+// src/math-anchor-location.ts
+var equationCache = /* @__PURE__ */ new Map();
+function indexedEquations(text4) {
+  let qs = equationCache.get(text4);
+  if (!qs) {
+    qs = equations(text4);
+    equationCache.set(text4, qs);
+    if (equationCache.size > 2) equationCache.delete(equationCache.keys().next().value);
+  }
+  return qs;
+}
+function locateMarginAnchor(text4, a2) {
+  if (a2.table?.scientific) return locateRawMarginAnchor(text4, a2);
+  const p = symbolTextProjection(text4);
+  if (!p) return locateRawMarginAnchor(text4, a2);
+  const hit = locateRawMarginAnchor(p.text, a2);
+  return hit && { from: p.toRaw(hit.from, -1), to: p.toRaw(hit.to, 1) };
+}
+function locateRawMarginAnchor(text4, a2) {
+  if (a2.table?.scientific) {
+    const hit = locateScientificAnchor(text4, a2);
+    return hit && { from: hit.from, to: hit.to };
+  }
+  const exact = locateRawQuote(text4, a2);
+  if (exact || a2.kind !== "math") return exact;
+  const before = a2.before.trimEnd(), after = a2.after.trimStart();
+  if (!before && !after) return;
+  const candidates = indexedEquations(text4).filter((q) => {
+    const left = text4.slice(0, q.from).trimEnd(), right = text4.slice(q.to).trimStart();
+    return (before ? left.endsWith(before) : left === "") && (after ? right.startsWith(after) : right === "");
+  });
+  if (candidates.length === 1) return { from: candidates[0].from, to: candidates[0].to };
+}
+
+// src/resize-dom.ts
+function resizeDOM(p, postit = false) {
+  const points = [], aliases = /* @__PURE__ */ new Map(), mathOffsets = /* @__PURE__ */ new Map(), formulas = [];
+  let text4 = "", afterBreak = false;
+  const alias = (node, offset) => {
+    let map2 = aliases.get(node);
+    if (!map2) aliases.set(node, map2 = /* @__PURE__ */ new Map());
+    map2.set(offset, text4.length);
+  };
+  const point = (node, offset) => {
+    alias(node, offset);
+    points[text4.length] = { node, offset };
+  };
+  const walk = (node) => {
+    if (node.nodeType === 1) {
+      const el = node;
+      if (el.matches(".study-math-lines,.study-sticky-anchor")) return;
+      if (postit && el.matches(".study-reference-gutter,.collapse-indicator,.callout-title,button,input,textarea,script,style,pre,.code-links-panel,.study-practice-link")) return;
+      if (postit && el.matches("a,code,img,.internal-embed")) {
+        const parent2 = node.parentNode, index2 = [...parent2.childNodes].indexOf(node);
+        point(parent2, index2);
+        text4 += el.matches("a") ? "\uFFF9" : el.matches("code") ? "\uFFFA" : "\uFFFB";
+        point(parent2, index2 + 1);
+        return;
+      }
+      if (el.matches("br,.math")) {
+        alias(el, 0);
+        const parent2 = node.parentNode, index2 = [...parent2.childNodes].indexOf(node);
+        point(parent2, index2);
+        if (el.matches(".math")) {
+          afterBreak = false;
+          mathOffsets.set(el, text4.length);
+          formulas.push(el.querySelector("mjx-math")?.getAttribute("data-latex") ?? el.textContent ?? "");
+          text4 += "\uFFFC";
+        } else {
+          text4 += "\n";
+          afterBreak = true;
+        }
+        point(parent2, index2 + 1);
+        return;
+      }
+    }
+    if (node.nodeType === 3) {
+      const t2 = node, skip = afterBreak && t2.data.startsWith("\n") ? 1 : 0;
+      alias(t2, 0);
+      if (t2.length) afterBreak = false;
+      for (let i = 0; i < skip; i++) alias(t2, i + 1);
+      for (let i = skip; i < t2.length; i++) {
+        point(t2, i);
+        text4 += t2.data[i];
+      }
+      point(t2, t2.length);
+      return;
+    }
+    const children = [...node.childNodes];
+    alias(node, 0);
+    for (let i = 0; i < children.length; i++) {
+      walk(children[i]);
+      alias(node, i + 1);
+    }
+  };
+  walk(p);
+  return { text: text4, points, mathOffsets, fingerprint: JSON.stringify(formulas), offset: (node, offset) => aliases.get(node)?.get(offset) };
+}
+
+// src/resize-projection.ts
+function resizeProjection(source) {
+  let text4 = "", at = 0;
+  const boundaries = [0];
+  for (const q of equations(source)) {
+    for (; at < q.from; at++) {
+      text4 += source[at];
+      boundaries.push(at + 1);
+    }
+    text4 += "\uFFFC";
+    boundaries.push(q.to);
+    at = q.to;
+  }
+  for (; at < source.length; at++) {
+    text4 += source[at];
+    boundaries.push(at + 1);
+  }
+  return { text: text4, boundaries };
+}
+var inlineParser = parser.configure([Strikethrough, Table, TaskList, Autolink]);
+var inlineCache = /* @__PURE__ */ new Map();
+var cacheSize = 0;
+var inlineAtoms = { math: "\uFFFC", link: "\uFFF9", code: "\uFFFA", image: "\uFFFB" };
+function inlineProjection(source) {
+  const old = inlineCache.get(source);
+  if (old) {
+    inlineCache.delete(source);
+    inlineCache.set(source, old);
+    return old;
+  }
+  const hidden = new Uint8Array(source.length), atoms = /* @__PURE__ */ new Map(), blocked = [], prefixes = [];
+  const hide = (from, to) => hidden.fill(1, from, to);
+  const atom = (from, to, kind) => {
+    hide(from, to);
+    atoms.set(from, { to, kind });
+    blocked.push({ from, to, reason: kind });
+  };
+  const block2 = (from, to, reason) => {
+    hide(from, to);
+    for (const [at] of atoms) if (at >= from && at < to) atoms.delete(at);
+    blocked.push({ from, to, reason });
+  };
+  const tree2 = inlineParser.parse(source);
+  tree2.iterate({ enter(n) {
+    if (["FencedCode", "CodeBlock", "HTMLBlock", "LinkReference", "HorizontalRule"].includes(n.name)) {
+      block2(n.from, n.to, "code or unsupported block");
+      return false;
+    }
+    if (n.name === "Table") {
+      block2(n.from, n.to, "table");
+      return false;
+    }
+    if (n.name === "HeaderMark" && source.slice(source.lastIndexOf("\n", n.from - 1) + 1, n.from).trim()) {
+      block2(n.from, n.to, "formatting delimiter");
+      return false;
+    }
+    if (n.name === "InlineCode") {
+      atom(n.from, n.to, "code");
+      return false;
+    }
+    if (n.name === "Image") {
+      atom(n.from, n.to, "image");
+      return false;
+    }
+    if (n.name === "Link" || n.name === "Autolink" || n.name === "URL") {
+      atom(n.from, n.to, "link");
+      return false;
+    }
+    if (["HeaderMark", "QuoteMark", "ListMark", "TaskMarker"].includes(n.name)) {
+      let to = n.to;
+      while (to < source.length && /[ \t]/.test(source[to])) to++;
+      const line = source.lastIndexOf("\n", n.from - 1) + 1, from = source.slice(line, n.from).trim() ? n.from : line;
+      hide(from, to);
+      prefixes.push({ from, to });
+      return false;
+    }
+    if (n.name === "HardBreak") {
+      block2(n.from, n.to, "hard break");
+      return false;
+    }
+    if (["EmphasisMark", "StrikethroughMark", "CodeMark", "TableMark", "TableDelimiter"].includes(n.name)) {
+      block2(n.from, n.to, "formatting delimiter");
+      return false;
+    }
+    if (n.name === "Escape") {
+      block2(n.from, n.from + 1, "escape");
+      return false;
+    }
+    if (n.name === "HTMLTag" || n.name === "Comment" || n.name === "CommentBlock") {
+      block2(n.from, n.to, "HTML");
+      return false;
+    }
+  } });
+  const front = /^---\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)(?:\r?\n|$)/.exec(source);
+  if (front) block2(0, front[0].length, "frontmatter");
+  for (const m of source.matchAll(/!?\[\[[^\]\n]+\]\]/g)) {
+    if (blocked.some((b) => b.from <= m.index && b.to >= m.index + m[0].length)) continue;
+    for (const [at] of atoms) if (at >= m.index && at < m.index + m[0].length) atoms.delete(at);
+    atom(m.index, m.index + m[0].length, m[0][0] === "!" ? "image" : "link");
+  }
+  for (const q of equations(source)) {
+    if (blocked.some((b) => b.from <= q.from && b.to >= q.to)) continue;
+    for (const [at] of atoms) if (at >= q.from && at < q.to) atoms.delete(at);
+    atom(q.from, q.to, "math");
+  }
+  for (const m of source.matchAll(/%%[\s\S]*?%%/g)) if (!blocked.some((b) => b.from <= m.index && b.to >= m.index + m[0].length)) block2(m.index, m.index + m[0].length, "comment");
+  for (const m of source.matchAll(/^[ \t]*(?:>[ \t]*)+\[![^\]\n]+\][+-]?[^\n]*/gm)) block2(m.index, m.index + m[0].length, "callout title");
+  for (const m of source.matchAll(/(?:^|[ \t])\^[A-Za-z0-9-]+[ \t]*(?=\r?$)/gm)) block2(m.index, m.index + m[0].length, "block identifier");
+  for (const m of source.matchAll(/==(?=\S)([^\n]*?\S)==/g)) {
+    if (!hidden[m.index]) {
+      block2(m.index, m.index + 2, "formatting delimiter");
+      block2(m.index + m[0].length - 2, m.index + m[0].length, "formatting delimiter");
+    }
+  }
+  for (const m of source.matchAll(/(?<![\w])#[\p{L}_][\p{L}\p{N}_\/-]*/gu)) if (!hidden[m.index]) atom(m.index, m.index + m[0].length, "link");
+  const units = [];
+  for (let i = 0; i < source.length; ) {
+    const a2 = atoms.get(i);
+    if (a2) {
+      units.push({ char: inlineAtoms[a2.kind], from: i, to: a2.to, atom: a2.kind });
+      i = a2.to;
+    } else if (hidden[i]) i++;
+    else {
+      units.push({ char: source[i], from: i, to: i + 1 });
+      i++;
+    }
+  }
+  const result = { text: units.map((u2) => u2.char).join(""), units, blocked, prefixes };
+  if (source.length <= 25e4) {
+    inlineCache.set(source, result);
+    cacheSize += source.length;
+    while (inlineCache.size > 64 || cacheSize > 5e5) {
+      const key3 = inlineCache.keys().next().value;
+      cacheSize -= key3.length;
+      inlineCache.delete(key3);
+    }
+  }
+  return result;
+}
+function alignInline(source, rendered) {
+  const su = source.units.filter((u2) => !/\s/.test(u2.char));
+  const di = [];
+  let compact = "";
+  for (let i = 0; i < rendered.length; i++) if (!/\s/.test(rendered[i])) {
+    compact += rendered[i];
+    di.push(i);
+  }
+  if (su.map((u2) => u2.char).join("") !== compact) return;
+  const lower = (value, values2) => {
+    let lo = 0, hi = values2.length;
+    while (lo < hi) {
+      const mid = lo + hi >>> 1;
+      if (values2[mid] < value) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo;
+  };
+  const ends = su.map((u2) => u2.to), starts = source.units.map((u2) => u2.from);
+  return {
+    toDOM(offset) {
+      const i = lower(offset, ends), left = su[i];
+      if (left && offset > left.from && offset < left.to) return;
+      if (left && offset === left.to) return di[i] + 1;
+      if (left && offset === left.from) return di[i];
+      if (i === 0) return di[0];
+      if (i >= su.length) return di.at(-1) === void 0 ? void 0 : di.at(-1) + 1;
+      const nextUnit = source.units[lower(su[i - 1].to, starts)];
+      return !nextUnit || offset <= nextUnit.from ? di[i - 1] + 1 : di[i];
+    },
+    toSource(offset) {
+      const i = lower(offset, di);
+      if (i < di.length && di[i] === offset) return su[i].from;
+      if (i === 0) return su[0]?.from;
+      if (offset === di[i - 1] + 1) {
+        const next = source.units[lower(su[i - 1].to, starts)];
+        return next?.from ?? su[i - 1].to;
+      }
+      return su[i]?.from ?? su.at(-1)?.to;
+    }
+  };
+}
+
+// src/mixed-reading-map.ts
+var normalizeReadingLatex = (tex) => semanticGlyph(plainSymbolLatex(tex));
+function readingEquationIdentity(source, q) {
+  const prefixes = inlineProjection(source).prefixes.filter((p) => p.from >= q.bodyFrom && p.to <= q.bodyTo && /^[\t >]+$/.test(source.slice(p.from, p.to)) && source.slice(p.from, p.to).includes(">"));
+  let body = "", at = q.bodyFrom;
+  for (const p of prefixes) {
+    body += source.slice(at, p.from);
+    at = p.to;
+  }
+  body += source.slice(at, q.bodyTo);
+  return normalizeReadingLatex(body);
+}
+function mixedReadingProjection(source, rendered, formulas) {
+  const projection = inlineProjection(source), math2 = projection.units.filter((u2) => u2.atom === "math"), qs = equations(source).filter((q) => math2.some((m) => m.from === q.from && m.to === q.to));
+  if (qs.length !== formulas.length || qs.some((q, i) => !formulas[i]?.trim() || readingEquationIdentity(source, q) !== normalizeReadingLatex(formulas[i]))) return;
+  const alignment = alignInline(projection, rendered);
+  return alignment && { projection, alignment, qs };
+}
+function sectionBounds(info) {
+  const lines = [0];
+  for (let i = 0; i < info.text.length; i++) if (info.text[i] === "\n") lines.push(i + 1);
+  const from = lines[info.lineStart], end = lines[info.lineEnd + 1] ?? info.text.length;
+  if (from === void 0 || info.lineStart < 0 || info.lineEnd < info.lineStart) return;
+  const to = end > from && info.text[end - 1] === "\n" ? end - 1 : end;
+  return { from, to };
+}
+function mapping(root, info) {
+  const bounds = sectionBounds(info);
+  if (!bounds) return;
+  const dom = resizeDOM(root, true), elements = [...dom.mathOffsets.keys()];
+  const source = info.text.slice(bounds.from, bounds.to), mapped = mixedReadingProjection(source, dom.text, elements.map((e) => e.querySelector("mjx-math")?.getAttribute("data-latex") ?? null));
+  return mapped && { ...bounds, ...mapped, dom };
+}
+var mathAt = (node) => (node.nodeType === 1 ? node : node.parentElement)?.closest(".math");
+var refused = () => ({ status: "refused", reason: "This mixed selection cannot be mapped exactly to the current source. Select whole equations with the surrounding text after the note finishes rendering." });
+function captureMixedReading(range, root, info, path) {
+  const startMath = mathAt(range.startContainer), endMath = mathAt(range.endContainer);
+  if (startMath && startMath === endMath) return { status: "not-applicable" };
+  const dom = resizeDOM(root, true), intersected = [...dom.mathOffsets.keys()].filter((e) => range.intersectsNode(e));
+  if (!intersected.length) return { status: "not-applicable" };
+  if (startMath || endMath) return refused();
+  const start = root.contains(range.startContainer) ? dom.offset(range.startContainer, range.startOffset) : 0;
+  const end = root.contains(range.endContainer) ? dom.offset(range.endContainer, range.endOffset) : dom.text.length;
+  if (start === void 0 || end === void 0) return refused();
+  const selected = dom.text.slice(start, end);
+  if (!selected.includes("\uFFFC") || !selected.replace(/\ufffc|\s/g, "")) return { status: "not-applicable" };
+  const map2 = mapping(root, info);
+  if (!map2) return refused();
+  const a2 = map2.alignment.toSource(start), last = map2.projection.units.filter((u2) => /\S/.test(u2.char) && map2.alignment.toDOM(u2.to) === end).at(-1), b = last?.to ?? map2.alignment.toSource(end);
+  if (a2 === void 0 || b === void 0 || b <= a2) return refused();
+  if (map2.qs.some((q) => a2 > q.from && a2 < q.to || b > q.from && b < q.to)) return refused();
+  const from = map2.from + a2, to = map2.from + b;
+  const anchor2 = ordinaryAnchor(info.text, { id: crypto.randomUUID(), path, quote: info.text.slice(from, to), before: info.text.slice(Math.max(0, from - 48), from), after: info.text.slice(to, to + 48), kind: "text" }, { from, to });
+  const hit = locateMarginAnchor(info.text, anchor2);
+  if (!hit || hit.from !== from || hit.to !== to) return refused();
+  return { status: "mapped", anchor: anchor2 };
+}
+function mixedReadingRange(root, info, anchor2) {
+  if (anchor2.kind === "math" || anchor2.table || anchor2.part) return;
+  const hit = locateMarginAnchor(info.text, anchor2), map2 = mapping(root, info);
+  if (!hit || !map2 || hit.from < map2.from || hit.to > map2.to) return;
+  const from = hit.from - map2.from, to = hit.to - map2.from, inside2 = map2.qs.filter((q) => q.from >= from && q.to <= to);
+  if (!inside2.length || !map2.projection.units.some((u2) => !u2.atom && u2.from >= from && u2.to <= to && /\S/.test(u2.char))) return;
+  if (map2.qs.some((q) => from > q.from && from < q.to || to > q.from && to < q.to)) return;
+  const a2 = map2.alignment.toDOM(from), b = map2.alignment.toDOM(to), start = a2 === void 0 ? void 0 : map2.dom.points[a2], end = b === void 0 ? void 0 : map2.dom.points[b];
+  if (!start || !end) return;
+  const range = root.ownerDocument.createRange();
+  range.setStart(start.node, start.offset);
+  range.setEnd(end.node, end.offset);
+  return range;
+}
+
+// src/margin-anchors.ts
+var import_view2 = require("@codemirror/view");
+var import_obsidian2 = require("obsidian");
+
+// src/live-callout-section.ts
+function calloutSection(view, widget) {
+  try {
+    const pos = view.posAtDOM(widget), block2 = view.lineBlockAt(pos), doc2 = view.state.doc;
+    if (block2.from !== pos || block2.to <= pos || block2.to > doc2.length) return null;
+    const first = doc2.lineAt(pos), last = doc2.lineAt(block2.to);
+    if (first.from !== pos || last.to !== block2.to || !/^ {0,3}>\s*\[![^\]\n]+\]/.test(first.text)) return null;
+    return { text: doc2.toString(), lineStart: first.number - 1, lineEnd: last.number - 1 };
+  } catch {
+    return null;
+  }
+}
+
+// src/study-table-model.ts
+function tableKey(source) {
+  let h = 2166136261;
+  for (const c of source.replace(/\s+/g, " ").trim()) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+  return "table-" + (h >>> 0).toString(16);
+}
+function tableCells(line, offset = 0) {
+  let start = 0, ticks = 0, math2 = 0;
+  const parts = [];
+  const add2 = (end) => {
+    const value = line.slice(start, end), left = value.length - value.trimStart().length, right = value.trimEnd().length;
+    parts.push({ text: value.trim(), from: offset + start + left, to: offset + start + Math.max(left, right) });
+  };
+  const prefix = /^\s*(?:>\s*)*/.exec(line)[0].length;
+  start = prefix;
+  for (let i = prefix; i < line.length; i++) {
+    if (line[i] === "\\") {
+      i++;
+      continue;
+    }
+    if (line[i] === "`") {
+      let n = 1;
+      while (line[i + n] === "`") n++;
+      ticks = ticks === n ? 0 : ticks || n;
+      i += n - 1;
+      continue;
+    }
+    if (!ticks && line[i] === "$") {
+      const n = line[i + 1] === "$" ? 2 : 1;
+      math2 = math2 === n ? 0 : math2 || n;
+      i += n - 1;
+    }
+    if (!ticks && !math2 && line[i] === "|") {
+      add2(i);
+      start = i + 1;
+    }
+  }
+  add2(line.length);
+  if (parts[0]?.text === "" && line.slice(prefix).trimStart().startsWith("|")) parts.shift();
+  if (parts.at(-1)?.text === "" && line.trimEnd().endsWith("|")) parts.pop();
+  return parts;
+}
+function sourceTables(source) {
+  const lines = source.split("\n"), offsets = [];
+  let n = 0;
+  for (const l of lines) {
+    offsets.push(n);
+    n += l.length + 1;
+  }
+  const result = [];
+  let fence = "";
+  for (let i = 0; i + 1 < lines.length; i++) {
+    const f = /^\s*(?:>\s*)*(`{3,}|~{3,})/.exec(lines[i]);
+    if (f) {
+      if (!fence) fence = f[1];
+      else if (f[1][0] === fence[0] && f[1].length >= fence.length && /^\s*$/.test(lines[i].slice(f[0].length))) fence = "";
+      continue;
+    }
+    if (fence || !lines[i].includes("|")) continue;
+    const header = tableCells(lines[i], offsets[i]), divider = tableCells(lines[i + 1]);
+    if (header.length < 1 || divider.length !== header.length || !divider.every((c) => /^:?-{3,}:?$/.test(c.text))) continue;
+    const rows = [header], start = i;
+    i += 2;
+    while (i < lines.length && lines[i].includes("|") && !/^\s*(?:>\s*)*(?:#{1,6}\s|`{3,}|~{3,})/.test(lines[i])) {
+      const row = tableCells(lines[i], offsets[i]).slice(0, header.length), end = offsets[i] + lines[i].length;
+      while (row.length < header.length) row.push({ text: "", from: end, to: end });
+      rows.push(row);
+      i++;
+    }
+    const from = offsets[start], to = i < lines.length ? offsets[i] - 1 : source.length, raw = source.slice(from, to);
+    result.push({ source: raw, from, to, rows, key: tableKey(raw) });
+    i--;
+  }
+  return [...result, ...scientificSourceTables(source)].sort((a2, b) => a2.from - b.from);
+}
+
+// src/symbols/stats.ts
+var symbolStats = { initialScans: 0, registryParses: 0, markerParses: 0, fullTextReads: 0, writes: 0, apiCalls: 0, layoutChecks: 0, rowConversions: 0 };
+
+// src/math-semantic.ts
+function signatureItems(node) {
+  const tag = node.tagName.toLowerCase();
+  if (tag === "mjx-break") return [];
+  if (["mjx-math", "mjx-mrow", "mjx-mstyle", "mjx-texatom", "mjx-script"].includes(tag)) return Array.from(node.children).flatMap(signatureItems);
+  if (["mjx-mi", "mjx-mn", "mjx-mo", "mjx-mtext"].includes(tag)) return [[tag, node.textContent]];
+  return [[tag, Array.from(node.children).map(signatureItems)]];
+}
+var symbolRowShapes = /* @__PURE__ */ new WeakMap();
+var symbolRowNodes = /* @__PURE__ */ new WeakMap();
+function symbolOnlyRow(node) {
+  const tex = node.getAttribute("data-latex") ?? "", cached = symbolRowNodes.get(node);
+  if (cached?.tex === tex) return cached.result;
+  const result = classifySymbolRow(node);
+  if (node.classList.contains("mjx-ss")) symbolRowNodes.set(node, { tex, result });
+  return result;
+}
+function classifySymbolRow(node) {
+  if (node.tagName.toLowerCase() !== "mjx-mrow") return false;
+  const classes = Array.from(node.classList);
+  if (!classes.includes("mjx-ss") || !classes.some((c) => /^mjx-ss-o-[0-9a-z]{10}$/.test(c))) return false;
+  const tex = node.getAttribute("data-latex") ?? "";
+  try {
+    const tags3 = markers(tex);
+    if (tags3.length !== 1) return false;
+    const body = tags3[0].body, doc2 = node.ownerDocument;
+    let cache7 = symbolRowShapes.get(doc2);
+    if (!cache7) {
+      cache7 = /* @__PURE__ */ new Map();
+      symbolRowShapes.set(doc2, cache7);
+    }
+    const display = node.closest("mjx-container")?.getAttribute("display") === "true", key3 = JSON.stringify([body, display]);
+    if (!cache7.has(key3)) {
+      const mj = doc2.defaultView?.MathJax;
+      if (!mj?.tex2chtml) return false;
+      symbolStats.rowConversions++;
+      const rendered = mj.tex2chtml(body, { display }), math2 = rendered.querySelector("mjx-math");
+      if (!math2 || math2.querySelector("mjx-merror")) return false;
+      const children = Array.from(math2.children).filter((n) => n.tagName.toLowerCase() !== "mjx-break");
+      cache7.set(key3, children.length > 1 ? children.map(mathSignature) : null);
+      if (cache7.size > 256) cache7.delete(cache7.keys().next().value);
+    }
+    const expected = cache7.get(key3);
+    if (!expected) return false;
+    const actual = Array.from(node.children).filter((n) => n.tagName.toLowerCase() !== "mjx-break");
+    return actual.length === expected.length && actual.every((n, i) => mathSignature(n) === expected[i]);
+  } catch {
+    return false;
+  }
+}
+function mathSignature(node) {
+  return JSON.stringify(signatureItems(node));
+}
+function mathParentSignature(node) {
+  const own = mathSignature(node);
+  let parent2 = node.parentElement;
+  while (parent2 && parent2.tagName.toLowerCase().startsWith("mjx-")) {
+    const key3 = mathSignature(parent2);
+    if (!symbolOnlyRow(parent2) && key3 !== own) return key3;
+    parent2 = parent2.parentElement;
+  }
+  return "";
+}
+function semanticMatches(math2, key3, parent2) {
+  const all = Array.from(math2.querySelectorAll("[data-latex]")).filter((n) => !symbolOnlyRow(n));
+  return all.filter((n) => mathSignature(n) === key3 && mathParentSignature(n) === parent2).filter((n) => !all.some((p) => p !== n && p.contains(n) && mathSignature(p) === key3 && mathParentSignature(p) === parent2));
+}
+var renderedKeys = /* @__PURE__ */ new Map();
+function latexSignature(latex, doc2) {
+  if (renderedKeys.has(latex)) return renderedKeys.get(latex);
+  const mj = doc2.defaultView?.MathJax;
+  if (!mj?.tex2chtml) return;
+  let key3;
+  try {
+    const rendered = mj.tex2chtml(latex, { display: false });
+    const math2 = rendered.querySelector("mjx-math");
+    if (math2 && !math2.querySelector("mjx-merror")) key3 = mathSignature(math2);
+  } catch {
+  }
+  renderedKeys.set(latex, key3);
+  if (renderedKeys.size > 64) renderedKeys.delete(renderedKeys.keys().next().value);
+  return key3;
+}
+
+// src/math-parts.ts
+function validSemantic(s) {
+  return s === void 0 || !!s && typeof s.key === "string" && typeof s.parent === "string" && Number.isSafeInteger(s.occurrence) && Number.isSafeInteger(s.count) && s.occurrence >= 0 && s.count > s.occurrence;
+}
+function validMathPart(p) {
+  return !!p && Array.isArray(p.nodes) && p.nodes.length > 0 && p.nodes.length <= 128 && p.nodes.every((n) => n && typeof n.latex === "string" && typeof n.parentLatex === "string" && Number.isSafeInteger(n.occurrence) && n.occurrence >= 0 && validSemantic(n.semantic));
+}
+function semanticNodes(math2) {
+  return Array.from(math2.querySelectorAll("[data-latex]")).filter((n) => !symbolOnlyRow(n));
+}
+function semanticParent(node) {
+  let parent2 = node.parentElement?.closest("[data-latex]") ?? null;
+  while (parent2 && symbolOnlyRow(parent2)) parent2 = parent2.parentElement?.closest("[data-latex]") ?? null;
+  return parent2;
+}
+function parentLatex(node) {
+  return plainSymbolLatex(semanticParent(node)?.getAttribute("data-latex")?.trim() ?? "");
+}
+function nodeLatex(node) {
+  return plainSymbolLatex(node.getAttribute("data-latex")?.trim() ?? "");
+}
+function describePart(math2, nodes) {
+  const all = semanticNodes(math2);
+  return { nodes: nodes.map((n) => {
+    const latex = nodeLatex(n), parent2 = parentLatex(n), key3 = mathSignature(n), parentKey = mathParentSignature(n), matches = semanticMatches(math2, key3, parentKey), ordinal = matches.findIndex((x) => x === n || x.contains(n));
+    return { latex, parentLatex: parent2, occurrence: all.filter((x) => nodeLatex(x) === latex && parentLatex(x) === parent2).indexOf(n), ...ordinal >= 0 ? { semantic: { key: key3, parent: parentKey, occurrence: ordinal, count: matches.length } } : {} };
+  }) };
+}
+function resolvePart(math2, part) {
+  const all = semanticNodes(math2);
+  const found = part.nodes.map((n) => {
+    const exact = all.filter((x) => nodeLatex(x) === plainSymbolLatex(n.latex.trim()) && parentLatex(x) === plainSymbolLatex(n.parentLatex.trim()))[n.occurrence];
+    if (exact) return exact;
+    const key3 = n.semantic?.key ?? latexSignature(n.latex, math2.ownerDocument), parent2 = n.semantic?.parent ?? latexSignature(n.parentLatex, math2.ownerDocument);
+    if (!key3 || parent2 === void 0) return;
+    const matches = semanticMatches(math2, key3, parent2);
+    if (n.semantic) return matches.length === n.semantic.count ? matches[n.semantic.occurrence] : void 0;
+    return matches.length === 1 && n.occurrence === 0 ? matches[0] : void 0;
+  });
+  if (!found.every(Boolean)) return [];
+  const nodes = found;
+  return nodes.every((n, i) => !i || !!(nodes[i - 1].compareDocumentPosition(n) & 4)) ? nodes : [];
+}
+function selectedGlyphs(math2, range) {
+  return Array.from(math2.querySelectorAll("mjx-c")).filter((n) => {
+    const r = n.ownerDocument.createRange();
+    r.selectNodeContents(n);
+    return range.compareBoundaryPoints(Range.END_TO_START, r) < 0 && range.compareBoundaryPoints(Range.START_TO_END, r) > 0;
+  });
+}
+function partFromRange(math2, range) {
+  const glyphs = selectedGlyphs(math2, range);
+  if (!glyphs.length) return;
+  const selected = new Set(glyphs);
+  const covered = (n) => {
+    const g = [...n.querySelectorAll("mjx-c")];
+    return g.length > 0 && g.every((x) => selected.has(x));
+  };
+  const picked = /* @__PURE__ */ new Set();
+  for (const glyph of glyphs) {
+    let n = glyph.closest("[data-latex]");
+    if (!n || n === math2) continue;
+    let p = semanticParent(n);
+    while (p && p !== math2 && math2.contains(p) && covered(p)) {
+      n = p;
+      p = semanticParent(n);
+    }
+    picked.add(n);
+  }
+  const nodes = [...picked].filter((n) => ![...picked].some((p) => p !== n && p.contains(n)));
+  if (covered(math2)) return;
+  return nodes.length ? describePart(math2, nodes) : void 0;
+}
+function partAtTarget(math2, target) {
+  const n = target.closest("[data-latex]");
+  if (!n || n === math2 || !math2.contains(n)) return;
+  if (symbolOnlyRow(n)) {
+    const children = semanticNodes(n).filter((child) => semanticParent(child) === semanticParent(n));
+    return children.length ? describePart(math2, children) : void 0;
+  }
+  return describePart(math2, [n]);
+}
+function partFromSource(math2, body, from, to) {
+  const projection = symbolLatexProjection(body);
+  if (projection) {
+    from = projection.toProjected(from);
+    to = projection.toProjected(to);
+    body = projection.text;
+  }
+  let failed = false;
+  const ranges = /* @__PURE__ */ new Map();
+  const canon = (s) => {
+    let text4 = "", positions = [];
+    for (let i = 0; i < s.length; i++) if (!/[\s{}]/.test(s[i])) {
+      text4 += s[i];
+      positions.push(i);
+    }
+    return { text: text4, positions };
+  };
+  const visit3 = (parent2, start, end) => {
+    const children = semanticNodes(parent2).filter((n) => semanticParent(n) === parent2);
+    let cursor = start;
+    for (const n of children) {
+      const value = canon(nodeLatex(n)).text, available = canon(body.slice(cursor, end));
+      if (!value) continue;
+      const at = available.text.indexOf(value);
+      if (at < 0) {
+        failed = true;
+        return;
+      }
+      const a2 = cursor + available.positions[at], b = cursor + available.positions[at + value.length - 1] + 1;
+      ranges.set(n, { from: a2, to: b });
+      visit3(n, a2, b);
+      cursor = b;
+    }
+  };
+  visit3(math2, 0, body.length);
+  if (failed) return;
+  const chosen = [...ranges].filter(([n, r]) => r.from < to && r.to > from && !semanticNodes(n).some((child) => {
+    const c = ranges.get(child);
+    return c && c.from < to && c.to > from;
+  })).map(([n]) => n);
+  if (!chosen.length) return;
+  const picked = new Set(chosen);
+  for (const n of chosen) {
+    let p = semanticParent(n);
+    while (p && p !== math2) {
+      const r = ranges.get(p);
+      if (!r || r.from < from || r.to > to) break;
+      picked.add(p);
+      p = semanticParent(p);
+    }
+  }
+  const nodes = [...picked].filter((n) => ![...picked].some((p) => p !== n && p.contains(n)));
+  const selected = canon(body.slice(from, to)).text;
+  const valid = nodes.every((n) => {
+    const v = canon(nodeLatex(n)).text;
+    return selected.includes(v) || v.includes(selected);
+  });
+  return nodes.length && valid ? describePart(math2, nodes) : void 0;
+}
+function notationSourceCandidates(body, latex) {
+  if (body.length > 16e3 || !latex.trim() || /(^|[^\\])%/.test(body)) return [];
+  const canonical2 = (s) => {
+    let text4 = "", positions = [];
+    for (let i = 0; i < s.length; i++) if (!/[\s{}]/.test(s[i])) {
+      text4 += s[i];
+      positions.push(i);
+    }
+    return { text: text4, positions };
+  };
+  const hay = canonical2(body), needle = canonical2(latex).text;
+  if (!needle) return [];
+  const out = [];
+  for (let at = hay.text.indexOf(needle); at >= 0; at = hay.text.indexOf(needle, at + 1)) {
+    const from = hay.positions[at];
+    let to = hay.positions[at + needle.length - 1] + 1, depth2 = 0, invalid = false;
+    for (let i = from; i < to; i++) {
+      if (body[i] === "\\") {
+        i++;
+        continue;
+      }
+      if (body[i] === "{") depth2++;
+      if (body[i] === "}" && --depth2 < 0) {
+        invalid = true;
+        break;
+      }
+    }
+    while (depth2 > 0 && body[to] === "}") {
+      to++;
+      depth2--;
+    }
+    if (!invalid && !depth2) out.push({ from, to });
+    if (out.length > 64) return [];
+  }
+  return out;
+}
+function notationMathFingerprint(node) {
+  const visit3 = (n) => {
+    const tag = n.tagName.toLowerCase();
+    if (tag === "mjx-break") return [];
+    if (["mjx-math", "mjx-mrow", "mjx-mstyle", "mjx-texatom", "mjx-script"].includes(tag)) return Array.from(n.children).flatMap(visit3);
+    if (["mjx-mi", "mjx-mn", "mjx-mo", "mjx-mtext"].includes(tag)) return [[tag, n.textContent, Array.from(n.querySelectorAll("mjx-c")).map((g) => [g.getAttribute("class"), g.getAttribute("data-c"), g.textContent])]];
+    return [[tag, Array.from(n.children).map(visit3)]];
+  };
+  return JSON.stringify(visit3(node));
+}
+function notationGlyphSelection(math2, range) {
+  const chosen = new Set(selectedGlyphs(math2, range));
+  return Array.from(math2.querySelectorAll("mjx-c")).flatMap((g, i) => chosen.has(g) ? [i] : []);
+}
+function exactNotationPartRange(math2, body, latex, glyphs, render) {
+  if (!glyphs.length || glyphs.some((n, i) => i > 0 && n !== glyphs[i - 1] + 1)) return;
+  const fingerprint = notationMathFingerprint(math2), fresh = render(body);
+  if (fresh.querySelector("mjx-merror") || notationMathFingerprint(fresh) !== fingerprint) return;
+  const candidates = notationSourceCandidates(body, latex), matches = [];
+  for (const candidate of candidates) {
+    try {
+      const probe = render(body.slice(0, candidate.from) + "\\class{mjx-ss mjx-ss-o-sproof0000}{" + body.slice(candidate.from, candidate.to) + "}" + body.slice(candidate.to));
+      if (probe.querySelector("mjx-merror") || notationMathFingerprint(probe) !== fingerprint) continue;
+      const tagged = probe.querySelectorAll(".mjx-ss-o-sproof0000");
+      if (tagged.length !== 1) continue;
+      const actual = Array.from(probe.querySelectorAll("mjx-c")).flatMap((g, i) => tagged[0].contains(g) ? [i] : []);
+      if (actual.length === glyphs.length && actual.every((n, i) => n === glyphs[i])) matches.push(candidate);
+    } catch {
+    }
+  }
+  return matches.length === 1 ? matches[0] : void 0;
+}
+
+// src/scientific-table-reading.ts
+var scientificFigureSelector = "figure.ss-scientific[data-scientific-id]";
+function scientificDOMCells(table, source) {
+  if (source.kind !== "scientific" || source.ambiguous || table.closest(scientificFigureSelector)?.getAttribute("data-scientific-id") !== source.key || table.rows.length !== source.rows.length) return;
+  const cells2 = [];
+  for (let row = 0; row < source.rows.length; row++) {
+    const physical = Array.from(table.rows[row].cells), logical = source.rows[row].flatMap((cell, column) => cell.covered ? [] : [{ cell, column }]);
+    if (physical.length !== logical.length) return;
+    for (let i = 0; i < logical.length; i++) {
+      const { cell, column } = logical[i], dom = physical[i];
+      if (dom.colSpan !== (cell.colspan ?? 1) || dom.rowSpan !== (cell.rowspan ?? 1)) return;
+      cells2.push({ row, column, source: cell, dom });
+    }
+  }
+  return cells2;
+}
+function scientificCellMap(cell, source) {
+  if (!source.scalar || source.covered) return;
+  const projection = inlineProjection(source.text), dom = resizeDOM(cell, true), alignment = alignInline(projection, dom.text), qs = equations(source.text), math2 = [...dom.mathOffsets.keys()];
+  if (!alignment || math2.length !== qs.length) return;
+  const normalize = (value) => semanticGlyph(plainSymbolLatex(value));
+  if (math2.some((el, i) => {
+    const latex = el.querySelector("mjx-math")?.getAttribute("data-latex");
+    return latex === null || latex === void 0 || normalize(latex) !== normalize(qs[i].body);
+  })) return;
+  return { dom, alignment, qs, math: math2, range(from, to) {
+    const a2 = alignment.toDOM(from), b = alignment.toDOM(to), start = a2 === void 0 ? void 0 : dom.points[a2], end = b === void 0 ? void 0 : dom.points[b];
+    if (!start || !end) return;
+    const range = cell.ownerDocument.createRange();
+    range.setStart(start.node, start.offset);
+    range.setEnd(end.node, end.offset);
+    return range;
+  } };
+}
+function captureScientificCell(range, path, text4, source, cell) {
+  const map2 = scientificCellMap(cell.dom, cell.source);
+  if (!map2) return;
+  const startMath = map2.math.find((el) => el.contains(range.startContainer)), endMath = map2.math.find((el) => el.contains(range.endContainer));
+  if (startMath || endMath) {
+    if (!startMath || startMath !== endMath) return;
+    const equation2 = map2.math.indexOf(startMath), q = map2.qs[equation2], math2 = startMath.querySelector("mjx-math"), part = math2 && partFromRange(math2, range);
+    if (!math2) return;
+    if (!part) {
+      const whole = math2.ownerDocument.createRange();
+      whole.selectNodeContents(math2);
+      const fullContents = range.compareBoundaryPoints(Range.START_TO_START, whole) <= 0 && range.compareBoundaryPoints(Range.END_TO_END, whole) >= 0, glyphs = [...math2.querySelectorAll("mjx-c")], fullGlyphs = glyphs.length > 0 && glyphs.every((glyph) => {
+        const r = math2.ownerDocument.createRange();
+        r.selectNodeContents(glyph);
+        return range.compareBoundaryPoints(Range.END_TO_START, r) < 0 && range.compareBoundaryPoints(Range.START_TO_END, r) > 0;
+      });
+      if (!fullContents && !fullGlyphs) return;
+    }
+    const anchor3 = scientificAnchor(text4, source, cell.row, cell.column, q.from, q.to, equation2);
+    if (!anchor3) return;
+    return { id: crypto.randomUUID(), path, ...anchor3, kind: "math", ...part ? { part } : {} };
+  }
+  const start = map2.dom.offset(range.startContainer, range.startOffset), end = map2.dom.offset(range.endContainer, range.endOffset);
+  if (start === void 0 || end === void 0 || start >= end) return;
+  const from = map2.alignment.toSource(start), last = inlineProjection(cell.source.text).units.filter((u2) => /\S/.test(u2.char) && map2.alignment.toDOM(u2.to) === end).at(-1), to = last?.to ?? map2.alignment.toSource(end);
+  if (from === void 0 || to === void 0 || from >= to) return;
+  const equation = map2.qs.findIndex((q) => q.from === from && q.to === to), anchor2 = scientificAnchor(text4, source, cell.row, cell.column, from, to, equation < 0 ? void 0 : equation);
+  if (!anchor2) return;
+  return { id: crypto.randomUUID(), path, ...anchor2, kind: equation < 0 ? "text" : "math" };
+}
+function scientificReadingTarget(root, text4, a2) {
+  const hit = locateScientificAnchor(text4, a2);
+  if (!hit) return;
+  const ancestor = root.closest("table.ss-scientific-table"), candidates = [...ancestor ? [ancestor] : [], ...root.querySelectorAll("table.ss-scientific-table")].filter((table) => table.closest(scientificFigureSelector)?.getAttribute("data-scientific-id") === hit.table.key);
+  if (candidates.length !== 1) return;
+  const cells2 = scientificDOMCells(candidates[0], hit.table), cell = cells2?.find((c) => c.row === hit.row && c.column === hit.column);
+  if (!cell) return;
+  const owner = root.closest("td,th");
+  if (owner && owner !== cell.dom) return;
+  const map2 = scientificCellMap(cell.dom, cell.source);
+  if (!map2) return;
+  return { ...hit, cell: cell.dom, map: map2 };
+}
+function scientificReadingRanges(root, text4, a2) {
+  const target = scientificReadingTarget(root, text4, a2);
+  if (!target) return;
+  const own = (range2) => {
+    if (!range2.intersectsNode(root)) return;
+    if (!root.contains(range2.startContainer)) range2.setStart(root, 0);
+    if (!root.contains(range2.endContainer)) range2.setEnd(root, root.childNodes.length);
+    return range2.collapsed ? void 0 : range2;
+  };
+  if (a2.part) {
+    const equation = a2.table?.scientific?.equation;
+    if (equation === void 0) return;
+    const math2 = target.map.math[equation]?.querySelector("mjx-math");
+    if (!math2) return;
+    const nodes = resolvePart(math2, a2.part);
+    if (!nodes.length) return;
+    const ranges = nodes.flatMap((node) => {
+      const range2 = root.ownerDocument.createRange();
+      range2.selectNodeContents(node);
+      const clipped2 = own(range2);
+      return clipped2 ? [clipped2] : [];
+    });
+    return ranges.length ? ranges : void 0;
+  }
+  const range = target.map.range(target.decoded.from, target.decoded.to), clipped = range && own(range);
+  return clipped ? [clipped] : void 0;
+}
+
+// src/live-scientific-section.ts
+function scientificSection(view, widget) {
+  try {
+    const figures = [...widget.querySelectorAll(scientificFigureSelector)];
+    if (figures.length !== 1) return null;
+    const text4 = view.state.doc.toString(), id3 = figures[0].dataset.scientificId, tables = sourceTables(text4).filter((t2) => t2.kind === "scientific" && t2.key === id3);
+    if (tables.length !== 1 || tables[0].ambiguous) return null;
+    const table = tables[0], position2 = view.posAtDOM(widget);
+    if (position2 < table.from || position2 > table.to) return null;
+    return { text: text4, lineStart: view.state.doc.lineAt(table.from).number - 1, lineEnd: view.state.doc.lineAt(table.to).number - 1 };
+  } catch {
+    return null;
+  }
+}
+
+// src/margin-anchors.ts
+var import_obsidian3 = require("obsidian");
+var contexts = /* @__PURE__ */ new WeakMap();
+var sourceIndexes = /* @__PURE__ */ new Map();
+function index(path, text4) {
+  let value = sourceIndexes.get(path);
+  if (value?.text !== text4) {
+    const lines = [0];
+    let at = -1;
+    while ((at = text4.indexOf("\n", at + 1)) >= 0) lines.push(at + 1);
+    value = { text: text4, lines, hits: /* @__PURE__ */ new Map() };
+    sourceIndexes.set(path, value);
+    if (sourceIndexes.size > 4) sourceIndexes.delete(sourceIndexes.keys().next().value);
+  }
+  return value;
+}
+function liveCalloutContext(root) {
+  const scientific = root.closest(".cm-embed-block.cm-lang-scientific-table"), widget = scientific ?? root.closest(".cm-callout"), editor = widget?.closest(".cm-editor");
+  if (!widget || !editor || root.closest('.markdown-embed,.canvas-node,.study-card,.study-margin-pane,[data-code-links-host]:not([data-code-links-host="protected"])')) return;
+  const view = import_view2.EditorView.findFromDOM(editor), path = view?.state.field(import_obsidian2.editorInfoField, false)?.file?.path;
+  if (!view || !path) return;
+  const info = scientific ? scientificSection(view, widget) : calloutSection(view, widget);
+  if (info) return { path, info };
+}
+function readingSectionInfo(el, ctx) {
+  const live = liveCalloutContext(el);
+  return live ? live.path === ctx.sourcePath ? live.info : null : ctx.getSectionInfo(el);
+}
+function registerReadingContext(el, path, ctx) {
+  contexts.set(el, { path, info: () => readingSectionInfo(el, ctx) });
+}
+function sectionContext(root) {
+  let el = root;
+  while (el) {
+    const context2 = contexts.get(el), info = context2?.info();
+    if (context2 && info) return { context: context2, info, el };
+    const live = liveCalloutContext(el);
+    if (live && (!context2 || context2.path() === live.path)) return { context: { path: () => live.path, info: () => live.info }, info: live.info, el };
+    el = el.parentElement?.closest("[data-study-comment-section]") ?? null;
+  }
+}
+function readingContextInfo(root) {
+  return sectionContext(root)?.info;
+}
+function ownedText(root) {
+  const walker = root.ownerDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let n, text4 = "";
+  while (n = walker.nextNode()) if (n.parentElement?.closest("[data-study-comment-section]") === root && !n.parentElement.closest('.code-links-panel,[data-code-links-host]:not([data-code-links-host="protected"]),code,pre,mjx-container,.math,.study-reference-gutter,button,input,textarea')) text4 += n.textContent ?? "";
+  return text4;
+}
+function readingMixedRange(root, a2) {
+  const found = sectionContext(root);
+  if (!found || found.context.path() !== a2.path) return;
+  const range = mixedReadingRange(found.el, found.info, a2);
+  if (!range || !range.intersectsNode(root)) return;
+  if (found.el !== root) {
+    if (!root.contains(range.startContainer)) range.setStart(root, 0);
+    if (!root.contains(range.endContainer)) range.setEnd(root, root.childNodes.length);
+  }
+  return range.collapsed ? void 0 : range;
+}
+function mixedSourceAnchor(text4, a2) {
+  if (a2.kind === "math" || a2.table || a2.sectionSource) return false;
+  const hit = locateMarginAnchor(text4, a2);
+  if (!hit) return false;
+  const projection = inlineProjection(text4.slice(hit.from, hit.to));
+  return projection.units.some((u2) => u2.atom === "math") && projection.units.some((u2) => !u2.atom && /\S/.test(u2.char));
+}
+function readingAnchorApplies(root, a2, knownInfo) {
+  const found = sectionContext(root);
+  if (!found) return false;
+  const { context: context2, el } = found, info = knownInfo && el === root ? knownInfo : found.info;
+  if (el !== root && !a2.sectionSource && !a2.table?.scientific) return mixedSourceAnchor(info.text, a2) && !!readingMixedRange(root, a2);
+  const entry = index(context2.path(), info.text), from = entry.lines[info.lineStart] ?? 0, to = entry.lines[info.lineEnd + 1] ?? info.text.length;
+  if (a2.table?.scientific) return !!readingTableRanges(root, a2);
+  if (mixedSourceAnchor(info.text, a2) && readingMixedRange(root, a2)) return true;
+  if (a2.sectionSource) {
+    const section = info.text.slice(from, to);
+    return (symbolTextProjection(section)?.text ?? section).trimEnd() === a2.sectionSource.trimEnd() && (!a2.renderedRoot || a2.renderedRoot === ownedText(root));
+  }
+  const key3 = JSON.stringify([a2.quote, a2.before, a2.after, a2.table]);
+  if (!entry.hits.has(key3)) entry.hits.set(key3, locateMarginAnchor(info.text, a2));
+  const hit = entry.hits.get(key3);
+  return !!hit && hit.from >= from && hit.to <= to;
+}
+function editorExcerpts(raw, from, to, path) {
+  const projected = symbolTextProjection(raw);
+  if (projected) return editorExcerpts(projected.text, projected.toProjected(from), projected.toProjected(to), path);
+  const inside2 = equations(raw).find((q) => from >= q.bodyFrom && to <= q.bodyTo);
+  if (inside2) {
+    const mj = window.MathJax;
+    try {
+      const rendered = mj?.tex2chtml(inside2.body, { display: inside2.display });
+      const math2 = rendered?.querySelector("mjx-math");
+      const part = math2 && partFromSource(math2, inside2.body, from - inside2.bodyFrom, to - inside2.bodyFrom);
+      if (part) return [{ id: crypto.randomUUID(), path, quote: inside2.raw, before: raw.slice(Math.max(0, inside2.from - 48), inside2.from), after: raw.slice(inside2.to, inside2.to + 48), kind: "math", part, renderedQuote: "$" + part.nodes.map((n) => n.latex).join(" ") + "$" }];
+    } catch {
+    }
+    new import_obsidian3.Notice("Select this part in rendered math, then right-click to add a note.");
+    return [];
+  }
+  const result = [];
+  const selection = raw.slice(from, to);
+  let start = 0;
+  const add2 = (end) => {
+    const part = selection.slice(start, end);
+    if (part.trim()) {
+      const a2 = from + start, b = from + end;
+      result.push({ id: crypto.randomUUID(), path, quote: part, before: raw.slice(Math.max(0, a2 - 48), a2), after: raw.slice(b, b + 48), kind: equations(part).some((q) => q.raw.trim() === part.trim()) ? "math" : "text" });
+    }
+  };
+  for (const match of selection.matchAll(/\n\s*\n/g)) {
+    add2(match.index);
+    start = match.index + match[0].length;
+  }
+  add2(selection.length);
+  return result;
+}
+function sourceAnchor(path, info, quote, before, after, pieces) {
+  const entry = index(path, info.text), from = entry.lines[info.lineStart] ?? 0, to = entry.lines[info.lineEnd + 1] ?? info.text.length, section = info.text.slice(from, to);
+  let hit = locateQuote(section, { quote, before, after });
+  if (!hit && pieces.length > 1) {
+    const first = locateQuote(section, { quote: pieces[0], before, after: "" }), last = locateQuote(section, { quote: pieces.at(-1), before: "", after });
+    if (first && last && first.from <= last.from) hit = { from: first.from, to: last.to };
+  }
+  const a2 = { id: crypto.randomUUID(), path, quote: hit ? section.slice(hit.from, hit.to) : quote, before: hit ? info.text.slice(Math.max(0, from + hit.from - 48), from + hit.from) : before, after: hit ? info.text.slice(from + hit.to, from + hit.to + 48) : after, renderedQuote: quote, renderedBefore: before, renderedAfter: after, kind: "text" };
+  if (!hit) a2.sectionSource = section;
+  return ordinaryAnchor(info.text, a2, hit ? { from: from + hit.from, to: from + hit.to } : void 0);
+}
+function readingExcerpts(selection, path) {
+  if (!selection.rangeCount || selection.isCollapsed) return [];
+  const range = selection.getRangeAt(0), doc2 = range.startContainer.ownerDocument;
+  const preview = (range.startContainer.parentElement ?? doc2.body).closest(".markdown-preview-view") ?? doc2.body, result = readingTableExcerpts(range, path).filter((a2) => a2.table?.scientific);
+  const mappedRoots = /* @__PURE__ */ new Set();
+  for (const root of Array.from(preview.querySelectorAll("[data-study-comment-section]"))) {
+    if (!range.intersectsNode(root) || root.closest(scientificFigureSelector) || root.querySelector(scientificFigureSelector)) continue;
+    const found = sectionContext(root);
+    if (!found || found.context.path() !== path) continue;
+    const { info } = found;
+    if (mappedRoots.has(found.el)) continue;
+    const mixed = captureMixedReading(range, found.el, info, path);
+    if (mixed.status === "refused") {
+      new import_obsidian3.Notice(mixed.reason);
+      return [];
+    }
+    if (mixed.status === "mapped") {
+      result.push(mixed.anchor);
+      mappedRoots.add(found.el);
+      continue;
+    }
+    const walker = doc2.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let node, raw = "", selected = "", first = -1, last = 0;
+    const pieces = [];
+    while (node = walker.nextNode()) {
+      const parent2 = node.parentElement;
+      if (parent2?.closest("[data-study-comment-section]") !== root || parent2.closest('.code-links-panel,[data-code-links-host]:not([data-code-links-host="protected"]),code,pre,mjx-container,.math,.study-reference-gutter,button,input,textarea')) continue;
+      const text4 = node.textContent ?? "";
+      if (range.intersectsNode(node)) {
+        const start = node === range.startContainer ? range.startOffset : 0, end = node === range.endContainer ? range.endOffset : text4.length;
+        const piece = text4.slice(start, end);
+        if (piece) {
+          if (first < 0) first = raw.length + start;
+          last = raw.length + end;
+          selected += piece;
+          pieces.push(piece);
+        }
+      }
+      raw += text4;
+    }
+    if (selected.trim()) {
+      const anchor2 = sourceAnchor(path, info, selected, raw.slice(Math.max(0, first - 48), first), raw.slice(last, last + 48), pieces);
+      if (found.el !== root) {
+        const ix = index(path, info.text);
+        anchor2.sectionSource = info.text.slice(ix.lines[info.lineStart] ?? 0, ix.lines[info.lineEnd + 1] ?? info.text.length);
+        anchor2.renderedRoot = raw;
+      }
+      result.push(ordinaryAnchor(info.text, anchor2));
+    }
+    const math2 = Array.from(root.querySelectorAll(".math")).filter((el) => el.closest("[data-study-comment-section]") === root);
+    const entry = index(path, info.text), offset = entry.lines[info.lineStart] ?? 0, section = info.text.slice(offset, entry.lines[info.lineEnd + 1] ?? info.text.length), qs = equations(section);
+    math2.forEach((el, i) => {
+      if (range.intersectsNode(el) && qs[i]) {
+        const q = qs[i], from = offset + q.from, to = offset + q.to;
+        result.push(ordinaryAnchor(info.text, { id: crypto.randomUUID(), path, quote: q.raw, before: info.text.slice(Math.max(0, from - 48), from), after: info.text.slice(to, to + 48), kind: "math", ...el.contains(range.startContainer) && el.contains(range.endContainer) ? { part: partFromRange(el.querySelector("mjx-math"), range) } : {} }, { from, to }));
+      }
+    });
+  }
+  return result;
+}
+function readingMathTargets(root, a2) {
+  const found = sectionContext(root);
+  if (!found || found.context.path() !== a2.path) return [];
+  const { info } = found;
+  if (a2.kind !== "math" && !a2.table) {
+    const range = readingMixedRange(root, a2);
+    return range ? [...root.querySelectorAll(".math")].filter((math2) => range.intersectsNode(math2)) : [];
+  }
+  if (a2.table?.scientific) {
+    const target = scientificReadingTarget(root, info.text, a2);
+    if (!target) return [];
+    return target.map.math.filter((_, i) => target.map.qs[i].from >= target.decoded.from && target.map.qs[i].to <= target.decoded.to);
+  }
+  const entry = index(a2.path, info.text), offset = entry.lines[info.lineStart] ?? 0, qs = equations(info.text.slice(offset, entry.lines[info.lineEnd + 1] ?? info.text.length));
+  const elements = Array.from(root.querySelectorAll(".math")).filter((el) => el.closest("[data-study-comment-section]") === root);
+  const hit = locateMarginAnchor(info.text, a2);
+  return qs.flatMap((q, i) => hit && offset + q.from === hit.from && elements[i] ? [elements[i]] : []);
+}
+function readingTableRanges(root, a2) {
+  if (!a2.table?.scientific) return;
+  const found = sectionContext(root);
+  if (!found || found.context.path() !== a2.path) return;
+  return scientificReadingRanges(root, found.info.text, a2);
+}
+function readingTableTarget(root, a2) {
+  if (!a2.table) return;
+  const found = sectionContext(root);
+  if (!found || found.context.path() !== a2.path) return;
+  if (a2.table.scientific) return scientificReadingTarget(root, found.info.text, a2)?.cell;
+  const { info } = found, entry = index(a2.path, info.text), from = entry.lines[info.lineStart] ?? 0, to = entry.lines[info.lineEnd + 1] ?? info.text.length;
+  const sources = (entry.tables ??= sourceTables(info.text)).filter((t2) => t2.from >= from && t2.to <= to), tables = Array.from(root.querySelectorAll("table")).filter((t2) => t2.closest("[data-study-comment-section]") === root);
+  if (sources.length !== tables.length) return;
+  const hit = locateMarginAnchor(info.text, a2);
+  if (!hit) return;
+  for (let i = 0; i < sources.length; i++) {
+    const source = sources[i], table = tables[i];
+    if (hit.from < source.from || hit.to > source.to || table.rows.length !== source.rows.length) continue;
+    for (let row = 0; row < source.rows.length; row++) for (let column = 0; column < source.rows[row].length; column++) {
+      const cell = source.rows[row][column], dom = table.rows[row]?.cells[column];
+      if (hit.from >= cell.from && hit.to <= cell.to && dom?.colSpan === 1 && dom.rowSpan === 1 && table.rows[row].cells.length === source.rows[row].length) return dom;
+    }
+  }
+}
+function readingEquationAnchor(math2, path) {
+  const root = math2.closest("[data-study-comment-section]");
+  if (!root) return;
+  const found = sectionContext(root);
+  if (!found || found.context.path() !== path) return;
+  const { info } = found, entry = index(path, info.text);
+  const domTable = math2.closest("table.ss-scientific-table");
+  if (domTable) {
+    const id3 = domTable.closest(scientificFigureSelector)?.getAttribute("data-scientific-id"), sources = (entry.tables ??= sourceTables(info.text)).filter((t2) => t2.kind === "scientific" && t2.key === id3);
+    if (sources.length !== 1) return;
+    const source = sources[0], cell = scientificDOMCells(domTable, source)?.find((c) => c.dom.contains(math2));
+    if (!cell) return;
+    const map2 = scientificCellMap(cell.dom, cell.source), equation = map2?.math.indexOf(math2);
+    if (!map2 || equation === void 0 || equation < 0) return;
+    const q2 = map2.qs[equation], anchor2 = scientificAnchor(info.text, source, cell.row, cell.column, q2.from, q2.to, equation);
+    return anchor2 ? { id: crypto.randomUUID(), path, ...anchor2, kind: "math" } : void 0;
+  }
+  const offset = entry.lines[info.lineStart] ?? 0, qs = equations(info.text.slice(offset, entry.lines[info.lineEnd + 1] ?? info.text.length));
+  const elements = Array.from(root.querySelectorAll(".math")).filter((el) => el.closest("[data-study-comment-section]") === root);
+  const q = qs[elements.indexOf(math2)];
+  if (!q) return;
+  const from = offset + q.from, to = offset + q.to;
+  return ordinaryAnchor(info.text, { id: crypto.randomUUID(), path, quote: q.raw, before: info.text.slice(Math.max(0, from - 48), from), after: info.text.slice(to, to + 48), kind: "math" }, { from, to });
+}
+function readingTableExcerpts(range, path) {
+  const doc2 = range.startContainer.ownerDocument, result = [];
+  for (const table of Array.from(doc2.querySelectorAll(".markdown-preview-view table,.cm-embed-block table"))) {
+    if (!range.intersectsNode(table)) continue;
+    const root = table.closest("[data-study-comment-section]") ?? table.querySelector("[data-study-comment-section]") ?? table;
+    const found = sectionContext(root);
+    if (!found || found.context.path() !== path) continue;
+    const { info } = found, entry = index(path, info.text), base2 = entry.lines[info.lineStart] ?? 0, end = entry.lines[info.lineEnd + 1] ?? info.text.length;
+    const allSources = entry.tables ??= sourceTables(info.text), scientific = table.closest(scientificFigureSelector);
+    if (scientific) {
+      const sources2 = allSources.filter((t2) => t2.kind === "scientific" && t2.key === scientific.getAttribute("data-scientific-id") && t2.from >= base2 && t2.to <= end);
+      if (sources2.length !== 1) continue;
+      const source2 = sources2[0], cells2 = scientificDOMCells(table, source2);
+      if (!cells2) continue;
+      for (const cell of cells2) {
+        if (!range.intersectsNode(cell.dom)) continue;
+        const clipped = range.cloneRange();
+        if (!cell.dom.contains(range.startContainer)) clipped.setStart(cell.dom, 0);
+        if (!cell.dom.contains(range.endContainer)) clipped.setEnd(cell.dom, cell.dom.childNodes.length);
+        if (clipped.collapsed || !cell.source.text.trim()) continue;
+        const anchor2 = captureScientificCell(clipped, path, info.text, source2, cell);
+        if (!anchor2) return [];
+        result.push(anchor2);
+      }
+      continue;
+    }
+    const sources = allSources.filter((t2) => t2.kind !== "scientific" && t2.from >= base2 && t2.to <= end), tables = Array.from(found.el.querySelectorAll("table")).filter((t2) => !t2.closest(scientificFigureSelector));
+    if (sources.length !== tables.length) continue;
+    const source = sources[tables.indexOf(table)];
+    if (!source || source.rows.length !== table.rows.length) continue;
+    for (let row = 0; row < table.rows.length; row++) for (let col = 0; col < table.rows[row].cells.length; col++) {
+      const cell = table.rows[row].cells[col], raw = source.rows[row]?.[col];
+      if (!raw || !range.intersectsNode(cell)) continue;
+      const clipped = range.cloneRange();
+      if (!cell.contains(range.startContainer)) clipped.setStart(cell, 0);
+      if (!cell.contains(range.endContainer)) clipped.setEnd(cell, cell.childNodes.length);
+      const quote = clipped.toString().trim();
+      if (!quote) continue;
+      let from = raw.from, to = raw.to;
+      const at = raw.text.indexOf(quote);
+      if (at >= 0 && raw.text.indexOf(quote, at + 1) < 0) {
+        from += at;
+        to = from + quote.length;
+      } else if (!cell.querySelector(".math") && quote !== (cell.textContent ?? "").trim()) continue;
+      result.push(ordinaryAnchor(info.text, { id: crypto.randomUUID(), path, quote: info.text.slice(from, to), before: info.text.slice(Math.max(0, from - 96), from), after: info.text.slice(to, to + 96), kind: equations(info.text.slice(from, to)).some((q) => q.raw === info.text.slice(from, to)) ? "math" : "text", ...cell.querySelector("mjx-math")?.contains(range.startContainer) && cell.querySelector("mjx-math")?.contains(range.endContainer) ? { part: partFromRange(cell.querySelector("mjx-math"), range) } : {}, ...cell.querySelector(".math") ? {} : { renderedQuote: quote }, table: { key: source.key, source: source.source, row, column: col, cellText: raw.text } }, { from, to }));
+    }
+  }
+  return result;
+}
+function readingSectionBounds(info, path) {
+  const entry = index(path, info.text);
+  return { from: entry.lines[info.lineStart] ?? 0, to: entry.lines[info.lineEnd + 1] === void 0 ? info.text.length : entry.lines[info.lineEnd + 1] - 1 };
+}
+function readingStickyMap(root, info, path) {
+  const { from, to } = readingSectionBounds(info, path);
+  const projection = inlineProjection(info.text.slice(from, to)), dom = resizeDOM(root, true), alignment = alignInline(projection, dom.text);
+  if (!alignment) return;
+  return { from, to, dom, point(offset) {
+    const at = alignment.toDOM(offset - from);
+    return at === void 0 ? void 0 : dom.points[at];
+  }, source(node, offset) {
+    const at = dom.offset(node, offset);
+    if (at === void 0) return;
+    const local = alignment.toSource(at);
+    return local === void 0 ? void 0 : from + local;
+  } };
+}
+function readingStickyInsertion(selection, path, pointer) {
+  const doc2 = pointer ? pointer.target.ownerDocument : selection?.anchorNode?.ownerDocument;
+  if (!doc2) return;
+  let range, selectedRange;
+  if (pointer) {
+    const d = doc2;
+    const caret = d.caretPositionFromPoint?.(pointer.clientX, pointer.clientY);
+    if (caret) {
+      range = doc2.createRange();
+      range.setStart(caret.offsetNode, caret.offset);
+      range.collapse(true);
+    } else range = d.caretRangeFromPoint?.(pointer.clientX, pointer.clientY) ?? void 0;
+    if (range && selection?.rangeCount && !selection.isCollapsed) {
+      const selected = selection.getRangeAt(0);
+      if (selected.isPointInRange(range.startContainer, range.startOffset)) {
+        selectedRange = selected.cloneRange();
+        range = selected.cloneRange();
+        range.collapse(false);
+      }
+    }
+  } else if (selection?.rangeCount) {
+    selectedRange = selection.getRangeAt(0).cloneRange();
+    range = selectedRange.cloneRange();
+    range.collapse(false);
+  }
+  if (!range) return;
+  const node = range.startContainer, parent2 = node.nodeType === 1 ? node : node.parentElement;
+  if (parent2?.closest("a,code,pre,.math,.internal-embed,.study-sticky-anchor,.study-reference-gutter,button,input,textarea")) return;
+  const root = parent2?.closest("[data-study-comment-section]");
+  if (!root) return;
+  const found = sectionContext(root);
+  if (!found || found.context.path() !== path) return;
+  const mapping2 = readingStickyMap(found.el, found.info, path), offset = mapping2?.source(node, range.startOffset);
+  if (offset === void 0) return;
+  if (selectedRange && !selectedRange.collapsed && (!found.el.contains(selectedRange.startContainer) || found.info.text[offset - 1] === "\n")) return;
+  return { text: found.info.text, offset };
+}
+function notationReadingSection(math2, path) {
+  const root = math2.closest("[data-study-comment-section]"), found = root && sectionContext(root);
+  if (!found || found.context.path() !== path) return;
+  const { info, el } = found, entry = index(path, info.text), from = entry.lines[info.lineStart], to = entry.lines[info.lineEnd + 1] ?? info.text.length;
+  if (from === void 0 || to < from) return;
+  const elements = Array.from(el.querySelectorAll(".math")).filter((n) => !n.closest(".markdown-embed,.canvas-node,.study-card,.study-margin-pane,code,pre"));
+  if (!elements.includes(math2)) return;
+  return { source: info.text, from, to, root: el, elements };
+}
+
+// src/symbols/selection-source.ts
+function projectNotationEquation(source, q) {
+  if (source.slice(q.bodyFrom, q.bodyTo) !== q.body) return;
+  const opening = source.slice(source.lastIndexOf("\n", q.from - 1) + 1, q.from), quote = q.display && /^[ \t]*(?:>[ \t]*)+$/.test(opening) ? opening : "";
+  if (!quote) return { body: q.body, rawRange: (from, to) => Number.isInteger(from) && Number.isInteger(to) && from >= 0 && to > from && to <= q.body.length ? { from: q.bodyFrom + from, to: q.bodyFrom + to } : void 0, projectedRange: (from, to) => Number.isInteger(from) && Number.isInteger(to) && from >= q.bodyFrom && to > from && to <= q.bodyTo ? { from: from - q.bodyFrom, to: to - q.bodyFrom } : void 0 };
+  const closingLine = source.lastIndexOf("\n", q.bodyTo - 1) + 1;
+  if (closingLine > q.from && /^[ \t]*(?:>[ \t]*)+/.exec(source.slice(closingLine, q.bodyTo))?.[0] !== quote) return;
+  const depth2 = (quote.match(/>/g) ?? []).length, offsets = [];
+  let body = "", at = 0, line = 0;
+  for (const segment of q.body.matchAll(/[^\n]*(?:\n|$)/g)) {
+    const raw = segment[0];
+    if (!raw) continue;
+    let content2 = raw, start = at;
+    if (line > 0) {
+      const prefix = /^[ \t]*(?:>[ \t]*)+/.exec(raw)?.[0];
+      if (!prefix || prefix !== quote || (prefix.match(/>/g) ?? []).length !== depth2) return;
+      content2 = raw.slice(prefix.length);
+      start += prefix.length;
+    }
+    for (let i = 0; i < content2.length; i++) {
+      if (content2[i] === "\r" && content2[i + 1] === "\n") continue;
+      body += content2[i];
+      offsets.push(q.bodyFrom + start + i);
+    }
+    at += raw.length;
+    line++;
+  }
+  const rawRange = (from, to) => {
+    if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to <= from || to > offsets.length) return;
+    for (let i = from + 1; i < to; i++) if (offsets[i] !== offsets[i - 1] + 1) return;
+    const range = { from: offsets[from], to: offsets[to - 1] + 1 };
+    return source.slice(range.from, range.to) === body.slice(from, to) ? range : void 0;
+  };
+  return { body, rawRange, projectedRange: (from, to) => {
+    if (!Number.isInteger(from) || !Number.isInteger(to) || to <= from) return;
+    const start = offsets.indexOf(from), end = offsets.indexOf(to - 1);
+    if (start < 0 || end < start) return;
+    const raw = rawRange(start, end + 1);
+    return raw?.from === from && raw.to === to ? { from: start, to: end + 1 } : void 0;
+  } };
+}
+
+// src/symbols/selection.ts
+var captures = /* @__PURE__ */ new WeakMap();
+var message = "Select one exact symbol in the current note again. This rendered selection could not be proved against its source.";
+var excluded = ".markdown-embed,.canvas-node,.study-card,.study-margin-pane,.code-links-panel,[data-code-links-host],code,pre,input,textarea";
+function anchor(c) {
+  const a2 = { id: crypto.randomUUID(), path: c.path, quote: c.from === void 0 ? "" : c.source.slice(c.from, c.to), before: "", after: "", kind: "math" };
+  captures.set(a2, c);
+  return a2;
+}
+function captureNotationSelection(plugin2, path, range) {
+  const view = plugin2.app.workspace.getActiveViewOfType(import_obsidian4.MarkdownView);
+  if (!view || view.file?.path !== path) return;
+  const doc2 = view.containerEl.ownerDocument, selection = doc2.getSelection();
+  range ??= selection?.rangeCount && !selection.isCollapsed ? selection.getRangeAt(0) : void 0;
+  if (range && (!view.containerEl.contains(range.startContainer) || !view.containerEl.contains(range.endContainer))) return;
+  const start = range?.startContainer.nodeType === 1 ? range.startContainer : range?.startContainer.parentElement;
+  const end = range?.endContainer.nodeType === 1 ? range.endContainer : range?.endContainer.parentElement;
+  if (start?.closest(excluded) || end?.closest(excluded)) return;
+  if (view.getMode() === "source" && (!range || start?.closest(".cm-content") && !start.closest(".math,.cm-embed-block,.cm-callout"))) {
+    const editor = view.editor, from = editor.posToOffset(editor.getCursor("from")), to = editor.posToOffset(editor.getCursor("to")), source = editor.getValue();
+    const ranges = editor.cm?.state?.selection?.ranges;
+    if (ranges && ranges.length !== 1) return;
+    const q2 = equations(source).find((q3) => from >= q3.bodyFrom && to <= q3.bodyTo), projection = q2 && projectNotationEquation(source, q2);
+    if (!projection?.projectedRange(from, to)) return;
+    return anchor({ path, source, from, to });
+  }
+  if (!range || range.collapsed) return;
+  const mathHost = start?.closest(".math");
+  if (!mathHost || !mathHost.contains(range.endContainer)) return;
+  const math2 = mathHost.querySelector("mjx-math"), section = notationReadingSection(mathHost, path);
+  if (!math2 || !section) return;
+  const local = section.source.slice(section.from, section.to), qs = equations(local), projected = qs.map((q2) => projectNotationEquation(local, q2));
+  if (qs.length > 64 || qs.length !== section.elements.length || projected.some((p) => !p || unsupported(plainSymbolLatex(p.body)))) return;
+  const ordinal = section.elements.indexOf(mathHost), q = qs[ordinal];
+  if (!q) return;
+  const glyphs = notationGlyphSelection(math2, range);
+  if (!glyphs.length) return;
+  const part = partFromRange(math2, range), latex = part ? part.nodes.map((n) => n.latex).join(" ") : glyphs.length === math2.querySelectorAll("mjx-c").length ? projected[ordinal].body : "";
+  if (!latex) return;
+  const fingerprints = section.elements.map((el) => {
+    const m = el.querySelector("mjx-math");
+    return m ? notationMathFingerprint(m) : "";
+  });
+  if (fingerprints.some((s) => !s)) return;
+  const latexSources = section.elements.map((el) => el.querySelector("mjx-math")?.getAttribute("data-latex")?.trim() ?? "");
+  if (latexSources.some((s) => !s)) return;
+  const token = anchor({ path, source: section.source, math: mathHost, range: range.cloneRange(), section, fingerprints, latexSources, glyphs, latex });
+  token.quote = q.raw;
+  token.part = part;
+  return token;
+}
+async function resolveNotationSelection(plugin2, path, saved) {
+  const token = saved ?? captureNotationSelection(plugin2, path), capture = token && captures.get(token);
+  if (!capture || capture.path !== path) throw Error(message);
+  const file = plugin2.app.vault.getAbstractFileByPath(path);
+  if (!(file instanceof import_obsidian4.TFile)) throw Error("Source note is missing.");
+  const source = await plugin2.app.vault.read(file);
+  if (source !== capture.source) throw Error("The note changed after selection. Select the symbol again.");
+  for (const leaf of plugin2.app.workspace.getLeavesOfType("markdown")) {
+    const v = leaf.view;
+    if (v instanceof import_obsidian4.MarkdownView && v.file?.path === path && v.getMode() === "source" && v.editor.getValue() !== source) throw Error("Wait for the note to finish saving, then select again.");
+  }
+  let from = capture.from, to = capture.to;
+  if (from === void 0 || to === void 0) {
+    const old = capture.section, host = capture.math, range = capture.range;
+    if (!old || !host?.isConnected || !range) throw Error(message);
+    const section = notationReadingSection(host, path), math2 = host.querySelector("mjx-math");
+    if (!section || !math2 || section.source !== source || section.from !== old.from || section.to !== old.to || section.root !== old.root || section.elements.length !== old.elements.length || section.elements.some((el, i2) => el !== old.elements[i2])) throw Error(message);
+    const local = source.slice(section.from, section.to), qs = equations(local), projected = qs.map((q3) => projectNotationEquation(local, q3)), mj = math2.ownerDocument.defaultView?.MathJax;
+    if (!mj?.tex2chtml || qs.length > 64 || qs.length !== section.elements.length || projected.some((p) => !p || unsupported(plainSymbolLatex(p.body)))) throw Error(message);
+    const render = (tex, display) => {
+      const root = mj.tex2chtml(tex, { display }), m = root.querySelector("mjx-math");
+      if (!m || root.querySelector("mjx-merror")) throw Error(message);
+      return m;
+    };
+    for (let i2 = 0; i2 < qs.length; i2++) {
+      const current = section.elements[i2].querySelector("mjx-math"), fresh = render(projected[i2].body, qs[i2].display);
+      if (!current || current.getAttribute("data-latex")?.trim() !== capture.latexSources[i2] || fresh.getAttribute("data-latex")?.trim() !== capture.latexSources[i2] || notationMathFingerprint(current) !== capture.fingerprints[i2] || notationMathFingerprint(fresh) !== capture.fingerprints[i2]) throw Error(message);
+    }
+    const i = section.elements.indexOf(host), q2 = qs[i];
+    if (!q2) throw Error(message);
+    if (JSON.stringify(notationGlyphSelection(math2, range)) !== JSON.stringify(capture.glyphs)) throw Error(message);
+    const projection = projected[i], hit = exactNotationPartRange(math2, projection.body, capture.latex, capture.glyphs, (tex) => render(tex, q2.display)), raw = hit && projection.rawRange(hit.from, hit.to);
+    if (!raw) throw Error(message);
+    from = section.from + raw.from;
+    to = section.from + raw.to;
+  }
+  const q = equations(source).find((q2) => from >= q2.bodyFrom && to <= q2.bodyTo);
+  if (!q || !projectNotationEquation(source, q)?.projectedRange(from, to)) throw Error(message);
+  if (markers(q.body).some((m) => from < q.bodyFrom + m.to && to > q.bodyFrom + m.from)) throw Error("This selection is already tagged. Open its notation card instead.");
+  return { from, to, expected: source.slice(from, to), source };
+}
+
 // src/symbols/defaults.ts
 var NOTATION_SETTINGS_FILE = "Notation settings.md";
 function notationSettingsCandidates(notePath) {
@@ -13709,11 +14350,11 @@ var registryOnlySymbols = import_state4.Annotation.define();
 function scanSymbols(source) {
   symbolStats.initialScans++;
   const hasRegistry = source.includes("%% study-symbols"), hasMarks = source.includes("mjx-ss");
-  let block = null, registryError, registryFault;
+  let block2 = null, registryError, registryFault;
   if (hasRegistry) {
     symbolStats.registryParses++;
     try {
-      block = registryBlock(source, markdownContext(source).excluded);
+      block2 = registryBlock(source, markdownContext(source).excluded);
     } catch (e) {
       registryError = e.message;
       const from = source.indexOf("%% study-symbols");
@@ -13730,7 +14371,7 @@ function scanSymbols(source) {
       malformed.push({ from: q.bodyFrom, to: q.bodyTo, message: e.message });
     }
   }
-  return { block, marks: marks2, registryError, registryFault, malformed, error: registryError ?? malformed[0]?.message ?? null };
+  return { block: block2, marks: marks2, registryError, registryFault, malformed, error: registryError ?? malformed[0]?.message ?? null };
 }
 function full(doc2) {
   symbolStats.fullTextReads++;
@@ -13751,17 +14392,17 @@ var symbolDocumentField = import_state4.StateField.define({
       if (metadataOnly && frontBoundarySafe) {
         const from = tr.changes.mapPos(old.from, -1), to = tr.changes.mapPos(old.to, 1), raw = tr.newDoc.sliceString(from, to);
         symbolStats.registryParses++;
-        let block2 = { ...old, from, to }, registryError2;
+        let block3 = { ...old, from, to }, registryError2;
         try {
           const parsed = registryBlock(raw);
           if (!parsed || parsed.from !== 0 || parsed.to !== raw.length || parsed.version !== 2) throw Error("Invalid registry-only notation transaction.");
-          block2 = { ...parsed, from: from + parsed.from, to: from + parsed.to };
+          block3 = { ...parsed, from: from + parsed.from, to: from + parsed.to };
         } catch (e) {
           registryError2 = e.message;
         }
         const marks3 = value.marks.map((m) => ({ ...m, from: tr.changes.mapPos(m.from, 1), to: tr.changes.mapPos(m.to, -1), bodyFrom: tr.changes.mapPos(m.bodyFrom, 1), bodyTo: tr.changes.mapPos(m.bodyTo, -1) }));
         const malformed2 = (value.malformed ?? []).map((m) => ({ ...m, from: tr.changes.mapPos(m.from, -1), to: tr.changes.mapPos(m.to, 1) }));
-        return { ...value, block: block2, marks: marks3, malformed: malformed2, registryError: registryError2, registryFault: registryError2 ? { from, to, message: registryError2 } : void 0, error: registryError2 ?? malformed2[0]?.message ?? null };
+        return { ...value, block: block3, marks: marks3, malformed: malformed2, registryError: registryError2, registryFault: registryError2 ? { from, to, message: registryError2 } : void 0, error: registryError2 ?? malformed2[0]?.message ?? null };
       }
     }
     if (tr.isUserEvent("input.symbols")) return full(tr.newDoc);
@@ -13769,7 +14410,7 @@ var symbolDocumentField = import_state4.StateField.define({
     const active = !!(value.block || value.registryFault || value.marks.length || value.malformed?.length);
     const dirty = value.dirty || active && changes2.some((c) => /[$`~%\n\r]/.test(c.insert + tr.startState.doc.sliceString(c.from, c.to)));
     const touched = (from, to) => changes2.some((c) => c.from <= to && c.to >= from);
-    let block = value.block, registryError = value.registryError, registryFault = value.registryFault;
+    let block2 = value.block, registryError = value.registryError, registryFault = value.registryFault;
     if (registryFault) {
       const prior = registryFault;
       registryFault = { ...prior, from: tr.changes.mapPos(prior.from, -1), to: tr.changes.mapPos(prior.to, 1) };
@@ -13777,20 +14418,20 @@ var symbolDocumentField = import_state4.StateField.define({
         return { ...value, registryFault, malformed: (value.malformed ?? []).map((m) => ({ ...m, from: tr.changes.mapPos(m.from, -1), to: tr.changes.mapPos(m.to, 1) })), dirty: true, marks: value.marks.map((m) => ({ ...m, from: tr.changes.mapPos(m.from, 1), to: tr.changes.mapPos(m.to, -1), bodyFrom: tr.changes.mapPos(m.bodyFrom, 1), bodyTo: tr.changes.mapPos(m.bodyTo, -1) })) };
       }
     }
-    if (block) {
-      const previous = block;
-      const from = tr.changes.mapPos(block.from, -1), to = tr.changes.mapPos(block.to, 1);
-      if (touched(block.from, block.to)) {
+    if (block2) {
+      const previous = block2;
+      const from = tr.changes.mapPos(block2.from, -1), to = tr.changes.mapPos(block2.to, 1);
+      if (touched(block2.from, block2.to)) {
         symbolStats.registryParses++;
         try {
           const parsed = registryBlock(tr.newDoc.sliceString(from, to));
-          block = parsed ? { ...parsed, from: parsed.from + from, to: parsed.to + from } : null;
+          block2 = parsed ? { ...parsed, from: parsed.from + from, to: parsed.to + from } : null;
           registryError = void 0;
         } catch (e) {
           registryError = e.message;
-          block = { ...previous, from, to };
+          block2 = { ...previous, from, to };
         }
-      } else block = { ...block, from, to };
+      } else block2 = { ...block2, from, to };
     }
     const marks2 = [], malformed = [];
     const parse2 = (from, to) => {
@@ -13818,7 +14459,7 @@ var symbolDocumentField = import_state4.StateField.define({
       if (touched(prior.from, prior.to)) parse2(from, to);
       else malformed.push({ ...prior, from, to });
     }
-    return { block, marks: marks2.sort((a2, b) => a2.from - b.from), registryError, registryFault, malformed, dirty, error: registryError ?? malformed[0]?.message ?? null };
+    return { block: block2, marks: marks2.sort((a2, b) => a2.from - b.from), registryError, registryFault, malformed, dirty, error: registryError ?? malformed[0]?.message ?? null };
   }
 });
 function symbolProjection(doc2) {
@@ -13914,7 +14555,7 @@ function editNotationReferenceProperty(source, links) {
 }
 
 // src/symbols/references.ts
-var cache = /* @__PURE__ */ new Map();
+var cache2 = /* @__PURE__ */ new Map();
 var escaped3 = (s, at) => {
   let n = 0;
   while (at > 0 && s[--at] === "\\") n++;
@@ -13949,7 +14590,7 @@ function referenceSpans(source) {
   return out.sort((a2, b) => a2.from - b.from);
 }
 function entryLinks(definition, notes, notePath) {
-  const key3 = JSON.stringify([definition, notes, notePath]), old = cache.get(key3);
+  const key3 = JSON.stringify([definition, notes, notePath]), old = cache2.get(key3);
   if (old) return [...old];
   const links = [...new Set([definition, notes].flatMap((text4) => referenceSpans(text4).map((span) => {
     if (span.kind === "wiki" || !notePath) return "[[" + span.target + "]]";
@@ -13958,8 +14599,8 @@ function entryLinks(definition, notes, notePath) {
     return "[[" + (destination ?? path) + fragment + "]]";
   })))];
   if (links.length > 512) throw Error("Too many notation references.");
-  cache.set(key3, links);
-  if (cache.size > 512) cache.delete(cache.keys().next().value);
+  cache2.set(key3, links);
+  if (cache2.size > 512) cache2.delete(cache2.keys().next().value);
   return [...links];
 }
 function normalized(path) {
@@ -14217,7 +14858,7 @@ function bindNotation(plugin2, store, notes, system) {
   return history3;
 }
 
-// node_modules/@codemirror/commands/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/commands/dist/index.js
 var dist_exports4 = {};
 __export(dist_exports4, {
   blockComment: () => blockComment,
@@ -14332,7 +14973,7 @@ __export(dist_exports4, {
   undoSelection: () => undoSelection
 });
 
-// node_modules/@codemirror/state/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/state/dist/index.js
 var dist_exports2 = {};
 __export(dist_exports2, {
   Annotation: () => Annotation3,
@@ -14366,7 +15007,7 @@ __export(dist_exports2, {
   fromCodePoint: () => fromCodePoint
 });
 
-// node_modules/@marijn/find-cluster-break/src/index.js
+// ../obsidian-study-studio/node_modules/@marijn/find-cluster-break/src/index.js
 var rangeFrom = [];
 var rangeTo = [];
 (() => {
@@ -14440,7 +15081,7 @@ function codePointSize(code) {
   return code < 65536 ? 1 : 2;
 }
 
-// node_modules/@codemirror/state/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/state/dist/index.js
 var Text3 = class _Text {
   /**
   Get the line description around the given position.
@@ -14604,9 +15245,9 @@ var TextLeaf = class _TextLeaf extends Text3 {
   }
   lineInner(target, isLine, line, offset) {
     for (let i = 0; ; i++) {
-      let string4 = this.text[i], end = offset + string4.length;
+      let string5 = this.text[i], end = offset + string5.length;
       if ((isLine ? line : end) >= target)
-        return new Line2(offset, end, line, string4);
+        return new Line2(offset, end, line, string5);
       offset = end + 1;
       line++;
     }
@@ -16356,8 +16997,8 @@ var StateEffect3 = class _StateEffect {
   Map this effect through a position mapping. Will return
   `undefined` when that ends up deleting the effect.
   */
-  map(mapping) {
-    let mapped = this.type.map(this.value, mapping);
+  map(mapping2) {
+    let mapped = this.type.map(this.value, mapping2);
     return mapped === void 0 ? void 0 : mapped == this.value ? this : new _StateEffect(this.type, mapped);
   }
   /**
@@ -16380,12 +17021,12 @@ var StateEffect3 = class _StateEffect {
   /**
   Map an array of effects through a change set.
   */
-  static mapEffects(effects, mapping) {
+  static mapEffects(effects, mapping2) {
     if (!effects.length)
       return effects;
     let result = [];
     for (let effect of effects) {
-      let mapped = effect.map(mapping);
+      let mapped = effect.map(mapping2);
       if (mapped)
         result.push(mapped);
     }
@@ -16765,8 +17406,8 @@ var EditorState2 = class _EditorState {
   separator](https://codemirror.net/6/docs/ref/#state.EditorState^lineSeparator), create a
   [`Text`](https://codemirror.net/6/docs/ref/#state.Text) instance from the given string.
   */
-  toText(string4) {
-    return Text3.of(string4.split(this.facet(_EditorState.lineSeparator) || DefaultSplit));
+  toText(string5) {
+    return Text3.of(string5.split(this.facet(_EditorState.lineSeparator) || DefaultSplit));
   }
   /**
   Return the given range of the document as a string.
@@ -17752,32 +18393,32 @@ function findMinIndex(value, array) {
     }
   return found;
 }
-function countColumn(string4, tabSize, to = string4.length) {
+function countColumn(string5, tabSize, to = string5.length) {
   let n = 0;
   for (let i = 0; i < to; ) {
-    if (string4.charCodeAt(i) == 9) {
+    if (string5.charCodeAt(i) == 9) {
       n += tabSize - n % tabSize;
       i++;
     } else {
       n++;
-      i = findClusterBreak2(string4, i);
+      i = findClusterBreak2(string5, i);
     }
   }
   return n;
 }
-function findColumn(string4, col, tabSize, strict) {
+function findColumn(string5, col, tabSize, strict) {
   for (let i = 0, n = 0; ; ) {
     if (n >= col)
       return i;
-    if (i == string4.length)
+    if (i == string5.length)
       break;
-    n += string4.charCodeAt(i) == 9 ? tabSize - n % tabSize : 1;
-    i = findClusterBreak2(string4, i);
+    n += string5.charCodeAt(i) == 9 ? tabSize - n % tabSize : 1;
+    i = findClusterBreak2(string5, i);
   }
-  return strict === true ? -1 : string4.length;
+  return strict === true ? -1 : string5.length;
 }
 
-// node_modules/@codemirror/view/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/view/dist/index.js
 var dist_exports3 = {};
 __export(dist_exports3, {
   BidiSpan: () => BidiSpan,
@@ -17830,7 +18471,7 @@ __export(dist_exports3, {
   tooltips: () => tooltips
 });
 
-// node_modules/style-mod/src/style-mod.js
+// ../obsidian-study-studio/node_modules/style-mod/src/style-mod.js
 var C = "\u037C";
 var COUNT = typeof Symbol == "undefined" ? "__" + C : Symbol.for(C);
 var SET = typeof Symbol == "undefined" ? "__styleSet" + Math.floor(Math.random() * 1e8) : Symbol("styleSet");
@@ -17966,7 +18607,7 @@ var StyleSet = class {
   }
 };
 
-// node_modules/w3c-keyname/index.js
+// ../obsidian-study-studio/node_modules/w3c-keyname/index.js
 var base = {
   8: "Backspace",
   9: "Tab",
@@ -18072,7 +18713,7 @@ function keyName(event) {
   return name2;
 }
 
-// node_modules/crelt/index.js
+// ../obsidian-study-studio/node_modules/crelt/index.js
 function crelt() {
   var elt2 = arguments[0];
   if (typeof elt2 == "string") elt2 = document.createElement(elt2);
@@ -18101,7 +18742,7 @@ function add(elt2, child) {
   }
 }
 
-// node_modules/@codemirror/view/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/view/dist/index.js
 var nav = typeof navigator != "undefined" ? navigator : { userAgent: "", vendor: "", platform: "" };
 var doc = typeof document != "undefined" ? document : { documentElement: { style: {} } };
 var ie_edge = /* @__PURE__ */ /Edge\/(\d+)/.exec(nav.userAgent);
@@ -19369,25 +20010,25 @@ var Decoration = class extends RangeValue {
   given position.
   */
   static widget(spec) {
-    let side = Math.max(-1e4, Math.min(1e4, spec.side || 0)), block = !!spec.block;
-    side += block && !spec.inlineOrder ? side > 0 ? 3e8 : -4e8 : side > 0 ? 1e8 : -1e8;
-    return new PointDecoration(spec, side, side, block, spec.widget || null, false);
+    let side = Math.max(-1e4, Math.min(1e4, spec.side || 0)), block2 = !!spec.block;
+    side += block2 && !spec.inlineOrder ? side > 0 ? 3e8 : -4e8 : side > 0 ? 1e8 : -1e8;
+    return new PointDecoration(spec, side, side, block2, spec.widget || null, false);
   }
   /**
   Create a replace decoration which replaces the given range with
   a widget, or simply hides it.
   */
   static replace(spec) {
-    let block = !!spec.block, startSide, endSide;
+    let block2 = !!spec.block, startSide, endSide;
     if (spec.isBlockGap) {
       startSide = -5e8;
       endSide = 4e8;
     } else {
-      let { start, end } = getInclusive(spec, block);
-      startSide = (start ? block ? -3e8 : -1 : 5e8) - 1;
-      endSide = (end ? block ? 2e8 : 1 : -6e8) + 1;
+      let { start, end } = getInclusive(spec, block2);
+      startSide = (start ? block2 ? -3e8 : -1 : 5e8) - 1;
+      endSide = (end ? block2 ? 2e8 : 1 : -6e8) + 1;
     }
-    return new PointDecoration(spec, startSide, endSide, block, spec.widget || null, true);
+    return new PointDecoration(spec, startSide, endSide, block2, spec.widget || null, true);
   }
   /**
   Create a line decoration, which can add DOM attributes to the
@@ -19447,11 +20088,11 @@ var LineDecoration = class _LineDecoration extends Decoration {
 LineDecoration.prototype.mapMode = MapMode.TrackBefore;
 LineDecoration.prototype.point = true;
 var PointDecoration = class _PointDecoration extends Decoration {
-  constructor(spec, startSide, endSide, block, widget, isReplace) {
+  constructor(spec, startSide, endSide, block2, widget, isReplace) {
     super(startSide, endSide, widget, spec);
-    this.block = block;
+    this.block = block2;
     this.isReplace = isReplace;
-    this.mapMode = !block ? MapMode.TrackDel : startSide <= 0 ? MapMode.TrackBefore : MapMode.TrackAfter;
+    this.mapMode = !block2 ? MapMode.TrackDel : startSide <= 0 ? MapMode.TrackBefore : MapMode.TrackAfter;
   }
   // Only relevant when this.block == true
   get type() {
@@ -19472,13 +20113,13 @@ var PointDecoration = class _PointDecoration extends Decoration {
   }
 };
 PointDecoration.prototype.point = true;
-function getInclusive(spec, block = false) {
+function getInclusive(spec, block2 = false) {
   let { inclusiveStart: start, inclusiveEnd: end } = spec;
   if (start == null)
     start = spec.inclusive;
   if (end == null)
     end = spec.inclusive;
-  return { start: start !== null && start !== void 0 ? start : block, end: end !== null && end !== void 0 ? end : block };
+  return { start: start !== null && start !== void 0 ? start : block2, end: end !== null && end !== void 0 ? end : block2 };
 }
 function widgetsEq(a2, b) {
   return a2 == b || !!(a2 && b && a2.compare(b));
@@ -19634,14 +20275,14 @@ var LineView = class _LineView extends ContentView {
   }
   static find(docView, pos) {
     for (let i = 0, off = 0; i < docView.children.length; i++) {
-      let block = docView.children[i], end = off + block.length;
+      let block2 = docView.children[i], end = off + block2.length;
       if (end >= pos) {
-        if (block instanceof _LineView)
-          return block;
+        if (block2 instanceof _LineView)
+          return block2;
         if (end > pos)
           break;
       }
-      off = end + block.breakAfter;
+      off = end + block2.breakAfter;
     }
     return null;
   }
@@ -21355,18 +21996,18 @@ function domPosInText(node, x, y) {
 function posAtCoords(view, coords, precise, bias = -1) {
   var _a2, _b;
   let content2 = view.contentDOM.getBoundingClientRect(), docTop = content2.top + view.viewState.paddingTop;
-  let block, { docHeight } = view.viewState;
+  let block2, { docHeight } = view.viewState;
   let { x, y } = coords, yOffset = y - docTop;
   if (yOffset < 0)
     return 0;
   if (yOffset > docHeight)
     return view.state.doc.length;
   for (let halfLine = view.viewState.heightOracle.textHeight / 2, bounced = false; ; ) {
-    block = view.elementAtHeight(yOffset);
-    if (block.type == BlockType.Text)
+    block2 = view.elementAtHeight(yOffset);
+    if (block2.type == BlockType.Text)
       break;
     for (; ; ) {
-      yOffset = bias > 0 ? block.bottom + halfLine : block.top - halfLine;
+      yOffset = bias > 0 ? block2.bottom + halfLine : block2.top - halfLine;
       if (yOffset >= 0 && yOffset <= docHeight)
         break;
       if (bounced)
@@ -21376,11 +22017,11 @@ function posAtCoords(view, coords, precise, bias = -1) {
     }
   }
   y = docTop + yOffset;
-  let lineStart = block.from;
+  let lineStart = block2.from;
   if (lineStart < view.viewport.from)
-    return view.viewport.from == 0 ? 0 : precise ? null : posAtCoordsImprecise(view, content2, block, x, y);
+    return view.viewport.from == 0 ? 0 : precise ? null : posAtCoordsImprecise(view, content2, block2, x, y);
   if (lineStart > view.viewport.to)
-    return view.viewport.to == view.state.doc.length ? view.state.doc.length : precise ? null : posAtCoordsImprecise(view, content2, block, x, y);
+    return view.viewport.to == view.state.doc.length ? view.state.doc.length : precise ? null : posAtCoordsImprecise(view, content2, block2, x, y);
   let doc2 = view.dom.ownerDocument;
   let root = view.root.elementFromPoint ? view.root : doc2;
   let element = root.elementFromPoint(x, y);
@@ -21411,7 +22052,7 @@ function posAtCoords(view, coords, precise, bias = -1) {
   if (!node || !view.docView.dom.contains(node)) {
     let line = LineView.find(view.docView, lineStart);
     if (!line)
-      return yOffset > block.top + block.height / 2 ? block.to : block.from;
+      return yOffset > block2.top + block2.height / 2 ? block2.to : block2.from;
     ({ node, offset } = domPosAtCoords(line.dom, x, y));
   }
   let nearest = view.docView.nearest(node);
@@ -21424,15 +22065,15 @@ function posAtCoords(view, coords, precise, bias = -1) {
     return nearest.localPosFromDOM(node, offset) + nearest.posAtStart;
   }
 }
-function posAtCoordsImprecise(view, contentRect, block, x, y) {
+function posAtCoordsImprecise(view, contentRect, block2, x, y) {
   let into = Math.round((x - contentRect.left) * view.defaultCharacterWidth);
-  if (view.lineWrapping && block.height > view.defaultLineHeight * 1.5) {
+  if (view.lineWrapping && block2.height > view.defaultLineHeight * 1.5) {
     let textHeight = view.viewState.heightOracle.textHeight;
-    let line = Math.floor((y - block.top - (view.defaultLineHeight - textHeight) * 0.5) / textHeight);
+    let line = Math.floor((y - block2.top - (view.defaultLineHeight - textHeight) * 0.5) / textHeight);
     into += line * view.viewState.heightOracle.lineLength;
   }
-  let content2 = view.state.sliceDoc(block.from, block.to);
-  return block.from + findColumn(content2, into, view.state.tabSize);
+  let content2 = view.state.sliceDoc(block2.from, block2.to);
+  return block2.from + findColumn(content2, into, view.state.tabSize);
 }
 function isEndOfLineBefore(node, offset, x) {
   let len, scan = node;
@@ -23348,15 +23989,15 @@ var NodeBuilder = class _NodeBuilder {
     this.nodes.push(line);
     return line;
   }
-  addBlock(block) {
+  addBlock(block2) {
     this.enterLine();
-    let deco = block.deco;
+    let deco = block2.deco;
     if (deco && deco.startSide > 0 && !this.isCovered)
       this.ensureLine();
-    this.nodes.push(block);
-    this.writtenTo = this.pos = this.pos + block.length;
+    this.nodes.push(block2);
+    this.writtenTo = this.pos = this.pos + block2.length;
     if (deco && deco.endSide > 0)
-      this.covering = block;
+      this.covering = block2;
   }
   addLineDeco(height, breaks, length) {
     let line = this.ensureLine();
@@ -23554,8 +24195,8 @@ var ViewState = class {
   }
   updateViewportLines() {
     this.viewportLines = [];
-    this.heightMap.forEachLine(this.viewport.from, this.viewport.to, this.heightOracle.setDoc(this.state.doc), 0, 0, (block) => {
-      this.viewportLines.push(scaleBlock(block, this.scaler));
+    this.heightMap.forEachLine(this.viewport.from, this.viewport.to, this.heightOracle.setDoc(this.state.doc), 0, 0, (block2) => {
+      this.viewportLines.push(scaleBlock(block2, this.scaler));
     });
   }
   update(update, scrollTarget = null) {
@@ -23706,13 +24347,13 @@ var ViewState = class {
       let { head } = scrollTarget.range;
       if (head < viewport.from || head > viewport.to) {
         let viewHeight = Math.min(this.editorHeight, this.pixelViewport.bottom - this.pixelViewport.top);
-        let block = map2.lineAt(head, QueryType.ByPos, oracle, 0, 0), topPos;
+        let block2 = map2.lineAt(head, QueryType.ByPos, oracle, 0, 0), topPos;
         if (scrollTarget.y == "center")
-          topPos = (block.top + block.bottom) / 2 - viewHeight / 2;
+          topPos = (block2.top + block2.bottom) / 2 - viewHeight / 2;
         else if (scrollTarget.y == "start" || scrollTarget.y == "nearest" && head < viewport.from)
-          topPos = block.top;
+          topPos = block2.top;
         else
-          topPos = block.bottom - viewHeight;
+          topPos = block2.bottom - viewHeight;
         viewport = new Viewport(map2.lineAt(topPos - 1e3 / 2, QueryType.ByHeight, oracle, 0, 0).from, map2.lineAt(topPos + viewHeight + 1e3 / 2, QueryType.ByHeight, oracle, 0, 0).to);
       }
     }
@@ -23895,8 +24536,8 @@ var ViewState = class {
     return height >= this.viewportLines[0].top && height <= this.viewportLines[this.viewportLines.length - 1].bottom && this.viewportLines.find((l) => l.top <= height && l.bottom >= height) || scaleBlock(this.heightMap.lineAt(this.scaler.fromDOM(height), QueryType.ByHeight, this.heightOracle, 0, 0), this.scaler);
   }
   scrollAnchorAt(scrollTop) {
-    let block = this.lineBlockAtHeight(scrollTop + 8);
-    return block.from >= this.viewport.from || this.viewportLines[0].top - scrollTop > 200 ? block : this.viewportLines[0];
+    let block2 = this.lineBlockAtHeight(scrollTop + 8);
+    return block2.from >= this.viewport.from || this.viewportLines[0].top - scrollTop > 200 ? block2 : this.viewportLines[0];
   }
   elementAtHeight(height) {
     return scaleBlock(this.heightMap.blockAt(this.scaler.fromDOM(height), this.heightOracle, 0, 0), this.scaler);
@@ -24019,11 +24660,11 @@ var BigScaler = class _BigScaler {
     return this.scale == other.scale && this.viewports.length == other.viewports.length && this.viewports.every((vp, i) => vp.from == other.viewports[i].from && vp.to == other.viewports[i].to);
   }
 };
-function scaleBlock(block, scaler) {
+function scaleBlock(block2, scaler) {
   if (scaler.scale == 1)
-    return block;
-  let bTop = scaler.toDOM(block.top), bBottom = scaler.toDOM(block.bottom);
-  return new BlockInfo(block.from, block.length, bTop, bBottom - bTop, Array.isArray(block._content) ? block._content.map((b) => scaleBlock(b, scaler)) : block._content);
+    return block2;
+  let bTop = scaler.toDOM(block2.top), bBottom = scaler.toDOM(block2.bottom);
+  return new BlockInfo(block2.from, block2.length, bTop, bBottom - bTop, Array.isArray(block2._content) ? block2._content.map((b) => scaleBlock(b, scaler)) : block2._content);
 }
 var theme = /* @__PURE__ */ Facet.define({ combine: (strs) => strs.join(" ") });
 var darkTheme = /* @__PURE__ */ Facet.define({ combine: (values2) => values2.indexOf(true) > -1 });
@@ -25282,9 +25923,9 @@ var EditorView3 = class _EditorView {
             scrollAnchorPos = -1;
             scrollAnchorHeight = this.viewState.heightMap.height;
           } else {
-            let block = this.viewState.scrollAnchorAt(scrollTop);
-            scrollAnchorPos = block.from;
-            scrollAnchorHeight = block.top;
+            let block2 = this.viewState.scrollAnchorAt(scrollTop);
+            scrollAnchorPos = block2.from;
+            scrollAnchorHeight = block2.top;
           }
         }
         this.updateState = 1;
@@ -25912,12 +26553,12 @@ var CachedOrder = class _CachedOrder {
     this.fresh = fresh;
     this.order = order2;
   }
-  static update(cache6, changes2) {
-    if (changes2.empty && !cache6.some((c) => c.fresh))
-      return cache6;
-    let result = [], lastDir = cache6.length ? cache6[cache6.length - 1].dir : Direction.LTR;
-    for (let i = Math.max(0, cache6.length - 10); i < cache6.length; i++) {
-      let entry = cache6[i];
+  static update(cache7, changes2) {
+    if (changes2.empty && !cache7.some((c) => c.fresh))
+      return cache7;
+    let result = [], lastDir = cache7.length ? cache7[cache7.length - 1].dir : Direction.LTR;
+    for (let i = Math.max(0, cache7.length - 10); i < cache7.length; i++) {
+      let entry = cache7[i];
       if (entry.dir == lastDir && !changes2.touchesRange(entry.from, entry.to))
         result.push(new _CachedOrder(changes2.mapPos(entry.from, 1), changes2.mapPos(entry.to, -1), entry.dir, entry.isolates, false, entry.order));
     }
@@ -26264,8 +26905,8 @@ function rectanglesForRange(view, className, range) {
       addSpan(start, from2 == null, end, to2 == null, view.textDirection);
     return { top: top2, bottom, horizontal };
   }
-  function drawForWidget(block, top2) {
-    let y = contentRect.top + (top2 ? block.top : block.bottom);
+  function drawForWidget(block2, top2) {
+    let y = contentRect.top + (top2 ? block2.top : block2.bottom);
     return { top: y, bottom: y, horizontal: [] };
   }
 }
@@ -26440,8 +27081,8 @@ var hideNativeSelection = /* @__PURE__ */ Prec.highest(/* @__PURE__ */ EditorVie
   }
 }));
 var setDropCursorPos = /* @__PURE__ */ StateEffect3.define({
-  map(pos, mapping) {
-    return pos == null ? null : mapping.mapPos(pos);
+  map(pos, mapping2) {
+    return pos == null ? null : mapping2.mapPos(pos);
   }
 });
 var dropCursorPos = /* @__PURE__ */ StateField2.define({
@@ -28141,8 +28782,8 @@ var UpdateContext = class {
     this.i = 0;
     this.cursor = RangeSet.iter(gutter2.markers, viewport.from);
   }
-  addElement(view, block, markers2) {
-    let { gutter: gutter2 } = this, above = (block.top - this.height) / view.scaleY, height = block.height / view.scaleY;
+  addElement(view, block2, markers2) {
+    let { gutter: gutter2 } = this, above = (block2.top - this.height) / view.scaleY, height = block2.height / view.scaleY;
     if (this.i == gutter2.elements.length) {
       let newElt = new GutterElement(view, height, above, markers2);
       gutter2.elements.push(newElt);
@@ -28150,7 +28791,7 @@ var UpdateContext = class {
     } else {
       gutter2.elements[this.i].update(view, height, above, markers2);
     }
-    this.height = block.bottom;
+    this.height = block2.bottom;
     this.i++;
   }
   line(view, line, extraMarkers) {
@@ -28166,15 +28807,15 @@ var UpdateContext = class {
       return;
     this.addElement(view, line, localMarkers);
   }
-  widget(view, block) {
-    let marker = this.gutter.config.widgetMarker(view, block.widget, block), markers2 = marker ? [marker] : null;
+  widget(view, block2) {
+    let marker = this.gutter.config.widgetMarker(view, block2.widget, block2), markers2 = marker ? [marker] : null;
     for (let cls of view.state.facet(gutterWidgetClass)) {
-      let marker2 = cls(view, block.widget, block);
+      let marker2 = cls(view, block2.widget, block2);
       if (marker2)
         (markers2 || (markers2 = [])).push(marker2);
     }
     if (markers2)
-      this.addElement(view, block, markers2);
+      this.addElement(view, block2, markers2);
   }
   finish() {
     let gutter2 = this.gutter;
@@ -28345,9 +28986,9 @@ var lineNumberGutter = /* @__PURE__ */ activeGutters.compute([lineNumberConfig],
       return null;
     return new NumberMarker(formatNumber(view, view.state.doc.lineAt(line.from).number));
   },
-  widgetMarker: (view, widget, block) => {
+  widgetMarker: (view, widget, block2) => {
     for (let m of view.state.facet(lineNumberWidgetMarker)) {
-      let result = m(view, widget, block);
+      let result = m(view, widget, block2);
       if (result)
         return result;
     }
@@ -28436,7 +29077,7 @@ var __test = {
   getHeightChangeFlag: () => heightChangeFlag
 };
 
-// node_modules/@codemirror/language/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/language/dist/index.js
 var _a;
 var languageDataProp = /* @__PURE__ */ new NodeProp();
 function defineLanguageFacet(baseData) {
@@ -29672,15 +30313,15 @@ function matchPlainBrackets(state, pos, dir, tree2, tokenType2, maxScanDistance,
   }
   return iter.done ? { start: startToken, matched: false } : null;
 }
-function countCol(string4, end, tabSize, startIndex = 0, startValue = 0) {
+function countCol(string5, end, tabSize, startIndex = 0, startValue = 0) {
   if (end == null) {
-    end = string4.search(/[^\s\u00a0]/);
+    end = string5.search(/[^\s\u00a0]/);
     if (end == -1)
-      end = string4.length;
+      end = string5.length;
   }
   let n = startValue;
   for (let i = startIndex; i < end; i++) {
-    if (string4.charCodeAt(i) == 9)
+    if (string5.charCodeAt(i) == 9)
       n += tabSize - n % tabSize;
     else
       n++;
@@ -29691,8 +30332,8 @@ var StringStream = class {
   /**
   Create a stream.
   */
-  constructor(string4, tabSize, indentUnit2, overrideIndent) {
-    this.string = string4;
+  constructor(string5, tabSize, indentUnit2, overrideIndent) {
+    this.string = string5;
     this.tabSize = tabSize;
     this.indentUnit = indentUnit2;
     this.overrideIndent = overrideIndent;
@@ -30217,7 +30858,7 @@ var marks = {
   auto: /* @__PURE__ */ Decoration.mark({ class: "cm-iso", inclusive: true, attributes: { dir: "auto" }, bidiIsolate: null })
 };
 
-// node_modules/@codemirror/commands/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/commands/dist/index.js
 var toggleComment = (target) => {
   let { state } = target, line = state.doc.lineAt(state.selection.main.from), config = getConfig(target.state, line.from);
   return config.line ? toggleLineComment(target) : config.block ? toggleBlockCommentByLine(target) : false;
@@ -30583,31 +31224,31 @@ function popSelection(branch) {
   newBranch[branch.length - 1] = last.setSelAfter(last.selectionsAfter.slice(0, last.selectionsAfter.length - 1));
   return newBranch;
 }
-function addMappingToBranch(branch, mapping) {
+function addMappingToBranch(branch, mapping2) {
   if (!branch.length)
     return branch;
   let length = branch.length, selections = none3;
   while (length) {
-    let event = mapEvent(branch[length - 1], mapping, selections);
+    let event = mapEvent(branch[length - 1], mapping2, selections);
     if (event.changes && !event.changes.empty || event.effects.length) {
       let result = branch.slice(0, length);
       result[length - 1] = event;
       return result;
     } else {
-      mapping = event.mapped;
+      mapping2 = event.mapped;
       length--;
       selections = event.selectionsAfter;
     }
   }
   return selections.length ? [HistEvent.selection(selections)] : none3;
 }
-function mapEvent(event, mapping, extraSelections) {
-  let selections = conc(event.selectionsAfter.length ? event.selectionsAfter.map((s) => s.map(mapping)) : none3, extraSelections);
+function mapEvent(event, mapping2, extraSelections) {
+  let selections = conc(event.selectionsAfter.length ? event.selectionsAfter.map((s) => s.map(mapping2)) : none3, extraSelections);
   if (!event.changes)
     return HistEvent.selection(selections);
-  let mappedChanges = event.changes.map(mapping), before = mapping.mapDesc(event.changes, true);
+  let mappedChanges = event.changes.map(mapping2), before = mapping2.mapDesc(event.changes, true);
   let fullMapping = event.mapped ? event.mapped.composeDesc(before) : before;
-  return new HistEvent(mappedChanges, StateEffect3.mapEffects(event.effects, mapping), fullMapping, event.startSelection.map(before), selections);
+  return new HistEvent(mappedChanges, StateEffect3.mapEffects(event.effects, mapping2), fullMapping, event.startSelection.map(before), selections);
 }
 var joinableUserEvent = /^(input\.type|delete)($|\.)/;
 var HistoryState = class _HistoryState {
@@ -30636,8 +31277,8 @@ var HistoryState = class _HistoryState {
       return this;
     return new _HistoryState(addSelection(this.done, selection), this.undone, time, userEvent);
   }
-  addMapping(mapping) {
-    return new _HistoryState(addMappingToBranch(this.done, mapping), addMappingToBranch(this.undone, mapping), this.prevTime, this.prevUserEvent);
+  addMapping(mapping2) {
+    return new _HistoryState(addMappingToBranch(this.done, mapping2), addMappingToBranch(this.undone, mapping2), this.prevTime, this.prevUserEvent);
   }
   pop(side, state, onlySelection) {
     let branch = side == 0 ? this.done : this.undone;
@@ -31189,18 +31830,18 @@ function moveLine(state, dispatch, forward) {
   if (state.readOnly)
     return false;
   let changes2 = [], ranges = [];
-  for (let block of selectedLineBlocks(state)) {
-    if (forward ? block.to == state.doc.length : block.from == 0)
+  for (let block2 of selectedLineBlocks(state)) {
+    if (forward ? block2.to == state.doc.length : block2.from == 0)
       continue;
-    let nextLine = state.doc.lineAt(forward ? block.to + 1 : block.from - 1);
+    let nextLine = state.doc.lineAt(forward ? block2.to + 1 : block2.from - 1);
     let size = nextLine.length + 1;
     if (forward) {
-      changes2.push({ from: block.to, to: nextLine.to }, { from: block.from, insert: nextLine.text + state.lineBreak });
-      for (let r of block.ranges)
+      changes2.push({ from: block2.to, to: nextLine.to }, { from: block2.from, insert: nextLine.text + state.lineBreak });
+      for (let r of block2.ranges)
         ranges.push(EditorSelection.range(Math.min(state.doc.length, r.anchor + size), Math.min(state.doc.length, r.head + size)));
     } else {
-      changes2.push({ from: nextLine.from, to: block.from }, { from: block.to, insert: state.lineBreak + nextLine.text });
-      for (let r of block.ranges)
+      changes2.push({ from: nextLine.from, to: block2.from }, { from: block2.to, insert: state.lineBreak + nextLine.text });
+      for (let r of block2.ranges)
         ranges.push(EditorSelection.range(r.anchor - size, r.head - size));
     }
   }
@@ -31220,11 +31861,11 @@ function copyLine(state, dispatch, forward) {
   if (state.readOnly)
     return false;
   let changes2 = [];
-  for (let block of selectedLineBlocks(state)) {
+  for (let block2 of selectedLineBlocks(state)) {
     if (forward)
-      changes2.push({ from: block.from, insert: state.doc.slice(block.from, block.to) + state.lineBreak });
+      changes2.push({ from: block2.from, insert: state.doc.slice(block2.from, block2.to) + state.lineBreak });
     else
-      changes2.push({ from: block.to, insert: state.lineBreak + state.doc.slice(block.from, block.to) });
+      changes2.push({ from: block2.to, insert: state.lineBreak + state.doc.slice(block2.from, block2.to) });
   }
   dispatch(state.update({ changes: changes2, scrollIntoView: true, userEvent: "input.copyline" }));
   return true;
@@ -31244,9 +31885,9 @@ var deleteLine = (view) => {
   let selection = updateSel(state.selection, (range) => {
     let dist2 = void 0;
     if (view.lineWrapping) {
-      let block = view.lineBlockAt(range.head), pos = view.coordsAtPos(range.head, range.assoc || 1);
+      let block2 = view.lineBlockAt(range.head), pos = view.coordsAtPos(range.head, range.assoc || 1);
       if (pos)
-        dist2 = block.bottom + view.documentTop - pos.bottom + view.defaultLineHeight / 2;
+        dist2 = block2.bottom + view.documentTop - pos.bottom + view.defaultLineHeight / 2;
     }
     return view.moveVertically(range, true, dist2);
   }).map(changes2);
@@ -31751,9 +32392,9 @@ var markdownParser = parser.configure([Table]);
 function tableCells2(text4, offset) {
   const pipes = [];
   for (let i = 0; i < text4.length; i++) if (text4[i] === "|") {
-    let escapes = 0;
-    for (let p = i - 1; p >= 0 && text4[p] === "\\"; p--) escapes++;
-    if (escapes % 2 === 0) pipes.push(i);
+    let escapes2 = 0;
+    for (let p = i - 1; p >= 0 && text4[p] === "\\"; p--) escapes2++;
+    if (escapes2 % 2 === 0) pipes.push(i);
   }
   const start = /^\s*\|/.test(text4) ? pipes.shift() + 1 : 0, end = /\|\s*$/.test(text4) && pipes.length ? pipes.pop() : text4.length;
   const bounds = [start - 1, ...pipes, end];
@@ -31916,7 +32557,7 @@ function answerText(answer) {
   return answer.math ? (answer.math === "display" ? "$$" : "$") + value + (answer.math === "display" ? "$$" : "$") : value;
 }
 
-// node_modules/@lezer/lr/dist/index.js
+// ../obsidian-study-studio/node_modules/@lezer/lr/dist/index.js
 var Stack = class _Stack {
   /**
   @internal
@@ -33678,7 +34319,7 @@ function getSpecializer(spec) {
   return spec.get;
 }
 
-// node_modules/@lezer/python/dist/index.js
+// ../obsidian-study-studio/node_modules/@lezer/python/dist/index.js
 var printKeyword = 1;
 var indent = 194;
 var dedent = 195;
@@ -33798,16 +34439,16 @@ var indentation = new ExternalTokenizer((input, stack) => {
   if (context2.flags) return;
   let prev = input.peek(-1);
   if (prev == newline || prev == carriageReturn) {
-    let depth2 = 0, chars = 0;
+    let depth2 = 0, chars2 = 0;
     for (; ; ) {
       if (input.next == space2) depth2++;
       else if (input.next == tab) depth2 += 8 - depth2 % 8;
       else break;
       input.advance();
-      chars++;
+      chars2++;
     }
     if (depth2 != context2.indent && input.next != newline && input.next != carriageReturn && input.next != hash2) {
-      if (depth2 < context2.indent) input.acceptToken(dedent, -chars);
+      if (depth2 < context2.indent) input.acceptToken(dedent, -chars2);
       else input.acceptToken(indent);
     }
   }
@@ -33889,7 +34530,7 @@ var strings = new ExternalTokenizer((input, stack) => {
   let { flags } = stack.context;
   let quote = flags & cx_DoubleQuote ? doubleQuote : singleQuote;
   let long = (flags & cx_Long) > 0;
-  let escapes = !(flags & cx_Raw);
+  let escapes2 = !(flags & cx_Raw);
   let format = (flags & cx_Format) > 0;
   let start = input.pos;
   for (; ; ) {
@@ -33905,7 +34546,7 @@ var strings = new ExternalTokenizer((input, stack) => {
         }
         break;
       }
-    } else if (escapes && input.next == backslash) {
+    } else if (escapes2 && input.next == backslash) {
       if (input.pos == start) {
         input.advance();
         let escaped4 = input.next;
@@ -33917,7 +34558,7 @@ var strings = new ExternalTokenizer((input, stack) => {
         return;
       }
       break;
-    } else if (input.next == backslash && !escapes && input.peek(1) > -1) {
+    } else if (input.next == backslash && !escapes2 && input.peek(1) > -1) {
       input.advance(2);
     } else if (input.next == quote && (!long || input.peek(1) == quote && input.peek(2) == quote)) {
       if (input.pos == start) {
@@ -34014,7 +34655,7 @@ var parser3 = LRParser.deserialize({
   tokenPrec: 7668
 });
 
-// node_modules/@codemirror/autocomplete/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/autocomplete/dist/index.js
 var CompletionContext = class {
   /**
   Create a new completion context. (Mostly useful for testing
@@ -34083,8 +34724,8 @@ var CompletionContext = class {
     }
   }
 };
-function toSet(chars) {
-  let flat = Object.keys(chars).join("");
+function toSet(chars2) {
+  let flat = Object.keys(chars2).join("");
   let words2 = /\w/.test(flat);
   if (words2)
     flat = flat.replace(/\w/g, "");
@@ -34479,8 +35120,8 @@ closedBracket.startSide = 1;
 closedBracket.endSide = -1;
 var android = typeof navigator == "object" && /* @__PURE__ */ /Android\b/.test(navigator.userAgent);
 
-// node_modules/@codemirror/lang-python/dist/index.js
-var cache2 = /* @__PURE__ */ new NodeWeakMap();
+// ../obsidian-study-studio/node_modules/@codemirror/lang-python/dist/index.js
+var cache3 = /* @__PURE__ */ new NodeWeakMap();
 var ScopeNodes = /* @__PURE__ */ new Set([
   "Script",
   "Body",
@@ -34541,7 +35182,7 @@ var gatherCompletions = {
   __proto__: null
 };
 function getScope(doc2, node) {
-  let cached = cache2.get(node);
+  let cached = cache3.get(node);
   if (cached)
     return cached;
   let completions = [], top2 = true;
@@ -34561,7 +35202,7 @@ function getScope(doc2, node) {
       return false;
     }
   });
-  cache2.set(node, completions);
+  cache3.set(node, completions);
   return completions;
 }
 var Identifier = /^[\w\xa1-\uffff][\w\d\xa1-\uffff]*$/;
@@ -34899,7 +35540,7 @@ function python() {
   ]);
 }
 
-// node_modules/@lezer/cpp/dist/index.js
+// ../obsidian-study-studio/node_modules/@lezer/cpp/dist/index.js
 var RawString = 1;
 var templateArgsEndFallback = 2;
 var MacroName = 3;
@@ -35038,7 +35679,7 @@ var parser4 = LRParser.deserialize({
   tokenPrec: 24852
 });
 
-// node_modules/@codemirror/lang-cpp/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/lang-cpp/dist/index.js
 var cppLanguage = /* @__PURE__ */ LRLanguage.define({
   name: "cpp",
   parser: /* @__PURE__ */ parser4.configure({
@@ -35070,7 +35711,7 @@ function cpp() {
   return new LanguageSupport(cppLanguage);
 }
 
-// node_modules/@codemirror/legacy-modes/mode/shell.js
+// ../obsidian-study-studio/node_modules/@codemirror/legacy-modes/mode/shell.js
 var words = {};
 function define(style, dict) {
   for (var i = 0; i < dict.length; i++) {
@@ -35291,7 +35932,7 @@ var shell = {
   }
 };
 
-// node_modules/@codemirror/legacy-modes/mode/mathematica.js
+// ../obsidian-study-studio/node_modules/@codemirror/legacy-modes/mode/mathematica.js
 var Identifier2 = "[a-zA-Z\\$][a-zA-Z0-9\\$]*";
 var pBase = "(?:\\d+)";
 var pFloat = "(?:\\.\\d+|\\d+\\.\\d*|\\d+)";
@@ -35400,7 +36041,7 @@ var mathematica = {
   }
 };
 
-// node_modules/@codemirror/legacy-modes/mode/javascript.js
+// ../obsidian-study-studio/node_modules/@codemirror/legacy-modes/mode/javascript.js
 function mkJavaScript(parserConfig) {
   var statementIndent = parserConfig.statementIndent;
   var jsonldMode = parserConfig.jsonld;
@@ -35717,10 +36358,10 @@ function mkJavaScript(parserConfig) {
   function isModifier(name2) {
     return name2 == "public" || name2 == "private" || name2 == "protected" || name2 == "abstract" || name2 == "readonly";
   }
-  function Context3(prev, vars, block2) {
+  function Context3(prev, vars, block3) {
     this.prev = prev;
     this.vars = vars;
-    this.block = block2;
+    this.block = block3;
   }
   function Var(name2, next) {
     this.name = name2;
@@ -35776,7 +36417,7 @@ function mkJavaScript(parserConfig) {
     if (type2 == "keyword b") return cont(pushlex("form"), statement, poplex);
     if (type2 == "keyword d") return cx.stream.match(/^\s*$/, false) ? cont() : cont(pushlex("stat"), maybeexpression, expect(";"), poplex);
     if (type2 == "debugger") return cont(expect(";"));
-    if (type2 == "{") return cont(pushlex("}"), pushblockcontext, block, poplex, popcontext);
+    if (type2 == "{") return cont(pushlex("}"), pushblockcontext, block2, poplex, popcontext);
     if (type2 == ";") return cont();
     if (type2 == "if") {
       if (cx.state.lexical.info == "else" && cx.state.cc[cx.state.cc.length - 1] == poplex)
@@ -35797,7 +36438,7 @@ function mkJavaScript(parserConfig) {
         cx.marked = "keyword";
         if (value == "enum") return cont(enumdef);
         else if (value == "type") return cont(typename, expect("operator"), typeexpr, expect(";"));
-        else return cont(pushlex("form"), pattern, expect("{"), pushlex("}"), block, poplex, poplex);
+        else return cont(pushlex("form"), pattern, expect("{"), pushlex("}"), block2, poplex, poplex);
       } else if (isTS && value == "namespace") {
         cx.marked = "keyword";
         return cont(pushlex("form"), expression, statement, poplex);
@@ -35814,7 +36455,7 @@ function mkJavaScript(parserConfig) {
       expect("{"),
       pushlex("}", "switch"),
       pushblockcontext,
-      block,
+      block2,
       poplex,
       poplex,
       popcontext
@@ -36011,9 +36652,9 @@ function mkJavaScript(parserConfig) {
       cx.cc.push(arguments[i]);
     return cont(pushlex(end, info), commasep(what, end), poplex);
   }
-  function block(type2) {
+  function block2(type2) {
     if (type2 == "}") return cont();
-    return pass(statement, block);
+    return pass(statement, block2);
   }
   function maybetype(type2, value) {
     if (isTS) {
@@ -36504,7 +37145,7 @@ var writtenLanguage = (info) => {
   return language2 ? languages[language2] ?? null : null;
 };
 
-// node_modules/@lezer/html/dist/index.js
+// ../obsidian-study-studio/node_modules/@lezer/html/dist/index.js
 var scriptText = 55;
 var StartCloseScriptTag = 1;
 var styleText = 56;
@@ -36848,7 +37489,7 @@ function configureNesting(tags3 = [], attributes = []) {
   });
 }
 
-// node_modules/@lezer/css/dist/index.js
+// ../obsidian-study-studio/node_modules/@lezer/css/dist/index.js
 var descendantOp = 148;
 var Unit = 1;
 var identifier = 149;
@@ -37027,7 +37668,7 @@ var parser6 = LRParser.deserialize({
   tokenPrec: 2433
 });
 
-// node_modules/@codemirror/lang-css/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/lang-css/dist/index.js
 var _properties = null;
 function properties() {
   if (!_properties && typeof document == "object" && document.body) {
@@ -37888,7 +38529,7 @@ function css() {
   return new LanguageSupport(cssLanguage, cssLanguage.data.of({ autocomplete: cssCompletionSource }));
 }
 
-// node_modules/@lezer/javascript/dist/index.js
+// ../obsidian-study-studio/node_modules/@lezer/javascript/dist/index.js
 var noSemi = 317;
 var noSemiType = 318;
 var incdec = 1;
@@ -38100,7 +38741,7 @@ var parser7 = LRParser.deserialize({
   tokenPrec: 15178
 });
 
-// node_modules/@codemirror/lang-javascript/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/lang-javascript/dist/index.js
 var snippets2 = [
   /* @__PURE__ */ snippetCompletion("function ${name}(${params}) {\n	${}\n}", {
     label: "function",
@@ -38175,7 +38816,7 @@ var typescriptSnippets = /* @__PURE__ */ snippets2.concat([
     type: "keyword"
   })
 ]);
-var cache3 = /* @__PURE__ */ new NodeWeakMap();
+var cache4 = /* @__PURE__ */ new NodeWeakMap();
 var ScopeNodes2 = /* @__PURE__ */ new Set([
   "Script",
   "Block",
@@ -38211,7 +38852,7 @@ var gatherCompletions2 = {
   __proto__: null
 };
 function getScope2(doc2, node) {
-  let cached = cache3.get(node);
+  let cached = cache4.get(node);
   if (cached)
     return cached;
   let completions = [], top2 = true;
@@ -38232,7 +38873,7 @@ function getScope2(doc2, node) {
       return false;
     }
   });
-  cache3.set(node, completions);
+  cache4.set(node, completions);
   return completions;
 }
 var Identifier3 = /^[\w$\xa1-\uffff][\w$\d\xa1-\uffff]*$/;
@@ -38412,7 +39053,7 @@ var autoCloseTags = /* @__PURE__ */ EditorView3.inputHandler.of((view, from, to,
   return true;
 });
 
-// node_modules/@codemirror/lang-html/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/lang-html/dist/index.js
 var Targets = ["_blank", "_self", "_top", "_parent"];
 var Charsets = ["ascii", "utf-8", "utf-16", "latin1", "latin1"];
 var Methods = ["get", "post", "put", "delete"];
@@ -39152,7 +39793,7 @@ var autoCloseTags2 = /* @__PURE__ */ EditorView3.inputHandler.of((view, from, to
   return true;
 });
 
-// node_modules/@codemirror/lang-markdown/dist/index.js
+// ../obsidian-study-studio/node_modules/@codemirror/lang-markdown/dist/index.js
 var data = /* @__PURE__ */ defineLanguageFacet({ commentTokens: { block: { open: "<!--", close: "-->" } } });
 var headingProp = /* @__PURE__ */ new NodeProp();
 var commonmark = /* @__PURE__ */ parser.configure({
@@ -40047,10 +40688,10 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
     void field.openAtCursor(display, justify);
   };
   class MathWidget extends WidgetType {
-    constructor(raw, block = false) {
+    constructor(raw, block2 = false) {
       super();
       this.raw = raw;
-      this.block = block;
+      this.block = block2;
     }
     eq(other) {
       return other.raw === this.raw && other.block === this.block;
@@ -40269,10 +40910,10 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
     }
   }
   class ImageWidget extends WidgetType {
-    constructor(raw, block) {
+    constructor(raw, block2) {
       super();
       this.raw = raw;
-      this.block = block;
+      this.block = block2;
     }
     eq(other) {
       return this.raw === other.raw && this.block === other.block;
@@ -40368,7 +41009,7 @@ function writtenEditor(app, host, path, value, owner, change, busy, label = "You
       ...tables.map((t2) => Decoration.replace({ widget: new TableWidget(t2, state.readOnly), block: true }).range(t2.from, t2.to)),
       ...images.map((i) => Decoration.replace({ widget: new ImageWidget(i.raw, i.block), block: i.block }).range(i.from, i.to)),
       ...parsed.filter((q) => !covered.some((t2) => q.from < t2.to && q.to > t2.from) && !q.raw.includes("{{blank:") && q.body.trim() && (options.keepMathRendered || !focused || state.readOnly || !state.selection.ranges.some((s) => s.from <= q.to && s.to >= q.from))).map((q) => Decoration.replace({ widget: new MathWidget(q.bodyFrom === q.from ? `$${q.body}$` : q.raw, !!options.compactBlocks && q.display), block: !!options.compactBlocks && q.display }).range(q.from, q.to)),
-      ...fencedCode(source2).flatMap((block) => block.lines.map((pos) => Decoration.line({ class: "study-written-code-line" }).range(pos)))
+      ...fencedCode(source2).flatMap((block2) => block2.lines.map((pos) => Decoration.line({ class: "study-written-code-line" }).range(pos)))
     ], true) };
   };
   const highlight2 = HighlightStyle.define([{ tag: tags.keyword, class: "study-code-keyword" }, { tag: tags.string, class: "study-code-string" }, { tag: tags.number, class: "study-code-number" }, { tag: tags.comment, class: "study-code-comment" }, { tag: tags.function(tags.variableName), class: "study-code-function" }]);
@@ -40624,6 +41265,80 @@ function rankVersions(sequence) {
   return result;
 }
 
+// src/math-answer-tokens.ts
+var textCommands = /* @__PURE__ */ new Set(["text", "textrm", "textnormal", "textsf", "texttt", "textbf", "textit", "textsl", "textsc", "emph", "mbox", "hbox", "operatorname"]);
+function mathAnswerTokens(value) {
+  let source = value.trim();
+  if (source.startsWith("$$") && source.endsWith("$$") && source.length >= 4) source = source.slice(2, -2);
+  else if (source.startsWith("$") && source.endsWith("$") && source.length >= 2) source = source.slice(1, -1);
+  const tokens = [];
+  for (let i = 0; i < source.length; ) {
+    const ch = source[i];
+    if (/\s/.test(ch)) {
+      i++;
+      continue;
+    }
+    if (ch === "%") {
+      const end = source.indexOf("\n", i);
+      const to = end < 0 ? source.length : end + 1;
+      tokens.push(source.slice(i, to));
+      i = to;
+      continue;
+    }
+    if (ch !== "\\") {
+      tokens.push(ch);
+      i++;
+      continue;
+    }
+    const from = i++;
+    if (i === source.length) {
+      tokens.push("\\");
+      break;
+    }
+    if (!/[A-Za-z]/.test(source[i])) {
+      tokens.push(source.slice(from, ++i));
+      continue;
+    }
+    while (i < source.length && /[A-Za-z]/.test(source[i])) i++;
+    const command2 = source.slice(from, i);
+    tokens.push(command2);
+    if (command2 === "\\verb") {
+      if (source[i] === "*") {
+        tokens.push("*");
+        i++;
+      }
+      const delimiter = source[i];
+      if (delimiter !== void 0) {
+        const end = source.indexOf(delimiter, i + 1), to = end < 0 ? source.length : end + 1;
+        tokens.push(source.slice(i, to));
+        i = to;
+      }
+      continue;
+    }
+    if (!textCommands.has(command2.slice(1))) continue;
+    while (i < source.length && /\s/.test(source[i])) i++;
+    if (command2 === "\\operatorname" && source[i] === "*") {
+      tokens.push("*");
+      i++;
+      while (i < source.length && /\s/.test(source[i])) i++;
+    }
+    if (source[i] !== "{") continue;
+    const start = i++;
+    let depth2 = 1;
+    while (i < source.length && depth2) {
+      if (source[i] === "\\") {
+        i += Math.min(2, source.length - i);
+        continue;
+      }
+      if (source[i] === "{") depth2++;
+      else if (source[i] === "}") depth2--;
+      i++;
+    }
+    tokens.push(source.slice(start, i));
+  }
+  return JSON.stringify(tokens);
+}
+
 // src/reference-output.ts
 function validateReferenceOutput(value) {
   const v = value;
@@ -40655,7 +41370,7 @@ async function captureReferenceOutput(app, d) {
     if (input.language !== "python") return { message: "Automatic output capture currently supports Python." };
     const bridge = app.plugins?.plugins?.["code-links"];
     if (!bridge?.call) return { message: "Enable Code Links to capture reference output." };
-    const fingerprint = await referenceFingerprint(d), result = await bridge.call("capture-output", { source: input.source, reference: input.reference });
+    const fingerprint = await referenceFingerprint(d), result = await bridge.call("capture-output", { ...d.studySource?.target ? { target: d.studySource.target } : {}, source: input.source, reference: input.reference });
     if (result.status !== "ok" || typeof result.stdout !== "string") return { message: String(result.error ?? "Reference output could not be captured.").slice(0, 500) };
     const cleaned = cleanReferenceOutput(result.stdout);
     const output = { version: 1, origin: "captured", fingerprint, text: cleaned.text, runtime: String(result.runtime ?? "Python").slice(0, 100), ...result.varies ? { varies: true } : {}, ...cleaned.truncated || result.truncated ? { truncated: true } : {} };
@@ -40728,6 +41443,8 @@ function replaceProperty(raw, key3, value) {
 }
 
 // src/model.ts
+var BLANK_RULE_V1 = "exact-choice-set-or-equal-weight-blanks-v1";
+var BLANK_RULE_V2 = "exact-choice-set-or-equal-weight-blanks-v2";
 function check(ok, message3) {
   if (!ok) throw new Error(message3);
 }
@@ -40909,7 +41626,8 @@ ${prompt}
 ${explanation}
 `;
 }
-function grade(q, response) {
+function grade(q, response, rule = gradingRule(q)) {
+  check(validGradingRule(q, rule), "Unsupported grading rule for this question.");
   const d = q.definition;
   if (d.type === "code" && d.code?.grading) return { earned: 0, possible: 1, details: [], pending: true };
   if (["short-answer", "drawing"].includes(d.type)) {
@@ -40937,6 +41655,10 @@ function grade(q, response) {
     const mathAnswer = !!a2.math || a2.accepted.some((s) => /^\$\$?[\s\S]+\$\$?$/.test(s.trim()));
     const normalize = (s) => {
       if (d.type === "code") return normalizeCodeAnswer(s, a2.whitespace);
+      if (mathAnswer && rule === BLANK_RULE_V2) {
+        const tokens = mathAnswerTokens(s);
+        return a2.caseSensitive ? tokens : tokens.toLocaleLowerCase("en-US");
+      }
       const v = (mathAnswer ? s.trim().replace(/^\$\$?([\s\S]*?)\$\$?$/, "$1") : s).trim().replace(/\s+/g, " ");
       return a2.caseSensitive ? v : v.toLocaleLowerCase("en-US");
     };
@@ -40977,7 +41699,7 @@ function makeAttempt(q, response, order2, mode, context2, started, id3, course =
     question: q,
     choiceOrder: order2,
     response,
-    grade: mode === "attempt" ? grade(q, response) : null,
+    grade: mode === "attempt" ? grade(q, response, gradingRule(q)) : null,
     gradingRule: gradingRule(q)
   });
 }
@@ -41065,9 +41787,12 @@ function answerLabel(q, id3) {
   );
   return `Blank ${ids.indexOf(id3) + 1}`;
 }
-function gradingRule(q) {
+function gradingRule(q, version = 2) {
   if (q.definition.code?.grading) return "python-structure-and-behavior-v1";
-  return ["short-answer", "drawing"].includes(q.definition.type) ? "self-rubric-v1" : q.definition.type === "ordering" ? "exact-sequence-v1" : "exact-choice-set-or-equal-weight-blanks-v1";
+  return ["short-answer", "drawing"].includes(q.definition.type) ? "self-rubric-v1" : q.definition.type === "ordering" ? "exact-sequence-v1" : version === 1 ? BLANK_RULE_V1 : BLANK_RULE_V2;
+}
+function validGradingRule(q, rule) {
+  return rule === gradingRule(q, 1) || rule === gradingRule(q, 2);
 }
 function validateSelfAssessment(q, r) {
   if (q.definition.type === "drawing") validateDrawingResponse(r.blanks.response ?? "");
@@ -41694,8 +42419,9 @@ function underlineBackground(comments, dark, highlight2) {
 }
 
 // src/reading-projection.ts
-var cache4 = /* @__PURE__ */ new Map();
+var cache5 = /* @__PURE__ */ new Map();
 function projectReadingAnchor(a2, source) {
+  if (a2.table?.scientific) return [a2];
   if (source !== void 0) {
     const projected = symbolTextProjection(source);
     if (projected) return projectReadingAnchor(a2, projected.text);
@@ -41703,11 +42429,11 @@ function projectReadingAnchor(a2, source) {
   if (source === void 0 || a2.kind === "math" || a2.renderedQuote !== void 0) return [a2];
   const hit = locateMarginAnchor(source, a2);
   if (!hit) return [a2];
-  let qs = cache4.get(source);
+  let qs = cache5.get(source);
   if (!qs) {
     qs = equations(source);
-    cache4.set(source, qs);
-    if (cache4.size > 2) cache4.delete(cache4.keys().next().value);
+    cache5.set(source, qs);
+    if (cache5.size > 2) cache5.delete(cache5.keys().next().value);
   }
   const prose = (from, to) => {
     let text4 = "", at = from;
@@ -41938,7 +42664,7 @@ function readingCopies(c, path, source) {
   return excerpts(c).filter((a2) => a2.path === path).flatMap((a2) => projectReadingAnchor(a2, source).map((excerpt2) => ({ ...withExcerptLane(c, a2), quote: excerpt2.renderedQuote ?? excerpt2.quote, before: excerpt2.renderedBefore ?? excerpt2.before, after: excerpt2.renderedAfter ?? excerpt2.after, excerpt: excerpt2 })));
 }
 function validComment(c) {
-  return !!c && ["id", "path", "quote", "before", "after", "comment", "color", "intent", "updated"].every((k) => typeof c[k] === "string") && typeof c.resolved === "boolean" && (c.study === void 0 || validStudyDirective(c.study) && !c.code && c.kind !== "sticky" && (c.study.rule === "figure" ? !c.anchors || c.anchors.length === 0 : Array.isArray(c.anchors) && c.anchors.length > 0 && c.anchors.length <= 128)) && (c.code === void 0 || validCodeAnchor(c.code) && c.quote === "" && c.before === "" && c.after === "" && (!c.anchors || c.anchors.length === 0)) && (c.anchors === void 0 || Array.isArray(c.anchors) && c.anchors.every((a2) => a2 && ["id", "path", "quote", "before", "after"].every((k) => typeof a2[k] === "string") && ["renderedRoot", "renderedQuote", "renderedBefore", "renderedAfter", "sectionSource"].every((k) => a2[k] === void 0 || typeof a2[k] === "string") && (a2.table === void 0 || a2.table && ["key", "source", "cellText"].every((k) => typeof a2.table[k] === "string") && ["row", "column"].every((k) => Number.isSafeInteger(a2.table[k]) && a2.table[k] >= 0)) && (a2.kind === void 0 || ["text", "math"].includes(a2.kind)) && (a2.part === void 0 || validMathPart(a2.part)))) && (c.markStyle === void 0 || ["highlight", "underline", "text"].includes(c.markStyle));
+  return !!c && ["id", "path", "quote", "before", "after", "comment", "color", "intent", "updated"].every((k) => typeof c[k] === "string") && typeof c.resolved === "boolean" && (c.study === void 0 || validStudyDirective(c.study) && !c.code && c.kind !== "sticky" && (c.study.rule === "figure" ? !c.anchors || c.anchors.length === 0 : Array.isArray(c.anchors) && c.anchors.length > 0 && c.anchors.length <= 128)) && (c.code === void 0 || validCodeAnchor(c.code) && c.quote === "" && c.before === "" && c.after === "" && (!c.anchors || c.anchors.length === 0)) && (c.anchors === void 0 || Array.isArray(c.anchors) && c.anchors.every((a2) => a2 && ["id", "path", "quote", "before", "after"].every((k) => typeof a2[k] === "string") && ["renderedRoot", "renderedQuote", "renderedBefore", "renderedAfter", "sectionSource"].every((k) => a2[k] === void 0 || typeof a2[k] === "string") && (a2.table === void 0 || a2.table && ["key", "source", "cellText"].every((k) => typeof a2.table[k] === "string") && ["row", "column"].every((k) => Number.isSafeInteger(a2.table[k]) && a2.table[k] >= 0) && (a2.table.scientific === void 0 || validScientificCellAnchor(a2.table.scientific))) && (a2.kind === void 0 || ["text", "math"].includes(a2.kind)) && (a2.part === void 0 || validMathPart(a2.part)))) && (c.markStyle === void 0 || ["highlight", "underline", "text"].includes(c.markStyle));
 }
 function sanitizedReview(raw) {
   if (raw?.version !== 1 || !Array.isArray(raw.comments) || !Array.isArray(raw.questions)) throw Error("Review file has an invalid structure. The file was preserved.");
@@ -41979,6 +42705,7 @@ function markClass(comments) {
 
 // src/margin-location.ts
 function marginLocation(text4, a2) {
+  if (a2.table?.scientific) return locateRawMarginAnchor(text4, a2);
   const p = symbolTextProjection(text4);
   if (!p) return rawMarginLocation(text4, a2);
   const hit = rawMarginLocation(p.text, a2);
@@ -42090,9 +42817,9 @@ function stickyBoundary(text4, offset) {
     if (mathCache.size > 4) mathCache.delete(mathCache.keys().next().value);
   }
   if (qs.some((q) => offset > q.from && offset < q.to)) return { offset, reason: "Place the Post-it before or after the equation." };
-  const block = placementContext(text4, offset), p = block.projection;
-  let at = offset - block.from;
-  if (block.table) return { offset, reason: "Post-its inside table cells are not supported yet." };
+  const block2 = placementContext(text4, offset), p = block2.projection;
+  let at = offset - block2.from;
+  if (block2.table) return { offset, reason: "Post-its inside table cells are not supported yet." };
   for (const prefix of p.prefixes) if (at >= prefix.from && at <= prefix.to) at = prefix.to;
   for (const hidden of p.blocked) if (hidden.reason === "hard break" && at > hidden.from && at < hidden.to || hidden.reason === "block identifier" && at >= hidden.from && at <= hidden.to) at = hidden.from;
   const bad = p.blocked.find((b) => at > b.from && at < b.to || b.reason === "callout title" && at >= b.from && at <= b.to);
@@ -42102,7 +42829,7 @@ function stickyBoundary(text4, offset) {
     if (!p.blocked.some((b) => ["formatting delimiter", "escape", "block identifier", "hard break"].includes(b.reason) && (b.from === at || b.to === at))) return { offset, reason: "Place the Post-it at a visible text boundary." };
     at = right?.from ?? left?.to ?? at;
   }
-  const point = block.from + at, lineStart = text4.lastIndexOf("\n", Math.max(0, point - 1)) + 1, lineEnd2 = text4.indexOf("\n", point);
+  const point = block2.from + at, lineStart = text4.lastIndexOf("\n", Math.max(0, point - 1)) + 1, lineEnd2 = text4.indexOf("\n", point);
   if (!text4.slice(lineStart, lineEnd2 < 0 ? text4.length : lineEnd2).trim() || !p.units.some((u2) => u2.from === at || u2.to === at)) return { offset, reason: "Place the Post-it at a visible text boundary." };
   return { offset: point };
 }
@@ -42141,8 +42868,8 @@ function placementAt(text4, offset) {
   if (checked.reason) return;
   offset = checked.offset;
   const lineStart = text4.lastIndexOf("\n", Math.max(0, offset - 1)) + 1, lineEnd2 = text4.indexOf("\n", offset), end = lineEnd2 < 0 ? text4.length : lineEnd2;
-  const block = placementContext(text4, offset), visible = block.projection.units.filter((u2) => u2.char.trim() && block.from + u2.from >= lineStart);
-  const startEdge = !visible.some((u2) => block.from + u2.to <= offset), edge2 = startEdge ? "start" : "end";
+  const block2 = placementContext(text4, offset), visible = block2.projection.units.filter((u2) => u2.char.trim() && block2.from + u2.from >= lineStart);
+  const startEdge = !visible.some((u2) => block2.from + u2.to <= offset), edge2 = startEdge ? "start" : "end";
   const available = startEdge ? end - offset : offset - lineStart;
   if (available < 1) return;
   for (let n = Math.min(160, available); ; n = Math.min(available, n * 2)) {
@@ -42159,14 +42886,14 @@ function locatePlacement(text4, p) {
 function endInRange(end, from, to, edge2) {
   return edge2 === "start" ? end >= from && end < to : end > from && end <= to;
 }
-var cache5 = /* @__PURE__ */ new Map();
+var cache6 = /* @__PURE__ */ new Map();
 function cachedPlacementEnd(path, text4, p) {
-  let entry = cache5.get(path);
+  let entry = cache6.get(path);
   if (entry?.text !== text4) {
     entry = { text: text4, hits: /* @__PURE__ */ new Map() };
-    cache5.delete(path);
-    cache5.set(path, entry);
-    if (cache5.size > 6) cache5.delete(cache5.keys().next().value);
+    cache6.delete(path);
+    cache6.set(path, entry);
+    if (cache6.size > 6) cache6.delete(cache6.keys().next().value);
   }
   const key3 = JSON.stringify([p.quote, p.before, p.after, p.edge]);
   if (!entry.hits.has(key3)) entry.hits.set(key3, locatePlacement(text4, p));
@@ -42216,12 +42943,12 @@ function placementMatcher(placements) {
 }
 var matchers = /* @__PURE__ */ new Map();
 function primePlacements(path, text4, placements) {
-  let entry = cache5.get(path);
+  let entry = cache6.get(path);
   if (entry?.text !== text4) {
     entry = { text: text4, hits: /* @__PURE__ */ new Map() };
-    cache5.delete(path);
-    cache5.set(path, entry);
-    if (cache5.size > 6) cache5.delete(cache5.keys().next().value);
+    cache6.delete(path);
+    cache6.set(path, entry);
+    if (cache6.size > 6) cache6.delete(cache6.keys().next().value);
   }
   const fresh = placements.filter((p) => p.edge && !entry.hits.has(JSON.stringify([p.quote, p.before, p.after, p.edge])));
   if (!fresh.length) return;
@@ -42240,7 +42967,7 @@ function primePlacements(path, text4, placements) {
 }
 function placementLookup(path, text4, placements) {
   primePlacements(path, text4, placements);
-  const entry = cache5.get(path);
+  const entry = cache6.get(path);
   return (p) => {
     const key3 = JSON.stringify([p.quote, p.before, p.after, p.edge]);
     if (!entry.hits.has(key3)) entry.hits.set(key3, locatePlacement(text4, p));
@@ -42846,6 +43573,28 @@ var FigureStudyModal = class extends import_obsidian13.Modal {
   }
 };
 
+// src/scientific-redraw.ts
+function observeScientificRedraw(root, refresh) {
+  const win = root.ownerDocument.defaultView;
+  if (!win) return () => {
+  };
+  let frame = 0, alive = true;
+  const relevant = (node) => node.nodeType === 1 && (node.matches("figure.ss-scientific[data-scientific-id],.ss-scientific-table") || !!node.querySelector("figure.ss-scientific[data-scientific-id],.ss-scientific-table"));
+  const observer = new win.MutationObserver((records) => {
+    if (!alive || frame || !records.some((r) => [...r.addedNodes, ...r.removedNodes].some(relevant))) return;
+    frame = win.requestAnimationFrame(() => {
+      frame = 0;
+      if (alive) refresh();
+    });
+  });
+  observer.observe(root, { childList: true, subtree: true });
+  return () => {
+    alive = false;
+    observer.disconnect();
+    if (frame) win.cancelAnimationFrame(frame);
+  };
+}
+
 // src/study-practice-links.ts
 var import_obsidian14 = require("obsidian");
 
@@ -42861,6 +43610,19 @@ function readingChildren(plugin2) {
     child.register(() => children.delete(child));
     return child;
   };
+}
+
+// src/reading-readiness.ts
+var cachedText = "";
+var cachedLines = 0;
+function readingSectionReady(info) {
+  if (!info || !info.text || info.lineStart < 0 || info.lineEnd < info.lineStart) return false;
+  if (info.text !== cachedText) {
+    cachedText = info.text;
+    cachedLines = 1;
+    for (let i = 0; i < info.text.length; i++) if (info.text.charCodeAt(i) === 10) cachedLines++;
+  }
+  return info.lineEnd < cachedLines;
 }
 
 // src/study-practice-links.ts
@@ -43214,6 +43976,7 @@ function tableQuestions(model, questions, byId) {
   const result = /* @__PURE__ */ new Map();
   const tableAt = (offset) => model.tables.find((t2) => offset >= t2.from && offset < t2.to);
   const add2 = (t2, q) => {
+    if (t2.ambiguous) return;
     let list = result.get(t2.from);
     if (!list) result.set(t2.from, list = []);
     if (!list.includes(q)) list.push(q);
@@ -43231,7 +43994,7 @@ function tableQuestions(model, questions, byId) {
         if (t2) found.add(t2);
       }
     }
-    if (!found.size && s.target) {
+    if (!found.size && s.target && !s.directiveIds.some((id3) => excerpts(byId.get(id3) ?? { id: "", path: "", quote: "", before: "", after: "" }).some((a2) => a2.table?.scientific))) {
       const keyed = model.tables.filter((t2) => t2.key === s.target);
       if (keyed.length === 1) found.add(keyed[0]);
     }
@@ -43398,13 +44161,30 @@ function registerStudyPracticeLinks(plugin2, store, all, open) {
     if (el.closest(".study-card,.study-margin-pane,.study-comment-editor,.study-test-yourself")) return;
     const owner = ownReading(new import_obsidian14.MarkdownRenderChild(el));
     ctx.addChild(owner);
-    const render = () => {
+    let alive = true, readinessAttempt = 0, readinessTimer;
+    const render = (retry = false) => {
+      if (!alive) return;
+      if (!retry) readinessAttempt = 0;
       el.querySelectorAll(".study-quick-practice-link,.study-table-practice-footer,.study-callout-practice-footer").forEach((n) => n.remove());
       const path = ctx.sourcePath, qs = linked.get(path);
       if (!qs?.length) return;
       const tables = el.querySelectorAll("table"), headings = el.querySelectorAll("h1,h2,h3,h4,h5,h6"), callouts2 = [...el.querySelectorAll(".callout")].filter((c) => !c.parentElement?.closest(".callout"));
       const info = ctx.getSectionInfo(el);
-      if (!info) return;
+      if (!readingSectionReady(info)) {
+        if (!readinessTimer && readinessAttempt < 7) {
+          const delay = Math.min(1e3, 32 * 2 ** readinessAttempt++);
+          readinessTimer = setTimeout(() => {
+            readinessTimer = void 0;
+            render(true);
+          }, delay);
+        }
+        return;
+      }
+      if (readinessTimer) {
+        clearTimeout(readinessTimer);
+        readinessTimer = void 0;
+      }
+      readinessAttempt = 0;
       const { m, tables: byTable, vocabulary, callouts: byCallout } = views(path, info.text);
       const tail = info.lineEnd >= m.last && m.exercise === void 0 && needsChapterLink(qs, byTable, byCallout);
       if (!tables.length && !headings.length && !callouts2.length && !tail) return;
@@ -43429,7 +44209,10 @@ function registerStudyPracticeLinks(plugin2, store, all, open) {
       if (tables.length) {
         const start = m.lines[info.lineStart] ?? 0, end = m.lines[info.lineEnd + 1] ?? m.source.length + 1;
         const inSection = m.tables.filter((t2) => t2.from >= start && t2.from < end);
-        if (inSection.length === tables.length) tables.forEach((t2, i) => tableFooter(t2, byTable.get(inSection[i].from)));
+        if (inSection.length === tables.length) tables.forEach((t2, i) => {
+          const source = inSection[i];
+          tableFooter(t2, source.kind === "scientific" && !scientificDOMCells(t2, source) ? void 0 : byTable.get(source.from));
+        });
       }
       if (headings.length) {
         const h = headings[0];
@@ -43442,8 +44225,11 @@ function registerStudyPracticeLinks(plugin2, store, all, open) {
         end.remove();
       }
     };
+    owner.register(observeScientificRedraw(el, () => render()));
     listeners.add(render);
     owner.register(() => {
+      alive = false;
+      if (readinessTimer) clearTimeout(readinessTimer);
       listeners.delete(render);
       el.querySelectorAll(".study-quick-practice-link,.study-table-practice-footer,.study-callout-practice-footer").forEach((n) => n.remove());
     });
@@ -43489,6 +44275,7 @@ function registerStudyPracticeLinks(plugin2, store, all, open) {
   plugin2.registerEditorExtension(import_view12.ViewPlugin.fromClass(class {
     constructor(view) {
       this.view = view;
+      this.stopScientific = observeScientificRedraw(view.contentDOM, () => this.scheduleTables(view));
       this.build(view);
       this.scheduleTables(view);
     }
@@ -43506,8 +44293,10 @@ function registerStudyPracticeLinks(plugin2, store, all, open) {
       }
       return this.source;
     }
+    stopScientific;
     destroy() {
       this.destroyed = true;
+      this.stopScientific();
       if (this.frame) cancelAnimationFrame(this.frame);
       this.view.contentDOM.querySelectorAll(".study-table-practice-footer,.study-callout-practice-footer").forEach((n) => n.remove());
     }
@@ -43543,6 +44332,12 @@ function registerStudyPracticeLinks(plugin2, store, all, open) {
             }
           }
           changed = tableFooter(table, items) || changed;
+        }
+        for (const widget of view.contentDOM.querySelectorAll(".cm-embed-block.cm-lang-scientific-table")) {
+          const table = widget.querySelector("table.ss-scientific-table");
+          if (!table) continue;
+          const info = live ? scientificSection(view, widget) : null, start = info ? m.lines[info.lineStart] : -1, source = m.tables.find((t2) => t2.from === start);
+          changed = tableFooter(table, source && scientificDOMCells(table, source) ? tables.get(source.from) : void 0) || changed;
         }
         for (const widget of view.contentDOM.querySelectorAll(".cm-callout")) {
           const rendered = [...widget.querySelectorAll("table")];
@@ -44025,7 +44820,7 @@ function codeGroupSource(c, embeds2) {
   };
 }
 function groupStudyRecords(path, text4, records, embeds2) {
-  const groups = /* @__PURE__ */ new Map(), tables = records.some((c) => c.path === path && c.study && !c.code && !c.study.figure) ? sourceTables(text4) : [];
+  const groups = /* @__PURE__ */ new Map(), tables = records.some((c) => c.path === path && c.study && !c.code && !c.study.figure) ? sourceTables(text4).filter((t2) => !t2.ambiguous) : [];
   const tableId = (t2) => key("table", path, t2.from, t2.key);
   const add2 = (group2, member) => {
     let g = groups.get(group2.id);
@@ -44131,19 +44926,19 @@ async function loadCodeEmbeds(bridge, text4) {
 var embedCache = /* @__PURE__ */ new WeakMap();
 function readCodeEmbeds(bridge, text4) {
   if (!codeEmbedsReady(bridge)) return Promise.resolve([]);
-  let cache6 = embedCache.get(bridge);
-  if (!cache6) {
-    cache6 = /* @__PURE__ */ new Map();
-    embedCache.set(bridge, cache6);
+  let cache7 = embedCache.get(bridge);
+  if (!cache7) {
+    cache7 = /* @__PURE__ */ new Map();
+    embedCache.set(bridge, cache7);
   }
-  const hit = cache6.get(text4);
+  const hit = cache7.get(text4);
   if (hit) return hit;
-  if (cache6.size >= 4) cache6.delete(cache6.keys().next().value);
+  if (cache7.size >= 4) cache7.delete(cache7.keys().next().value);
   const task = loadCodeEmbeds(bridge, text4).catch((e) => {
-    cache6.delete(text4);
+    cache7.delete(text4);
     throw e;
   });
-  cache6.set(text4, task);
+  cache7.set(text4, task);
   return task;
 }
 async function studyInventory(path, text4, records, bridge) {
@@ -45141,12 +45936,12 @@ var GroupEditor = class extends StudioPanel {
 async function editGroup(app, path, bank, line, title, tools) {
   const file = app.vault.getAbstractFileByPath(path);
   if (!(file instanceof import_obsidian20.TFile)) throw Error("Group note is unavailable.");
-  const raw = await app.vault.read(file), matches = embeds(raw).filter((b) => b.group && b.title === title), block = matches.find((b) => line !== void 0 && raw.slice(0, b.start).split("\n").length - 1 === line) ?? (matches.length === 1 ? matches[0] : void 0);
-  if (!block) throw Error("Group changed. Reopen its controls.");
+  const raw = await app.vault.read(file), matches = embeds(raw).filter((b) => b.group && b.title === title), block2 = matches.find((b) => line !== void 0 && raw.slice(0, b.start).split("\n").length - 1 === line) ?? (matches.length === 1 ? matches[0] : void 0);
+  if (!block2) throw Error("Group changed. Reopen its controls.");
   const destination = await chapterDestination(app, file);
-  new GroupEditor(app, path, bank, { title: block.title, prompt: block.prompt, questions: block.ids }, async (group2) => {
+  new GroupEditor(app, path, bank, { title: block2.title, prompt: block2.prompt, questions: block2.ids }, async (group2) => {
     await app.vault.process(file, (current) => {
-      const found = embeds(current).filter((b) => b.raw === block.raw);
+      const found = embeds(current).filter((b) => b.raw === block2.raw);
       if (found.length !== 1) throw Error("Group changed or has duplicate copies. Reopen its controls.");
       return replaceEmbed(current, found[0], embedSource(group2.questions, group2.title, group2.prompt));
     });
@@ -46146,7 +46941,8 @@ function registerStudySelections(plugin2, api, onStudyContextMenu) {
           } catch {
           }
         }
-      } else {
+      }
+      {
         const roots = Array.from(view.containerEl.querySelectorAll("[data-study-comment-section]"));
         const texts = /* @__PURE__ */ new Map();
         const textOf = (root) => {
@@ -46199,9 +46995,20 @@ function registerStudySelections(plugin2, api, onStudyContextMenu) {
           return out;
         };
         for (const a2 of session.fragments) for (const root of roots) {
+          if (view.getMode() === "source" && cm && a2.__editor) continue;
+          if (a2.table?.scientific) {
+            const exact = readingTableRanges(root, a2);
+            if (exact) next.push(...exact);
+            continue;
+          }
           if (a2.table) {
             const cell = readingTableTarget(root, a2);
             if (cell) next.push(...cellRanges(cell, a2));
+            continue;
+          }
+          const mixed = readingMixedRange(root, a2);
+          if (mixed) {
+            next.push(mixed);
             continue;
           }
           if (!readingAnchorApplies(root, a2)) continue;
@@ -46913,8 +47720,8 @@ function keptBlanks(attempt, mathIds) {
 // src/code-grading.ts
 var CODE_RULE = "python-structure-and-behavior-v1";
 var codeInputHash = (q, r) => JSON.stringify([q.definition.code, q.definition.answers, r.blanks]);
-async function gradeCode(app, q, response) {
-  if (!q.definition.code?.grading) return grade(q, response);
+async function gradeCode(app, q, response, rule = gradingRule(q)) {
+  if (!q.definition.code?.grading) return grade(q, response, rule);
   const evidence = { rule: CODE_RULE, inputSignature: codeInputHash(q, response), status: "unavailable", message: "Isolated code checker is unavailable." };
   const missing = q.definition.answers.filter((a2) => !response.blanks[a2.id]?.trim());
   const result = missing.length ? { earned: 0, possible: 1, details: [], basis: "unanswered", codeCheck: { ...evidence, status: "fail", message: "Complete all code fields.", attribution: "v1", fields: Object.fromEntries(q.definition.answers.map((a2) => [a2.id, { status: response.blanks[a2.id]?.trim() ? "unknown" : "unanswered", reason: response.blanks[a2.id]?.trim() ? "Not verified." : "No answer given." }])) } } : { earned: 0, possible: 1, details: [], pending: true, codeCheck: evidence };
@@ -46922,11 +47729,11 @@ async function gradeCode(app, q, response) {
   try {
     const bridge = app.plugins?.plugins?.["code-links"];
     if (!bridge?.call) return result;
-    const checked = await bridge.call("check-code", { source: q.definition.code.source, reference: Object.fromEntries(q.definition.answers.map((a2) => [a2.id, a2.accepted[0]])), answers: response.blanks, grading: q.definition.code.grading });
+    const checked = await bridge.call("check-code", { ...q.definition.studySource?.target ? { target: q.definition.studySource.target } : {}, source: q.definition.code.source, reference: Object.fromEntries(q.definition.answers.map((a2) => [a2.id, a2.accepted[0]])), answers: response.blanks, grading: q.definition.code.grading });
     if (!["pass", "fail", "unavailable"].includes(checked.status) || checked.rule !== CODE_RULE) throw Error("Unexpected code-check response.");
     if (checked.status === "unavailable" && missing.length) return result;
     if (!validAttribution(q, checked)) throw Error("Invalid field-check evidence.");
-    return { earned: checked.status === "pass" ? 1 : 0, possible: 1, details: [], ...missing.length ? { basis: "unanswered" } : {}, ...checked.status === "unavailable" ? { pending: true } : {}, codeCheck: { ...evidence, status: checked.status, message: String(checked.message), ...checked.attribution === "v1" ? { attribution: "v1", fields: checked.fields } : {} } };
+    return { earned: checked.status === "pass" ? 1 : 0, possible: 1, details: [], ...missing.length ? { basis: "unanswered" } : {}, ...checked.status === "unavailable" ? { pending: true } : {}, codeCheck: { ...evidence, status: checked.status, message: String(checked.message), ...typeof checked.runtime === "string" ? { runtime: checked.runtime.slice(0, 100) } : {}, ...checked.attribution === "v1" ? { attribution: "v1", fields: checked.fields } : {} } };
   } catch (error) {
     if (missing.length) return result;
     return { ...result, codeCheck: { ...evidence, message: "Not verified: " + String(error) } };
@@ -46941,6 +47748,24 @@ function validAttribution(q, c) {
 function validCodeGrade(q, response, g) {
   const c = g?.codeCheck;
   return !!c && c.rule === CODE_RULE && c.inputSignature === codeInputHash(q, response) && ["pass", "fail", "unavailable"].includes(c.status) && typeof c.message === "string" && validAttribution(q, c) && g.possible === 1 && g.earned === (c.status === "pass" ? 1 : 0) && !!g.pending === (c.status === "unavailable") && g.details.length === 0;
+}
+
+// src/code-blank-clear.ts
+function clearBlankMembers(path, raw, records, embeds2, busy = () => false) {
+  const id3 = JSON.stringify(["code", path, raw]);
+  const blanks = [];
+  for (const c of records) {
+    if (c.path !== path || !activeStudyRecord(c) || c.code?.purpose !== "practice-blank") continue;
+    const source = codeGroupSource(c, embeds2);
+    if (source.id !== id3 && !source.candidates.includes(id3)) continue;
+    if (source.id !== id3 && source.relation === "exact") continue;
+    if (source.relation !== "exact" || source.raw !== raw) throw Error("A blank has uncertain excerpt membership. Refresh or resolve it before clearing.");
+    if (c.conflictOf) throw Error("Resolve conflicting blanks before clearing.");
+    if (busy(c.id)) throw Error("Finish the margin edit before clearing blanks.");
+    blanks.push(c);
+  }
+  if (new Set(blanks.map((c) => c.id)).size !== blanks.length) throw Error("Duplicate blank IDs must be resolved before clearing.");
+  return blanks.sort((a2, b) => a2.id < b.id ? -1 : a2.id > b.id ? 1 : 0);
 }
 
 // src/code-source-impact.ts
@@ -47194,6 +48019,75 @@ var CodeAnnotationApi = class {
     await this.store.applyCodeEdits([c], [after], async () => {
     });
   }
+  /** Clear active blanks in an exact current excerpt. Each batch target is its own transaction. */
+  async clearPracticeBlanks(targets, options = {}) {
+    this.check();
+    const batch = Array.isArray(targets), items = batch ? targets : [targets];
+    if (!items.length || items.length > 128) throw Error("Provide between 1 and 128 code excerpts.");
+    const results = [];
+    for (const scope of items) {
+      try {
+        if (!scope || typeof scope.path !== "string" || typeof scope.raw !== "string" || !scope.raw) throw Error("Provide a note path and exact code excerpt.");
+        await this.store.refresh();
+        const { s, note, raw } = await this.read(scope);
+        if (raw !== scope.raw) throw Error("The excerpt changed. Use inspect(notePath) and try again.");
+        const embeds2 = await readCodeEmbeds(this.bridge(), note.text), occurrences = embeds2.filter((e) => e.raw === raw).length;
+        if (!occurrences) throw Error("The exact code excerpt is no longer present.");
+        const members = (records) => clearBlankMembers(scope.path, raw, records, embeds2, (id3) => this.store.annotationBusy(id3));
+        const before = clone6(members(this.store.data.comments)), ids = before.map((c) => c.id), hash5 = await codeSnapshotHash(s);
+        if (before.some((c) => codeFragments(c.code).some((a2) => !locateCode(a2, s, hash5)))) throw Error("A blank moved or its source changed. Resolve it before clearing.");
+        if (scope.expectedIds && JSON.stringify([...scope.expectedIds].sort()) !== JSON.stringify(ids)) throw Error("Blank membership changed. Refresh and try again.");
+        const guard = await codeHash(JSON.stringify([scope.path, raw, note.text, snapshotKey(s), before]));
+        if (scope.guard && scope.guard !== guard) throw Error("Source or blank membership changed since the preview.");
+        const result = { path: scope.path, raw, ok: true, count: ids.length, ids, sharedEmbeds: occurrences, guard, dryRun: !!options.dryRun, cleared: 0 };
+        if (!options.dryRun && before.length) {
+          const now = (/* @__PURE__ */ new Date()).toISOString(), after = before.map((c) => ({ ...c, deletedAt: now, deletedWasResolved: c.resolved, resolved: true, updated: now }));
+          const unchanged = (records) => {
+            if (!equalReview(members(records), before)) throw Error("Blank membership changed. Refresh and try again.");
+          };
+          await this.store.applyCodeEdits(before, after, async (records) => {
+            unchanged(records);
+            const current = await this.read(scope);
+            if (current.raw !== raw || current.note.text !== note.text || snapshotKey(current.s) !== snapshotKey(s)) throw Error("Source changed while clearing. Refresh and try again.");
+          }, unchanged);
+          result.cleared = ids.length;
+        }
+        results.push(result);
+      } catch (error) {
+        if (!batch) throw error;
+        results.push({ path: scope?.path, raw: scope?.raw, ok: false, error: String(error), cleared: 0 });
+      }
+    }
+    return batch ? results : results[0];
+  }
+  /** Count is captured when the menu opens; a changed group is refused, never silently widened. */
+  addClearPracticeBlanksMenu(menu, scope, stale = false, knownEmbeds) {
+    const embeds2 = knownEmbeds ?? this.noteEmbeds.get(scope.path);
+    let members = this.store.data.comments.filter((c) => c.path === scope.path && activeStudyRecord(c) && c.code?.purpose === "practice-blank" && c.code.raw === scope.raw), refusal = "";
+    if (embeds2) {
+      try {
+        members = clearBlankMembers(scope.path, scope.raw, this.store.data.comments, embeds2, (id3) => this.store.annotationBusy(id3));
+      } catch (error) {
+        refusal = String(error).replace(/^Error: /, "");
+      }
+    } else if (members.some((c) => c.conflictOf)) refusal = "Resolve conflicting blanks before clearing.";
+    else if (members.some((c) => this.store.annotationBusy(c.id))) refusal = "Finish the margin edit before clearing blanks.";
+    const ids = members.map((c) => c.id).sort();
+    if (new Set(ids).size !== ids.length) refusal = "Duplicate blank IDs must be resolved before clearing.";
+    if (!ids.length && !refusal) return;
+    if (stale && !refusal) refusal = "Refresh the stale excerpt before clearing.";
+    const shared = embeds2?.filter((e) => e.raw === scope.raw).length ?? 0;
+    const title = "Clear all practice blanks" + (ids.length ? ` (${ids.length})` : "") + (shared > 1 ? ` \xB7 shared by ${shared} embeds` : "") + (refusal ? " \xB7 " + refusal : "");
+    menu.addItem((i) => i.setTitle(title).setIcon("trash-2").setDisabled(!!refusal).onClick(async () => {
+      if (refusal) return;
+      try {
+        const result = await this.clearPracticeBlanks({ ...scope, expectedIds: ids });
+        new import_obsidian30.Notice(`Cleared ${result.cleared} practice blanks.`);
+      } catch (e) {
+        new import_obsidian30.Notice(String(e));
+      }
+    }));
+  }
   async open(id3, editing = false) {
     const c = await this.get(id3);
     if (!c.deletedAt) await this.store.openMargin?.(c, editing);
@@ -47211,6 +48105,7 @@ var CodeAnnotationApi = class {
   }
   addMenu(menu, scope, s, selection, ids, stale) {
     const run = (fn) => void fn().catch((e) => new import_obsidian30.Notice(String(e)));
+    this.addClearPracticeBlanksMenu(menu, scope, stale);
     if (selection && selection.to > selection.from) {
       const create = async (purpose, appearance, editing = false) => {
         const c = await this.create(scope, s, selection.from, selection.to, purpose, appearance);
@@ -47277,7 +48172,7 @@ var CodeAnnotationApi = class {
       if (options.cases) generated.code.grading.cases = clone6(options.cases);
       if (options.timeoutMs !== void 0) generated.code.grading.timeoutMs = options.timeoutMs;
       validateCodeGrading(generated.code.grading, generated.answers, false);
-      const prepared = await this.bridge().call("check-code", { prepare: true, source: generated.code.source, reference: Object.fromEntries(generated.answers.map((a2) => [a2.id, a2.accepted[0]])), grading: generated.code.grading });
+      const prepared = await this.bridge().call("check-code", { prepare: true, target: s.link.target, source: generated.code.source, reference: Object.fromEntries(generated.answers.map((a2) => [a2.id, a2.accepted[0]])), grading: generated.code.grading });
       if (prepared.status !== "prepared") throw Error(prepared.message ?? "Code checks could not be prepared. Marks were preserved.");
       generated.code.grading = prepared.grading;
     }
@@ -47391,7 +48286,7 @@ var CodeAnnotationApi = class {
     }
     if (options.cases) code.grading.cases = clone6(options.cases);
     if (options.timeoutMs !== void 0) code.grading.timeoutMs = options.timeoutMs;
-    const result = await this.bridge().call("check-code", { prepare: true, source: code.source, reference: Object.fromEntries(question3.definition.answers.map((a2) => [a2.id, a2.accepted[0]])), grading: code.grading });
+    const result = await this.bridge().call("check-code", { prepare: true, ...question3.definition.studySource?.target ? { target: question3.definition.studySource.target } : {}, source: code.source, reference: Object.fromEntries(question3.definition.answers.map((a2) => [a2.id, a2.accepted[0]])), grading: code.grading });
     if (result.status !== "prepared") throw Error(result.message ?? "Grading preparation failed.");
     code.grading = result.grading;
     let outputWarning;
@@ -47611,9 +48506,9 @@ var RegistryWidget = class extends import_view14.WidgetType {
     el.textContent = `Notation \xB7 ${this.entries} entr${this.entries === 1 ? "y" : "ies"}${this.legacy ? " \xB7 legacy read-only" : ""}`;
     el.title = "Show symbol registry source";
     el.onclick = () => {
-      const block = view.state.field(symbolDocumentField).block;
-      if (block) {
-        view.dispatch({ effects: reveal.of(true), selection: { anchor: block.from } });
+      const block2 = view.state.field(symbolDocumentField).block;
+      if (block2) {
+        view.dispatch({ effects: reveal.of(true), selection: { anchor: block2.from } });
         view.focus();
       }
     };
@@ -47624,33 +48519,33 @@ var RegistryWidget = class extends import_view14.WidgetType {
   }
 };
 function decorations2(state, shown) {
-  const block = state.field(symbolDocumentField).block;
-  if (!block || shown || !state.field(import_obsidian32.editorLivePreviewField, false)) return import_view14.Decoration.none;
-  return import_view14.Decoration.set([import_view14.Decoration.replace({ block: true, widget: new RegistryWidget(Object.keys(block.data.entries).length, block.version === 1) }).range(block.from, block.to)]);
+  const block2 = state.field(symbolDocumentField).block;
+  if (!block2 || shown || !state.field(import_obsidian32.editorLivePreviewField, false)) return import_view14.Decoration.none;
+  return import_view14.Decoration.set([import_view14.Decoration.replace({ block: true, widget: new RegistryWidget(Object.keys(block2.data.entries).length, block2.version === 1) }).range(block2.from, block2.to)]);
 }
 var registryDecorationField = import_state17.StateField.define({
   create: (state) => ({ shown: false, decorations: decorations2(state, false) }),
   update(value, tr) {
     let shown = value.shown;
     for (const effect of tr.effects) if (effect.is(reveal)) shown = effect.value;
-    const block = tr.state.field(symbolDocumentField).block;
-    if (shown && tr.selection && block && !tr.state.selection.ranges.some((s) => s.from <= block.to && s.to >= block.from)) shown = false;
+    const block2 = tr.state.field(symbolDocumentField).block;
+    if (shown && tr.selection && block2 && !tr.state.selection.ranges.some((s) => s.from <= block2.to && s.to >= block2.from)) shown = false;
     if (!tr.docChanged && !tr.selection && !tr.effects.length && tr.startState.field(import_obsidian32.editorLivePreviewField, false) === tr.state.field(import_obsidian32.editorLivePreviewField, false)) return value;
     return { shown, decorations: decorations2(tr.state, shown) };
   },
   provide: (field) => [import_view14.EditorView.decorations.from(field, (v) => v.decorations), import_view14.EditorView.atomicRanges.of((view) => view.state.field(field).decorations)]
 });
 function revealSymbolRegistry(view) {
-  const block = view.state.field(symbolDocumentField, false)?.block;
-  if (!block) return false;
-  view.dispatch({ effects: reveal.of(true), selection: { anchor: block.from }, scrollIntoView: true });
+  const block2 = view.state.field(symbolDocumentField, false)?.block;
+  if (!block2) return false;
+  view.dispatch({ effects: reveal.of(true), selection: { anchor: block2.from }, scrollIntoView: true });
   return true;
 }
 var lastProtectedNotice = 0;
 var protectSymbolRegistry = import_state17.EditorState.transactionFilter.of((tr) => {
   if (!tr.docChanged || tr.isUserEvent("input.symbols") || tr.isUserEvent("undo") || tr.isUserEvent("redo") || !tr.startState.field(import_obsidian32.editorLivePreviewField, false) || tr.startState.field(registryDecorationField, false)?.shown) return tr;
-  const block = tr.startState.field(symbolDocumentField, false)?.block;
-  if (!block) return tr;
+  const block2 = tr.startState.field(symbolDocumentField, false)?.block;
+  if (!block2) return tr;
   if (tr.isUserEvent("input.math-studio") || tr.annotation(nativeNotationWrite)) {
     try {
       if (registryBlock(tr.newDoc.toString())?.version === 2) return tr;
@@ -47659,10 +48554,10 @@ var protectSymbolRegistry = import_state17.EditorState.transactionFilter.of((tr)
   }
   let intersects = false;
   tr.changes.iterChangedRanges((from, to) => {
-    if (from < block.to && to > block.from || from === to && from > block.from && from < block.to) intersects = true;
+    if (from < block2.to && to > block2.from || from === to && from > block2.from && from < block2.to) intersects = true;
   });
   if (!intersects) return tr;
-  if (tr.newDoc.toString().includes(tr.startState.doc.sliceString(block.from, block.to))) return tr;
+  if (tr.newDoc.toString().includes(tr.startState.doc.sliceString(block2.from, block2.to))) return tr;
   if (Date.now() - lastProtectedNotice > 2e3) {
     lastProtectedNotice = Date.now();
     queueMicrotask(() => new import_obsidian32.Notice("Notation records were preserved. Edit or delete an entry through the Notes margin."));
@@ -48761,21 +49656,6 @@ async function registerSymbolSystem(plugin2) {
 
 // src/reference-gutters.ts
 var import_obsidian36 = require("obsidian");
-
-// src/reading-readiness.ts
-var cachedText = "";
-var cachedLines = 0;
-function readingSectionReady(info) {
-  if (!info || !info.text || info.lineStart < 0 || info.lineEnd < info.lineStart) return false;
-  if (info.text !== cachedText) {
-    cachedText = info.text;
-    cachedLines = 1;
-    for (let i = 0; i < info.text.length; i++) if (info.text.charCodeAt(i) === 10) cachedLines++;
-  }
-  return info.lineEnd < cachedLines;
-}
-
-// src/reference-gutters.ts
 function registerReferenceGutters(plugin2, store) {
   const own = readingChildren(plugin2), children = /* @__PURE__ */ new Set(), owners = /* @__PURE__ */ new WeakMap();
   const frames = /* @__PURE__ */ new Map(), pending = /* @__PURE__ */ new Set();
@@ -49986,10 +50866,10 @@ function needsRenderedSelection(raw) {
   for (const q of [...equations(raw)].reverse()) prose = prose.slice(0, q.from) + prose.slice(q.to);
   return /[*_`\[\]<>\\=~%&#^]|(^|\n)\s*(?:#{1,6}\s|[-+]\s|\d+[.)]\s|[|])/m.test(prose);
 }
-function extendAnnotation(source, existing, selection) {
+function extendAnnotation(source, existing, selection, context2) {
   if (!selection.length) throw Error("Select the larger passage first.");
   const path = selection[0].path;
-  if (selection.some((a3) => a3.kind !== "math" && a3.renderedQuote === void 0 && (needsRenderedSelection(a3.quote) || a3.quote.includes("\n")))) throw Error("Select the enlarged formatted passage in Reading view to preserve its appearance.");
+  if (context2?.readingCapture !== true && selection.some((a3) => a3.kind !== "math" && a3.renderedQuote === void 0 && (needsRenderedSelection(a3.quote) || a3.quote.includes("\n")))) throw Error("Select the enlarged formatted passage in Reading view to preserve its appearance.");
   if (selection.some((a3) => a3.path !== path || a3.part)) throw Error("Select a complete passage; partial math cannot be extended this way.");
   const added = selection.map((a3) => {
     const at = marginLocation(source, a3);
@@ -50264,7 +51144,7 @@ var MarginNotes = class {
       new import_obsidian38.Notice(String(e));
     }
   }
-  async extend(anchors) {
+  async extend(anchors, context2) {
     const c = this.drafts.get(this.selected) ?? this.store.data.comments.find((c2) => c2.id === this.selected);
     if (!c || c.code || c.study || c.kind === "sticky" || c.deletedAt || c.resolved) {
       new import_obsidian38.Notice("Select an active highlight, underline or text-color annotation in the margin first.");
@@ -50278,7 +51158,7 @@ var MarginNotes = class {
       if (JSON.stringify(current) !== snapshot2) throw Error("The annotation changed while extending it. Please select the passage again.");
       const opened = this.plugin.app.workspace.getLeavesOfType("markdown").map((l) => l.view).filter((v) => v instanceof import_obsidian38.MarkdownView && v.file?.path === path);
       if (opened.some((v) => v.getMode() === "source" && v.editor.getValue() !== source)) throw Error("Wait for the source note to save before extending its annotation.");
-      const next = extendAnnotation(source, excerpts(c), anchors);
+      const next = extendAnnotation(source, excerpts(c), anchors, context2);
       const draft = withExcerpts({ ...c }, next);
       this.beginDraft(draft);
       this.persist();
@@ -51297,10 +52177,12 @@ var MarginView = class extends import_obsidian38.ItemView {
     h.oncontextmenu = (e) => {
       e.preventDefault();
       e.stopPropagation();
-      new import_obsidian38.Menu().addItem((i) => i.setTitle(g.kind === "code-block" ? "Go to code" : "Go to source").setIcon(g.kind === "code-block" ? "code" : "arrow-up-right").onClick(() => {
+      const menu = new import_obsidian38.Menu().addItem((i) => i.setTitle(g.kind === "code-block" ? "Go to code" : "Go to source").setIcon(g.kind === "code-block" ? "code" : "arrow-up-right").onClick(() => {
         const id3 = [...this.memberStacks].find(([, group2]) => group2 === g.id)?.[0];
         if (id3) void this.notes.jumpNote(id3);
-      })).showAtPosition({ x: e.clientX, y: e.clientY });
+      }));
+      if (g.kind === "code-block" && g.source.raw) this.notes.plugin.codeAnnotationApi?.addClearPracticeBlanksMenu(menu, { path: g.source.path, raw: g.source.raw }, !this.embedsComplete, this.codeEmbeds);
+      menu.showAtPosition({ x: e.clientX, y: e.clientY });
     };
     this.stackOwners.set(g.id, this.addChild(new import_obsidian38.Component()));
     this.stackHeaders.set(g.id, h);
@@ -51635,7 +52517,7 @@ async function registerMarginNotes(plugin2, store) {
     await view?.changeAppearance(id3, patch);
   };
   store.addToMargin = (anchors) => notes.add(anchors);
-  store.extendMargin = (anchors) => void notes.extend(anchors);
+  store.extendMargin = (anchors, context2) => void notes.extend(anchors, context2);
   store.resizeMargin = (...args) => notes.resize(...args);
   plugin2.register(() => {
     notes.flush();
@@ -51947,7 +52829,11 @@ function createSession(exam, bank, id3, random = Math.random, course = null) {
       entries.push({ id: `${slot.id}-${selectedQuestion.definition.id}`, sectionId: s.id, sectionTitle: s.title, groupId: g.id, groupTitle: g.title, question: structuredClone(selectedQuestion), order: orderChoices(selectedQuestion, random), response: { choices: [], blanks: {} }, mathIds: [] });
     }
   }
-  return { version: 1, id: id3, course: structuredClone(course), exam: structuredClone(exam), started: (/* @__PURE__ */ new Date()).toISOString(), state: "active", currentSection: 0, sectionOrder: sections.map((s) => s.id), entries };
+  return { version: 1, gradingRule: BLANK_RULE_V2, id: id3, course: structuredClone(course), exam: structuredClone(exam), started: (/* @__PURE__ */ new Date()).toISOString(), state: "active", currentSection: 0, sectionOrder: sections.map((s) => s.id), entries };
+}
+function sessionGradingRule(session, q) {
+  check2(session.gradingRule === void 0 || session.gradingRule === BLANK_RULE_V1 || session.gradingRule === BLANK_RULE_V2, "Unsupported exam grading rule.");
+  return gradingRule(q, session.gradingRule === BLANK_RULE_V2 ? 2 : 1);
 }
 function submitSession(session) {
   check2(session.state === "active", "Exam is already submitted.");
@@ -51960,7 +52846,7 @@ function submitSession(session) {
       delete e.response.selfAssessment;
       e.response.reviewed = true;
     }
-    e.result = grade(e.question, e.response);
+    e.result = grade(e.question, e.response, sessionGradingRule(session, e.question));
   }
   return result;
 }
@@ -51973,7 +52859,7 @@ function submitEntry(session, id3) {
     entry.response.reviewed = true;
   }
   entry.submittedAt = (/* @__PURE__ */ new Date()).toISOString();
-  entry.result = grade(entry.question, entry.response);
+  entry.result = grade(entry.question, entry.response, sessionGradingRule(session, entry.question));
   return next;
 }
 function examScores(session) {
@@ -51983,6 +52869,7 @@ function examScores(session) {
 function parseSession(raw) {
   const s = JSON.parse(raw);
   check2(s?.version === 1 && validId2(s.id) && ["active", "submitted"].includes(s.state), "Invalid exam session.");
+  check2(s.gradingRule === void 0 || s.gradingRule === BLANK_RULE_V1 || s.gradingRule === BLANK_RULE_V2, "Unsupported exam grading rule.");
   validateExam(s.exam);
   if (s.course !== void 0) validateCourseContext(s.course);
   check2(Array.isArray(s.entries) && s.entries.length > 0 && Array.isArray(s.sectionOrder) && s.sectionOrder.length === s.exam.sections.length && new Set(s.sectionOrder).size === s.sectionOrder.length && s.sectionOrder.every((id3) => s.exam.sections.some((x) => x.id === id3)), "Invalid frozen exam sections.");
@@ -51993,7 +52880,7 @@ function parseSession(raw) {
     if (s.state === "active" && !e.submittedAt) check2(e.result === void 0 && e.response?.selfAssessment === void 0 && e.response?.reviewed === void 0, "Unsubmitted questions cannot contain results or self-assessment.");
     validate(e.question?.definition, e.question?.prompt);
     check2(restoreDraft({ version: 1, signature: signature(e.question), started: s.started, order: e.order, response: e.response, mathIds: e.mathIds }, e.question), "Invalid session answer or option order.");
-    if (s.state === "submitted" || e.submittedAt) check2(e.question.definition.code?.grading ? validCodeGrade(e.question, e.response, e.result) : JSON.stringify(e.result) === JSON.stringify(grade(e.question, e.response)), "Stored result disagrees with the frozen response.");
+    if (s.state === "submitted" || e.submittedAt) check2(e.question.definition.code?.grading ? validCodeGrade(e.question, e.response, e.result) : JSON.stringify(e.result) === JSON.stringify(grade(e.question, e.response, sessionGradingRule(s, e.question))), "Stored result disagrees with the frozen response.");
     check2(s.sectionOrder.includes(e.sectionId) && e.response && Array.isArray(e.response.choices) && e.response.choices.every((x) => typeof x === "string") && e.response.blanks && Object.values(e.response.blanks).every((x) => typeof x === "string") && Array.isArray(e.order) && Array.isArray(e.mathIds), "Invalid frozen response.");
   }
   check2(new Set(s.entries.map((e) => e.id)).size === s.entries.length, "Repeated session entry.");
@@ -52014,7 +52901,7 @@ function assessWrittenEntry(session, id3, scores) {
   check2(e && ["short-answer", "drawing"].includes(e.question.definition.type), "Choose a written response.");
   e.response.reviewed = true;
   e.response.selfAssessment = structuredClone(scores);
-  e.result = grade(e.question, e.response);
+  e.result = grade(e.question, e.response, sessionGradingRule(session, e.question));
   return next;
 }
 
@@ -52370,11 +53257,11 @@ var import_obsidian41 = require("obsidian");
 // src/history-model.ts
 function parseAttempt(raw) {
   const a2 = JSON.parse(raw);
-  if (!a2 || a2.version !== 1 || !a2.id || typeof a2.id !== "string" || !["attempt", "reveal"].includes(a2.mode) || a2.questionId !== a2.question?.definition?.id || !Number.isFinite(Date.parse(a2.finished)) || a2.gradingRule !== gradingRule(a2.question)) throw Error("Invalid attempt record.");
+  if (!a2 || a2.version !== 1 || !a2.id || typeof a2.id !== "string" || !["attempt", "reveal"].includes(a2.mode) || a2.questionId !== a2.question?.definition?.id || !Number.isFinite(Date.parse(a2.finished)) || !validGradingRule(a2.question, a2.gradingRule)) throw Error("Invalid attempt record.");
   validate(a2.question.definition, a2.question.prompt);
   if (a2.course !== void 0) validateCourseContext(a2.course);
   if (!restoreDraft({ version: 1, signature: signature(a2.question), started: a2.started, order: a2.choiceOrder, response: a2.response, mathIds: [] }, a2.question)) throw Error("Invalid attempt response.");
-  if (a2.mode === "attempt" && a2.question.definition.code?.grading ? !validCodeGrade(a2.question, a2.response, a2.grade ?? void 0) : JSON.stringify(a2.grade) !== JSON.stringify(a2.mode === "attempt" ? grade(a2.question, a2.response) : null)) throw Error("Stored grade does not match frozen response.");
+  if (a2.mode === "attempt" && a2.question.definition.code?.grading ? !validCodeGrade(a2.question, a2.response, a2.grade ?? void 0) : JSON.stringify(a2.grade) !== JSON.stringify(a2.mode === "attempt" ? grade(a2.question, a2.response, a2.gradingRule) : null)) throw Error("Stored grade does not match frozen response.");
   return a2;
 }
 function normalizeHistory(files) {
@@ -54540,19 +55427,19 @@ var ReviewStore = class {
     await write;
   }
   /** Atomic code-record transaction. Never use merge conflict copies to consume directives. */
-  async applyCodeEdits(before, after, validate3) {
+  async applyCodeEdits(before, after, validate3, guard) {
     if (after.some((c) => !c.code) || before.some((c) => !c.code)) throw Error("Expected code records.");
-    return this.applyStudyEdits(before, after, validate3);
+    return this.applyStudyEdits(before, after, validate3, guard);
   }
-  async applyStudyEdits(before, after, validate3) {
+  async applyStudyEdits(before, after, validate3, guard) {
     if (!after.length || new Set(after.map((c) => c.id)).size !== after.length || after.some((c) => !c.code && !c.study || !validComment(c)) || before.some((c) => !c.code && !c.study || !after.some((n) => n.id === c.id))) throw Error("Invalid code annotation transaction.");
-    return this.applyAnnotationBatch(before, after, validate3);
+    return this.applyAnnotationBatch(before, after, validate3, guard);
   }
   async applyRegularEdits(before, after, validate3) {
     if (!after.length || new Set(after.map((c) => c.id)).size !== after.length || [...before, ...after].some((c) => c.study || c.code || c.questionId || c.kind === "sticky" || !validComment(c)) || before.some((c) => !after.some((n) => n.id === c.id))) throw Error("Invalid regular annotation transaction.");
     return this.applyAnnotationBatch(before, after, validate3);
   }
-  async applyAnnotationBatch(before, after, validate3) {
+  async applyAnnotationBatch(before, after, validate3, guard) {
     const write = this.pending.catch(() => {
     }).then(async () => {
       const remote = await this.app.vault.adapter.exists(this.path) ? JSON.parse(await this.app.vault.adapter.read(this.path)) : this.baseline;
@@ -54571,6 +55458,8 @@ var ReviewStore = class {
       await validate3(snapshot2.comments);
       const merged = await reviewUpdate(this.app, this.path, snapshot2, (latest) => {
         check3(latest);
+        guard?.(latest.comments);
+        guard?.(this.data.comments);
         return mergeReviewData(snapshot2, stamped, latest);
       });
       this.data = this.clean(mergeReviewData(current, this.data, merged));
@@ -54910,8 +55799,8 @@ function registerAnnotationHandles(plugin2, store) {
       new import_obsidian47.Notice(String(e));
       return;
     }
-    let mapping = resizeDOM(p);
-    const { text: text4, fingerprint } = mapping;
+    let mapping2 = resizeDOM(p);
+    const { text: text4, fingerprint } = mapping2;
     const projection = resizeProjection(source), projectedBase = projection.text.indexOf(text4);
     const oldFrom = projection.boundaries.indexOf(old.from), oldTo = projection.boundaries.indexOf(old.to);
     if (projectedBase < 0 || projection.text.indexOf(text4, projectedBase + 1) >= 0 || oldFrom < projectedBase || oldTo > projectedBase + text4.length || oldTo < 0) {
@@ -54931,7 +55820,7 @@ function registerAnnotationHandles(plugin2, store) {
     status.setText("Drag an endpoint \xB7 Escape cancels");
     status.setAttribute("role", "status");
     const start = layer2.createEl("button", { text: "\u25CF", attr: { "aria-label": "Drag annotation start" } }), end = layer2.createEl("button", { text: "\u25CF", attr: { "aria-label": "Drag annotation end" } });
-    const point = (offset) => mapping.points[offset];
+    const point = (offset) => mapping2.points[offset];
     const range = () => {
       const a2 = point(from), b = point(to), r = doc2.createRange();
       r.setStart(a2.node, a2.offset);
@@ -54974,7 +55863,7 @@ function registerAnnotationHandles(plugin2, store) {
         close();
         return;
       }
-      mapping = next;
+      mapping2 = next;
       if (moved) {
         const selection = doc2.getSelection();
         selection?.removeAllRanges();
@@ -55022,10 +55911,10 @@ function registerAnnotationHandles(plugin2, store) {
         const caret = doc2.caretRangeFromPoint(e.clientX, e.clientY);
         start.style.pointerEvents = end.style.pointerEvents = "auto";
         if (!caret || !p.contains(caret.startContainer)) return;
-        let offset = mapping.offset(caret.startContainer, caret.startOffset) ?? -1;
+        let offset = mapping2.offset(caret.startContainer, caret.startOffset) ?? -1;
         const math2 = (caret.startContainer.nodeType === Node.ELEMENT_NODE ? caret.startContainer : caret.startContainer.parentElement)?.closest(".math");
         if (math2 && p.contains(math2)) {
-          const rect = math2.getBoundingClientRect(), start2 = mapping.mathOffsets.get(math2);
+          const rect = math2.getBoundingClientRect(), start2 = mapping2.mathOffsets.get(math2);
           if (start2 !== void 0) offset = start2 + (e.clientX > rect.left + rect.width / 2 ? 1 : 0);
         }
         if (offset < 0) return;
@@ -55586,6 +56475,7 @@ function registerMathAnnotations(plugin2, store) {
       }
       const hits = cs.map((c) => ({ c, hit: locateMarginAnchor(this.raw, c.excerpt) }));
       for (const root of this.view.contentDOM.querySelectorAll(".math,.math-studio-special")) {
+        if (root.closest("figure.ss-scientific[data-scientific-id],.cm-callout")) continue;
         const q = liveEquation(this.view, root, this.qs);
         paintMathMarks(root, q ? hits.filter((x) => x.hit && (x.c.excerpt.kind === "math" ? x.hit.from === q.from : x.hit.from <= q.from && x.hit.to >= q.to)).map((x) => x.c) : []);
       }
@@ -55612,7 +56502,7 @@ function registerMathAnnotations(plugin2, store) {
       if (!math2) return;
       const cm = root.closest(".cm-editor"), view = cm ? import_view16.EditorView.findFromDOM(cm) : void 0;
       const markdown2 = plugin2.app.workspace.getLeavesOfType("markdown").map((l) => l.view).find((v) => v instanceof import_obsidian49.MarkdownView && v.containerEl.contains(root));
-      const anchor2 = view ? liveAnchor(view, root) : markdown2?.file ? readingEquationAnchor(root, markdown2.file.path) : void 0;
+      const anchor2 = root.closest("figure.ss-scientific[data-scientific-id]") ? markdown2?.file ? readingEquationAnchor(root, markdown2.file.path) : void 0 : view ? liveAnchor(view, root) : markdown2?.file ? readingEquationAnchor(root, markdown2.file.path) : void 0;
       if (!anchor2) return;
       const selection = doc2.getSelection(), range = selection && !selection.isCollapsed && selection.rangeCount ? selection.getRangeAt(0) : void 0;
       const selected = !!range && math2.contains(range.startContainer) && math2.contains(range.endContainer);
@@ -55816,7 +56706,7 @@ function paintReadingComments(root, comments, handlers2) {
     if (cs.length === 1) mark.onmouseenter = () => handlers2.hover(mark, cs[0]);
   };
   const mathTargets = /* @__PURE__ */ new Map();
-  for (const c of comments.filter((c2) => c2.excerpt?.kind === "math")) for (const target of readingMathTargets(root, c.excerpt)) {
+  for (const c of comments.filter((c2) => !!c2.excerpt)) for (const target of readingMathTargets(root, c.excerpt)) {
     const list = mathTargets.get(target) ?? [];
     if (!list.some((x) => x.id === c.id && JSON.stringify(x.excerpt?.part) === JSON.stringify(c.excerpt?.part))) list.push(c);
     mathTargets.set(target, list);
@@ -55830,6 +56720,21 @@ function paintReadingComments(root, comments, handlers2) {
   }
   const raw = nodes.map((n) => n.data).join("");
   const ranges = comments.filter((c) => c.excerpt?.kind !== "math").flatMap((c) => {
+    const mixed = c.excerpt && !c.excerpt.table ? readingMixedRange(root, c.excerpt) : void 0;
+    if (c.excerpt?.table?.scientific || mixed) {
+      const exact = mixed ? [mixed] : readingTableRanges(root, c.excerpt);
+      if (!exact) return [];
+      let offset2 = 0;
+      const hits = [];
+      for (const node2 of nodes) {
+        for (const range of exact) if (range.intersectsNode(node2)) {
+          const from = range.startContainer === node2 ? range.startOffset : 0, to = range.endContainer === node2 ? range.endOffset : node2.length;
+          if (to > from) hits.push({ from: offset2 + from, to: offset2 + to, comment: c });
+        }
+        offset2 += node2.length;
+      }
+      return hits;
+    }
     if (c.excerpt?.table) {
       const cell = readingTableTarget(root, c.excerpt);
       if (!cell) return [];
@@ -55907,8 +56812,8 @@ var approvedRemoval = import_state19.Annotation.define();
 function incoming(plugin2, target, ids) {
   const wanted = new Set(ids), found = [];
   for (const file of plugin2.app.vault.getMarkdownFiles()) {
-    const cache6 = plugin2.app.metadataCache.getFileCache(file);
-    for (const ref of [...cache6?.links ?? [], ...cache6?.embeds ?? []]) {
+    const cache7 = plugin2.app.metadataCache.getFileCache(file);
+    for (const ref of [...cache7?.links ?? [], ...cache7?.embeds ?? []]) {
       const at = ref.link.indexOf("#^");
       if (at < 0) continue;
       const id3 = ref.link.slice(at + 1);
@@ -56495,7 +57400,7 @@ function registerAnnotations(plugin2, store) {
         shared.studyMarginMenu = true;
         const anchors = readingExcerpts(selection, sectionPath);
         if (anchors.length) {
-          menu.addItem((i) => i.setSection("selection").setTitle("Extend selected annotation to selection").onClick(() => store.extendMargin?.(anchors)));
+          menu.addItem((i) => i.setSection("selection").setTitle("Extend selected annotation to selection").onClick(() => store.extendMargin?.(anchors, { readingCapture: true })));
           const first = anchors[0];
           store.addMarkMenu(menu, { path: first.path, quote: first.quote, before: first.before, after: first.after, anchors });
           menu.addItem((i) => i.setSection("selection").setTitle("Comment on selection\u2026").setIcon("message-square").onClick(() => store.edit({ path: first.path, quote: first.quote, before: first.before, after: first.after, anchors }))).addItem((i) => i.setSection("selection").setTitle("Add selection to selected margin note").onClick(() => store.addToMargin?.(anchors)));
@@ -56536,6 +57441,7 @@ function registerAnnotations(plugin2, store) {
         }));
         store.listeners.add(this.refresh);
         this.register(() => store.listeners.delete(this.refresh));
+        this.register(observeScientificRedraw(el, () => this.refresh()));
         this.refresh();
       }
       onunload() {
@@ -56553,7 +57459,7 @@ function registerAnnotations(plugin2, store) {
         }
         if (!this.alive || change && (!change.annotations || !change.paths.has(sectionPath) || readingChanges.get(change) === false)) return;
         if (!retry) this.readinessAttempt = 0;
-        const section = readingSectionInfo(el, ctx);
+        const section = readingSectionInfo(el, ctx) ?? readingContextInfo(el);
         if (!readingSectionReady(section)) {
           if (!this.readinessTimer && this.readinessAttempt < 7) {
             const delay = Math.min(1e3, 32 * 2 ** this.readinessAttempt++);
@@ -56572,8 +57478,8 @@ function registerAnnotations(plugin2, store) {
         const bounds = readingSectionBounds(section, sectionPath), index2 = readingCache.get(sectionPath, section.text, () => store.data.comments.filter((c) => !c.resolved && store.isAnnotationVisible(c) && !c.questionId && c.kind !== "sticky"));
         const comments = index2.inSection(bounds.from, bounds.to).filter((c) => !c.anchors || readingAnchorApplies(el, c.excerpt, section));
         const marks2 = [...readingMarks(el), ...el.querySelectorAll("[data-study-math-ids]")], text4 = readingText(el);
-        if (change && !el.querySelector(".study-has-underline,.study-math-underlined") && !marks2.some((m) => (m.dataset.studyMathIds ?? m.dataset.studyCommentIds ?? m.dataset.studyReadingComment ?? "").split(" ").some((id3) => change.commentIds.has(id3))) && !comments.some((c) => change.commentIds.has(c.id) && (c.excerpt.kind === "math" || c.quote && text4.includes(c.quote)))) return;
-        if (!marks2.length && !comments.some((c) => c.excerpt.kind === "math" || c.quote && text4.includes(c.quote))) return;
+        if (change && !el.querySelector(".study-has-underline,.study-math-underlined") && !marks2.some((m) => (m.dataset.studyMathIds ?? m.dataset.studyCommentIds ?? m.dataset.studyReadingComment ?? "").split(" ").some((id3) => change.commentIds.has(id3))) && !comments.some((c) => change.commentIds.has(c.id) && (c.excerpt.kind === "math" || c.excerpt.table?.scientific || c.quote && text4.includes(c.quote)))) return;
+        if (!marks2.length && !comments.some((c) => c.excerpt.kind === "math" || c.excerpt.table?.scientific || c.quote && text4.includes(c.quote))) return;
         if (hasReadingSelection(el)) {
           this.pending = true;
           if (!this.stopSelection) {
@@ -56668,9 +57574,9 @@ function registerAnnotations(plugin2, store) {
         this.clear();
         const { from, to } = readingSectionBounds(info, sectionPath);
         const items = located(sectionPath, info.text, from, to).filter(({ c, end }) => store.isAnnotationVisible(c) && endInRange(end, from, to, placementOf(c).edge));
-        const mapping = items.length ? readingStickyMap(el, info, sectionPath) : void 0, pending = [], warnings = /* @__PURE__ */ new Set();
+        const mapping2 = items.length ? readingStickyMap(el, info, sectionPath) : void 0, pending = [], warnings = /* @__PURE__ */ new Set();
         for (const { c, end } of items) {
-          const point = mapping?.point(end);
+          const point = mapping2?.point(end);
           if (point) {
             const parent2 = point.node.nodeType === 1 ? point.node : point.node.parentElement;
             if (!parent2?.closest("a,code,pre,.math,.internal-embed,button")) {
@@ -56922,9 +57828,9 @@ function registerEvidenceLinks(plugin2) {
     const update = () => {
       pending = false;
       for (const link of doc2.querySelectorAll('a[href^="obsidian://study-evidence"]')) {
-        const block = link.closest("p,li");
-        if (!block) continue;
-        const nodes = Array.from(block.querySelectorAll('.pandoc-citation,a[href^="obsidian://study-evidence"]')), i = nodes.indexOf(link), cite = nodes[i - 1];
+        const block2 = link.closest("p,li");
+        if (!block2) continue;
+        const nodes = Array.from(block2.querySelectorAll('.pandoc-citation,a[href^="obsidian://study-evidence"]')), i = nodes.indexOf(link), cite = nodes[i - 1];
         let matched = false;
         try {
           matched = !!cite?.matches(".pandoc-citation") && !!cite.textContent?.trim() && sameKeys((cite.dataset.citekey || "").split("|"), (new URL(link.href).searchParams.get("keys") || "").split("|"));
@@ -57002,7 +57908,7 @@ function registerEvidenceLinks(plugin2) {
   const decorate = (view) => {
     const ranges = [];
     const renderer = plugin2.app.plugins?.plugins?.["obsidian-pandoc-reference-list"], file = view.state.field(import_obsidian54.editorInfoField, false)?.file;
-    const cache6 = file ? renderer?.bibManager?.getCacheForPath(file.path) : null;
+    const cache7 = file ? renderer?.bibManager?.getCacheForPath(file.path) : null;
     const from = view.state.doc.lineAt(view.viewport.from).from, to = view.state.doc.lineAt(view.viewport.to).to, text4 = view.state.doc.sliceString(from, to);
     const linked = renderer?.settings.renderCitations && view.state.field(import_obsidian54.editorLivePreviewField, false) ? linkedEvidence(text4) : [];
     const replaced = [];
@@ -57017,7 +57923,7 @@ function registerEvidenceLinks(plugin2) {
       }
       if (inCode) continue;
       if (view.state.selection.ranges.some((r) => r.from <= end && r.to >= start)) continue;
-      const citation = cache6?.citations?.find((c) => c.from === from + f.citeFrom && c.to === from + f.citeTo && sameKeys(c.citations.map((p) => p.id), f.keys));
+      const citation = cache7?.citations?.find((c) => c.from === from + f.citeFrom && c.to === from + f.citeTo && sameKeys(c.citations.map((p) => p.id), f.keys));
       if (!citation?.val) continue;
       ranges.push(import_view18.Decoration.replace({ widget: new CitationWidget(citation.val, f.href) }).range(start, end));
       replaced.push({ from: start, to: end });
@@ -57150,7 +58056,7 @@ function imageFile(app, source, path) {
   return app.vault.getFiles().find((f) => app.vault.getResourcePath(f).split("?")[0] === path.split("?")[0]) || null;
 }
 function textMap(root) {
-  const walker = root.ownerDocument.createTreeWalker(root, 4), chars = [], letters = [];
+  const walker = root.ownerDocument.createTreeWalker(root, 4), chars2 = [], letters = [];
   let node;
   while (node = walker.nextNode()) {
     if (node.parentElement?.closest("button,script,style,mjx-container,.MathJax,.math,.evidence-toolbar,.study-sticky-placement,.study-comment-popover,.study-comment-editor")) continue;
@@ -57159,10 +58065,10 @@ function textMap(root) {
       const c = /\s/.test(t2.data[i]) ? " " : t2.data[i];
       if (c === " " && letters.at(-1) === " ") continue;
       letters.push(c);
-      chars.push({ node: t2, offset: i });
+      chars2.push({ node: t2, offset: i });
     }
   }
-  return { text: letters.join(""), chars };
+  return { text: letters.join(""), chars: chars2 };
 }
 function paint(el, s) {
   el.classList.add("evidence-mark");
@@ -57786,9 +58692,9 @@ function registerEvidenceWorkflow(plugin2) {
     const target = e.target;
     const cite = target.closest(".pandoc-citation,.cm-pandoc-citation");
     if (!cite) return;
-    const block = cite.closest("p,li,.cm-line") || cite.parentElement;
-    if (!block) return;
-    const next = Array.from(block.querySelectorAll('.pandoc-citation,.cm-pandoc-citation,a[href^="obsidian://study-evidence"]')).filter((n) => n === cite || !cite.contains(n));
+    const block2 = cite.closest("p,li,.cm-line") || cite.parentElement;
+    if (!block2) return;
+    const next = Array.from(block2.querySelectorAll('.pandoc-citation,.cm-pandoc-citation,a[href^="obsidian://study-evidence"]')).filter((n) => n === cite || !cite.contains(n));
     const at = next.indexOf(cite), link = next[at + 1];
     let href = link?.matches('a[href^="obsidian://study-evidence"]') ? link.getAttribute("href") : null;
     if (!href && cite.closest(".cm-editor")) {
@@ -58119,7 +59025,7 @@ function groupOccurrences(source, lines, title, prompt = "") {
   if (chosen.length !== new Set(lines).size || !chosen.length) throw Error("Selected cards changed. Select the questions again.");
   const ids = chosen.flatMap((b) => b.ids);
   if (new Set(ids).size !== ids.length) throw Error("Select only one occurrence of each question for this group.");
-  for (const block of [...chosen].reverse()) source = replaceEmbed(source, block, block === chosen[0] ? embedSource(ids, title, prompt) : "");
+  for (const block2 of [...chosen].reverse()) source = replaceEmbed(source, block2, block2 === chosen[0] ? embedSource(ids, title, prompt) : "");
   return source;
 }
 
@@ -58132,11 +59038,11 @@ var import_obsidian59 = require("obsidian");
 // src/deletion-model.ts
 function removeQuestionEmbeds(raw, ids) {
   let next = raw, count2 = 0;
-  for (const block of embeds(raw).reverse()) {
-    const remaining = block.ids.filter((id3) => !ids.has(id3));
-    if (remaining.length === block.ids.length) continue;
-    count2 += block.ids.length - remaining.length;
-    next = replaceEmbed(next, block, remaining.length ? embedSource(remaining, block.group ? block.title : void 0, block.prompt) : block.prompt ?? "");
+  for (const block2 of embeds(raw).reverse()) {
+    const remaining = block2.ids.filter((id3) => !ids.has(id3));
+    if (remaining.length === block2.ids.length) continue;
+    count2 += block2.ids.length - remaining.length;
+    next = replaceEmbed(next, block2, remaining.length ? embedSource(remaining, block2.group ? block2.title : void 0, block2.prompt) : block2.prompt ?? "");
   }
   return { raw: next, count: count2 };
 }
@@ -58812,9 +59718,9 @@ async function organizeCourseLab(app) {
 
 // src/practice-location.ts
 var within = (path, root) => path === root || path.startsWith(root + "/");
-function moveCacheContext(cache6, from, to) {
+function moveCacheContext(cache7, from, to) {
   const moves = [];
-  for (const [key3, value] of Object.entries(cache6)) {
+  for (const [key3, value] of Object.entries(cache7)) {
     let parts;
     try {
       parts = JSON.parse(key3);
@@ -58823,13 +59729,13 @@ function moveCacheContext(cache6, from, to) {
     }
     if (Array.isArray(parts) && parts.length === 2 && parts[0] === from && typeof parts[1] === "string") {
       const next = draftKey(to, parts[1]);
-      if (Object.hasOwn(cache6, next) && JSON.stringify(cache6[next]) !== JSON.stringify(value)) throw Error("Conflicting practice state at the destination; nothing was replaced.");
+      if (Object.hasOwn(cache7, next) && JSON.stringify(cache7[next]) !== JSON.stringify(value)) throw Error("Conflicting practice state at the destination; nothing was replaced.");
       moves.push([key3, next, value]);
     }
   }
   for (const [old, next, value] of moves) {
-    cache6[next] = value;
-    delete cache6[old];
+    cache7[next] = value;
+    delete cache7[old];
   }
 }
 function moveNoteLocations(locations, from, to) {
@@ -58844,7 +59750,7 @@ function moveNoteLocations(locations, from, to) {
 }
 function legacyNotePaths(...caches) {
   const paths = /* @__PURE__ */ new Set();
-  for (const cache6 of caches) for (const key3 of Object.keys(cache6)) {
+  for (const cache7 of caches) for (const key3 of Object.keys(cache7)) {
     try {
       const [path] = JSON.parse(key3);
       if (typeof path === "string" && path.endsWith(".md")) paths.add(path);
@@ -61091,7 +61997,7 @@ var QuestionEditor = class extends StudioPanel {
         const bridge = this.app.plugins?.plugins?.["code-links"];
         if (!bridge?.call) throw Error("Enable Code Links to validate changed code checks.");
         this.error.setText("Validating the reference solution and result checks\u2026");
-        const checked = await bridge.call("check-code", { prepare: true, source: definition.code.source, reference: Object.fromEntries(definition.answers.map((a2) => [a2.id, a2.accepted[0]])), grading: definition.code.grading });
+        const checked = await bridge.call("check-code", { prepare: true, ...definition.studySource?.target ? { target: definition.studySource.target } : {}, source: definition.code.source, reference: Object.fromEntries(definition.answers.map((a2) => [a2.id, a2.accepted[0]])), grading: definition.code.grading });
         if (checked.status !== "prepared") throw Error(checked.message ?? "Code grading could not be prepared.");
         definition.code.grading = checked.grading;
       }
@@ -61403,8 +62309,8 @@ var Card = class extends import_obsidian70.MarkdownRenderChild {
       const measure = wrap.createSpan({ cls: "study-answer-measure", attr: { "aria-hidden": "true" } });
       const answerSize = diagramAnswerSize(parent2, wrap, () => {
         if (input.hidden) {
-          const math2 = preview.querySelector(".math");
-          if (math2) return math2.getBoundingClientRect().width;
+          const content2 = preview.firstElementChild;
+          if (content2) return Math.max(content2.getBoundingClientRect().width, content2.scrollWidth);
           measure.textContent = preview.textContent ?? "";
         }
         return measure.getBoundingClientRect().width;
@@ -61426,16 +62332,16 @@ var Card = class extends import_obsidian70.MarkdownRenderChild {
         if (save) persist();
         const current = ++revision;
         preview.empty();
-        const typed = equations(input.value.trim()).find((e) => e.from === 0 && e.to === input.value.trim().length && !!e.body.trim());
-        const rendered = (mathMode || !!typed) && !!input.value.trim() && input.ownerDocument.activeElement !== input;
+        const plan2 = answerPreview(input.value, mathMode);
+        const rendered = !!plan2 && input.ownerDocument.activeElement !== input;
         input.hidden = rendered;
         preview.hidden = !rendered;
         if (!rendered) return;
         preview.setText(input.value);
         const stage = preview.ownerDocument.createElement("span");
-        void RichMarkdown.render(this.plugin.app, typed ? typed.raw : `$${input.value}$`, stage, q.path, this).then(() => {
+        void RichMarkdown.render(this.plugin.app, plan2.source, stage, q.path, this).then(() => {
           if (current === revision && preview.isConnected) {
-            preview.replaceChildren(stage.querySelector(".math") ?? stage);
+            preview.replaceChildren(plan2.wholeMath ? stage.querySelector(".math") ?? stage : stage);
             answerSize.refresh();
           }
         });
@@ -61461,7 +62367,7 @@ var Card = class extends import_obsidian70.MarkdownRenderChild {
       };
       preview.onclick = () => {
         if (input.disabled || preview.disabled || retained(id3)) return;
-        if (mathMode && !equations(input.value.trim()).some((e) => e.from === 0 && e.to === input.value.trim().length)) input.value = `$${input.value}$`;
+        if (mathMode && !equations(input.value.trim()).length) input.value = `$${input.value}$`;
         mathMode = false;
         mathIds.delete(id3);
         ++revision;
