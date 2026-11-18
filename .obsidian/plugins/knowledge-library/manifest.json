@@ -1,9 +1,0 @@
-{
-  "id": "knowledge-library",
-  "name": "Index",
-  "version": "0.3.0",
-  "minAppVersion": "1.8.0",
-  "description": "Isolated index development with frozen and reviewed test collections.",
-  "author": "Grady",
-  "isDesktopOnly": true
-}
