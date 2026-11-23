@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "pluginId": "research-outline",
+  "sourceCommit": "1f758f37f08160e8f9816cac801896ec16133c3e",
+  "files": {
+    "main.js": "3c4b44dd9a605307feee090ae4c6ab8e026a7b4c4bb0508a6b8ce67bc467413d",
+    "manifest.json": "093bbaec5b95cadcef8ccc2e19b51df64bfa845c0a9d4f2f64a94dae21df02a7",
+    "styles.css": "1c0e8874f1afc9dc2f49631a63428e61450c21f7bdefc7704c02f18112e4b263"
+  },
+  "receiverCompatibility": {
+    "runtimeOnlyFrom": [
+      "0.1.0"
+    ],
+    "runtimeOnlyFromReceipts": [],
+    "requiredMigrations": []
+  }
+}
