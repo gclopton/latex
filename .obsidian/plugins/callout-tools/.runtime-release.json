@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "pluginId": "callout-tools",
+  "sourceCommit": "31359b0558d887a50a4ad2dd5c528aa13b7f0864",
+  "files": {
+    "main.js": "5b4676f8c20841b79fb89c144d43909206380b3c52ba20a3ccc40c354503f9f8",
+    "manifest.json": "16aaba75b9220bb9367f1eaf011db156925c6faa06c9b32abc5fcc5be6b9d324"
+  },
+  "receiverCompatibility": {
+    "runtimeOnlyFrom": [
+      "0.1.0"
+    ],
+    "runtimeOnlyFromReceipts": [],
+    "requiredMigrations": []
+  }
+}

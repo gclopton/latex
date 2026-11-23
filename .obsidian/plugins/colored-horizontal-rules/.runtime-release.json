@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "pluginId": "colored-horizontal-rules",
+  "sourceCommit": "2b1bc8e8169d0663edd441b148347c3ce87054da",
+  "files": {
+    "main.js": "a74939e6869be29ed212c80f884fb4be163a0346ee2aaa8a26b2ad3e8e78e84d",
+    "manifest.json": "2cc46de19907af8ef239c936d9c07b57dbb96bd8d9f162718982962d95e23200",
+    "styles.css": "24bcdd11a695e9834762eb16439816ac6960bf1db32a39e11a39728c7019e121"
+  },
+  "receiverCompatibility": {
+    "runtimeOnlyFrom": [
+      "0.1.0"
+    ],
+    "runtimeOnlyFromReceipts": [
+      "c8cb1ae5fd0a193b03711641245f3815f82c3a3dd9d29d3a3f05aa336e21a44a"
+    ],
+    "requiredMigrations": []
+  }
+}
