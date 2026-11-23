@@ -1,9 +1,0 @@
-{
-  "id": "image-gallery",
-  "name": "Image Gallery",
-  "version": "0.3.2",
-  "minAppVersion": "1.8.0",
-  "description": "Browse vault image thumbnails and insert or replace individual note images with alignment and width controls.",
-  "author": "Grady Clopton",
-  "isDesktopOnly": true
-}

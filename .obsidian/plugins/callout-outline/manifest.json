@@ -1,9 +1,0 @@
-{
-  "id": "callout-outline",
-  "name": "Callout Outline",
-  "version": "0.2.0",
-  "minAppVersion": "1.8.0",
-  "description": "Adds a sidebar outline for callouts in the active note.",
-  "author": "OpenAI Codex",
-  "isDesktopOnly": false
-}
