@@ -446,3 +446,23 @@ venv-*/
 /.obsidian/plugins/vault-manager-status/manifest.json
 /.obsidian/plugins/vault-manager-status/styles.css
 # End VaultSync vault-manager-status managed runtime
+
+# VaultSync callout-tools managed runtime
+/.obsidian/plugins/callout-tools/.runtime-release.json
+/.obsidian/plugins/callout-tools/main.js
+/.obsidian/plugins/callout-tools/manifest.json
+# End VaultSync callout-tools managed runtime
+
+# VaultSync case-sensitive-find managed runtime
+/.obsidian/plugins/case-sensitive-find/.runtime-release.json
+/.obsidian/plugins/case-sensitive-find/main.js
+/.obsidian/plugins/case-sensitive-find/manifest.json
+/.obsidian/plugins/case-sensitive-find/styles.css
+# End VaultSync case-sensitive-find managed runtime
+
+# VaultSync colored-horizontal-rules managed runtime
+/.obsidian/plugins/colored-horizontal-rules/.runtime-release.json
+/.obsidian/plugins/colored-horizontal-rules/main.js
+/.obsidian/plugins/colored-horizontal-rules/manifest.json
+/.obsidian/plugins/colored-horizontal-rules/styles.css
+# End VaultSync colored-horizontal-rules managed runtime
