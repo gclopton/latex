@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "pluginId": "vault-manager-status",
+  "sourceCommit": "1093739f723b30a6913ce51e34fa4ea4c31c4f90",
+  "files": {
+    "main.js": "982fe9991f476752f125575ffe1f27a2487487cbda839e36f58249efb280eac1",
+    "manifest.json": "c9978173a0df2856873fbf8af54882eadd38f327115593e29bb83281d60ebdb4",
+    "styles.css": "d1d498a0edb867c8b0a144a21c4b777cc8ffb4915a77f346b173a7137edaaab0"
+  },
+  "receiverCompatibility": {
+    "runtimeOnlyFrom": [
+      "0.3.0"
+    ],
+    "runtimeOnlyFromReceipts": [],
+    "requiredMigrations": []
+  }
+}
