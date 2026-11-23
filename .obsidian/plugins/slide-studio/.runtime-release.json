@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "pluginId": "slide-studio",
+  "sourceCommit": "34f7ca8aecfaa16532394d4a03b706a62320f179",
+  "files": {
+    "main.js": "0d014953544f586b5c403c436d5687e58ad481095b03ca3c85b70d4e27c5fb16",
+    "manifest.json": "0d74b81f40bb4a27667251f522dc635d37fa020459cbf41f5903f6fd9801341e",
+    "styles.css": "43f186c3a811b48aeadbe59484d5536006355d3da001fa56e1e641f0aedffb48"
+  },
+  "receiverCompatibility": {
+    "runtimeOnlyFrom": [
+      "0.3.34"
+    ],
+    "runtimeOnlyFromReceipts": [],
+    "requiredMigrations": []
+  }
+}
