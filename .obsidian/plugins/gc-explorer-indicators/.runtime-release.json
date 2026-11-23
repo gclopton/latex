@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "pluginId": "gc-explorer-indicators",
+  "sourceCommit": "40ea7a5a0be7225e38ea988f363a8dccf3906843",
+  "files": {
+    "main.js": "b292367ffccd4d5e9c81fc6d5d7c13b62c7eb38b296348f8035177216af47b35",
+    "manifest.json": "736ba582ba8bf78a567925fd5a7452fe8661dcd5407ce1c2ec5d5d4139118bd3",
+    "styles.css": "3a5428f7e5d17c4064bccbc1deab51915d41ed7c75e5051a6a1e73006807cf06"
+  },
+  "receiverCompatibility": {
+    "runtimeOnlyFrom": [
+      "0.1.0"
+    ],
+    "runtimeOnlyFromReceipts": [],
+    "requiredMigrations": []
+  }
+}
